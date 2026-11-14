@@ -20,7 +20,6 @@ export const queryKeys = {
   debts: ['debts'] as const,
   debt: (id: string) => ['debts', id] as const,
   debtForecast: (id: string) => ['debts', id, 'forecast'] as const,
-  debtRuleOptions: (budgetId: string) => ['debtRuleOptions', budgetId] as const,
   sessions: ['sessions'] as const,
   personalTokens: ['personalTokens'] as const,
   updateInfo: ['updateInfo'] as const,

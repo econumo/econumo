@@ -478,23 +478,8 @@
     "form": {
       "header": "Dette",
       "intro": "Suivez un prêt sans compte. Vous pourrez l'ajuster ensuite.",
-      "name": {
-        "label": "Nom"
-      },
-      "icon": {
-        "label": "Icône"
-      },
       "currency": {
         "label": "Devise"
-      },
-      "category": {
-        "label": "Catégorie"
-      },
-      "payee": {
-        "label": "Bénéficiaire (facultatif)"
-      },
-      "tag": {
-        "label": "Tag (facultatif)"
       },
       "start_date": {
         "label": "Date de début",
@@ -544,41 +529,16 @@
         "more": "Afficher {count} paiement de plus | Afficher {count} paiements de plus"
       },
       "mark_paid_off": "Marquer comme remboursée",
+      "reopen": "Rouvrir la dette",
       "paid_off_confirm": {
         "title": "Marquer comme remboursée ?",
-        "question": "Le solde passe à 0 à compter d’aujourd’hui. Vos paiements restent inchangés."
+        "question": "Le solde passe à 0 à compter de la date ci-dessous. Vos paiements restent inchangés.",
+        "date": "Remboursée le"
       },
       "delete_confirm": {
         "title": "Supprimer cette dette ?",
         "question": "La dette disparaît de son budget. Les paiements eux-mêmes ne sont pas modifiés."
-      },
-      "removal_confirm": {
-        "title": "Supprimer les montants prévus et les commentaires ?",
-        "action": "Supprimer la dette"
       }
-    },
-    "rules": {
-      "heading": "Paiements pris en compte",
-      "add_category": "Ajouter une catégorie",
-      "remove": "Retirer cette catégorie",
-      "owned_category": "{category} de {owner}"
-    },
-    "add_to": {
-      "title": "Ajouter à une dette",
-      "covered": "Compte déjà les paiements de cette catégorie",
-      "conflict": "Une autre dette compte déjà les paiements de cette catégorie",
-      "payments_in": "Paiements dans {categories}",
-      "search": "Rechercher des dettes"
-    },
-    "payments_from": {
-      "in": "Paiements de la catégorie",
-      "from": "bénéficiaire",
-      "tagged": "tag",
-      "choose_category": "à choisir",
-      "any_payee": "tous",
-      "any_tag": "tous",
-      "group_tags": "Tags",
-      "group_labels": "Tags de rapport"
     },
     "terms": {
       "finish_setup": "Terminer la configuration"
@@ -642,6 +602,7 @@
       "progress_repaid": "{paid} sur {total} payés ({repaid} sur {borrowed})",
       "owed_now": "Dû actuellement : {amount}",
       "paid_so_far": "Payé jusqu'ici",
+      "paid_off_on": "Remboursée le {date}",
       "not_set_up": "Indiquez le montant emprunté et les dates du prêt pour voir les paiements restants",
       "loan": "Prêt",
       "borrowed": "Emprunté",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Zone de danger",
         "paid_off": "Met le solde à 0 et arrête le compte à rebours.",
-        "delete": "Supprime la dette. Ses paiements comptent à nouveau dans leurs catégories."
+        "delete": "Supprime la dette et son historique. Vos transactions ne sont pas modifiées.",
+        "reopen": "Réactive la dette : vous pouvez la modifier et ses paiements comptent à nouveau."
       },
       "tab": {
         "overview": "Aperçu",
@@ -1843,7 +1805,6 @@
         "extra_effect": "Remboursée {months} mois plus tôt, {amount} d'intérêts en moins | Remboursée {months} mois plus tôt, {amount} d'intérêts en moins",
         "extra_effect_earlier": "Remboursée {months} mois plus tôt | Remboursée {months} mois plus tôt",
         "track": "Suivre comme dette",
-        "add_to": "Ajouter à une dette…",
         "details": "Détails"
       },
       "phone": {

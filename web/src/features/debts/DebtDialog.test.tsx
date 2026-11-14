@@ -1,15 +1,15 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixtureLabels, fixturePayees, fixtureTags } from '@/test/fixtures'
+import { coreHandlers, fixtureCategories, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenDebtParams } from '@/app/uiStore'
 import { DebtDialog } from './DebtDialog'
-import { wireDebtNotSetUp, wireRuleOptions } from './testDebt'
+import { wireDebtNotSetUp } from './testDebt'
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -20,9 +20,6 @@ function mockMatchMedia() {
 function renderDialog() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   queryClient.setQueryData(queryKeys.categories, fixtureCategories)
-  queryClient.setQueryData(queryKeys.payees, fixturePayees)
-  queryClient.setQueryData(queryKeys.tags, fixtureTags)
-  queryClient.setQueryData(queryKeys.labels, fixtureLabels)
   const router = createMemoryRouter([{ path: '/', element: <DebtDialog /> }], { initialEntries: ['/'] })
   render(
     <QueryClientProvider client={queryClient}>
@@ -46,47 +43,62 @@ function captureCreate(answer: (body: Record<string, unknown>, call: number) => 
   return bodies
 }
 
-const ruleOptionRequests: string[] = []
-
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
-  ruleOptionRequests.length = 0
-  server.use(
-    ...coreHandlers(),
-    http.get('*/api/v1/debt/get-debt-rule-options', ({ request }) => {
-      ruleOptionRequests.push(new URL(request.url).searchParams.get('budgetId') ?? '')
-      return ok(wireRuleOptions)
-    }),
-  )
+  server.use(...coreHandlers())
   mockMatchMedia()
   useUiStore.setState({ debtModal: null, debtDetailsId: null })
 })
 
 async function openCreate(params: Partial<OpenDebtParams> = {}) {
-  useUiStore.getState().openDebtModal({ budgetId: 'b1', ...params })
-  await screen.findByRole('heading', { name: 'Debt' })
+  useUiStore.getState().openDebtModal({ budgetId: 'b1', elementId: 'cat-food', ...params })
+  await screen.findByRole('heading', { name: params.elementId === 'env-1' ? 'Living' : 'Food' })
 }
 
-it('create form asks only name, payments from, payment and repeats', async () => {
+it('the header is the element\'s icon and name, and the form asks only payment and repeats', async () => {
   renderDialog()
   await openCreate()
 
+  expect(screen.getByRole('heading', { name: 'Food' })).toBeInTheDocument()
   expect(screen.getByText('Track a loan without an account. You can fine-tune it afterwards.')).toBeInTheDocument()
-  expect(screen.getByLabelText('Name')).toBeInTheDocument()
-  // the budget is always the caller's: never asked here
-  expect(screen.queryByRole('button', { name: /^Budget:/ })).toBeNull()
-  expect(await screen.findByRole('button', { name: 'Category: choose a category' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Tag (optional): any tag' })).toBeInTheDocument()
   expect(screen.getByLabelText('Payment')).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
-  // the currency is the category row's, or the user's: never asked here
+  // everything else is the element's
+  expect(screen.queryByLabelText('Name')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Icon' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Category/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Budget:/ })).toBeNull()
   expect(screen.queryByRole('button', { name: /^Currency/ })).toBeNull()
-  expect(screen.queryByText('Currency')).toBeNull()
-
   expect(screen.queryByLabelText('Balance now')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Last payment date' })).toBeNull()
-  expect(screen.queryByText('Start date (optional)')).toBeNull()
+  expect(screen.queryByText('Start date')).toBeNull()
+  // icons are ligature text
+  await waitFor(() => expect(screen.getByRole('heading', { name: 'Food' }).parentElement).toHaveTextContent('restaurant'))
+})
+
+it('an envelope\'s header is the envelope\'s name and icon, read from the budget', async () => {
+  const user = { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'budget' ? { ...o, value: 'b1' } : o)) }
+  server.use(
+    ...coreHandlers({ user }),
+    http.get('*/api/v1/budget/get-budget', () => ok({ item: fixtureWireBudget })),
+  )
+  renderDialog()
+  await openCreate({ elementId: 'env-1' })
+  expect(screen.getByRole('heading', { name: 'Living' }).parentElement).toHaveTextContent('home')
+})
+
+it('sends the budget, the element, the payment and the schedule', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ elementId: 'cat-food', budgetId: 'b2' })
+
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toEqual({ budgetId: 'b2', elementId: 'cat-food', startDate: null, payment: '50', schedule: 'monthly' })
 })
 
 it('the payment is a plain decimal input beside its repeats picker, with no calculator keypad', async () => {
@@ -111,7 +123,7 @@ it.each([
   const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
+  await openCreate()
 
   await user.type(screen.getByLabelText('Payment'), typed)
   await user.click(screen.getByRole('button', { name: 'Add' }))
@@ -124,7 +136,7 @@ it('a payment that is not a number is refused before sending', async () => {
   const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
+  await openCreate()
 
   await user.type(screen.getByLabelText('Payment'), '5+5')
   await user.click(screen.getByRole('button', { name: 'Add' }))
@@ -133,106 +145,23 @@ it('a payment that is not a number is refused before sending', async () => {
   expect(bodies).toHaveLength(0)
 })
 
-it('converting from a category locks the category and prefills the name', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-eur', budgetId: 'b1' })
-
-  expect(screen.getByLabelText('Name')).toHaveValue('Food')
-  expect(screen.getByRole('button', { name: 'Category: Food' })).toBeDisabled()
-
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toEqual({
-    budgetId: 'b1', name: 'Food', currencyId: 'cur-eur', rules: [{ categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }],
-    startDate: null, payment: '50', schedule: 'monthly',
-  })
-})
-
-it('from a budget row the budget is the row\'s: no budget picker, the first category locked', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-usd', budgetId: 'b2' })
-
-  expect(screen.queryByRole('button', { name: /^Budget:/ })).toBeNull()
-  expect(screen.getByRole('button', { name: 'Category: Food' })).toBeDisabled()
-  await waitFor(() => expect(ruleOptionRequests).toContain('b2'))
-
-  await user.click(screen.getByRole('button', { name: 'Add a category' }))
-  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage'))
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({
-    budgetId: 'b2',
-    rules: [
-      { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null },
-      { categoryId: 'cat-mortgage', payeeId: null, tagId: null, labelId: null },
-    ],
-  })
-})
-
-it('the payload carries the given budget and every rule', async () => {
+it('requires the payment before sending', async () => {
   const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
   await openCreate()
 
-  await waitFor(() => expect(ruleOptionRequests).toContain('b1'))
-  await user.type(screen.getByLabelText('Name'), 'House')
-  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Food'))
-  await user.click(screen.getByRole('button', { name: 'Add a category' }))
-  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage'))
-  await user.type(screen.getByLabelText('Payment'), '50')
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toEqual({
-    budgetId: 'b1', name: 'House',
-    rules: [
-      { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null },
-      { categoryId: 'cat-mortgage', payeeId: null, tagId: null, labelId: null },
-    ],
-    startDate: null, payment: '50', schedule: 'monthly',
-  })
-})
-
-it('the icon button before the name shows the category\'s icon and sends only a picked one', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
-  await waitFor(() => expect(ruleOptionRequests).toContain('b1'))
-
-  const iconButton = screen.getByRole('button', { name: 'Icon' })
-  expect(iconButton.compareDocumentPosition(screen.getByLabelText('Name')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  // icons are ligature text
-  await waitFor(() => expect(iconButton).toHaveTextContent('restaurant'))
-  await user.click(iconButton)
-  const picker = await screen.findByRole('listbox', { name: 'Icon' })
-  await user.click(within(picker).getByRole('option', { name: 'savings' }))
-  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Icon' })).toBeNull())
-  expect(iconButton).toHaveTextContent('savings')
-
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ icon: 'savings' })
+  expect(await screen.findAllByText('Required field')).toHaveLength(1)
+  expect(bodies).toHaveLength(0)
 })
 
 it('saving opens the debt\'s review screen', async () => {
   captureCreate()
   const user = userEvent.setup()
   renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
+  await openCreate()
 
   await user.type(screen.getByLabelText('Payment'), '50')
   await user.click(screen.getByRole('button', { name: 'Add' }))
@@ -242,118 +171,50 @@ it('saving opens the debt\'s review screen', async () => {
   expect(useUiStore.getState().debtDetailsTab).toBe('overview')
 })
 
-it('a key conflict shows its message under the rules and keeps the start date hidden', async () => {
-  const conflict = 'These payment rules could match the same payments. Give them different payees, tags or reporting tags, or, for different debts, different start dates.'
+it('an element that cannot carry a debt shows the refusal and stays open', async () => {
+  const message = 'This category or envelope already tracks a debt. Mark that debt as paid off first.'
   const bodies = captureCreate(() =>
-    HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { rules: [conflict] } }, { status: 400 }),
+    HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { elementId: [message] } }, { status: 400 }),
   )
   const user = userEvent.setup()
   renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
+  await openCreate()
 
   await user.type(screen.getByLabelText('Payment'), '50')
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
-  expect(await screen.findByText(conflict)).toBeInTheDocument()
+  expect(await screen.findByRole('alert')).toHaveTextContent(message)
   expect(bodies).toHaveLength(1)
-  expect(screen.queryByRole('button', { name: 'Start date (optional)' })).toBeNull()
-  expect(screen.queryByText('Start date (optional)')).toBeNull()
+  expect(screen.queryByText('Start date')).toBeNull()
   expect(useUiStore.getState().debtModal).not.toBeNull()
 })
 
-it('a start date already taken reveals the start date field and resends with it', async () => {
-  const taken = 'Another debt with the same category, payee, tag and reporting tag already starts on this date.'
+it('a start before the previous debt ended reveals the start date field and resends with it', async () => {
+  const early = 'The start date must be after the end of the previous debt on this category or envelope.'
   const bodies = captureCreate((_, call) =>
     call === 1
-      ? HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { startDate: [taken] } }, { status: 400 })
+      ? HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { startDate: [early] } }, { status: 400 })
       : ok({ ...wireDebtNotSetUp, id: 'd-new' }),
   )
   const user = userEvent.setup()
   renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
+  await openCreate()
 
   await user.type(screen.getByLabelText('Payment'), '50')
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
-  expect(await screen.findByText(taken)).toBeInTheDocument()
+  expect(await screen.findByText(early)).toBeInTheDocument()
   expect(useUiStore.getState().debtModal).not.toBeNull()
 
   await user.click(screen.getByRole('button', { name: 'Start date' }))
   const now = new Date()
   const month = new Intl.DateTimeFormat('en', { month: 'long' }).format(now)
-  await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 1st, ${now.getFullYear()}`) }))
+  await user.click(await screen.findByRole('button', { name: new RegExp(month + ' 1st, ' + now.getFullYear()) }))
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
   await waitFor(() => expect(bodies).toHaveLength(2))
   expect(bodies[0].startDate).toBeNull()
-  expect(bodies[1].startDate).toBe(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
-  await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
-})
-
-it('sends no currency when no category row names one: the budget\'s is taken', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
-
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).not.toHaveProperty('currencyId')
-})
-
-it('picks a reporting tag in the tag slot and sends it', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
-
-  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
-  const sheet = await screen.findByRole('dialog', { name: 'Tag (optional)' })
-  await user.click(within(sheet).getByText('health'))
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0].rules).toEqual([{ categoryId: 'cat-food', payeeId: null, labelId: 'label1', tagId: null }])
-})
-
-it('requires the name, category and payment before sending', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate()
-
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  expect(await screen.findAllByText('Required field')).toHaveLength(3)
-  expect(bodies).toHaveLength(0)
-})
-
-it('a refused currency reveals the currency row, and the pick is resent', async () => {
-  const refused = 'Currency is not available'
-  const bodies = captureCreate((_, call) =>
-    call === 1
-      ? HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { currencyId: [refused] } }, { status: 400 })
-      : ok({ ...wireDebtNotSetUp, id: 'd-new' }),
-  )
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-gone' })
-
-  expect(screen.queryByRole('button', { name: /^Currency/ })).toBeNull()
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  expect(await screen.findByText(refused)).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: /^Currency/ }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/EUR/))
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(2))
-  expect(bodies[0].currencyId).toBe('cur-gone')
-  expect(bodies[1].currencyId).toBe('cur-eur')
+  expect(bodies[1].startDate).toBe(now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01')
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
 })
 

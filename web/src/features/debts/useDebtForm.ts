@@ -1,73 +1,45 @@
 import { useState } from 'react'
-import type { CategoryDto } from '@/api/dto/category'
 import type { CreateDebtDto, DebtDto, UpdateDebtDto } from '@/api/dto/debt'
 import type { RecurringSchedule } from '@/api/dto/recurring'
-import type { Id } from '@/api/types'
 import type { OpenDebtParams } from '@/app/uiStore'
 import { tryNormalize } from '@/lib/decimal'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import { isNotEmpty } from '@/lib/validation'
-import { emptyRule, ruleDraft, ruleForm, rulesChanged } from './rules'
-import type { RuleDraft } from './rules'
 
 export const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 
 export interface DebtCreateState {
-  name: string
-  /** the icon picked, "" = none (the debt shows its first rule's category icon) */
-  icon: string
-  /** a budget row's currency; null leaves the budget's to the server, until a
-      refused currency makes the user pick one */
-  currencyId: Id | null
-  rules: RuleDraft[]
   payment: string
   schedule: RecurringSchedule
-  /** Y-m-d, "" = none; asked only once another debt has the same filters,
-      and then the day the loan began */
+  /** Y-m-d, "" = none; asked only after the server says the loan cannot start
+      before the end of the element's previous debt */
   startDate: string
 }
 
-export function initialCreateState(params: OpenDebtParams, categories: CategoryDto[]): DebtCreateState {
-  return {
-    name: categories.find((c) => c.id === params.categoryId)?.name ?? '',
-    icon: '',
-    currencyId: params.currencyId ?? null,
-    rules: [{ ...emptyRule(), categoryId: params.categoryId ?? null }],
-    payment: '',
-    schedule: 'monthly',
-    startDate: '',
-  }
+export function initialCreateState(): DebtCreateState {
+  return { payment: '', schedule: 'monthly', startDate: '' }
 }
 
 /** a new debt carries no terms: the loan's facts come with Finish setup */
-export function buildCreatePayload(state: DebtCreateState, budgetId: Id): CreateDebtDto {
+export function buildCreatePayload(state: DebtCreateState, params: OpenDebtParams): CreateDebtDto {
   return {
-    budgetId,
-    name: state.name.trim(),
-    ...(state.icon ? { icon: state.icon } : {}),
-    ...(state.currencyId ? { currencyId: state.currencyId } : {}),
-    rules: state.rules.map(ruleForm),
-    startDate: state.startDate || null,
+    budgetId: params.budgetId,
+    elementId: params.elementId,
     payment: sentAmount(state.payment),
     schedule: state.schedule,
+    startDate: state.startDate || null,
   }
 }
 
-export function useDebtCreateForm(params: OpenDebtParams, categories: CategoryDto[]) {
-  const [form, setForm] = useState<DebtCreateState>(() => initialCreateState(params, categories))
+export function useDebtCreateForm() {
+  const [form, setForm] = useState<DebtCreateState>(initialCreateState)
   const patch = (partial: Partial<DebtCreateState>) => setForm((prev) => ({ ...prev, ...partial }))
   return { form, patch }
 }
 
-/** everything the debt's Settings tab edits: its name and icon, which payments count, its terms */
+/** everything the debt's Settings tab edits: its terms */
 export interface DebtTermsState {
-  name: string
-  /** the icon shown now; sent only once changed */
-  icon: string
-  rules: RuleDraft[]
-  /** the amounts are read in this currency, the debt's own until changed */
-  currencyId: Id
   /** the loan's facts: what was borrowed, from when, to when */
   amountBorrowed: string
   /** Y-m-d, "" until chosen */
@@ -80,10 +52,6 @@ export interface DebtTermsState {
 
 export function initialTermsState(debt: DebtDto): DebtTermsState {
   return {
-    name: debt.name,
-    icon: debt.icon,
-    rules: debt.rules.map(ruleDraft),
-    currencyId: debt.currencyId,
     amountBorrowed: debt.isSetUp === 1 ? normalizeNumber(debt.amountBorrowed) : '',
     startDate: debt.startDate,
     lastPaymentDate: debt.lastPaymentDate,
@@ -165,11 +133,7 @@ export function factsAsked(form: DebtTermsState, debt: DebtDto): boolean {
   return debt.isSetUp === 1 || isNotEmpty(form.amountBorrowed) || form.lastPaymentDate !== ''
 }
 
-/** The one update the Settings tab saves. The icon goes only once changed. A
-    currency left as loaded goes as
-    none, so the server keeps the stored one (another device may have changed it
-    since); the rules only when edited, all of them then (left out, the
-    server keeps the stored ones); the loan's facts likewise go only when one
+/** The one update the Settings tab saves. The loan's facts go only when one
     was touched, all of them then, so the server reads them as one correction,
     and a set-up debt's start date only when changed (left out, the server
     keeps it). A debt not set up always sends its start date: it says which
@@ -178,10 +142,6 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
   const setUp = debt.isSetUp === 1
   const base = {
     id: debt.id,
-    name: form.name.trim(),
-    ...(form.icon !== initial.icon ? { icon: form.icon } : {}),
-    currencyId: form.currencyId === initial.currencyId ? '' : form.currencyId,
-    ...(rulesChanged(debt.rules, form.rules) ? { rules: form.rules.map(ruleForm) } : {}),
     ...(!setUp || form.startDate !== initial.startDate ? { startDate: form.startDate || null } : {}),
   }
   const facts = { amountBorrowed: sentAmount(form.amountBorrowed), lastPaymentDate: form.lastPaymentDate }
@@ -201,8 +161,6 @@ export function useDebtTermsForm(debt: DebtDto) {
   const [form, setForm] = useState<DebtTermsState>(initial)
   const patch = (partial: Partial<DebtTermsState>) => setForm((prev) => ({ ...prev, ...partial }))
   const reset = () => setForm(initial)
-  const dirty =
-    rulesChanged(debt.rules, form.rules) ||
-    (Object.keys(initial) as (keyof DebtTermsState)[]).some((key) => key !== 'rules' && form[key] !== initial[key])
+  const dirty = (Object.keys(initial) as (keyof DebtTermsState)[]).some((key) => form[key] !== initial[key])
   return { form, initial, patch, reset, dirty }
 }

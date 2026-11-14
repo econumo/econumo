@@ -478,23 +478,8 @@
     "form": {
       "header": "Deuda",
       "intro": "Sigue un préstamo sin cuenta. Podrás ajustarlo después.",
-      "name": {
-        "label": "Nombre"
-      },
-      "icon": {
-        "label": "Icono"
-      },
       "currency": {
         "label": "Moneda"
-      },
-      "category": {
-        "label": "Categoría"
-      },
-      "payee": {
-        "label": "Beneficiario (opcional)"
-      },
-      "tag": {
-        "label": "Etiqueta (opcional)"
       },
       "start_date": {
         "label": "Fecha de inicio",
@@ -544,41 +529,16 @@
         "more": "Mostrar {count} pago más | Mostrar {count} pagos más"
       },
       "mark_paid_off": "Marcar como pagada",
+      "reopen": "Reabrir la deuda",
       "paid_off_confirm": {
         "title": "¿Marcar como pagada?",
-        "question": "El saldo pasa a 0 desde hoy. Tus pagos se quedan como están."
+        "question": "El saldo pasa a 0 desde la fecha de abajo. Tus pagos se quedan como están.",
+        "date": "Pagada el"
       },
       "delete_confirm": {
         "title": "¿Eliminar esta deuda?",
         "question": "La deuda desaparece del presupuesto. Los pagos en sí no cambian."
-      },
-      "removal_confirm": {
-        "title": "¿Eliminar importes planificados y comentarios?",
-        "action": "Eliminar deuda"
       }
-    },
-    "rules": {
-      "heading": "Qué pagos cuentan",
-      "add_category": "Añadir una categoría",
-      "remove": "Quitar esta categoría",
-      "owned_category": "{category} de {owner}"
-    },
-    "add_to": {
-      "title": "Añadir a una deuda",
-      "covered": "Ya cuenta los pagos de esta categoría",
-      "conflict": "Otra deuda ya cuenta los pagos de esta categoría",
-      "payments_in": "Pagos en {categories}",
-      "search": "Buscar deudas"
-    },
-    "payments_from": {
-      "in": "Pagos de la categoría",
-      "from": "beneficiario",
-      "tagged": "etiqueta",
-      "choose_category": "elige una",
-      "any_payee": "cualquiera",
-      "any_tag": "cualquiera",
-      "group_tags": "Etiquetas",
-      "group_labels": "Etiquetas de informes"
     },
     "terms": {
       "finish_setup": "Terminar configuración"
@@ -642,6 +602,7 @@
       "progress_repaid": "{paid} de {total} pagados ({repaid} de {borrowed})",
       "owed_now": "Debes ahora {amount}",
       "paid_so_far": "Pagado hasta ahora",
+      "paid_off_on": "Pagada el {date}",
       "not_set_up": "Añade el importe del préstamo y las fechas del préstamo para ver los pagos que quedan",
       "loan": "Préstamo",
       "borrowed": "Préstamo",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Zona de peligro",
         "paid_off": "Pone el saldo a 0 y detiene la cuenta atrás.",
-        "delete": "Elimina la deuda. Sus pagos vuelven a contar en sus categorías."
+        "delete": "Elimina la deuda y su historial. Tus transacciones no cambian.",
+        "reopen": "Vuelve a activar la deuda: puedes cambiarla y sus pagos cuentan de nuevo."
       },
       "tab": {
         "overview": "Resumen",
@@ -1843,7 +1805,6 @@
         "extra_effect": "Pagada {months} mes antes, {amount} menos de intereses | Pagada {months} meses antes, {amount} menos de intereses",
         "extra_effect_earlier": "Pagada {months} mes antes | Pagada {months} meses antes",
         "track": "Seguir como deuda",
-        "add_to": "Añadir a una deuda…",
         "details": "Detalles"
       },
       "phone": {

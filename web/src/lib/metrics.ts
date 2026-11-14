@@ -132,7 +132,7 @@ export const METRICS = {
   DEBT_RECONCILIATION_DELETE: 'appDebtReconciliationDelete',
   DEBT_RATE_CHANGE_ADD: 'appDebtRateChangeAdd',
   DEBT_RATE_CHANGE_DELETE: 'appDebtRateChangeDelete',
-  DEBT_RULE_ADD: 'appDebtRuleAdd',
+  DEBT_REOPEN: 'appDebtReopen',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',

@@ -478,23 +478,8 @@
     "form": {
       "header": "Debito",
       "intro": "Segui un prestito senza conto. Potrai perfezionarlo in seguito.",
-      "name": {
-        "label": "Nome"
-      },
-      "icon": {
-        "label": "Icona"
-      },
       "currency": {
         "label": "Valuta"
-      },
-      "category": {
-        "label": "Categoria"
-      },
-      "payee": {
-        "label": "Beneficiario (facoltativo)"
-      },
-      "tag": {
-        "label": "Tag (facoltativo)"
       },
       "start_date": {
         "label": "Data di inizio",
@@ -544,41 +529,16 @@
         "more": "Mostra {count} altro pagamento | Mostra altri {count} pagamenti"
       },
       "mark_paid_off": "Segna come estinto",
+      "reopen": "Riapri il debito",
       "paid_off_confirm": {
         "title": "Segnare come estinto?",
-        "question": "Il saldo viene impostato a 0 da oggi. I tuoi pagamenti restano invariati."
+        "question": "Il saldo viene impostato a 0 dalla data qui sotto. I tuoi pagamenti restano invariati.",
+        "date": "Estinto il"
       },
       "delete_confirm": {
         "title": "Eliminare questo debito?",
         "question": "Il debito viene rimosso dal budget. I pagamenti in sé restano invariati."
-      },
-      "removal_confirm": {
-        "title": "Eliminare importi pianificati e commenti?",
-        "action": "Elimina debito"
       }
-    },
-    "rules": {
-      "heading": "Quali pagamenti contano",
-      "add_category": "Aggiungi una categoria",
-      "remove": "Rimuovi questa categoria",
-      "owned_category": "{category} di {owner}"
-    },
-    "add_to": {
-      "title": "Aggiungi a un debito",
-      "covered": "Conta già i pagamenti di questa categoria",
-      "conflict": "Un altro debito conta già i pagamenti di questa categoria",
-      "payments_in": "Pagamenti in {categories}",
-      "search": "Cerca debiti"
-    },
-    "payments_from": {
-      "in": "Pagamenti nella categoria",
-      "from": "beneficiario",
-      "tagged": "tag",
-      "choose_category": "scegli",
-      "any_payee": "qualsiasi",
-      "any_tag": "qualsiasi",
-      "group_tags": "Tag",
-      "group_labels": "Tag per i report"
     },
     "terms": {
       "finish_setup": "Completa la configurazione"
@@ -642,6 +602,7 @@
       "progress_repaid": "{paid} di {total} pagati ({repaid} di {borrowed})",
       "owed_now": "Dovuto ora: {amount}",
       "paid_so_far": "Pagato finora",
+      "paid_off_on": "Estinto il {date}",
       "not_set_up": "Aggiungi l'importo preso in prestito e le date del prestito per vedere i pagamenti rimanenti",
       "loan": "Prestito",
       "borrowed": "Preso in prestito",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Zona pericolosa",
         "paid_off": "Porta il saldo a 0 e ferma il conto alla rovescia.",
-        "delete": "Elimina il debito. I suoi pagamenti tornano a contare nelle loro categorie."
+        "delete": "Elimina il debito e la sua cronologia. Le tue transazioni restano invariate.",
+        "reopen": "Riattiva il debito: puoi modificarlo e i suoi pagamenti contano di nuovo."
       },
       "tab": {
         "overview": "Panoramica",
@@ -1843,7 +1805,6 @@
         "extra_effect": "Estinto {months} mese prima, {amount} di interessi in meno | Estinto {months} mesi prima, {amount} di interessi in meno",
         "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",
         "track": "Segui come debito",
-        "add_to": "Aggiungi a un debito…",
         "details": "Dettagli"
       },
       "phone": {

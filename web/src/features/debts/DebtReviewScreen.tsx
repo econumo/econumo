@@ -56,13 +56,17 @@ function DangerAction({ description, children }: { description: string; children
 /** the irreversible actions, on a tab of their own; each asks first */
 function DangerZone({
   canMarkPaidOff,
-  markingPaidOff,
+  canReopen,
+  busy,
   onMarkPaidOff,
+  onReopen,
   onDelete,
 }: {
   canMarkPaidOff: boolean
-  markingPaidOff: boolean
+  canReopen: boolean
+  busy: boolean
   onMarkPaidOff: () => void
+  onReopen: () => void
   onDelete: () => void
 }) {
   const { t } = useTranslation()
@@ -74,8 +78,15 @@ function DangerZone({
       <div className="divide-y divide-destructive/20">
         {canMarkPaidOff ? (
           <DangerAction description={t('debts.review.danger.paid_off')}>
-            <Button type="button" variant="secondary" disabled={markingPaidOff || !online} onClick={onMarkPaidOff}>
+            <Button type="button" variant="secondary" disabled={busy || !online} onClick={onMarkPaidOff}>
               {t('debts.details.mark_paid_off')}
+            </Button>
+          </DangerAction>
+        ) : null}
+        {canReopen ? (
+          <DangerAction description={t('debts.review.danger.reopen')}>
+            <Button type="button" variant="secondary" disabled={busy || !online} onClick={onReopen}>
+              {t('debts.details.reopen')}
             </Button>
           </DangerAction>
         ) : null}
@@ -95,14 +106,15 @@ const tabClass =
   '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground shadow-none after:hidden hover:text-foreground focus-visible:ring-0 focus-visible:outline-none focus-visible:underline data-active:border-foreground data-active:bg-transparent data-active:text-foreground dark:data-active:border-foreground dark:data-active:bg-transparent'
 
 // Balance (reconciling with a statement) needs the loan's facts: a debt not
-// set up has no such tab. Settings and the Danger zone change the debt: a
-// reader who cannot plan in its budget (a guest, an archived budget) gets
-// neither
-const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean; editOnly?: boolean }[] = [
+// set up has no such tab. Settings changes the debt: a reader who cannot edit
+// it (a guest, an archived budget, a paid-off debt) gets none. The Danger zone
+// is also there for a paid-off debt, whose Reopen and Delete are the only
+// writes left (canEdit is 0 on it; a refusal shows its reason)
+const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean; editOnly?: boolean; paidOffToo?: boolean }[] = [
   { value: 'overview', label: 'debts.review.tab.overview' },
   { value: 'balance', label: 'debts.review.tab.balance', setUpOnly: true },
   { value: 'settings', label: 'debts.review.tab.settings', editOnly: true },
-  { value: 'danger', label: 'debts.review.danger.title', editOnly: true },
+  { value: 'danger', label: 'debts.review.danger.title', editOnly: true, paidOffToo: true },
 ]
 
 function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
@@ -123,8 +135,11 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
 
   const item = data?.item
   const canEdit = item?.canEdit === 1
+  const paidOff = item?.status === 'paid_off'
+  const tabShown = (entry: (typeof TABS)[number]) =>
+    !!item && (!entry.setUpOnly || item.isSetUp === 1) && (!entry.editOnly || canEdit || (paidOff && !!entry.paidOffToo))
   // a read-only debt opened on Settings (Finish setup from a stale screen) shows its Overview
-  const shownTab = item && !canEdit && TABS.some((entry) => entry.value === tab && entry.editOnly) ? 'overview' : tab
+  const shownTab = item && TABS.some((entry) => entry.value === tab && entry.editOnly && !tabShown(entry)) ? 'overview' : tab
 
   // Each visit to Settings reloads the debt, unless the form holds edits: those
   // stay across a look at the Overview
@@ -177,14 +192,14 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
     dirty.current = value
   }, [])
 
-  const danger = useDebtDangerActions({ onPaidOff: showSaved, onDeleted: onClose, onError: setError })
+  const danger = useDebtDangerActions({ onPaidOff: showSaved, onReopened: showSaved, onDeleted: onClose, onError: setError })
 
   // the tab bar sits in the dialog's header block, outside the scrolling body;
   // the Tabs root wraps the dialog so its context reaches both through the portal
   const tabBar = item ? (
     <div className="w-full">
       <TabsList variant="line" className="h-auto w-full items-end justify-start gap-5 rounded-none bg-transparent p-0">
-        {TABS.filter((tab) => (!tab.setUpOnly || item.isSetUp === 1) && (!tab.editOnly || canEdit)).map(({ value, label }) => (
+        {TABS.filter(tabShown).map(({ value, label }) => (
           <TabsTrigger key={value} value={value} className={tabClass}>
             {t(label)}
           </TabsTrigger>
@@ -242,22 +257,29 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
                       </div>
                     )}
                   </TabsContent>
-                  <TabsContent value="danger" className="flex flex-col gap-5">
-                    <OfflineNotice />
-                    <DangerZone
-                      canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
-                      markingPaidOff={danger.markingPaidOff}
-                      onMarkPaidOff={() => {
-                        setError(null)
-                        danger.askMarkPaidOff(debtId)
-                      }}
-                      onDelete={() => {
-                        setError(null)
-                        danger.askDelete(debtId)
-                      }}
-                    />
-                  </TabsContent>
                 </>
+              ) : null}
+              {canEdit || paidOff ? (
+                <TabsContent value="danger" className="flex flex-col gap-5">
+                  <OfflineNotice />
+                  <DangerZone
+                    canMarkPaidOff={item.isSetUp === 1 && item.status === 'active' && canEdit}
+                    canReopen={paidOff}
+                    busy={danger.markingPaidOff || danger.reopening}
+                    onMarkPaidOff={() => {
+                      setError(null)
+                      danger.askMarkPaidOff(debtId)
+                    }}
+                    onReopen={() => {
+                      setError(null)
+                      danger.reopen(debtId)
+                    }}
+                    onDelete={() => {
+                      setError(null)
+                      danger.askDelete(debtId)
+                    }}
+                  />
+                </TabsContent>
               ) : null}
             </>
           ) : null}
@@ -528,6 +550,11 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
               </div>
             ) : null}
             {item.isPaidOff === 1 ? <p className="text-sm text-muted-foreground">{t('debts.review.owed_now', { amount: amount(item.currentBalance) })}</p> : null}
+            {item.status === 'paid_off' && item.endedAt ? (
+              <p data-testid="debt-review-ended" className="text-sm text-muted-foreground">
+                {t('debts.review.paid_off_on', { date: debtDay(item.endedAt, lang) })}
+              </p>
+            ) : null}
           </>
         ) : (
           <>

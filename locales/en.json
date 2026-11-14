@@ -478,23 +478,8 @@
     "form": {
       "header": "Debt",
       "intro": "Track a loan without an account. You can fine-tune it afterwards.",
-      "name": {
-        "label": "Name"
-      },
-      "icon": {
-        "label": "Icon"
-      },
       "currency": {
         "label": "Currency"
-      },
-      "category": {
-        "label": "Category"
-      },
-      "payee": {
-        "label": "Payee (optional)"
-      },
-      "tag": {
-        "label": "Tag (optional)"
       },
       "start_date": {
         "label": "Start date",
@@ -544,41 +529,16 @@
         "more": "Show {count} more payment | Show {count} more payments"
       },
       "mark_paid_off": "Mark as paid off",
+      "reopen": "Reopen debt",
       "paid_off_confirm": {
         "title": "Mark as paid off?",
-        "question": "The balance is set to 0 as of today. Your payments stay as they are."
+        "question": "The balance is set to 0 as of the date below. Your payments stay as they are.",
+        "date": "Paid off on"
       },
       "delete_confirm": {
         "title": "Delete this debt?",
         "question": "The debt leaves its budget. The payments themselves are not changed."
-      },
-      "removal_confirm": {
-        "title": "Delete plans and comments?",
-        "action": "Delete debt"
       }
-    },
-    "rules": {
-      "heading": "Which payments count",
-      "add_category": "Add a category",
-      "remove": "Remove this category",
-      "owned_category": "{owner}'s {category}"
-    },
-    "add_to": {
-      "title": "Add to a debt",
-      "covered": "Already counts payments in this category",
-      "conflict": "Another debt already counts payments in this category",
-      "payments_in": "Payments in {categories}",
-      "search": "Search debts"
-    },
-    "payments_from": {
-      "in": "Payments in",
-      "from": "from",
-      "tagged": "tagged",
-      "choose_category": "choose a category",
-      "any_payee": "any payee",
-      "any_tag": "any tag",
-      "group_tags": "Tags",
-      "group_labels": "Reporting tags"
     },
     "terms": {
       "finish_setup": "Finish setup"
@@ -642,6 +602,7 @@
       "progress_repaid": "{paid} of {total} paid ({repaid} of {borrowed})",
       "owed_now": "Owed now {amount}",
       "paid_so_far": "Paid so far",
+      "paid_off_on": "Paid off on {date}",
       "not_set_up": "Add the amount borrowed and the loan's dates to see payments left",
       "loan": "Loan",
       "borrowed": "Borrowed",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Danger zone",
         "paid_off": "Sets what's owed to 0 and stops counting down the payments.",
-        "delete": "Removes the debt. Its payments count in their categories again."
+        "delete": "Removes the debt and its history. Your transactions are not changed.",
+        "reopen": "Makes the debt active again, so you can change it and its payments count."
       },
       "tab": {
         "overview": "Overview",
@@ -1843,7 +1805,6 @@
         "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
         "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",
         "track": "Track as debt",
-        "add_to": "Add to a debt…",
         "details": "Details"
       },
       "phone": {

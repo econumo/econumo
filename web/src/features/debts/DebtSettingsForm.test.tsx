@@ -3,12 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixtureLabels, fixturePayees, fixtureTags, fixtureUsd } from '@/test/fixtures'
-import { queryKeys } from '@/app/queryKeys'
+import { coreHandlers } from '@/test/fixtures'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { DebtDto } from '@/api/dto/debt'
 import { DebtSettingsForm } from './DebtSettingsForm'
-import { wireDebt, wireDebtNotSetUp, wireRuleOptions } from './testDebt'
+import { wireDebt, wireDebtNotSetUp } from './testDebt'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
@@ -25,11 +24,6 @@ const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', da
 
 function renderForm(debt: DebtDto, { focusMissing = false }: { focusMissing?: boolean } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  queryClient.setQueryData(queryKeys.categories, fixtureCategories)
-  queryClient.setQueryData(queryKeys.payees, fixturePayees)
-  queryClient.setQueryData(queryKeys.tags, fixtureTags)
-  queryClient.setQueryData(queryKeys.labels, fixtureLabels)
-  queryClient.setQueryData(queryKeys.debtRuleOptions('b1'), wireRuleOptions)
   const onSaved = vi.fn()
   const onFocused = vi.fn()
   render(
@@ -65,10 +59,13 @@ const TERM_KEYS = ['amountBorrowed', 'balance', 'payment', 'schedule', 'lastPaym
 const startChip = () => screen.getByRole('button', { name: 'Start date' })
 const lastPaymentChip = () => screen.getByRole('button', { name: 'Last payment date' })
 
-it('asks for the loan facts in order: borrowed, the dates, payment, currency', () => {
+it('asks for the loan facts in order: borrowed, the dates, payment', () => {
   renderForm(wireDebt)
-  expect(screen.getByLabelText('Name')).toHaveValue('Car loan')
-  expect(screen.getByRole('button', { name: 'Category: Food' })).toBeInTheDocument()
+  // the name, icon, rules and currency are the element's, not edited here
+  expect(screen.queryByLabelText('Name')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Icon' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Category/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^Currency/ })).toBeNull()
   const borrowed = screen.getByLabelText('Amount borrowed')
   expect(borrowed).toHaveValue('1200')
   expect(startChip()).toHaveTextContent('Nov 5, 2026')
@@ -76,7 +73,7 @@ it('asks for the loan facts in order: borrowed, the dates, payment, currency', (
   expect(screen.getByRole('group', { name: 'Payment, Repeats' })).toBeInTheDocument()
   // a statement balance is the Balance tab's
   expect(screen.queryByLabelText(/Owed now/)).toBeNull()
-  const order = [borrowed, startChip(), lastPaymentChip(), screen.getByLabelText('Payment'), screen.getByRole('button', { name: /^Currency/ })]
+  const order = [borrowed, startChip(), lastPaymentChip(), screen.getByLabelText('Payment')]
   for (let i = 1; i < order.length; i++) {
     expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   }
@@ -105,40 +102,12 @@ it('saving untouched terms sends none, nor the start date, so the server keeps t
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '' })
-  expect(bodies[0]).not.toHaveProperty('startDate')
-  // the rules as loaded stay as stored
-  expect(bodies[0]).not.toHaveProperty('rules')
-  // the icon as loaded stays as stored
-  expect(bodies[0]).not.toHaveProperty('icon')
+  expect(bodies[0]).toEqual({ id: 'd1' })
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
-})
-
-it('the icon opens from the start of the name field and goes only once changed', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  // no icon list on the form itself: the icon button before the name opens it
-  expect(screen.queryByRole('listbox', { name: 'Icon' })).toBeNull()
-  const iconButton = screen.getByRole('button', { name: 'Icon' })
-  expect(iconButton.compareDocumentPosition(screen.getByLabelText('Name')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  await user.click(iconButton)
-  const picker = await screen.findByRole('listbox', { name: 'Icon' })
-  await user.click(within(picker).getByRole('option', { name: 'savings' }))
-  // picking closes the list
-  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Icon' })).toBeNull())
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', icon: 'savings' })
-  for (const key of TERM_KEYS) {
-    expect(bodies[0]).not.toHaveProperty(key)
-  }
 })
 
 it('a corrected amount borrowed sends every loan fact, typed plain', async () => {
@@ -255,79 +224,6 @@ it('setup saved without terms only updates the payment and is no finished setup'
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
 })
 
-// a currency changed on another device since the form loaded stays
-it('shows the currency and sends none while it is kept, so the server keeps the stored one', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ currencyId: '' })
-})
-
-// sending the stored 1000.50 back would be rounded to 1001 yen on the server,
-// a change of terms whose snapshot drops the payments made since
-it('a currency changed alone sends no terms, even into a currency with fewer digits', async () => {
-  server.use(
-    http.get('*/api/v1/currency/get-currency-list', () =>
-      ok({ items: [fixtureUsd, { ...fixtureUsd, id: 'cur-jpy', code: 'JPY', name: 'Yen', symbol: '¥', fractionDigits: 0 }] }),
-    ),
-  )
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, balance: '1000.50', currentBalance: '900.50', payment: '100.25' })
-
-  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/JPY/))
-  expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('JPY')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ currencyId: 'cur-jpy' })
-  for (const key of TERM_KEYS) {
-    expect(bodies[0]).not.toHaveProperty(key)
-  }
-})
-
-// a currency changed on another device since the form loaded stays
-it('shows the currency and sends none while it is kept, so the server keeps the stored one', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ currencyId: '' })
-})
-
-// sending the stored 1000.50 back would be rounded to 1001 yen on the server
-it('a currency changed alone sends no terms, even into a currency with fewer digits', async () => {
-  server.use(
-    http.get('*/api/v1/currency/get-currency-list', () =>
-      ok({ items: [fixtureUsd, { ...fixtureUsd, id: 'cur-jpy', code: 'JPY', name: 'Yen', symbol: '¥', fractionDigits: 0 }] }),
-    ),
-  )
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, amountBorrowed: '1000.50', currentBalance: '900.50', payment: '100.25' })
-
-  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/JPY/))
-  expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('JPY')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ currencyId: 'cur-jpy' })
-  for (const key of TERM_KEYS) {
-    expect(bodies[0]).not.toHaveProperty(key)
-  }
-})
-
 it('payment and repeats read as one line', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
@@ -344,113 +240,15 @@ it('payment and repeats read as one line', async () => {
   expect(bodies[0]).toMatchObject({ schedule: 'biweekly' })
 })
 
-it('a terms-only save sends no rules', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  await user.clear(screen.getByLabelText('Payment'))
-  await user.type(screen.getByLabelText('Payment'), '120')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ payment: '120' })
-  expect(bodies[0]).not.toHaveProperty('rules')
-})
-
-it('a rule added sends every rule, the kept one with its id', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  await user.click(screen.getByRole('button', { name: 'Add a category' }))
-  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0].rules).toEqual([
-    { id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null },
-    { categoryId: 'cat-mortgage', payeeId: null, tagId: null, labelId: null },
-  ])
-})
-
-it('a new rule without a category is refused before sending', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  await user.click(screen.getByRole('button', { name: 'Add a category' }))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  expect(await screen.findByText('Required field')).toBeInTheDocument()
-  expect(bodies).toHaveLength(0)
-})
-
-it('a rename and a new reporting tag go in one request with no terms and no currency', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, currentBalance: '900' })
-
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Van loan')
-  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Tag (optional)' })).getByText('health'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', currencyId: '', rules: [{ id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' }] })
-  for (const key of TERM_KEYS) {
-    expect(bodies[0]).not.toHaveProperty(key)
-  }
-})
-
-it('an empty name is refused before sending', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  await user.clear(screen.getByLabelText('Name'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  expect(await screen.findByText('Required field')).toBeInTheDocument()
-  expect(bodies).toHaveLength(0)
-})
-
-it('a refused rule change shows why under the rules', async () => {
-  server.use(
-    http.post('*/api/v1/debt/update-debt', () =>
-      HttpResponse.json(
-        { success: false, message: 'Form validation error', code: 400, errors: { rules: ['Another debt already counts these payments.'] } },
-        { status: 400 },
-      ),
-    ),
-  )
-  const user = userEvent.setup()
-  const onSaved = renderForm(wireDebt)
-
-  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Tag (optional)' })).getByText('health'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  expect(await screen.findByText('Another debt already counts these payments.')).toBeInTheDocument()
-  expect(onSaved).not.toHaveBeenCalled()
-})
-
 it('Cancel puts back what was loaded', async () => {
   const user = userEvent.setup()
   renderForm(wireDebt)
 
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Van loan')
   const borrowed = screen.getByLabelText('Amount borrowed')
   await user.clear(borrowed)
   await user.type(borrowed, '600')
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-  expect(screen.getByLabelText('Name')).toHaveValue('Car loan')
   expect(screen.getByLabelText('Amount borrowed')).toHaveValue('1200')
 })
 

@@ -2,13 +2,12 @@ import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
   AddDebtRateChangeForm,
-  AddDebtRuleDto,
   CreateDebtDto,
   DebtDetailsDto,
   DebtDto,
   DebtForecastDto,
-  DebtRuleOptionsDto,
   DeleteDebtForm,
+  MarkDebtPaidOffForm,
   DeleteDebtRateChangeForm,
   DeleteDebtReconciliationForm,
   ReconcileDebtForm,
@@ -35,11 +34,6 @@ export async function getDebtForecast(id: Id): Promise<DebtForecastDto> {
   return response.data.data
 }
 
-export async function getDebtRuleOptions(budgetId: Id): Promise<DebtRuleOptionsDto> {
-  const response = await api.get<Envelope<DebtRuleOptionsDto>>(apiUrl(`/api/v1/debt/get-debt-rule-options?budgetId=${encodeURIComponent(budgetId)}`))
-  return response.data.data
-}
-
 export async function createDebt(form: CreateDebtDto): Promise<DebtDto> {
   const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/create-debt'), form)
   return response.data.data
@@ -50,17 +44,17 @@ export async function updateDebt(form: UpdateDebtDto): Promise<DebtDto> {
   return response.data.data
 }
 
-export async function addDebtRule(form: AddDebtRuleDto): Promise<DebtDto> {
-  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/add-debt-rule'), form)
-  return response.data.data
-}
-
 export async function deleteDebt(form: DeleteDebtForm): Promise<void> {
   await api.post(apiUrl('/api/v1/debt/delete-debt'), form)
 }
 
-export async function markDebtPaidOff(id: Id): Promise<DebtDto> {
-  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/mark-debt-paid-off'), { id })
+export async function markDebtPaidOff(form: MarkDebtPaidOffForm): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/mark-debt-paid-off'), form)
+  return response.data.data
+}
+
+export async function reopenDebt(id: Id): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/reopen-debt'), { id })
   return response.data.data
 }
 

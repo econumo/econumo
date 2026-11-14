@@ -478,23 +478,8 @@
     "form": {
       "header": "Dívida",
       "intro": "Acompanhe um empréstimo sem conta. Pode ajustá-lo mais tarde.",
-      "name": {
-        "label": "Nome"
-      },
-      "icon": {
-        "label": "Ícone"
-      },
       "currency": {
         "label": "Moeda"
-      },
-      "category": {
-        "label": "Categoria"
-      },
-      "payee": {
-        "label": "Beneficiário (opcional)"
-      },
-      "tag": {
-        "label": "Etiqueta (opcional)"
       },
       "start_date": {
         "label": "Data de início",
@@ -544,41 +529,16 @@
         "more": "Mostrar mais {count} pagamento | Mostrar mais {count} pagamentos"
       },
       "mark_paid_off": "Marcar como liquidada",
+      "reopen": "Reabrir a dívida",
       "paid_off_confirm": {
         "title": "Marcar como liquidada?",
-        "question": "O saldo passa a 0 a partir de hoje. Os seus pagamentos ficam como estão."
+        "question": "O saldo passa a 0 a partir da data abaixo. Os seus pagamentos ficam como estão.",
+        "date": "Liquidada em"
       },
       "delete_confirm": {
         "title": "Eliminar esta dívida?",
         "question": "A dívida sai do orçamento. Os pagamentos em si não são alterados."
-      },
-      "removal_confirm": {
-        "title": "Eliminar montantes planeados e comentários?",
-        "action": "Eliminar dívida"
       }
-    },
-    "rules": {
-      "heading": "Que pagamentos contam",
-      "add_category": "Adicionar uma categoria",
-      "remove": "Remover esta categoria",
-      "owned_category": "{category} de {owner}"
-    },
-    "add_to": {
-      "title": "Adicionar a uma dívida",
-      "covered": "Já conta os pagamentos desta categoria",
-      "conflict": "Outra dívida já conta os pagamentos desta categoria",
-      "payments_in": "Pagamentos em {categories}",
-      "search": "Pesquisar dívidas"
-    },
-    "payments_from": {
-      "in": "Pagamentos na categoria",
-      "from": "beneficiário",
-      "tagged": "etiqueta",
-      "choose_category": "escolha",
-      "any_payee": "qualquer",
-      "any_tag": "qualquer",
-      "group_tags": "Etiquetas",
-      "group_labels": "Etiquetas de relatório"
     },
     "terms": {
       "finish_setup": "Concluir configuração"
@@ -642,6 +602,7 @@
       "progress_repaid": "{paid} de {total} pagos ({repaid} de {borrowed})",
       "owed_now": "Em dívida agora: {amount}",
       "paid_so_far": "Pago até agora",
+      "paid_off_on": "Liquidada em {date}",
       "not_set_up": "Indique o montante do empréstimo e as datas do empréstimo para ver os pagamentos em falta",
       "loan": "Empréstimo",
       "borrowed": "Empréstimo",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Zona de perigo",
         "paid_off": "Põe o saldo a 0 e para a contagem decrescente.",
-        "delete": "Remove a dívida. Os pagamentos voltam a contar nas respetivas categorias."
+        "delete": "Remove a dívida e o seu histórico. As suas transações não são alteradas.",
+        "reopen": "Volta a ativar a dívida: pode alterá-la e os seus pagamentos voltam a contar."
       },
       "tab": {
         "overview": "Resumo",
@@ -1843,7 +1805,6 @@
         "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de juros | Liquidada {months} meses mais cedo, menos {amount} de juros",
         "extra_effect_earlier": "Liquidada {months} mês mais cedo | Liquidada {months} meses mais cedo",
         "track": "Acompanhar como dívida",
-        "add_to": "Adicionar a uma dívida…",
         "details": "Detalhes"
       },
       "phone": {

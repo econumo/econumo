@@ -478,23 +478,8 @@
     "form": {
       "header": "Schuld",
       "intro": "Verfolgen Sie einen Kredit ohne Konto. Die Details können Sie später anpassen.",
-      "name": {
-        "label": "Name"
-      },
-      "icon": {
-        "label": "Symbol"
-      },
       "currency": {
         "label": "Währung"
-      },
-      "category": {
-        "label": "Kategorie"
-      },
-      "payee": {
-        "label": "Zahlungsempfänger (optional)"
-      },
-      "tag": {
-        "label": "Tag (optional)"
       },
       "start_date": {
         "label": "Startdatum",
@@ -544,41 +529,16 @@
         "more": "{count} weitere Zahlung anzeigen | {count} weitere Zahlungen anzeigen"
       },
       "mark_paid_off": "Als abbezahlt markieren",
+      "reopen": "Schuld wieder öffnen",
       "paid_off_confirm": {
         "title": "Als abbezahlt markieren?",
-        "question": "Der Saldo wird ab heute auf 0 gesetzt. Ihre Zahlungen bleiben unverändert."
+        "question": "Der Saldo wird ab dem unten gewählten Datum auf 0 gesetzt. Ihre Zahlungen bleiben unverändert.",
+        "date": "Abbezahlt am"
       },
       "delete_confirm": {
         "title": "Diese Schuld löschen?",
         "question": "Die Schuld verschwindet aus dem Budget. Die Zahlungen selbst bleiben unverändert."
-      },
-      "removal_confirm": {
-        "title": "Planbeträge und Kommentare löschen?",
-        "action": "Schuld löschen"
       }
-    },
-    "rules": {
-      "heading": "Welche Zahlungen zählen",
-      "add_category": "Kategorie hinzufügen",
-      "remove": "Diese Kategorie entfernen",
-      "owned_category": "{category} von {owner}"
-    },
-    "add_to": {
-      "title": "Zu einer Schuld hinzufügen",
-      "covered": "Zählt Zahlungen in dieser Kategorie bereits",
-      "conflict": "Eine andere Schuld zählt Zahlungen in dieser Kategorie bereits",
-      "payments_in": "Zahlungen in {categories}",
-      "search": "Schulden durchsuchen"
-    },
-    "payments_from": {
-      "in": "Zahlungen aus Kategorie",
-      "from": "Empfänger",
-      "tagged": "Tag",
-      "choose_category": "wählen",
-      "any_payee": "beliebig",
-      "any_tag": "beliebig",
-      "group_tags": "Tags",
-      "group_labels": "Auswertungs-Tags"
     },
     "terms": {
       "finish_setup": "Einrichtung abschließen"
@@ -642,6 +602,7 @@
       "progress_repaid": "{paid} von {total} bezahlt ({repaid} von {borrowed})",
       "owed_now": "Aktuell geschuldet: {amount}",
       "paid_so_far": "Bisher bezahlt",
+      "paid_off_on": "Abbezahlt am {date}",
       "not_set_up": "Geben Sie den geliehenen Betrag und die Daten des Kredits an, um die verbleibenden Zahlungen zu sehen",
       "loan": "Kredit",
       "borrowed": "Geliehen",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Gefahrenbereich",
         "paid_off": "Setzt den Saldo auf 0 und beendet den Countdown.",
-        "delete": "Entfernt die Schuld. Die Zahlungen zählen wieder in ihren Kategorien."
+        "delete": "Entfernt die Schuld samt Verlauf. Ihre Buchungen bleiben unverändert.",
+        "reopen": "Macht die Schuld wieder aktiv, sodass Sie sie ändern können und ihre Zahlungen zählen."
       },
       "tab": {
         "overview": "Übersicht",
@@ -1843,7 +1805,6 @@
         "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Zinsen | {months} Monate früher abbezahlt, {amount} weniger Zinsen",
         "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",
         "track": "Als Schuld verfolgen",
-        "add_to": "Zu einer Schuld hinzufügen…",
         "details": "Details"
       },
       "phone": {

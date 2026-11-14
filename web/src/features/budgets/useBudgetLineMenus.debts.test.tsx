@@ -52,21 +52,12 @@ beforeEach(() => {
 })
 
 describe('Track as debt', () => {
-  it('Track as debt opens the form prefilled', () => {
+  it('Track as debt opens the form on the element', () => {
     const { result, element } = renderMenus()
     const track = result.current.expenseRowMenu(element('cat-food')).find((a) => a.label === 'Track as debt')
     expect(track).toBeDefined()
     act(() => track!.onSelect())
-    // Food holds no currency of its own: the budget's
-    expect(useUiStore.getState().debtModal).toEqual({ categoryId: 'cat-food', currencyId: 'cur-usd', budgetId: 'b1' })
-  })
-
-  it('a category in an envelope takes the envelope\'s currency', () => {
-    const { result, element } = renderMenus()
-    const envelope = element('env-1')
-    const track = result.current.envelopeChildMenu(envelope.children[0], envelope).find((a) => a.label === 'Track as debt')
-    act(() => track!.onSelect())
-    expect(useUiStore.getState().debtModal).toEqual({ categoryId: 'cat-rent', currencyId: 'cur-eur', budgetId: 'b1' })
+    expect(useUiStore.getState().debtModal).toEqual({ elementId: 'cat-food', budgetId: 'b1' })
   })
 
   it('is offered only on a live expense category', () => {
@@ -86,64 +77,25 @@ it('the Plan grid\'s expense category row offers it too', () => {
   expect(labels(result.current.planRowMenu(food as never, 0))).toContain('Track as debt')
 })
 
-it('an archived budget offers no Track as debt and no Add to a debt', () => {
+it('an archived budget offers no Track as debt', () => {
   const { result, element } = renderMenus('u1', (b) => {
     b.meta.isArchived = 1
   })
   expect(labels(result.current.expenseRowMenu(element('cat-food')))).not.toContain('Track as debt')
-  expect(labels(result.current.expenseRowMenu(element('cat-food')))).not.toContain('Add to a debt…')
   const envelope = element('env-1')
-  expect(labels(result.current.envelopeChildMenu(envelope.children[0], envelope))).not.toContain('Track as debt')
-  expect(labels(result.current.envelopeChildMenu(envelope.children[0], envelope))).not.toContain('Add to a debt…')
+  expect(labels(result.current.envelopeChildMenu(envelope.children[0]))).not.toContain('Track as debt')
 })
 
 describe('a participant\'s category', () => {
-  it('a partner\'s category offers Track as debt and Add to a debt to a user-role participant', () => {
+  it('a partner\'s category offers Track as debt to a user-role participant', () => {
     // Food belongs to the budget's owner, u1
     const { result, element } = renderMenus('u2', joinAs('u2', 'user'))
-    const menu = labels(result.current.expenseRowMenu(element('cat-food')))
-    expect(menu).toContain('Track as debt')
-    expect(menu).toContain('Add to a debt…')
-    const envelope = element('env-1')
-    expect(labels(result.current.envelopeChildMenu(envelope.children[0], envelope))).toEqual(expect.arrayContaining(['Track as debt', 'Add to a debt…']))
+    expect(labels(result.current.expenseRowMenu(element('cat-food')))).toContain('Track as debt')
   })
 
-  it('a guest gets neither', () => {
+  it('a guest gets none', () => {
     const { result, element } = renderMenus('u2', joinAs('u2', 'guest'))
-    const menu = labels(result.current.expenseRowMenu(element('cat-food')))
-    expect(menu).not.toContain('Track as debt')
-    expect(menu).not.toContain('Add to a debt…')
-  })
-
-  it('no Add to a debt while the budget has no debt', () => {
-    const elsewhere = { ...wireDebt, budgetId: 'b2' }
-    const { result, element } = renderMenus('u1', undefined, [elsewhere])
-    const menu = labels(result.current.expenseRowMenu(element('cat-food')))
-    expect(menu).toContain('Track as debt')
-    expect(menu).not.toContain('Add to a debt…')
-  })
-
-  it('Add to a debt opens the budget\'s debts to pick from', async () => {
-    const budget = coerceBudgetFixture(fixtureWireBudget)
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-    queryClient.setQueryData(queryKeys.debts, [wireDebt])
-    window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
-    const menus: { current: BudgetLineMenus | null } = { current: null }
-    function Harness() {
-      const m = useBudgetLineMenus({ budget, plan: null, userId: 'u1', onOpenSettings: vi.fn() })
-      menus.current = m
-      return <>{m.dialogs}</>
-    }
-    render(
-      <QueryClientProvider client={queryClient}>
-        <Harness />
-      </QueryClientProvider>,
-    )
-    const food = budget.structure.elements.find((el) => el.id === 'cat-food') as BudgetElementDto
-    act(() => menus.current!.expenseRowMenu(food).find((a) => a.label === 'Add to a debt…')!.onSelect())
-    const dialog = await screen.findByRole('dialog', { name: 'Add to a debt' })
-    // the car loan already counts Food
-    expect(within(dialog).getByRole('option', { name: /Car loan/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(labels(result.current.expenseRowMenu(element('cat-food')))).not.toContain('Track as debt')
   })
 })
 
@@ -254,35 +206,6 @@ describe('the debt row menu\'s actions', () => {
     await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_MARK_PAID_OFF))
   })
 
-  it('Delete asks, and a removal_unconfirmed answer asks again and resends with confirmDataRemoval', async () => {
-    const bodies: Record<string, unknown>[] = []
-    const refusal = 'This deletes the planned amounts and comments of this debt in its budget; confirm to continue.'
-    server.use(
-      http.post('*/api/v1/debt/delete-debt', async ({ request }) => {
-        const body = (await request.json()) as Record<string, unknown>
-        bodies.push(body)
-        if (!body.confirmDataRemoval) {
-          return HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { confirmDataRemoval: [refusal] } }, { status: 400 })
-        }
-        return ok({})
-      }),
-    )
-    const user = userEvent.setup()
-    const { select } = renderWithDialogs()
-    select('Delete')
-    const first = await screen.findByRole('dialog', { name: 'Delete this debt?' })
-    expect(bodies).toEqual([])
-    await user.click(within(first).getByRole('button', { name: 'Delete' }))
-
-    const second = await screen.findByRole('dialog', { name: 'Delete plans and comments?' })
-    expect(within(second).getByText(refusal)).toBeInTheDocument()
-    expect(bodies).toEqual([{ id: 'debt-1' }])
-    await user.click(within(second).getByRole('button', { name: 'Delete debt' }))
-    await waitFor(() => expect(bodies).toHaveLength(2))
-    expect(bodies[1]).toEqual({ id: 'debt-1', confirmDataRemoval: true })
-    await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_DELETE))
-  })
-
   it('a refusal shows up as a toast', async () => {
     const spy = vi.spyOn(toast, 'error')
     onTestFinished(() => spy.mockRestore())
@@ -296,6 +219,5 @@ describe('the debt row menu\'s actions', () => {
     select('Delete')
     await user.click(within(await screen.findByRole('dialog', { name: 'Delete this debt?' })).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(spy).toHaveBeenCalledWith('Debt not found', expect.anything()))
-    expect(screen.queryByRole('dialog', { name: 'Delete plans and comments?' })).toBeNull()
-  })
+      })
 })

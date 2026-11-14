@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as debtApi from '@/api/debt'
-import type { AddDebtRateChangeForm, AddDebtRuleDto, DeleteDebtRateChangeForm, CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
+import type { AddDebtRateChangeForm, DeleteDebtRateChangeForm, CreateDebtDto, DebtDetailsDto, DebtDto, MarkDebtPaidOffForm, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
 import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -28,19 +28,6 @@ export function useDebtForecast(id: Id, enabled: boolean) {
     queryKey: queryKeys.debtForecast(id),
     queryFn: () => debtApi.getDebtForecast(id),
     enabled,
-    staleTime: 0,
-  })
-}
-
-/** What a rule of a debt in the budget may name: each participant's active
- *  expense categories, payees, tags and labels (the only place a partner's
- *  are listed). Refetched on every form opening: a category made meanwhile
- *  must be offered */
-export function useDebtRuleOptions(budgetId: Id | null) {
-  return useQuery({
-    queryKey: queryKeys.debtRuleOptions(budgetId ?? ''),
-    queryFn: () => debtApi.getDebtRuleOptions(budgetId as Id),
-    enabled: !!budgetId,
     staleTime: 0,
   })
 }
@@ -78,7 +65,7 @@ function useStoreSavedDebt() {
   }
 }
 
-/** debts are created from a budget row ("Track as debt"), a conversion */
+/** a debt is created on a budget element ("Track as debt") */
 export function useCreateDebt() {
   const invalidate = useInvalidateDebts()
   return useMutation({
@@ -105,19 +92,6 @@ export function useUpdateDebt({ finishingSetup = false }: { finishingSetup?: boo
   })
 }
 
-/** "Add to a debt": its caller shows a refusal inline */
-export function useAddDebtRule() {
-  const invalidate = useInvalidateDebts()
-  return useMutation({
-    meta: { handlesOwnErrors: true },
-    mutationFn: (form: AddDebtRuleDto) => debtApi.addDebtRule(form),
-    onSuccess: () => {
-      invalidate()
-      trackEvent(METRICS.DEBT_RULE_ADD)
-    },
-  })
-}
-
 export function useDeleteDebt() {
   const invalidate = useInvalidateDebts()
   return useMutation({
@@ -136,11 +110,26 @@ export function useMarkDebtPaidOff() {
   const storeSaved = useStoreSavedDebt()
   return useMutation({
     meta: { handlesOwnErrors: true },
-    mutationFn: (id: Id) => debtApi.markDebtPaidOff(id),
+    mutationFn: (form: MarkDebtPaidOffForm) => debtApi.markDebtPaidOff(form),
     onSuccess: (saved) => {
       storeSaved(saved)
       invalidate()
       trackEvent(METRICS.DEBT_MARK_PAID_OFF)
+    },
+  })
+}
+
+/** a paid-off debt back to active; its caller shows a refusal (debt.cannot_reopen) */
+export function useReopenDebt() {
+  const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: (id: Id) => debtApi.reopenDebt(id),
+    onSuccess: (saved) => {
+      storeSaved(saved)
+      invalidate()
+      trackEvent(METRICS.DEBT_REOPEN)
     },
   })
 }

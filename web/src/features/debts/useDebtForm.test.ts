@@ -5,7 +5,6 @@ import { wireDebt, wireDebtNotSetUp } from './testDebt'
 it('a set-up debt starts from the loan facts', () => {
   const { result } = renderHook(() => useDebtTermsForm({ ...wireDebt, currentBalance: '900' }))
   expect(result.current.form).toEqual({
-    name: 'Car loan', icon: 'directions_car', rules: [{ id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }], currencyId: 'cur-usd',
     amountBorrowed: '1200', startDate: '2026-11-05', lastPaymentDate: '2027-11-05', payment: '100', schedule: 'monthly',
   })
 })
@@ -20,9 +19,8 @@ it('a debt not set up starts with the loan facts empty', () => {
 it('setup without the loan facts sends payment, repeats and start date only', () => {
   const initial = initialTermsState(wireDebtNotSetUp)
   const payload = buildTermsPayload({ ...initial, payment: '120', startDate: '2026-01-01' }, initial, wireDebtNotSetUp)
-  // the currency as loaded goes as none: the server keeps the stored one
   expect(payload).toEqual({
-    id: 'd1', name: 'Car loan', currencyId: '',
+    id: 'd1',
     startDate: '2026-01-01', payment: '120', schedule: 'monthly',
   })
 })
@@ -37,13 +35,11 @@ it('setup with the loan facts sends them', () => {
 
 it('a set-up debt sends no loan facts and no start date while none was touched', () => {
   const initial = initialTermsState(wireDebt)
-  const payload = buildTermsPayload({ ...initial, name: 'Renamed' }, initial, wireDebt)
-  expect(payload).toEqual({
-    id: 'd1', name: 'Renamed', currencyId: '',
-  })
+  const payload = buildTermsPayload(initial, initial, wireDebt)
+  expect(payload).toEqual({ id: 'd1' })
   // a changed start goes, alone
   expect(buildTermsPayload({ ...initial, startDate: '2026-11-01' }, initial, wireDebt)).toEqual({
-    id: 'd1', name: 'Car loan', currencyId: '', startDate: '2026-11-01',
+    id: 'd1', startDate: '2026-11-01',
   })
   // "1 200" typed over a stored 1200 is the same amount
   expect(buildTermsPayload({ ...initial, amountBorrowed: '1 200' }, initial, wireDebt)).not.toHaveProperty('amountBorrowed')
@@ -56,35 +52,15 @@ it('a touched loan fact sends every fact, so the server reads one correction', (
   })
 })
 
-it('a rule edited sends every rule, with the kept ids', () => {
-  const initial = initialTermsState(wireDebt)
-  const rules = [{ ...initial.rules[0], payeeId: 'p1' }, { categoryId: 'cat-rent', payeeId: null, tagId: null, labelId: null }]
-  expect(buildTermsPayload({ ...initial, rules }, initial, wireDebt).rules).toEqual([
-    { id: 'r1', categoryId: 'cat-food', payeeId: 'p1', tagId: null, labelId: null },
-    { categoryId: 'cat-rent', payeeId: null, tagId: null, labelId: null },
-  ])
-})
-
-it('a new debt is created in its budget without terms, every rule kept', () => {
-  const state = initialCreateState({ categoryId: 'cat-food', budgetId: 'b1', currencyId: 'cur-usd' }, [])
-  const rules = [{ ...state.rules[0], labelId: 'label1' }, { categoryId: 'cat-rent', payeeId: null, tagId: null, labelId: null }]
-  const payload = buildCreatePayload({ ...state, name: ' Car ', payment: '50', rules }, 'b1')
-  expect(payload).toEqual({
-    budgetId: 'b1', name: 'Car', currencyId: 'cur-usd',
-    rules: [
-      { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' },
-      { categoryId: 'cat-rent', payeeId: null, tagId: null, labelId: null },
-    ],
-    startDate: null, payment: '50', schedule: 'monthly',
-  })
+it('a new debt is created on its element without terms', () => {
+  const state = { ...initialCreateState(), payment: '50' }
+  const payload = buildCreatePayload(state, { budgetId: 'b1', elementId: 'cat-food' })
+  expect(payload).toEqual({ budgetId: 'b1', elementId: 'cat-food', startDate: null, payment: '50', schedule: 'monthly' })
   expect(payload).not.toHaveProperty('balance')
   expect(payload).not.toHaveProperty('amountBorrowed')
   expect(payload).not.toHaveProperty('lastPaymentDate')
-})
-
-it('a new debt without a currency from its row sends none: the budget\'s is taken', () => {
-  const state = { ...initialCreateState({ budgetId: 'b2' }, []), name: 'Car', payment: '50' }
-  expect(buildCreatePayload(state, 'b2')).not.toHaveProperty('currencyId')
+  expect(payload).not.toHaveProperty('name')
+  expect(payload).not.toHaveProperty('rules')
 })
 
 it.each([
@@ -107,10 +83,4 @@ it.each([
 
 it.each(['', 'abc', '5+5', '2,00,0', '1.2.3', '2.'])('reads %s as no amount', (typed) => {
   expect(plainAmount(typed)).toBeNull()
-})
-
-it('the icon goes only once changed', () => {
-  const initial = initialTermsState(wireDebt)
-  expect(buildTermsPayload(initial, initial, wireDebt)).not.toHaveProperty('icon')
-  expect(buildTermsPayload({ ...initial, icon: 'home' }, initial, wireDebt)).toMatchObject({ icon: 'home' })
 })

@@ -478,23 +478,8 @@
     "form": {
       "header": "Dług",
       "intro": "Śledź pożyczkę bez konta. Szczegóły możesz dopracować później.",
-      "name": {
-        "label": "Nazwa"
-      },
-      "icon": {
-        "label": "Ikona"
-      },
       "currency": {
         "label": "Waluta"
-      },
-      "category": {
-        "label": "Kategoria"
-      },
-      "payee": {
-        "label": "Odbiorca (opcjonalnie)"
-      },
-      "tag": {
-        "label": "Tag (opcjonalnie)"
       },
       "start_date": {
         "label": "Data rozpoczęcia",
@@ -544,41 +529,16 @@
         "more": "Pokaż {count} kolejną płatność | Pokaż {count} kolejne płatności | Pokaż {count} kolejnych płatności"
       },
       "mark_paid_off": "Oznacz jako spłacony",
+      "reopen": "Otwórz dług ponownie",
       "paid_off_confirm": {
         "title": "Oznaczyć jako spłacony?",
-        "question": "Saldo zostanie ustawione na 0 od dziś. Twoje płatności pozostają bez zmian."
+        "question": "Saldo zostanie ustawione na 0 od daty poniżej. Twoje płatności pozostają bez zmian.",
+        "date": "Spłacony dnia"
       },
       "delete_confirm": {
         "title": "Usunąć ten dług?",
         "question": "Dług zniknie z budżetu. Same płatności nie zostaną zmienione."
-      },
-      "removal_confirm": {
-        "title": "Usunąć zaplanowane kwoty i komentarze?",
-        "action": "Usuń dług"
       }
-    },
-    "rules": {
-      "heading": "Które płatności się liczą",
-      "add_category": "Dodaj kategorię",
-      "remove": "Usuń tę kategorię",
-      "owned_category": "{category} ({owner})"
-    },
-    "add_to": {
-      "title": "Dodaj do długu",
-      "covered": "Już liczy płatności w tej kategorii",
-      "conflict": "Inny dług już liczy płatności w tej kategorii",
-      "payments_in": "Płatności w: {categories}",
-      "search": "Szukaj długów"
-    },
-    "payments_from": {
-      "in": "Płatności z kategorii",
-      "from": "odbiorca",
-      "tagged": "tag",
-      "choose_category": "wybierz",
-      "any_payee": "dowolny",
-      "any_tag": "dowolny",
-      "group_tags": "Tagi",
-      "group_labels": "Tagi raportowe"
     },
     "terms": {
       "finish_setup": "Dokończ konfigurację"
@@ -642,6 +602,7 @@
       "progress_repaid": "Opłacono {paid} z {total} ({repaid} z {borrowed})",
       "owed_now": "Do spłaty teraz: {amount}",
       "paid_so_far": "Zapłacono do tej pory",
+      "paid_off_on": "Spłacony dnia {date}",
       "not_set_up": "Dodaj pożyczoną kwotę i daty pożyczki, aby zobaczyć pozostałe płatności",
       "loan": "Pożyczka",
       "borrowed": "Pożyczono",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Strefa zagrożenia",
         "paid_off": "Ustawia saldo na 0 i zatrzymuje odliczanie.",
-        "delete": "Usuwa dług. Jego płatności znów liczą się w swoich kategoriach."
+        "delete": "Usuwa dług i jego historię. Twoje transakcje nie zostaną zmienione.",
+        "reopen": "Aktywuje dług ponownie: możesz go zmieniać, a jego płatności znów się liczą."
       },
       "tab": {
         "overview": "Przegląd",
@@ -1843,7 +1805,6 @@
         "extra_effect": "Spłata {months} miesiąc wcześniej, {amount} mniej odsetek | Spłata {months} miesiące wcześniej, {amount} mniej odsetek | Spłata {months} miesięcy wcześniej, {amount} mniej odsetek",
         "extra_effect_earlier": "Spłata {months} miesiąc wcześniej | Spłata {months} miesiące wcześniej | Spłata {months} miesięcy wcześniej",
         "track": "Śledź jako dług",
-        "add_to": "Dodaj do długu…",
         "details": "Szczegóły"
       },
       "phone": {

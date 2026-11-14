@@ -478,23 +478,8 @@
     "form": {
       "header": "债务",
       "intro": "无需账户即可跟踪贷款。之后可以再细调。",
-      "name": {
-        "label": "名称"
-      },
-      "icon": {
-        "label": "图标"
-      },
       "currency": {
         "label": "币种"
-      },
-      "category": {
-        "label": "分类"
-      },
-      "payee": {
-        "label": "收款人（可选）"
-      },
-      "tag": {
-        "label": "标签（可选）"
       },
       "start_date": {
         "label": "开始日期",
@@ -544,41 +529,16 @@
         "more": "显示其余 {count} 笔还款"
       },
       "mark_paid_off": "标记为已还清",
+      "reopen": "重新开启债务",
       "paid_off_confirm": {
         "title": "标记为已还清？",
-        "question": "从今天起余额将设为 0。你的还款记录保持不变。"
+        "question": "从下面的日期起余额将设为 0。你的还款记录保持不变。",
+        "date": "还清日期"
       },
       "delete_confirm": {
         "title": "删除此债务？",
         "question": "该债务将从其预算中移除。还款本身不受影响。"
-      },
-      "removal_confirm": {
-        "title": "删除计划金额和评论？",
-        "action": "删除债务"
       }
-    },
-    "rules": {
-      "heading": "计入哪些还款",
-      "add_category": "添加分类",
-      "remove": "移除此分类",
-      "owned_category": "{owner}的{category}"
-    },
-    "add_to": {
-      "title": "添加到债务",
-      "covered": "已计入此分类的还款",
-      "conflict": "另一笔债务已计入此分类的还款",
-      "payments_in": "{categories}中的还款",
-      "search": "搜索债务"
-    },
-    "payments_from": {
-      "in": "分类",
-      "from": "收款人",
-      "tagged": "标签",
-      "choose_category": "请选择",
-      "any_payee": "任意",
-      "any_tag": "任意",
-      "group_tags": "标签",
-      "group_labels": "统计标签"
     },
     "terms": {
       "finish_setup": "完成设置"
@@ -642,6 +602,7 @@
       "progress_repaid": "已还 {paid}/{total} 期（{repaid}/{borrowed}）",
       "owed_now": "当前欠款 {amount}",
       "paid_so_far": "已还金额",
+      "paid_off_on": "已于 {date} 还清",
       "not_set_up": "填写借款金额和贷款日期，即可查看剩余还款笔数",
       "loan": "贷款",
       "borrowed": "借款",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "危险操作",
         "paid_off": "将余额设为 0 并停止倒计时。",
-        "delete": "删除这笔债务。其还款将重新计入各自的分类。"
+        "delete": "删除这笔债务及其历史。你的交易记录不受影响。",
+        "reopen": "让这笔债务重新生效：你可以修改它，其还款也会重新计入。"
       },
       "tab": {
         "overview": "概览",
@@ -1843,7 +1805,6 @@
         "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
         "extra_effect_earlier": "提前 {months} 个月还清",
         "track": "作为债务跟踪",
-        "add_to": "添加到债务…",
         "details": "详情"
       },
       "phone": {

@@ -1,12 +1,8 @@
-import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
-import { EntityIcon } from '@/components/EntityIcon'
-import { IconPicker } from '@/components/IconPicker'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Label } from '@/components/ui/label'
 import { OptionSelect } from '@/components/OptionSelect'
 import { formatDate } from '@/lib/datetime'
@@ -17,54 +13,6 @@ import { SCHEDULE_ORDER } from './useDebtForm'
 export type FieldErrors = Record<string, string | undefined>
 
 const amountInputClass = `${cardFieldControlClass} text-base`
-
-/** the debt's name, its icon a button at the start of the input that opens
-    the icon list; picking one closes it */
-export function DebtNameField({
-  id,
-  name,
-  icon,
-  error,
-  onNameChange,
-  onIconChange,
-}: {
-  id: string
-  name: string
-  icon: string
-  error?: string
-  onNameChange: (name: string) => void
-  onIconChange: (icon: string) => void
-}) {
-  const { t } = useTranslation()
-  const [picking, setPicking] = useState(false)
-  return (
-    <>
-      <CardField label={t('debts.form.name.label')} htmlFor={id} error={error}>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary"
-            aria-label={t('debts.form.icon.label')}
-            onClick={() => setPicking(true)}
-          >
-            <EntityIcon name={icon} className="text-lg" />
-          </button>
-          <Input id={id} className={cardFieldControlClass} autoComplete="off" value={name} onChange={(e) => onNameChange(e.target.value)} />
-        </div>
-      </CardField>
-      <ResponsiveDialog open={picking} onOpenChange={setPicking} title={t('debts.form.icon.label')}>
-        <IconPicker
-          value={icon}
-          onChange={(next) => {
-            onIconChange(next)
-            setPicking(false)
-          }}
-          aria-label={t('debts.form.icon.label')}
-        />
-      </ResponsiveDialog>
-    </>
-  )
-}
 
 /** a plain amount: the decimal keyboard on phones, no calculator */
 function AmountInput({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {

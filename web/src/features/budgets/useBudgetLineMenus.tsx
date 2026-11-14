@@ -27,8 +27,6 @@ import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
-import { AddToDebtDialog } from '@/features/debts/AddToDebtDialog'
-import { useDebts } from '@/features/debts/queries'
 import { useDebtDangerActions } from '@/features/debts/useDebtDangerActions'
 import {
   canConfigureBudget,
@@ -63,8 +61,7 @@ export interface BudgetLineMenus {
   incomeRowMenu: (cell: PlanCellFigures) => MenuAction[]
   /** a row of the Plan grid: any side, envelopes, savings and debts included */
   planRowMenu: (el: PlanElementDto, monthIndex: number) => MenuAction[]
-  /** parent: the envelope, whose currency a debt made from the category starts in */
-  envelopeChildMenu: (child: EnvelopeChild, parent?: { currencyId: Id | null }) => MenuAction[]
+  envelopeChildMenu: (child: EnvelopeChild) => MenuAction[]
   savingsRowMenu: (row: BudgetSavingsElementDto) => MenuAction[]
   /** a Debts row: Details for every reader, Mark as paid off and Delete for those who plan in the budget */
   debtRowMenu: (row: DebtRef) => MenuAction[]
@@ -129,7 +126,6 @@ export function useBudgetLineMenus({
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<{ id: Id; currencyId: Id | null } | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<{ id: Id; side: BudgetFolderSide } | null>(null)
-  const [addToDebtCategory, setAddToDebtCategory] = useState<Id | null>(null)
 
   // An archived budget is read-only regardless of role: archived wins over
   // whatever the caller's grant would otherwise allow (the server enforces the
@@ -137,9 +133,6 @@ export function useBudgetLineMenus({
   const archived = budget?.meta.isArchived === 1
   const configure = budget && !archived ? canConfigureBudget(budget.meta, userId) : false
   const editDetails = budget && !archived ? canEditBudget(budget.meta, userId) : false
-  // the budget's debts belong to everyone who plans in it; a guest only reads them
-  const { data: debts } = useDebts({ enabled: editDetails })
-  const budgetHasDebt = !!budget && (debts ?? []).some((d) => d.budgetId === budget.meta.id)
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -237,17 +230,15 @@ export function useBudgetLineMenus({
     const ref = el.id === UNCATEGORIZED_ID ? null : classificationOf(el)
     return ref ? classificationMenu.actionsFor(ref) : []
   }
-  // any participant's live expense category becomes a debt (the debt form, with the
-  // category and the row's currency filled in) or joins one of the budget's debts;
-  // both are for those who plan in the budget, and an archived budget is read-only
-  const trackAsDebt = (category: { id: Id; type: BudgetElementType; isArchived?: 0 | 1 }, currencyId: Id | null): MenuAction[] =>
+  // a live expense category becomes a debt (the debt form); for those who plan in the
+  // budget, and an archived budget is read-only
+  const trackAsDebt = (category: { id: Id; type: BudgetElementType; isArchived?: 0 | 1 }): MenuAction[] =>
     budget && editDetails && category.type === BudgetElementType.CATEGORY && category.id !== UNCATEGORIZED_ID && category.isArchived !== 1
       ? [
           {
             label: t('budgets.page.debts.track'),
-            onSelect: () => openDebtModal({ categoryId: category.id, currencyId: currencyId ?? budget.meta.currencyId, budgetId: budget.meta.id }),
+            onSelect: () => openDebtModal({ elementId: category.id, budgetId: budget.meta.id }),
           },
-          ...(budgetHasDebt ? [{ label: t('budgets.page.debts.add_to'), onSelect: () => setAddToDebtCategory(category.id) }] : []),
         ]
       : []
   // the transaction list opens from a row's figures (Spent, Received, Saved), not from the menu
@@ -257,7 +248,7 @@ export function useBudgetLineMenus({
       : [
           ...editAction({ kind: 'expense', element }),
           ...structureActions(element, 'expense'),
-          ...trackAsDebt(element, element.currencyId),
+          ...trackAsDebt(element),
           ...classificationActions(element),
         ]
   const incomeRowMenu = (cell: PlanCellFigures): MenuAction[] => {
@@ -285,12 +276,12 @@ export function useBudgetLineMenus({
     return [
       ...editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) }),
       ...structureActions(el, side),
-      ...trackAsDebt(el, el.currencyId),
+      ...trackAsDebt(el),
       ...classificationActions(el),
     ]
   }
   // a category inside an envelope: edited, archived, merged or deleted in place
-  const envelopeChildMenu = (child: EnvelopeChild, parent?: { currencyId: Id | null }): MenuAction[] => {
+  const envelopeChildMenu = (child: EnvelopeChild): MenuAction[] => {
     const own = !!userId && child.ownerUserId === userId
     return [
       {
@@ -299,7 +290,6 @@ export function useBudgetLineMenus({
         reason: own ? undefined : t('budgets.page.plan.menu.no_access'),
         onSelect: () => setCategoryTarget({ id: child.id, name: child.name, icon: child.icon, type: isIncomeType(child.type) ? 'income' : 'expense' }),
       },
-      ...trackAsDebt(child, parent?.currencyId ?? null),
       ...classificationActions(child),
     ]
   }
@@ -448,10 +438,6 @@ export function useBudgetLineMenus({
 
       {debtDanger.dialogs}
 
-      {addToDebtCategory ? (
-        <AddToDebtDialog budgetId={budget.meta.id} categoryId={addToDebtCategory} open onOpenChange={(o) => !o && setAddToDebtCategory(null)} />
-      ) : null}
-
       <CategoryDialog
         open={categoryTarget !== null}
         category={categoryTarget}
@@ -557,7 +543,7 @@ export function useBudgetLineMenus({
     expenseRowMenu: (element) => gate(expenseRowMenu(element)),
     incomeRowMenu: (cell) => gate(incomeRowMenu(cell)),
     planRowMenu: (el, monthIndex) => gate(planRowMenu(el, monthIndex)),
-    envelopeChildMenu: (child, parent) => gate(envelopeChildMenu(child, parent)),
+    envelopeChildMenu: (child) => gate(envelopeChildMenu(child)),
     savingsRowMenu: (row) => gate(savingsRowMenu(row)),
     debtRowMenu: (row) => gate(debtRowMenu(row)),
     debtEditAccess,

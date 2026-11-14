@@ -2,39 +2,50 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
+import { formatDate } from '@/lib/datetime'
 import type { DebtDto } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
-import { useDeleteDebt, useMarkDebtPaidOff } from './queries'
+import { DateField } from './debtFields'
+import { useDeleteDebt, useMarkDebtPaidOff, useReopenDebt } from './queries'
 
 export interface DebtDangerActions {
   askMarkPaidOff: (id: Id) => void
   askDelete: (id: Id) => void
+  /** a paid-off debt back to active, at once */
+  reopen: (id: Id) => void
   markingPaidOff: boolean
+  reopening: boolean
   /** the confirms; render once */
   dialogs: ReactNode
 }
 
-/** Mark as paid off and Delete, each behind its confirm, plus the second question
- *  a delete gets when the server says it would drop plans or comments. One flow
- *  for the review screen's Danger zone and the budget's debt row menu; without
- *  onError a refusal is a toast. */
+/** Mark as paid off (with its date), Reopen and Delete: one flow for the
+ *  review screen's Danger zone and the budget's debt menus. Mark as paid off
+ *  and Delete each ask first; a refusal is a toast unless onError takes it
+ *  (a refused date shows under the date field). */
 export function useDebtDangerActions({
   onPaidOff,
+  onReopened,
   onDeleted,
   onError,
 }: {
   onPaidOff?: (saved: DebtDto) => void
+  onReopened?: (saved: DebtDto) => void
   onDeleted?: (id: Id) => void
   onError?: (message: string) => void
 } = {}): DebtDangerActions {
   const { t } = useTranslation()
+  const online = useOnline()
   const markPaidOff = useMarkDebtPaidOff()
+  const reopenDebt = useReopenDebt()
   const deleteDebt = useDeleteDebt()
-  const [confirm, setConfirm] = useState<{ kind: 'paid-off' | 'delete'; id: Id } | null>(null)
-  // the server's own wording of what deleting drops, once it has refused
-  const [removal, setRemoval] = useState<{ id: Id; message: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<Id | null>(null)
+  const [paidOff, setPaidOff] = useState<{ id: Id; date: string; error?: string } | null>(null)
 
   const fail = (err: unknown) => {
     const message = apiErrorMessage(err)
@@ -45,18 +56,25 @@ export function useDebtDangerActions({
     }
   }
 
-  const sendDelete = (id: Id, confirmDataRemoval: boolean) => {
-    deleteDebt.mutate(
-      { id, ...(confirmDataRemoval ? { confirmDataRemoval: true } : {}) },
+  const sendPaidOff = () => {
+    if (!paidOff) {
+      return
+    }
+    const { id, date } = paidOff
+    markPaidOff.mutate(
+      { id, date },
       {
-        onSuccess: () => onDeleted?.(id),
+        onSuccess: (saved) => {
+          setPaidOff(null)
+          onPaidOff?.(saved)
+        },
         onError: (err) => {
-          const refusal = apiFieldErrors(err, 'confirmDataRemoval')?.[0]
-          if (!confirmDataRemoval && refusal) {
-            setRemoval({ id, message: refusal })
+          const refused = apiFieldErrors(err, 'date')?.[0]
+          if (refused) {
+            setPaidOff({ id, date, error: refused })
             return
           }
-          setRemoval(null)
+          setPaidOff(null)
           fail(err)
         },
       },
@@ -65,28 +83,37 @@ export function useDebtDangerActions({
 
   const dialogs = (
     <>
-      <ConfirmDialog
-        open={confirm?.kind === 'paid-off'}
-        onClose={() => setConfirm(null)}
-        onConfirm={() => {
-          if (confirm) {
-            markPaidOff.mutate(confirm.id, { onSuccess: (saved) => onPaidOff?.(saved), onError: fail })
-          }
-          setConfirm(null)
-        }}
+      <ResponsiveDialog
+        open={paidOff !== null}
+        onOpenChange={(o) => !o && setPaidOff(null)}
         title={t('debts.details.paid_off_confirm.title')}
-        question={t('debts.details.paid_off_confirm.question')}
-        confirmLabel={t('debts.details.mark_paid_off')}
-        cancelLabel={t('common.button.cancel.label')}
-      />
+        description={t('debts.details.paid_off_confirm.question')}
+      >
+        <div className="flex flex-col gap-4">
+          <DateField
+            label={t('debts.details.paid_off_confirm.date')}
+            value={paidOff?.date ?? ''}
+            error={paidOff?.error}
+            onChange={(date) => setPaidOff((prev) => (prev ? { ...prev, date, error: undefined } : prev))}
+          />
+          <div className={dialogActionsClass}>
+            <Button type="button" variant="secondary" onClick={() => setPaidOff(null)}>
+              {t('common.button.cancel.label')}
+            </Button>
+            <Button type="button" disabled={!online || markPaidOff.isPending || !paidOff?.date} onClick={sendPaidOff}>
+              {t('debts.details.mark_paid_off')}
+            </Button>
+          </div>
+        </div>
+      </ResponsiveDialog>
       <ConfirmDialog
-        open={confirm?.kind === 'delete'}
-        onClose={() => setConfirm(null)}
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
         onConfirm={() => {
-          if (confirm) {
-            sendDelete(confirm.id, false)
+          if (confirmDelete) {
+            deleteDebt.mutate({ id: confirmDelete }, { onSuccess: () => onDeleted?.(confirmDelete), onError: fail })
           }
-          setConfirm(null)
+          setConfirmDelete(null)
         }}
         title={t('debts.details.delete_confirm.title')}
         question={t('debts.details.delete_confirm.question')}
@@ -94,28 +121,15 @@ export function useDebtDangerActions({
         cancelLabel={t('common.button.cancel.label')}
         destructive
       />
-      <ConfirmDialog
-        open={removal !== null}
-        onClose={() => setRemoval(null)}
-        onConfirm={() => {
-          if (removal) {
-            sendDelete(removal.id, true)
-          }
-          setRemoval(null)
-        }}
-        title={t('debts.details.removal_confirm.title')}
-        question={removal?.message ?? ''}
-        confirmLabel={t('debts.details.removal_confirm.action')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
     </>
   )
 
   return {
-    askMarkPaidOff: (id) => setConfirm({ kind: 'paid-off', id }),
-    askDelete: (id) => setConfirm({ kind: 'delete', id }),
+    askMarkPaidOff: (id) => setPaidOff({ id, date: formatDate(new Date()) }),
+    askDelete: (id) => setConfirmDelete(id),
+    reopen: (id) => reopenDebt.mutate(id, { onSuccess: (saved) => onReopened?.(saved), onError: fail }),
     markingPaidOff: markPaidOff.isPending,
+    reopening: reopenDebt.isPending,
     dialogs,
   }
 }

@@ -10,7 +10,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { DebtDetailsDto } from '@/api/dto/debt'
 import { DebtReviewScreen } from './DebtReviewScreen'
-import { wireDebt, wireDebtNotSetUp, wireRule, wireRuleOptions } from './testDebt'
+import { wireDebt, wireDebtNotSetUp } from './testDebt'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
@@ -37,8 +37,6 @@ function renderScreenWithClient() {
 function renderScreen() {
   return renderScreenWithClient()
 }
-
-const TERM_KEYS = ['amountBorrowed', 'balance', 'payment', 'schedule', 'lastPaymentDate']
 
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
@@ -103,7 +101,6 @@ beforeEach(() => {
   server.use(
     ...coreHandlers(),
     http.get('*/api/v1/debt/get-debt', () => ok(details)),
-    http.get('*/api/v1/debt/get-debt-rule-options', () => ok(wireRuleOptions)),
     http.get('*/api/v1/debt/get-debt-forecast', () => HttpResponse.json({ success: false, message: 'Debt not found', code: 0, errors: {} }, { status: 400 })),
   )
   mockMatchMedia()
@@ -122,7 +119,7 @@ async function openScreen(tab?: 'overview' | 'settings') {
 
 async function openSettings(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('tab', { name: 'Settings' }))
-  await screen.findByLabelText('Name')
+  await screen.findByLabelText('Amount borrowed')
 }
 
 async function openDanger(user: ReturnType<typeof userEvent.setup>) {
@@ -396,13 +393,9 @@ it('a debt not set up without a start date counts from the first payment', async
 })
 
 describe('a guest reads the debt without changing it', () => {
-  const anna = {
-    id: 'r2', categoryId: 'cat-mortgage', categoryName: 'Mortgage', categoryIcon: 'home', ownerUserId: 'u2', ownerName: 'Anna',
-    payeeId: null, payeeName: '', tagId: null, tagName: '', labelId: null, labelName: '',
-  }
   const guestView: DebtDetailsDto = {
     ...details,
-    item: { ...details.item, canEdit: 0, rules: [anna] },
+    item: { ...details.item, canEdit: 0 },
     snapshots: [...details.snapshots, { id: 's1', isOrigin: 0, computedBalance: '1100', asOf: '2026-11-06', balance: '1090', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' }],
   }
 
@@ -585,63 +578,11 @@ it('Settings loads the debt afresh: a fact corrected on another device shows', a
   expect(await screen.findByLabelText('Amount borrowed')).toHaveValue('1500')
 })
 
-it('Settings saves the name, the payments sentence and the terms in one request', async () => {
-  const bodies = captureUpdate((body) => ({ ...details.item, name: body.name as string, rules: [{ ...wireRule, labelId: 'label1', labelName: 'health' }] }))
-  const user = userEvent.setup()
-  renderScreen()
-  await openScreen()
-  await openSettings(user)
-
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Van loan')
-  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Tag (optional)' })).getByText('health'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  // no terms and no currency go along: the server keeps the stored ones
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', currencyId: '', rules: [{ id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' }] })
-  for (const key of TERM_KEYS) {
-    expect(bodies[0]).not.toHaveProperty(key)
-  }
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
-  await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
-})
-
-it('an icon picked in Settings is saved and shown in the header', async () => {
-  let current = details.item
-  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })))
-  const bodies = captureUpdate((body) => {
-    current = { ...current, icon: body.icon as string }
-    return current
-  })
-  const user = userEvent.setup()
-  renderScreen()
-  await openScreen()
-  expect(screen.getByRole('heading', { name: 'Car loan' })).toHaveTextContent('directions_car')
-  await openSettings(user)
-
-  await user.click(screen.getByRole('button', { name: 'Icon' }))
-  const picker = await screen.findByRole('listbox', { name: 'Icon' })
-  expect(within(picker).getByRole('option', { name: 'directions_car' })).toHaveAttribute('aria-selected', 'true')
-  await user.click(within(picker).getByRole('option', { name: 'home' }))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', icon: 'home', currencyId: '' })
-  for (const key of TERM_KEYS) {
-    expect(bodies[0]).not.toHaveProperty(key)
-  }
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
-  await waitFor(() => expect(screen.getByRole('heading', { name: 'Car loan' })).toHaveTextContent('home'))
-})
-
 it('a save after an earlier one starts from the debt as saved, so the earlier terms are not sent again', async () => {
   let current = details.item
   server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })))
   const bodies = captureUpdate((body) => {
-    current = body.amountBorrowed ? { ...current, amountBorrowed: '1500' } : { ...current, name: body.name as string }
+    current = body.amountBorrowed ? { ...current, amountBorrowed: '1500' } : { ...current, payment: body.payment as string }
     return current
   })
   const user = userEvent.setup()
@@ -658,16 +599,14 @@ it('a save after an earlier one starts from the debt as saved, so the earlier te
 
   await openSettings(user)
   await waitFor(() => expect(screen.getByLabelText('Amount borrowed')).toHaveValue('1500'))
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Van loan')
+  const payment = screen.getByLabelText('Payment')
+  await user.clear(payment)
+  await user.type(payment, '120')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(2))
-  expect(bodies[1]).toMatchObject({ name: 'Van loan' })
-  for (const key of TERM_KEYS) {
-    expect(bodies[1]).not.toHaveProperty(key)
-  }
+  expect(bodies[1]).toMatchObject({ amountBorrowed: '1500', payment: '120' })
+  expect(bodies[1]).not.toHaveProperty('balance')
 })
 
 it('edits survive a look at the Overview and back', async () => {
@@ -676,13 +615,13 @@ it('edits survive a look at the Overview and back', async () => {
   await openScreen()
   await openSettings(user)
 
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Van loan')
+  const payment = screen.getByLabelText('Payment')
+  await user.clear(payment)
+  await user.type(payment, '120')
   await user.click(screen.getByRole('tab', { name: 'Overview' }))
   await user.click(screen.getByRole('tab', { name: 'Settings' }))
 
-  expect(screen.getByLabelText('Name')).toHaveValue('Van loan')
+  expect(screen.getByLabelText('Payment')).toHaveValue('120')
 })
 
 it('the Danger zone tab holds Mark as paid off and Delete, each with what it does; Settings ends at Save', async () => {
@@ -702,7 +641,7 @@ it('the Danger zone tab holds Mark as paid off and Delete, each with what it doe
   const del = within(zone).getByRole('button', { name: 'Delete' })
   expect(paidOff.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(zone).toHaveTextContent("Sets what's owed to 0 and stops counting down the payments.")
-  expect(zone).toHaveTextContent('Removes the debt. Its payments count in their categories again.')
+  expect(zone).toHaveTextContent('Removes the debt and its history. Your transactions are not changed.')
 })
 
 it('Danger zone hides Mark as paid off while not set up', async () => {
@@ -718,7 +657,7 @@ it('Danger zone hides Mark as paid off while not set up', async () => {
 })
 
 it('Danger zone hides Mark as paid off once the debt is paid off', async () => {
-  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1 } })))
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1, status: 'paid_off', endedAt: '2026-11-07', canEdit: 0 } })))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
@@ -796,7 +735,7 @@ it('Settings shows a loader, not just its buttons, while the debt loads', async 
   expect(within(panel).getByRole('status')).toBeInTheDocument()
   expect(within(panel).queryByRole('button', { name: 'Save' })).toBeNull()
   release()
-  expect(await within(panel).findByLabelText('Name')).toBeInTheDocument()
+  expect(await within(panel).findByLabelText('Amount borrowed')).toBeInTheDocument()
   expect(within(panel).queryByRole('status')).toBeNull()
   expect(within(panel).getByRole('button', { name: 'Save' })).toBeInTheDocument()
 })
@@ -824,42 +763,9 @@ it('a second visit to Settings shows the loader, not the previous form, while th
 
   const panel = screen.getByRole('tabpanel', { name: 'Settings' })
   expect(within(panel).getByRole('status')).toBeInTheDocument()
-  expect(within(panel).queryByLabelText('Name')).toBeNull()
+  expect(within(panel).queryByLabelText('Amount borrowed')).toBeNull()
   release()
   expect(await within(panel).findByLabelText('Amount borrowed')).toHaveValue('1500')
-})
-
-it('a removal_unconfirmed answer asks and resends with confirmDataRemoval', async () => {
-  const bodies: Record<string, unknown>[] = []
-  const refusal = 'This deletes the planned amounts and comments of this debt in its budget; confirm to continue.'
-  server.use(
-    http.post('*/api/v1/debt/delete-debt', async ({ request }) => {
-      const body = (await request.json()) as Record<string, unknown>
-      bodies.push(body)
-      if (!body.confirmDataRemoval) {
-        return HttpResponse.json(
-          { success: false, message: 'Form validation error', code: 400, errors: { confirmDataRemoval: [refusal] } },
-          { status: 400 },
-        )
-      }
-      return ok({})
-    }),
-  )
-  const user = userEvent.setup()
-  renderScreen()
-  await openScreen()
-  await user.click(within(await openDanger(user)).getByRole('button', { name: 'Delete' }))
-  const first = await screen.findByRole('dialog', { name: 'Delete this debt?' })
-  await user.click(within(first).getByRole('button', { name: 'Delete' }))
-
-  const second = await screen.findByRole('dialog', { name: 'Delete plans and comments?' })
-  expect(within(second).getByText(refusal)).toBeInTheDocument()
-  expect(bodies).toEqual([{ id: 'd1' }])
-  await user.click(within(second).getByRole('button', { name: 'Delete debt' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(2))
-  expect(bodies[1]).toEqual({ id: 'd1', confirmDataRemoval: true })
-  await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBeNull())
 })
 
 it('a delete the server accepts closes the screen without a second question', async () => {
@@ -1390,5 +1296,138 @@ describe('Rate changes on the Balance tab', () => {
     onTestFinished(() => act(() => onlineManager.setOnline(true)))
     expect(await within(panel).findByRole('button', { name: 'Add rate change' })).toBeDisabled()
     expect(within(panel).getByRole('button', { name: 'Delete the rate change of Nov 1, 2026' })).toBeDisabled()
+  })
+})
+
+describe('a debt on an element', () => {
+  it('the header is the element\'s icon and name', async () => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, name: 'Living', icon: 'home', elementId: 'env-1', elementType: 'envelope' } })))
+    renderScreen()
+    useUiStore.getState().openDebtDetails('d1')
+    const heading = await screen.findByRole('heading', { name: 'Living' })
+    expect(heading).toHaveTextContent('home')
+  })
+
+  it('Settings asks the loan\'s facts only: no name, icon, rules or currency', async () => {
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    await openSettings(user)
+
+    const panel = screen.getByRole('tabpanel', { name: 'Settings' })
+    expect(within(panel).queryByLabelText('Name')).toBeNull()
+    expect(within(panel).queryByRole('button', { name: 'Icon' })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /^Category/ })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /^Currency/ })).toBeNull()
+    expect(within(panel).queryByText('Which payments count')).toBeNull()
+    expect(within(panel).getByLabelText('Amount borrowed')).toBeInTheDocument()
+  })
+
+  it('Mark as paid off asks for a date, today by default, and sends it', async () => {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/debt/mark-debt-paid-off', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return ok({ ...wireDebt, status: 'paid_off', endedAt: '2026-11-08', isPaidOff: 1, canEdit: 0 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    await user.click(within(await openDanger(user)).getByRole('button', { name: 'Mark as paid off' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Mark as paid off?' })
+    expect(within(dialog).getByRole('button', { name: 'Paid off on' })).toHaveTextContent('Nov 8, 2026')
+    await user.click(within(dialog).getByRole('button', { name: 'Mark as paid off' }))
+
+    await waitFor(() => expect(bodies).toEqual([{ id: 'd1', date: '2026-11-08' }]))
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_MARK_PAID_OFF)
+  })
+
+  it('a refused date shows under the date field and keeps the dialog open', async () => {
+    server.use(
+      http.post('*/api/v1/debt/mark-debt-paid-off', () =>
+        HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { date: ['This value is out of range.'] } }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    await user.click(within(await openDanger(user)).getByRole('button', { name: 'Mark as paid off' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Mark as paid off?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Mark as paid off' }))
+
+    expect(await within(dialog).findByText('This value is out of range.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Mark as paid off?' })).toBeInTheDocument()
+  })
+
+  describe('a paid-off debt', () => {
+    const paidOff: DebtDetailsDto = { ...details, item: { ...details.item, status: 'paid_off', endedAt: '2026-11-07', isPaidOff: 1, canEdit: 0, currentBalance: '0', paymentsLeft: 0 } }
+
+    beforeEach(() => {
+      server.use(http.get('*/api/v1/debt/get-debt', () => ok(paidOff)))
+    })
+
+    it('opens read-only: no Settings, no Mark as paid off, Reopen and Delete in the Danger zone', async () => {
+      const user = userEvent.setup()
+      renderScreen()
+      await openScreen()
+
+      expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
+      expect(screen.getByTestId('debt-review-ended')).toHaveTextContent('Paid off on Nov 7, 2026')
+      const zone = await openDanger(user)
+      expect(within(zone).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+      expect(within(zone).getByRole('button', { name: 'Reopen debt' })).toBeInTheDocument()
+      expect(within(zone).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    })
+
+    it('Reopen sends the id and fires DEBT_REOPEN', async () => {
+      const bodies: Record<string, unknown>[] = []
+      server.use(
+        http.post('*/api/v1/debt/reopen-debt', async ({ request }) => {
+          bodies.push((await request.json()) as Record<string, unknown>)
+          return ok(wireDebt)
+        }),
+      )
+      const user = userEvent.setup()
+      renderScreen()
+      await openScreen()
+      await user.click(within(await openDanger(user)).getByRole('button', { name: 'Reopen debt' }))
+
+      await waitFor(() => expect(bodies).toEqual([{ id: 'd1' }]))
+      expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_REOPEN)
+    })
+
+    it('a refused reopen shows the server\'s message', async () => {
+      const message = 'This debt cannot be reopened: its category or envelope tracks another debt that is active or started later.'
+      server.use(
+        http.post('*/api/v1/debt/reopen-debt', () =>
+          HttpResponse.json({ success: false, message, code: 400, errors: {} }, { status: 400 }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderScreen()
+      await openScreen()
+      await user.click(within(await openDanger(user)).getByRole('button', { name: 'Reopen debt' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_REOPEN)
+    })
+
+    it('Delete still asks and sends the id', async () => {
+      const bodies: Record<string, unknown>[] = []
+      server.use(
+        http.post('*/api/v1/debt/delete-debt', async ({ request }) => {
+          bodies.push((await request.json()) as Record<string, unknown>)
+          return ok({})
+        }),
+      )
+      const user = userEvent.setup()
+      renderScreen()
+      await openScreen()
+      await user.click(within(await openDanger(user)).getByRole('button', { name: 'Delete' }))
+      await user.click(within(await screen.findByRole('dialog', { name: 'Delete this debt?' })).getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() => expect(bodies).toEqual([{ id: 'd1' }]))
+    })
   })
 })

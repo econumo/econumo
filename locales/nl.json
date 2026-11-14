@@ -478,23 +478,8 @@
     "form": {
       "header": "Schuld",
       "intro": "Volg een lening zonder rekening. U kunt dit later verfijnen.",
-      "name": {
-        "label": "Naam"
-      },
-      "icon": {
-        "label": "Pictogram"
-      },
       "currency": {
         "label": "Valuta"
-      },
-      "category": {
-        "label": "Categorie"
-      },
-      "payee": {
-        "label": "Begunstigde (optioneel)"
-      },
-      "tag": {
-        "label": "Tag (optioneel)"
       },
       "start_date": {
         "label": "Startdatum",
@@ -544,41 +529,16 @@
         "more": "Nog {count} betaling tonen | Nog {count} betalingen tonen"
       },
       "mark_paid_off": "Markeren als afbetaald",
+      "reopen": "Schuld heropenen",
       "paid_off_confirm": {
         "title": "Markeren als afbetaald?",
-        "question": "Het saldo wordt vanaf vandaag op 0 gezet. Uw betalingen blijven ongewijzigd."
+        "question": "Het saldo wordt vanaf de datum hieronder op 0 gezet. Uw betalingen blijven ongewijzigd.",
+        "date": "Afbetaald op"
       },
       "delete_confirm": {
         "title": "Deze schuld verwijderen?",
         "question": "De schuld verdwijnt uit het budget. De betalingen zelf blijven ongewijzigd."
-      },
-      "removal_confirm": {
-        "title": "Geplande bedragen en opmerkingen verwijderen?",
-        "action": "Schuld verwijderen"
       }
-    },
-    "rules": {
-      "heading": "Welke betalingen tellen",
-      "add_category": "Categorie toevoegen",
-      "remove": "Deze categorie verwijderen",
-      "owned_category": "{category} van {owner}"
-    },
-    "add_to": {
-      "title": "Toevoegen aan een schuld",
-      "covered": "Telt de betalingen in deze categorie al",
-      "conflict": "Een andere schuld telt de betalingen in deze categorie al",
-      "payments_in": "Betalingen in {categories}",
-      "search": "Schulden zoeken"
-    },
-    "payments_from": {
-      "in": "Betalingen in categorie",
-      "from": "begunstigde",
-      "tagged": "tag",
-      "choose_category": "kies",
-      "any_payee": "elke",
-      "any_tag": "elke",
-      "group_tags": "Tags",
-      "group_labels": "Rapportagetags"
     },
     "terms": {
       "finish_setup": "Instellen voltooien"
@@ -642,6 +602,7 @@
       "progress_repaid": "{paid} van {total} betaald ({repaid} van {borrowed})",
       "owed_now": "Nu verschuldigd: {amount}",
       "paid_so_far": "Tot nu toe betaald",
+      "paid_off_on": "Afbetaald op {date}",
       "not_set_up": "Vul het geleende bedrag en de data van de lening in om de resterende betalingen te zien",
       "loan": "Lening",
       "borrowed": "Geleend",
@@ -655,7 +616,8 @@
       "danger": {
         "title": "Gevarenzone",
         "paid_off": "Zet het saldo op 0 en stopt het aftellen.",
-        "delete": "Verwijdert de schuld. De betalingen tellen weer mee in hun categorieën."
+        "delete": "Verwijdert de schuld en haar geschiedenis. Uw transacties blijven ongewijzigd.",
+        "reopen": "Maakt de schuld weer actief, zodat u haar kunt wijzigen en haar betalingen meetellen."
       },
       "tab": {
         "overview": "Overzicht",
@@ -1843,7 +1805,6 @@
         "extra_effect": "{months} maand eerder afbetaald, {amount} minder rente | {months} maanden eerder afbetaald, {amount} minder rente",
         "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
         "track": "Volgen als schuld",
-        "add_to": "Toevoegen aan een schuld…",
         "details": "Details"
       },
       "phone": {

@@ -1,9 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { CardField } from '@/components/CardField'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
-import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { dialogActionsClass } from '@/components/ResponsiveDialog'
 import { OfflineNotice } from '@/components/OfflineNotice'
 import { useFormErrors } from '@/hooks/useFormErrors'
@@ -12,17 +9,13 @@ import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { isNotEmpty } from '@/lib/validation'
 import type { DebtDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useDebtRuleOptions, useUpdateDebt } from './queries'
-import { AmountField, DatesRow, DebtNameField, PaymentField } from './debtFields'
+import { useUpdateDebt } from './queries'
+import { AmountField, DatesRow, PaymentField } from './debtFields'
 import type { FieldErrors } from './debtFields'
-import { RulesEditor } from './RulesEditor'
 import { amountEcho, amountError, buildTermsPayload, factsAsked, useDebtTermsForm } from './useDebtForm'
 
 // the fields a server refusal can name here; anything else lands in the form's alert
 const SERVER_FIELDS = [
-  'name',
-  'rules',
-  'currencyId',
   'amountBorrowed',
   'payment',
   'schedule',
@@ -41,11 +34,9 @@ export interface DebtSettingsFormProps {
 }
 
 /**
- * The debt's Settings tab: name and icon, which payments count (the rules, sent only
- * when edited), the loan's facts from
- * its contract (amount borrowed, start and last payment dates, the payment and
- * its repeats) and the currency (the amounts
- * are read in it, never converted), saved in ONE update. Saving a debt not set
+ * The debt's Settings tab: the loan's facts from its contract (amount
+ * borrowed, start and last payment dates, the payment and its repeats), in the
+ * element's currency, saved in ONE update. Saving a debt not set
  * up with the loan's facts finishes its setup; without them the other fields
  * still save.
  */
@@ -56,12 +47,10 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
   const { data: currencies } = useCurrencies()
   const settingUp = debt.isSetUp !== 1
   const updateDebt = useUpdateDebt({ finishingSetup: settingUp })
-  const { data: ruleOptions } = useDebtRuleOptions(debt.budgetId)
   const { form, initial, patch, reset, dirty } = useDebtTermsForm(debt)
-  const currency = currencies?.find((c) => c.id === form.currencyId)
+  const currency = currencies?.find((c) => c.id === debt.currencyId)
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const borrowedRef = useRef<HTMLDivElement>(null)
   const datesRef = useRef<HTMLDivElement>(null)
 
@@ -89,14 +78,10 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
   }, [focusMissing])
 
   const symbol = currency?.symbol ?? ''
-  const currencyLabel = t('debts.form.currency.label')
-  const currencyName = currency ? fullCurrencyLabel(currency) : '—'
 
   const validate = (): boolean => {
     const next: FieldErrors = {}
     const required = t('common.validation.required_field')
-    next.name = isNotEmpty(form.name.trim()) ? undefined : required
-    next.rules = form.rules.every((r) => r.categoryId) ? undefined : required
     next.payment = amountError(form.payment, t, true)
     // a debt not set up may be saved without the loan's facts, never with only some
     if (factsAsked(form, debt)) {
@@ -141,29 +126,6 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
         }}
       >
         <OfflineNotice />
-        <DebtNameField
-          id={`${formId}-name`}
-          name={form.name}
-          icon={form.icon}
-          error={errors.name}
-          onNameChange={(name) => {
-            clearError('name')
-            patch({ name })
-          }}
-          onIconChange={(icon) => patch({ icon })}
-        />
-
-        <RulesEditor
-          value={form.rules}
-          onChange={(rules) => {
-            clearError('rules')
-            patch({ rules })
-          }}
-          options={ruleOptions}
-          initialRules={debt.rules}
-          error={errors.rules}
-        />
-
         <div ref={borrowedRef}>
           <AmountField
             id={`${formId}-borrowed`}
@@ -212,17 +174,6 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             patch({ schedule })
           }}
         />
-        <CardField label={currencyLabel} error={errors.currencyId}>
-          <button
-            type="button"
-            aria-label={`${currencyLabel}: ${currencyName}`}
-            className="min-w-0 truncate text-left text-sm text-econumo-link"
-            onClick={() => setCurrencyOpen(true)}
-          >
-            {currencyName}
-          </button>
-        </CardField>
-
         {serverError ? (
           <p role="alert" className="text-sm text-destructive">
             {serverError}
@@ -246,16 +197,6 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
           </Button>
         </div>
       </form>
-      <CurrencyPickerDialog
-        open={currencyOpen}
-        title={currencyLabel}
-        value={form.currencyId}
-        onClose={() => setCurrencyOpen(false)}
-        onPick={(currencyId) => {
-          clearError('currencyId')
-          patch({ currencyId })
-        }}
-      />
     </>
   )
 }

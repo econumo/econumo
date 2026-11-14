@@ -47,10 +47,9 @@ export interface OpenRecurringParams {
 
 /** a new debt; an existing one is opened on its review screen (`openDebtDetails`) */
 export interface OpenDebtParams {
-  /** prefills a new debt (the budget row's "Track as debt") */
-  categoryId?: Id
-  currencyId?: Id
-  /** that row's budget: the debt is created there */
+  /** the element the debt is attached to: a top-level expense category or an envelope */
+  elementId: Id
+  /** that element's budget: the debt is created there */
   budgetId: Id
 }
 
