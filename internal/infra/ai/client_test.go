@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestComplete_PostsChatCompletionAndReturnsContent(t *testing.T) {
@@ -422,5 +424,48 @@ func TestLogAttrs(t *testing.T) {
 	got = LogAttrs(fmt.Errorf("ai: request failed: %w", context.DeadlineExceeded))
 	if len(got) != 2 || got[1] == "*fmt.wrapError" {
 		t.Fatalf("attrs = %v", got)
+	}
+}
+
+// transportFailure calls an endpoint that gives no answer, with no proxy in
+// the way, and returns the error and its log attributes.
+func transportFailure(t *testing.T, ctx context.Context, endpoint string) (error, []any) {
+	t.Helper()
+	c := New(Config{Endpoint: endpoint, APIKey: "sk-SECRET", Model: "m"})
+	c.http.Transport = &http.Transport{}
+	_, err := c.Complete(ctx, "u", "s", "u", nil)
+	var te *TransportError
+	if !errors.As(err, &te) {
+		t.Fatalf("err = %T %v", err, err)
+	}
+	if msg := err.Error(); strings.Contains(msg, "sk-SECRET") || strings.Contains(msg, endpoint) || strings.Contains(msg, "://") {
+		t.Fatalf("error text leaks the endpoint: %q", msg)
+	}
+	return err, LogAttrs(err)
+}
+
+func TestLogAttrs_TransportFailureCause(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := "http://" + ln.Addr().String() + "/v1?key=sk-SECRET"
+	_ = ln.Close()
+	if _, got := transportFailure(t, context.Background(), closed); got[1] != "*ai.TransportError" || got[3] != "connection_refused" {
+		t.Fatalf("refused: attrs = %v", got)
+	}
+
+	if _, got := transportFailure(t, context.Background(), "http://sk-SECRET@econumo-test.invalid/v1"); got[3] != "dns" {
+		t.Fatalf("dns: attrs = %v", got)
+	}
+
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
+	defer srv.Close()
+	defer close(release)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, got := transportFailure(t, ctx, srv.URL); got[3] != "timeout" || got[1] == "*ai.TransportError" {
+		t.Fatalf("timeout: attrs = %v", got)
 	}
 }

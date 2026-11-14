@@ -7,14 +7,19 @@ package ai
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -115,13 +120,67 @@ var (
 	ErrIncompleteResponse = &ResponseError{"incomplete completion response"}
 )
 
+// TransportError is a call that got no complete answer from the endpoint.
+// Its text names only the failure class: the wrapped *url.Error holds the
+// URL, which carries the API key in some DSNs.
+type TransportError struct {
+	Op  string // "request" or "response"
+	Err error
+}
+
+func (e *TransportError) Error() string { return "ai: " + e.Op + " failed: " + e.Cause() }
+
+func (e *TransportError) Unwrap() error { return e.Err }
+
+// Cause classifies the failure: timeout, canceled, dns, connection_refused,
+// tls or network.
+func (e *TransportError) Cause() string {
+	var (
+		dnsErr  *net.DNSError
+		netErr  net.Error
+		hostErr x509.HostnameError
+		uaErr   x509.UnknownAuthorityError
+		invErr  x509.CertificateInvalidError
+		cvErr   *tls.CertificateVerificationError
+		recErr  tls.RecordHeaderError
+		alert   tls.AlertError
+	)
+	switch {
+	case errors.Is(e.Err, context.DeadlineExceeded), errors.Is(e.Err, os.ErrDeadlineExceeded):
+		return "timeout"
+	case errors.Is(e.Err, context.Canceled):
+		return "canceled"
+	case errors.As(e.Err, &dnsErr):
+		return "dns"
+	case errors.Is(e.Err, syscall.ECONNREFUSED):
+		return "connection_refused"
+	case errors.As(e.Err, &cvErr), errors.As(e.Err, &hostErr), errors.As(e.Err, &uaErr),
+		errors.As(e.Err, &invErr), errors.As(e.Err, &recErr), errors.As(e.Err, &alert):
+		return "tls"
+	case errors.As(e.Err, &netErr) && netErr.Timeout():
+		return "timeout"
+	}
+	return "network"
+}
+
 // LogAttrs gives the slog attributes that make a failed call diagnosable
 // without its text: err_type (a timeout reads as its context error, not the
-// wrapper around it) and, for a provider refusal, status.
+// wrapper around it), for a provider refusal status, and for a transport
+// failure cause.
 func LogAttrs(err error) []any {
 	var he *HTTPError
 	if errors.As(err, &he) {
 		return []any{"err_type", fmt.Sprintf("%T", he), "status", he.StatusCode}
+	}
+	var te *TransportError
+	if errors.As(err, &te) {
+		errType := fmt.Sprintf("%T", te)
+		for _, ctxErr := range []error{context.DeadlineExceeded, context.Canceled} {
+			if errors.Is(err, ctxErr) {
+				errType = fmt.Sprintf("%T", ctxErr)
+			}
+		}
+		return []any{"err_type", errType, "cause", te.Cause()}
 	}
 	for _, ctxErr := range []error{context.DeadlineExceeded, context.Canceled} {
 		if errors.Is(err, ctxErr) {
@@ -297,12 +356,12 @@ func (c *Client) send(ctx context.Context, userID, system, user string, schema *
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("ai: request failed: %w", err)
+		return nil, 0, &TransportError{Op: "request", Err: err}
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
-		return nil, 0, fmt.Errorf("ai: reading response: %w", err)
+		return nil, 0, &TransportError{Op: "response", Err: err}
 	}
 	return raw, resp.StatusCode, nil
 }
