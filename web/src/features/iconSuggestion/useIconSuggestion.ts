@@ -25,14 +25,14 @@ export function useIconSuggestion({ kind, name, type, currency, enabled }: IconS
     enabled && online && isAiEnabled() && length >= NAME_MIN && length <= NAME_MAX
       ? [getSessionUserId() ?? '', kind, type ?? '', currency ?? '', trimmed.toLowerCase()].join('\0')
       : null
-  const [settled, setSettled] = useState<string | null>(null)
+  const [answered, setAnswered] = useState<{ key: string; icon: string } | null>(null)
 
   useEffect(() => {
     if (!key) return
     const controller = new AbortController()
     const timer = setTimeout(() => {
       if (answers.has(key)) {
-        setSettled(key)
+        setAnswered({ key, icon: answers.get(key) ?? '' })
         return
       }
       suggestIcon({ kind, name: trimmed, ...(type ? { type } : {}), ...(currency ? { currency } : {}) }, controller.signal)
@@ -40,7 +40,7 @@ export function useIconSuggestion({ kind, name, type, currency, enabled }: IconS
           // "" may be a passing refusal (the limit, a slow provider): asked again next time,
           // which the server answers from its own cache when it was final
           if (icon) answers.set(key, icon)
-          if (!controller.signal.aborted) setSettled(key)
+          if (!controller.signal.aborted) setAnswered({ key, icon })
         })
         // a failed request is no suggestion; typing never shows an error
         .catch(() => undefined)
@@ -51,7 +51,7 @@ export function useIconSuggestion({ kind, name, type, currency, enabled }: IconS
     }
   }, [key, kind, trimmed, type, currency])
 
-  return key !== null && settled === key ? answers.get(key) || null : null
+  return key !== null && answered?.key === key ? answered.icon || null : null
 }
 
 // where a suggestion was applied, for the metric

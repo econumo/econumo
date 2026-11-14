@@ -756,3 +756,35 @@ func TestSync_CategorysOwnDebtWinsOverTheEnvelopes(t *testing.T) {
 		})
 	}
 }
+
+type recordingDebts struct {
+	appbudget.DebtSource
+	events *[]string
+}
+
+func (r recordingDebts) LockBudget(ctx context.Context, id vo.Id) error {
+	*r.events = append(*r.events, "lock:"+id.String())
+	return r.DebtSource.LockBudget(ctx, id)
+}
+
+func (r recordingDebts) CloneDebts(ctx context.Context, from, to vo.Id, m map[vo.Id]vo.Id) (map[vo.Id]vo.Id, error) {
+	*r.events = append(*r.events, "clone")
+	return r.DebtSource.CloneDebts(ctx, from, to, m)
+}
+
+// A recording fake rather than a PostgreSQL race: the lock-order inversion
+// needs two concurrent transactions, this pins the order that prevents it.
+func TestCloneBudget_LocksSourceBudgetBeforeCopying(t *testing.T) {
+	h := newDebtHarness(t)
+	h.envelope(t, "Housing", h.rent)
+	var events []string
+	h.svc.SetDebts(recordingDebts{DebtSource: h.debts, events: &events})
+
+	newID := vo.NewId().String()
+	if _, err := h.svc.CloneBudget(h.ctx, h.owner, model.CloneBudgetRequest{Id: h.budgetID, NewId: newID, Name: "Copy"}); err != nil {
+		t.Fatalf("CloneBudget: %v", err)
+	}
+	if len(events) < 2 || events[0] != "lock:"+h.budgetID || events[1] != "clone" {
+		t.Errorf("debt calls = %v, want the source's lock first, then the clone", events)
+	}
+}

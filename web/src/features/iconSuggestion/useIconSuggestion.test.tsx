@@ -91,3 +91,17 @@ it('an empty answer is no suggestion and is asked again later (it may have been 
   rerender({ kind: 'category', name: 'Misc', enabled: true })
   await eventually(() => expect(asked).toHaveLength(3))
 })
+
+it('shows the answer of a retry of the same name after an empty one', async () => {
+  let calls = 0
+  serve(() => (++calls === 1 ? '' : 'home'))
+  const { result, rerender } = renderSuggestion({ kind: 'category', name: 'Misc', enabled: true })
+  await eventually(() => expect(asked).toHaveLength(1))
+  await settle(100)
+  expect(result.current).toBeNull()
+  onlineManager.setOnline(false)
+  rerender({ kind: 'category', name: 'Misc', enabled: true })
+  onlineManager.setOnline(true)
+  await eventually(() => expect(result.current).toBe('home'))
+  expect(asked).toHaveLength(2)
+})

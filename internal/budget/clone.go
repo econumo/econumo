@@ -63,6 +63,14 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 	}
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The source's debt lock comes before any category or element row is
+		// touched (the envelope memberships below key-share the categories), as
+		// in every budget write; CloneDebts re-takes it as a no-op.
+		if s.debts != nil {
+			if lerr := s.debts.LockBudget(txCtx, sourceID); lerr != nil {
+				return lerr
+			}
+		}
 		// newID is client-supplied and Save upserts, so an id that is already
 		// taken would overwrite that budget's settings and then layer the
 		// source's folders, envelopes, elements and limits under it. The insert
