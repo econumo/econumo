@@ -1,6 +1,6 @@
 # Debts attached to budget elements
 
-**Date:** 2026-11-13 · **Status:** design, awaiting approval
+**Date:** 2026-11-13 · **Status:** approved 2026-11-13
 **Replaces:** the budget-row model of `2026-10-29-budget-debts-design.md`,
 `2026-11-07-debt-setup-redesign-design.md` and `2026-11-12-shared-budget-debts-design.md`
 (branch `feature/budget-debts`, PR #424, not released). What a debt IS (terms, snapshots,
@@ -25,9 +25,9 @@ planning on top of it.
 2. **The element shows the debt** (what the debt row shows today: payments left, payoff, the plan
    hint, Details). The Debts block, debt rows (`ElementDebt`) and plan moves go away.
 3. **One active debt per element at a time, plus a history.** A debt has a start and an end. It can
-   be **completed** (it stops counting after its end date; the element is a regular element again)
-   or **deleted**. Neither touches plans. Past debts are listed in the element's menu and open
-   read-only.
+   be **marked as paid off** (as of a date: it stops counting after it; the element is a regular
+   element again; refinancing = marking the old loan paid off) or **deleted**. Neither touches
+   plans. Past debts are listed in the element's menu and open read-only.
 4. **Payments = exactly the money the element's Spent counts**, dated between the debt's start and
    end: the expenses the budget attributes to that element (its category, or an envelope's child
    categories), so a tagged expense counted on its tag row, or one on a savings member, is not a
@@ -51,15 +51,15 @@ envelope replacing the envelope (plans and history tied to a converted element, 
 
 - `debts`: `budget_id`, the element it is attached to as the budget element's external id
   (`element_external_id`, the category or envelope id, as `budgets_elements.external_id`) plus its
-  type, `status` (`active` | `completed`), `ended_at` (DATE, NULL while active), `currency_id`, and
+  type, `status` (`active` | `paid_off`), `ended_at` (DATE, NULL while active), `currency_id`, and
   the existing terms columns, payment, schedule, `start_date`, `created_day`, timestamps. Gone:
   `name`, `icon`, and `debts_rules`. Snapshots, splits and rate changes stay keyed by debt.
 - **The debt's currency is the element row's currency**, copied at creation; changing the element's
   currency (`change-element-currency`) moves its ACTIVE debt to it, amounts read unconverted (as a
-  debt currency change does today: splits dropped and redone). A completed debt keeps the currency
+  debt currency change does today: splits dropped and redone). A paid-off debt keeps the currency
   it ended in. *My call.*
 - At most one `active` debt per (budget, element). A new debt on an element with history starts
-  after the latest completed debt's end (`debt.start_before_previous_end` otherwise). *My call.*
+  after the latest paid-off debt's end (`debt.start_before_previous_end` otherwise). *My call.*
 - Only a top-level expense element can carry a debt: a category not inside an envelope, or an
   envelope. Not tags, savings, income, or a category inside an envelope. *My call* (tags left out
   for now).
@@ -72,7 +72,7 @@ envelope replacing the envelope (plans and history tied to a converted element, 
 - A transaction is a payment of debt D when it is an expense (transfers never), on a member account
   of D's budget (soft-deleted members included), in one of D's element's categories (an envelope's
   children as they are now), dated on or after D's start date (or any date while not set up) and
-  on or before its end date when completed. Categories cannot be in two elements of a budget, and an
+  on or before its end date once paid off. Categories cannot be in two elements of a budget, and an
   element has one active debt with non-overlapping history, so there are no conflicts, keys or
   tiebreaks any more.
 - Everything about splitting, snapshots, statements, setup, corrections, the projection, rate
@@ -80,24 +80,24 @@ envelope replacing the envelope (plans and history tied to a converted element, 
   plan**: the planned extra of a period is the element's plan above the scheduled payment
   (`Projection` input `Plans` comes from the element's limits), plans outside the debt's life are
   ordinary plans, and the plan-aware forecast reads the element's plans.
-- **Completing** a debt (`complete-debt`, a date, default today, not before its start and not after
-  today): stores a statement of 0 as of that date (replacing one that day; this replaces "Mark as
-  paid off"), sets `status = completed` and `ended_at`. Payments after the end stop matching (their
-  splits go on the next sync). Refinancing = complete the old debt, then track a new one on the same
-  element. *My call:* completing a debt that still owes is allowed; the 0 statement says the loan
-  was closed (paid off or refinanced).
+- **Marking a debt paid off** (`mark-debt-paid-off` `{id, date?}`, the existing route gaining a date,
+  default today, not before its start and not after today): stores a statement of 0 as of that date
+  (replacing one that day), sets `status = paid_off` and `ended_at`. Payments after the end stop matching (their
+  splits go on the next sync). Refinancing = mark the old debt paid off, then track a new one on the same
+  element. *My call:* marking a debt paid off while it still owes is allowed; the 0 statement says
+  the loan was closed (paid off or refinanced).
 - **Deleting** removes the debt and its history; plans and transactions are untouched. Offered on
   active and past debts.
-- **Reopening** a completed debt (`reopen-debt` `{id}`, *my call*): removes its end, its status and
-  the 0 statement completion stored, allowed only while its element has no active debt and no debt
-  started after it (`debt.cannot_reopen` otherwise). It is how a wrong completion date is fixed
-  (reopen, complete again). `delete-debt-reconciliation` refuses the closing statement of a
-  completed debt (`debt.completed`); a completed debt is otherwise read-only.
+- **Reopening** a paid-off debt (`reopen-debt` `{id}`, *my call*): removes its end, its status and
+  the 0 statement it stored, allowed only while its element has no active debt and no debt
+  started after it (`debt.cannot_reopen` otherwise). It is how a wrong paid-off date is fixed
+  (reopen, mark paid off again). `delete-debt-reconciliation` refuses the closing statement of a
+  paid-off debt (`debt.paid_off`); a paid-off debt is otherwise read-only.
 
 ## Budget integration
 
 - **No debt rows.** In a period, an element shows **the debt in force in that period** (the active
-  one, or a completed one whose start..end covers it; *my call*: last year's budget shows the loan
+  one, or a paid-off one whose start..end covers it; *my call*: last year's budget shows the loan
   that was being paid then). `get-budget` elements (and envelope rows) of a top-level expense
   category or envelope with a debt in force in the period get an additive `debt` object: `{id, isSetUp, paymentsLeft,
   payoffDate, basePayoffDate, closingBalance, scheduledTotal, upcoming, isPaidOff,
@@ -131,9 +131,9 @@ envelope replacing the envelope (plans and history tied to a converted element, 
   envelope id): refused when the element is not a top-level expense element of the budget, already
   has an active debt, or the caller may not plan there.
 - `update-debt` loses name, icon, currency and rules; keeps terms, payment, schedule, statements.
-- New `complete-debt` `{id, date?}`; `mark-debt-paid-off` and `add-debt-rule` go away;
+- `mark-debt-paid-off` takes an optional `date` and ends the debt; new `reopen-debt`; `add-debt-rule` goes away;
   `get-debt-rule-options` goes away.
-- `get-debt-list` lists active and completed debts of the caller's budgets, each with `budgetId`,
+- `get-debt-list` lists active and paid-off debts of the caller's budgets, each with `budgetId`,
   `elementId`, `elementType`, and the element's `name`, `icon`, `currencyId`, `status`, `endedAt`.
   `DebtResult` drops `rules`, `icon` of its own, and takes name/icon/currency from the element.
 
@@ -141,7 +141,7 @@ envelope replacing the envelope (plans and history tied to a converted element, 
 
 - **Row menu** of a top-level expense category or envelope (anyone who may plan, unarchived
   budget): "Track as debt" when no active debt; with one, "Debt details" (opens the review screen)
-  and, in Danger zone terms, Complete and Delete. "Past debts (N)" when there is history: a short
+  and, Mark as paid off and Delete. "Past debts (N)" when there is history: a short
   list (dates, amount borrowed) opening each read-only.
 - **The row shows the debt**: its normal Planned / Spent / Available, plus a quiet debt line or
   badge with payments left and the payoff month; the item sheet gets a Debt section with Details.
@@ -150,11 +150,11 @@ envelope replacing the envelope (plans and history tied to a converted element, 
 - **Create form**: payment and schedule (and the start date only after a conflict), no name, icon,
   category pickers or rules; the header shows the element's icon and name.
 - **Review screen**: header = the element's icon and name; Settings loses name, icon, rules and
-  currency; Danger zone has Complete (with a date) and Delete. Overview, Balance (statements, rate
+  currency; Danger zone has Mark as paid off (with a date) and Delete. Overview, Balance (statements, rate
   changes) as now.
 - Removed: the Debts block, debt rows in Budget and Plan, `RulesEditor`, `PaymentsFromEditor`,
   `AddToDebtDialog`, the debt icon picker.
-- Analytics: `DEBT_COMPLETE` replaces `DEBT_MARK_PAID_OFF`; `DEBT_RULE_ADD` is retired (NOT_WIRED or
+- Analytics: `DEBT_MARK_PAID_OFF` keeps firing, new `DEBT_REOPEN`; `DEBT_RULE_ADD` is retired (NOT_WIRED or
   removed); the others keep firing.
 
 ## Non-goals
