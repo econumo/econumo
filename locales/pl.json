@@ -2598,7 +2598,7 @@
       "start_in_future": "Data rozpoczęcia nie może być późniejsza niż dzisiaj.",
       "not_set_up": "Najpierw dokończ konfigurowanie tego długu.",
       "conflicts_with_reconciliation": "To jest sprzeczne z saldem wpisanym z wyciągu. Najpierw zmień lub usuń to uzgodnienie.",
-      "conflicts_with_rate_change": "Ta data rozpoczęcia przypada po zmianie oprocentowania."
+      "conflicts_with_rate_change": "Ta data rozpoczęcia przypada po zmianie oprocentowania. Najpierw usuń tę zmianę."
     },
     "authserver": {
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",

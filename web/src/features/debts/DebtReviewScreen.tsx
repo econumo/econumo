@@ -22,6 +22,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay } from './debtDates'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
+import { paymentInForce } from './rateChanges'
 import { useDebt, useDebtForecast, useFetchDebtForEdit } from './queries'
 import { useDebtDangerActions } from './useDebtDangerActions'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
@@ -550,7 +551,7 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
           {setUp ? (
             <Figure label={t('debts.review.borrowed')}>{`${amount(item.amountBorrowed)} · ${debtDay(item.startDate, lang)}`}</Figure>
           ) : null}
-          <Figure label={t('debts.form.payment.label')}>{`${amount(item.payment)} · ${schedule}`}</Figure>
+          <Figure label={t('debts.form.payment.label')}>{`${amount(paymentInForce(details.rateChanges, today, item.payment))} · ${schedule}`}</Figure>
           {setUp ? (
             <>
               <Figure label={t('debts.review.next_payment')}>{item.nextDueDate ? debtDay(item.nextDueDate, lang) : '—'}</Figure>

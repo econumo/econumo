@@ -193,6 +193,26 @@ it('a paid-off debt says so instead of counting payments', async () => {
   expect(top).toHaveTextContent('Owed now 0.00 $')
 })
 
+it('the Loan card shows the payment in force, not the contract\'s', async () => {
+  server.use(
+    http.get('*/api/v1/debt/get-debt', () =>
+      ok({
+        ...details,
+        rateChanges: [
+          { id: 'rc0', date: '2026-10-01', annualRate: '3.4412', payment: '100' },
+          { id: 'rc1', date: '2026-11-01', annualRate: '3.6912', payment: '120' },
+          { id: 'rc2', date: '2026-12-01', annualRate: '3.9', payment: '140' },
+        ],
+      }),
+    ),
+  )
+  renderScreen()
+  await openScreen()
+
+  const loan = screen.getByRole('region', { name: 'Loan' })
+  expect(within(loan).getByText('Payment').nextElementSibling).toHaveTextContent('120.00 $ · Monthly')
+})
+
 it('the principal repaid never reads below zero', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, currentBalance: '1300' } })))
   renderScreen()
@@ -1281,7 +1301,7 @@ describe('Rate changes on the Balance tab', () => {
 
     const rate = within(panel).getByLabelText('Rate, % a year')
     const payment = within(panel).getByLabelText('Payment')
-    expect(rate).toHaveValue('3.69')
+    expect(rate).toHaveValue('3.6912')
     expect(payment).toHaveValue('120')
     expect(within(panel).getByRole('button', { name: 'Date' })).toHaveTextContent('Nov 8, 2026')
     await user.clear(rate)

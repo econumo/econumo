@@ -367,7 +367,7 @@ func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInpu
 func startRateConflict(changes []*model.DebtRateChange, oldStart, newStart time.Time) error {
 	for _, c := range changes {
 		if c.EffectiveDate.Before(newStart) && !c.EffectiveDate.Equal(oldStart) {
-			return fieldError("startDate", "This start date comes after a rate change.", errs.CodeDebtConflictsWithRateChange)
+			return fieldError("startDate", "This start date comes after a rate change. Delete that rate change first.", errs.CodeDebtConflictsWithRateChange)
 		}
 	}
 	return nil

@@ -21,8 +21,9 @@ type MathSnapshot struct {
 	// borrowed BEFORE the start day's payments (see splitFromOrigin), and its
 	// first period accrues interest prorated by days.
 	Origin bool
-	// rate, when rateSet, is the rate in force from this snapshot: a
-	// statement after the origin keeps the loan's rate (withLoanRate).
+	// rate, when rateSet, is the rate in force from this snapshot (sortedSnaps
+	// sets it on every one): a statement after the origin keeps the loan's rate
+	// (withLoanRate).
 	rate    float64
 	rateSet bool
 	// rates are the loan's rate changes, sorted by From (WithRates).
@@ -288,21 +289,6 @@ func snapshotRate(s MathSnapshot) float64 {
 		return 0
 	}
 	return r
-}
-
-// PeriodRate is the rate per schedule period in force after the latest
-// snapshot and the latest rate change.
-func PeriodRate(snaps []MathSnapshot) float64 {
-	snaps = sortedSnaps(snaps)
-	if len(snaps) == 0 {
-		return 0
-	}
-	latest := snaps[len(snaps)-1]
-	day := latest.AsOf
-	if n := len(latest.rates); n > 0 && latest.rates[n-1].From.After(day) {
-		day = latest.rates[n-1].From
-	}
-	return latest.rateOn(day)
 }
 
 // WithRates attaches the loan's rate changes to every snapshot. From then on

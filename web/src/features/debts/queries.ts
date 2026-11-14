@@ -153,6 +153,8 @@ function useReconciliationWrite<T>(write: (form: T) => Promise<DebtDto>, metric:
   const storeSaved = useStoreSavedDebt()
   return useMutation({
     mutationFn: write,
+    // the statement form and the rate card show their own errors
+    meta: { handlesOwnErrors: true },
     onSuccess: (saved) => {
       storeSaved(saved)
       invalidate()

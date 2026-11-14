@@ -58,7 +58,7 @@ export interface DebtDto {
   extraPaid: string
   payoffDate: string
   nextDueDate: string
-  /** implied rate per schedule period, 10 decimals */
+  /** the rate per schedule period in force today, 10 decimals */
   periodRate: string
   /** the yearly percent in force today (up to 8 decimals); "" while not set up */
   annualRate: string

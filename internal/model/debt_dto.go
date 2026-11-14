@@ -301,9 +301,9 @@ type DebtRuleResult struct {
 // startDate; the terms (balance .. lastPaymentDate) are the latest snapshot's,
 // the payment the origin's; amounts are decimal strings in the debt's
 // currency, dates "2006-01-02" ("" when none), isPaidOff and canEdit ints 0/1
-// and periodRate the rate in force today per schedule period with 10 decimals. extraPaid is what the payments dated
-// up to today went above the regular payment, window by window (a payment on
-// the start date in full). While isSetUp is 0 the terms and figures are ""
+// and periodRate the rate in force today per schedule period with 10
+// decimals. extraPaid is what the payments dated up to today went above the
+// regular payment, window by window (a payment on the start date in full). While isSetUp is 0 the terms and figures are ""
 // and the counts 0. canEdit: the caller can plan in the debt's budget and it
 // is not archived.
 type DebtResult struct {

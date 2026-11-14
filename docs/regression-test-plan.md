@@ -2639,7 +2639,11 @@ running these.
       cover the balance.". Deleting a row asks first; deleting the start row
       brings the derived "From the start" row back; the payments after the
       deleted date are split again. A correction in Settings that puts the
-      start date after a change is refused. A guest and an archived budget
+      start date after a change other than the start row is refused ("Delete
+      that rate change first."); moving the start later than the start row but
+      before the next change is accepted and the start row moves to the new
+      date (same rate and payment); correcting the payment there changes the
+      start row's payment, its rate kept. A guest and an archived budget
       see the table without the form or delete buttons. Offline the form and
       deletes are greyed out.
 - [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists Mark as

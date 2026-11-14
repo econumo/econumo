@@ -719,7 +719,7 @@ func TestProjectDebt_PaymentsAreTheRunItself(t *testing.T) {
 	if len(p.Payments) != p.PaymentsLeft || p.PaymentsLeft == 0 {
 		t.Fatalf("payments = %d, PaymentsLeft = %d", len(p.Payments), p.PaymentsLeft)
 	}
-	rate := PeriodRate([]MathSnapshot{snap})
+	rate := periodRateNow([]MathSnapshot{snap})
 	balance, total := 1000.0, 0.0
 	for i, pay := range p.Payments {
 		near(t, "interest", pay.Interest, balance*rate, 1e-9)
@@ -1016,7 +1016,7 @@ func TestProjectDebt_LowerStatementKeepsTheLoansRate(t *testing.T) {
 	}
 	today := ymd(2026, time.November, 12)
 	snaps := []MathSnapshot{origin, statementOf(origin, today, 10000)}
-	if got := PeriodRate(snaps); math.Abs(got-loanRate) > 1e-12 {
+	if got := periodRateNow(snaps); math.Abs(got-loanRate) > 1e-12 {
 		t.Fatalf("rate in force = %v, want the loan's %v", got, loanRate)
 	}
 	before := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{origin}, Today: today})
@@ -1070,8 +1070,8 @@ func TestPeriodRate_StatementFollowsACorrectedOrigin(t *testing.T) {
 	today := ymd(2026, time.November, 12)
 	corrected := origin
 	corrected.Payment = 480
-	r1 := PeriodRate([]MathSnapshot{origin, statementOf(origin, today, 10000)})
-	r2 := PeriodRate([]MathSnapshot{corrected, statementOf(corrected, today, 10000)})
+	r1 := periodRateNow([]MathSnapshot{origin, statementOf(origin, today, 10000)})
+	r2 := periodRateNow([]MathSnapshot{corrected, statementOf(corrected, today, 10000)})
 	want, _ := SnapshotRate(corrected)
 	if r2 <= r1 || math.Abs(r2-want) > 1e-12 {
 		t.Fatalf("rate after the correction = %v (was %v), want the corrected origin's %v", r2, r1, want)
@@ -1082,7 +1082,7 @@ func TestPeriodRate_StatementFollowsACorrectedOrigin(t *testing.T) {
 func TestPeriodRate_NoOriginKeepsTheImpliedRate(t *testing.T) {
 	s := refLoan()
 	want, _ := SnapshotRate(s)
-	if got := PeriodRate([]MathSnapshot{s}); math.Abs(got-want) > 1e-12 {
+	if got := periodRateNow([]MathSnapshot{s}); math.Abs(got-want) > 1e-12 {
 		t.Fatalf("rate = %v, want %v", got, want)
 	}
 }
@@ -1119,4 +1119,8 @@ func TestProjectDebt_PeriodHoldingTheOriginSchedulesOnlyLaterDues(t *testing.T) 
 		extra += pay.Extra
 	}
 	near(t, "November extra of the monthly loan", extra, 50, 1e-9)
+}
+
+func periodRateNow(snaps []MathSnapshot) float64 {
+	return PeriodRateOn(snaps, ymd(2100, time.January, 1))
 }

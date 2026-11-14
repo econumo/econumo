@@ -71,7 +71,6 @@ ON CONFLICT (debt_id, transaction_id) DO UPDATE SET interest = excluded.interest
 -- unblocked.
 SELECT id FROM budgets WHERE id = $1 FOR NO KEY UPDATE;
 
-
 -- name: UpsertDebtRateChange :exec
 INSERT INTO debts_rate_changes (id, debt_id, effective_date, annual_rate, payment, created_at)
 VALUES (sqlc.arg(id), sqlc.arg(debt_id), sqlc.arg(effective_date)::text::date, sqlc.arg(annual_rate), sqlc.arg(payment), sqlc.arg(created_at))

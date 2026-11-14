@@ -2260,7 +2260,7 @@ data unreadable. Most are also asserted by the test suite.
   details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
   start day (`planHint` `startDay`).
   **Rate changes** (`debts_rate_changes`: `debt_id` cascade, `effective_date`, `annual_rate` percent at
-  full precision, `payment`; unique `(debt_id, effective_date)`; migration `20261113000100`, and
+  8 decimals, `payment`; unique `(debt_id, effective_date)`; migration `20261113000100`, and
   `20261113000000` drops every stored split because a start-day payment now pays the interest before
   the start first): a lender's new yearly rate and regular payment from a date. The rate in force on a
   day is the latest change on or before it, else the loan's implied rate (`model.WithRates`); the
@@ -2278,12 +2278,15 @@ data unreadable. Most are also asserted by the test suite.
   `delete-debt-rate-change` (`{id, rateChangeId}`) are debt writes (plan access, archived
   `budget.archived`, `inOneTx` with the sync) answering `DebtResult`. Adding a change dated after the
   start when no start-date row exists also stores one dated the start, with the implied yearly rate
-  (full precision, so no split moves) and the origin's payment, in the same transaction; from then it
-  is an ordinary row (a correction of the terms no longer moves it, deleting it falls back to the
-  derived one). Both writes drop the stored splits from the start of the schedule window holding the
-  date on, and refuse with `debt.payments_dont_cover` when, projected with the new list from the later
+  (8 decimals) and the origin's payment, in the same transaction; from then it is an ordinary row
+  (deleting it falls back to the derived one) except that a correction of the terms keeps it the
+  start's (`followStartRate`): a Settings correction that moves the start date MOVES the row dated on
+  the old start to the new one (id, rate and payment kept; it gives way to a change already on the new
+  date), and a corrected payment is written into the row dated on the start (its rate kept). Both writes drop the stored splits from the start of the schedule window holding
+  the date on, and refuse with `debt.payments_dont_cover` when, projected with the new list from the later
   of today and the date, the balance is never repaid (checked on delete too). A correction of the terms
-  that would put the start date after a change is `debt.conflicts_with_rate_change` on `startDate`,
+  that would put the start date after any OTHER change (not the one on the old start date) is
+  `debt.conflicts_with_rate_change` on `startDate`,
   and its payments check runs with the changes applied. `get-debt` carries `rateChanges`
   (`[{id, date, annualRate, payment}]`, oldest first) and on `item` `annualRate` (in force today) and
   `impliedAnnualRate` (from the terms), both `""` while not set up (`get-debt-list` items carry the

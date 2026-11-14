@@ -161,3 +161,68 @@ func TestDueWindowContaining(t *testing.T) {
 		t.Fatalf("window = %v..%v", start, end)
 	}
 }
+
+// A change inside the origin's first window splits that window's interest by
+// days, from the start date.
+func TestRates_ChangeInsideTheOriginsFirstPeriod(t *testing.T) {
+	origin := carLoan()
+	implied := mustRate(t, origin)
+	r2 := AnnualToPeriodRate(6, RecurringScheduleMonthly)
+	snaps := WithRates([]MathSnapshot{origin}, []MathRate{{From: ymd(2026, time.May, 25), PeriodRate: r2, Payment: 450}})
+	pays := []MathPayment{pay("jun", ymd(2026, time.June, 10), 450)}
+	got := SplitPayments(snaps, pays)
+	near(t, "June interest", got["jun"], 16500*(implied*10+r2*16)/31, 1e-6)
+	near(t, "without the change", SplitPayments([]MathSnapshot{origin}, pays)["jun"], 16500*implied*26/31, 1e-6)
+}
+
+func TestRates_TwoChangesInOneWindow(t *testing.T) {
+	snaps, pays := rateLoan(), rateLoanPays()
+	implied := mustRate(t, snaps[0])
+	r1, r2 := AnnualToPeriodRate(3, RecurringScheduleMonthly), AnnualToPeriodRate(5, RecurringScheduleMonthly)
+	s := WithRates(snaps, []MathRate{
+		{From: ymd(2026, time.September, 11), PeriodRate: r1, Payment: 2647.82},
+		{From: ymd(2026, time.September, 21), PeriodRate: r2, Payment: 2647.82},
+	})
+	got := SplitPayments(s, pays)
+	afterSep := BalanceAt(s, pays, got, ymd(2026, time.September, 1))
+	near(t, "October interest", got["October"], afterSep*(implied*10+r1*10+r2*10)/30, 1e-6)
+}
+
+func TestRates_WeeklyScheduleWindowFormula(t *testing.T) {
+	start := ymd(2026, time.January, 1)
+	snap := MathSnapshot{AsOf: start, Balance: 1000, Payment: 50, Schedule: RecurringScheduleWeekly, Last: start.AddDate(0, 0, 364), Digits: 2}
+	r0 := mustRate(t, snap)
+	r1 := AnnualToPeriodRate(5.2, RecurringScheduleWeekly)
+	s := WithRates([]MathSnapshot{snap}, []MathRate{{From: start.AddDate(0, 0, 10), PeriodRate: r1, Payment: 50}})
+	pays := []MathPayment{pay("w1", start.AddDate(0, 0, 7), 50), pay("w2", start.AddDate(0, 0, 14), 50)}
+	got := SplitPayments(s, pays)
+	after1 := BalanceAt(s, pays, got, start.AddDate(0, 0, 7))
+	near(t, "second week interest", got["w2"], after1*(r0*3+r1*4)/7, 1e-6)
+}
+
+// A payment that does not cover the interest now is no refusal while a later
+// change repays the balance.
+func TestRates_RelaxedEarlyExitWaitsForALaterChange(t *testing.T) {
+	origin := carLoan()
+	st := statementOf(origin, ymd(2026, time.November, 12), 15000)
+	now := MathRate{From: ymd(2026, time.November, 12), PeriodRate: 0.04, Payment: 450}
+	later := MathRate{From: ymd(2027, time.March, 1), PeriodRate: 0.04, Payment: 900}
+
+	alone := WithRates([]MathSnapshot{origin, st}, []MathRate{now})
+	if err := StatementRepayable(alone[0], alone[1]); !errors.Is(err, ErrPaymentsDontCover) {
+		t.Fatalf("without the later change: err = %v, want ErrPaymentsDontCover", err)
+	}
+	both := WithRates([]MathSnapshot{origin, st}, []MathRate{now, later})
+	if err := StatementRepayable(both[0], both[1]); err != nil {
+		t.Fatalf("with the later change: %v", err)
+	}
+	eps := settledBelow(2)
+	terms := snapshotOn(both, st.AsOf)
+	horizon := len(DueDatesBetween(terms.Schedule, terms.Last, st.AsOf, st.AsOf.AddDate(0, maxProjectMonths, 0)))
+	if n := paymentsLeftAt(both, 15000, st.AsOf, eps); n <= 0 || n >= horizon {
+		t.Fatalf("payments left = %d, want a finite count below the horizon %d", n, horizon)
+	}
+	if n := paymentsLeftAt(alone, 15000, st.AsOf, eps); n != horizon {
+		t.Fatalf("payments left without the later change = %d, want the horizon %d", n, horizon)
+	}
+}

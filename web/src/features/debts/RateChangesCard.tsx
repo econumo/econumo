@@ -9,10 +9,12 @@ import { formatDate } from '@/lib/datetime'
 import type { DebtDetailsDto, DebtRateChangeDto } from '@/api/dto/debt'
 import { debtDay } from './debtDates'
 import { AmountField, DateField } from './debtFields'
+import { paymentInForce } from './rateChanges'
 import { useAddDebtRateChange, useDeleteDebtRateChange } from './queries'
 import { amountEcho, amountError, plainAmount } from './useDebtForm'
 
-const percent = (rate: string) => (rate === '' ? '' : `${Number(rate).toFixed(2)}%`)
+const percent = (rate: string, lang: string) =>
+  rate === '' ? '' : new Intl.NumberFormat(lang, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(rate) / 100)
 
 function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: initialPayment }: { details: DebtDetailsDto; symbol: string; amountEchoOf: (raw: string) => string | null; rate: string; payment: string }) {
   const { t } = useTranslation()
@@ -123,10 +125,9 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
   const { item, snapshots, rateChanges } = details
   const today = formatDate(new Date())
   const originPayment = snapshots.find((s) => s.isOrigin === 1)?.payment ?? item.payment
-  const inForce = rateChanges.filter((r) => r.date <= today).at(-1)
   const derived = !rateChanges.some((r) => r.date === item.startDate)
-  const prefillRate = item.annualRate === '' ? '' : Number(item.annualRate).toFixed(2)
-  const prefillPayment = inForce?.payment ?? originPayment
+  const prefillRate = item.annualRate
+  const prefillPayment = paymentInForce(rateChanges, today, originPayment)
 
   return (
     <section aria-labelledby={`${formId}-rates`} className="flex flex-col gap-3">
@@ -160,7 +161,7 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
                   {t('debts.rates.from_start')}
                   <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.rates.from_terms')}</span>
                 </td>
-                <td className="whitespace-nowrap py-1.5 pl-2 text-right">{percent(item.impliedAnnualRate)}</td>
+                <td className="whitespace-nowrap py-1.5 pl-2 text-right">{percent(item.impliedAnnualRate, lang)}</td>
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(originPayment)}</td>
                 {readOnly ? null : <td />}
               </tr>
@@ -168,7 +169,7 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
             {rateChanges.map((r) => (
               <tr key={r.id} data-testid="debt-rate-change" className="border-t border-border">
                 <td className="py-1.5 text-left">{debtDay(r.date, lang)}</td>
-                <td className="whitespace-nowrap py-1.5 pl-2 text-right">{percent(r.annualRate)}</td>
+                <td className="whitespace-nowrap py-1.5 pl-2 text-right">{percent(r.annualRate, lang)}</td>
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(r.payment)}</td>
                 {readOnly ? null : (
                   <td className="py-1.5 text-right">

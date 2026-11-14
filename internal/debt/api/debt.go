@@ -265,7 +265,7 @@ func (h *Handlers) DeleteDebtReconciliation(w http.ResponseWriter, r *http.Reque
 // AddDebtRateChange handles POST /api/v1/debt/add-debt-rate-change (auth).
 //
 // @Summary     Add a rate change to a debt
-// @Description Records that from date on (on or after the start date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments from that date are split again. A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up).
+// @Description Records that from date on (on or after the start date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments are split again from the start of the schedule window holding the date. A payment that can never repay the balance is refused (debt.payments_dont_cover). A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up).
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
