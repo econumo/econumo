@@ -2575,7 +2575,8 @@
       "last_payment_before_start": "La data dell'ultimo pagamento deve essere successiva alla data di inizio.",
       "start_in_future": "La data di inizio deve essere oggi o precedente.",
       "not_set_up": "Completa prima la configurazione di questo debito.",
-      "conflicts_with_reconciliation": "Questo è in conflitto con un saldo che hai inserito da un estratto conto. Modifica o elimina prima quella riconciliazione."
+      "conflicts_with_reconciliation": "Questo è in conflitto con un saldo che hai inserito da un estratto conto. Modifica o elimina prima quella riconciliazione.",
+      "conflicts_with_rate_change": "Questa data di inizio è successiva a una variazione del tasso."
     },
     "authserver": {
       "disabled": "Il collegamento di app non è disponibile su questo server.",

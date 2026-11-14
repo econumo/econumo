@@ -112,6 +112,7 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 		// stored numbers are kept as they are and read in the new currency
 		cur.CurrencyID = currency
 		var added []model.DebtTerms
+		recheck := false
 		switch {
 		case !cur.IsSetUp() && in.hasOrigin:
 			if added, err = in.setupTerms(model.DebtTerms{Payment: cur.Payment, Schedule: cur.Schedule}, today, digits); err != nil {
@@ -120,7 +121,7 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 			cur.AmountBorrowed = added[0].Balance
 			cur.SetTerms(added[len(added)-1])
 		case cur.IsSetUp():
-			if err := s.correctTerms(ctx, cur, in, today, digits); err != nil {
+			if recheck, err = s.correctTerms(ctx, cur, in, today, digits); err != nil {
 				return err
 			}
 		default:
@@ -146,6 +147,12 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 		// splits are in the debt's currency: the next sync splits again
 		if currencyChanged || (!wasSetUp && cur.IsSetUp()) {
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
+				return err
+			}
+		}
+		// rate changes keep their own rate and payment over corrected terms
+		if recheck {
+			if err := s.checkRepayable(ctx, cur); err != nil {
 				return err
 			}
 		}
@@ -298,20 +305,31 @@ func (s *Service) stateNow(ctx context.Context, d *model.Debt) (*debtState, erro
 // schedule and last payment date, every later snapshot, their dates and
 // balances kept, and drops every split so the next sync splits again. A
 // statement balance is then written as of its date. cur's current terms
-// follow the latest snapshot.
-func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInput, today time.Time, digits int) error {
+// follow the latest snapshot. A start after a rate change is refused; recheck:
+// the terms changed under rate changes, so the caller checks the debt is still
+// repaid once they are saved.
+func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInput, today time.Time, digits int) (recheck bool, err error) {
 	snaps, err := s.repo.Snapshots(ctx, []vo.Id{cur.ID})
 	if err != nil {
-		return err
+		return false, err
 	}
 	if len(snaps) == 0 {
-		return errs.NewNotFound("Debt not found")
+		return false, errs.NewNotFound("Debt not found")
+	}
+	changes, err := s.repo.RateChanges(ctx, []vo.Id{cur.ID})
+	if err != nil {
+		return false, err
 	}
 	stored := roundedTerms(snapshotTerms(snaps[0]), digits)
 	origin := in.origin(stored, digits)
 	if termsDiffer(stored, origin) {
+		for _, c := range changes {
+			if c.EffectiveDate.Before(origin.AsOf) {
+				return false, fieldError("startDate", "This start date comes after a rate change.", errs.CodeDebtConflictsWithRateChange)
+			}
+		}
 		if err := validateOrigin(origin, today, digits); err != nil {
-			return err
+			return false, err
 		}
 		for i, sn := range snaps {
 			t := origin
@@ -319,27 +337,28 @@ func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInpu
 				t = snapshotTerms(sn)
 				t.Payment, t.Schedule, t.LastPaymentDate = origin.Payment, origin.Schedule, origin.LastPaymentDate
 				if err := laterConflict(t, origin); err != nil {
-					return err
+					return false, err
 				}
-				if err := validateTerms(t, origin, digits); err != nil {
-					return err
+				if err := validateTerms(t, origin, digits, changes); err != nil {
+					return false, err
 				}
 			}
 			sn.AsOf, sn.Balance, sn.Payment, sn.Schedule, sn.LastPaymentDate = t.AsOf, t.Balance, t.Payment, t.Schedule, t.LastPaymentDate
 			if err := s.repo.UpdateSnapshot(ctx, sn); err != nil {
-				return err
+				return false, err
 			}
 		}
 		cur.AmountBorrowed = origin.Balance
 		cur.SetTerms(snapshotTerms(snaps[len(snaps)-1]))
 		if err := s.dropSplits(ctx, cur.ID); err != nil {
-			return err
+			return false, err
 		}
+		recheck = len(changes) > 0
 	}
 	if in.hasOwed {
-		return s.writeStatement(ctx, cur, in.statement(snapshotTerms(snaps[len(snaps)-1]), today, digits), today, digits)
+		return recheck, s.writeStatement(ctx, cur, in.statement(snapshotTerms(snaps[len(snaps)-1]), today, digits), today, digits)
 	}
-	return nil
+	return recheck, nil
 }
 
 // laterConflict refuses a correction that leaves a statement balance before

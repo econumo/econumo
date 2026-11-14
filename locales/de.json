@@ -2575,7 +2575,8 @@
       "last_payment_before_start": "Das Datum der letzten Zahlung muss nach dem Startdatum liegen.",
       "start_in_future": "Das Startdatum darf nicht nach heute liegen.",
       "not_set_up": "Schließen Sie zuerst die Einrichtung dieser Schuld ab.",
-      "conflicts_with_reconciliation": "Das widerspricht einem Saldo, den Sie von einem Kontoauszug übernommen haben. Ändern oder löschen Sie zuerst diesen Abgleich."
+      "conflicts_with_reconciliation": "Das widerspricht einem Saldo, den Sie von einem Kontoauszug übernommen haben. Ändern oder löschen Sie zuerst diesen Abgleich.",
+      "conflicts_with_rate_change": "Dieses Startdatum liegt nach einer Zinsänderung."
     },
     "authserver": {
       "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",

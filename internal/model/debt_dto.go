@@ -178,6 +178,37 @@ func (r DeleteDebtReconciliationRequest) Validate() error {
 	return debtValidation(append(debtIDField("id", r.Id, true), debtIDField("reconciliationId", r.ReconciliationId, true)...))
 }
 
+// AddDebtRateChangeRequest records a rate change from Date (Y-m-d, on or
+// after the start date): AnnualRate a yearly percent from 0 to 100, Payment
+// the regular payment from then on. A change on a date that has one replaces it.
+type AddDebtRateChangeRequest struct {
+	Id         string        `json:"id"`
+	Date       string        `json:"date"`
+	AnnualRate vo.FlexString `json:"annualRate"`
+	Payment    vo.FlexString `json:"payment"`
+}
+
+func (r AddDebtRateChangeRequest) Validate() error {
+	fields := debtIDField("id", r.Id, true)
+	if !filled(r.Date) {
+		fields = append(fields, blankField("date"))
+	} else {
+		fields = append(fields, debtDateField("date", r.Date)...)
+	}
+	fields = append(fields, debtRateField("annualRate", r.AnnualRate.String())...)
+	fields = append(fields, debtAmountField("payment", r.Payment.String(), false)...)
+	return debtValidation(fields)
+}
+
+type DeleteDebtRateChangeRequest struct {
+	Id           string `json:"id"`
+	RateChangeId string `json:"rateChangeId"`
+}
+
+func (r DeleteDebtRateChangeRequest) Validate() error {
+	return debtValidation(append(debtIDField("id", r.Id, true), debtIDField("rateChangeId", r.RateChangeId, true)...))
+}
+
 type DeleteDebtRequest struct {
 	Id                 string `json:"id"`
 	ConfirmDataRemoval bool   `json:"confirmDataRemoval"`
@@ -267,10 +298,10 @@ type DebtRuleResult struct {
 }
 
 // DebtResult is one debt in the API. amountBorrowed is the loan's amount as of
-// startDate; the terms (balance .. lastPaymentDate) are the latest snapshot's;
-// amounts are decimal strings in the debt's currency, dates "2006-01-02" (""
-// when none), isPaidOff and canEdit ints 0/1 and periodRate the implied rate
-// per schedule period with 10 decimals. extraPaid is what the payments dated
+// startDate; the terms (balance .. lastPaymentDate) are the latest snapshot's,
+// the payment the origin's; amounts are decimal strings in the debt's
+// currency, dates "2006-01-02" ("" when none), isPaidOff and canEdit ints 0/1
+// and periodRate the rate in force today per schedule period with 10 decimals. extraPaid is what the payments dated
 // up to today went above the regular payment, window by window (a payment on
 // the start date in full). While isSetUp is 0 the terms and figures are ""
 // and the counts 0. canEdit: the caller can plan in the debt's budget and it
@@ -300,8 +331,12 @@ type DebtResult struct {
 	PayoffDate      string           `json:"payoffDate"`
 	NextDueDate     string           `json:"nextDueDate"`
 	PeriodRate      string           `json:"periodRate"`
-	IsPaidOff       int              `json:"isPaidOff"`
-	IsSetUp         int              `json:"isSetUp"`
+	// AnnualRate is the yearly percent in force today, ImpliedAnnualRate the
+	// one the loan's terms imply; at most 8 decimals, "" while not set up.
+	AnnualRate        string `json:"annualRate"`
+	ImpliedAnnualRate string `json:"impliedAnnualRate"`
+	IsPaidOff         int    `json:"isPaidOff"`
+	IsSetUp           int    `json:"isSetUp"`
 }
 
 type DebtListResult struct {
@@ -356,10 +391,21 @@ type DebtPaymentResult struct {
 	Balance string `json:"balance"`
 }
 
+// DebtRateChangeResult is one rate change: annualRate a yearly percent,
+// payment the regular payment from date on.
+type DebtRateChangeResult struct {
+	Id         string `json:"id"`
+	Date       string `json:"date"`
+	AnnualRate string `json:"annualRate"`
+	Payment    string `json:"payment"`
+}
+
+// DebtDetailsResult: rateChanges oldest first.
 type DebtDetailsResult struct {
-	Item      DebtResult           `json:"item"`
-	Snapshots []DebtSnapshotResult `json:"snapshots"`
-	Payments  []DebtPaymentResult  `json:"payments"`
+	Item        DebtResult             `json:"item"`
+	Snapshots   []DebtSnapshotResult   `json:"snapshots"`
+	Payments    []DebtPaymentResult    `json:"payments"`
+	RateChanges []DebtRateChangeResult `json:"rateChanges"`
 }
 
 // DebtTimelineRequest asks for the period-by-period projection of the debts
@@ -508,6 +554,22 @@ func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 // plainDecimal is the form the stored decimal reads; ParseFloat also takes
 // "1_000", hex floats and exponents, which would be stored as 0.
 var plainDecimal = regexp.MustCompile(`^[+-]?(\d+\.?\d*|\.\d+)$`)
+
+// debtRateField: a yearly percent from 0 to 100.
+func debtRateField(key, v string) []errs.FieldError {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return []errs.FieldError{blankField(key)}
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil || !plainDecimal.MatchString(v) {
+		return []errs.FieldError{debtInvalidField(key)}
+	}
+	if f < 0 || f > 100 {
+		return []errs.FieldError{{Key: key, Message: "This value is out of range.", Code: errs.CodeOutOfRange}}
+	}
+	return nil
+}
 
 // debtAmountField: a balance may be zero, a payment or an amount borrowed
 // must be positive.

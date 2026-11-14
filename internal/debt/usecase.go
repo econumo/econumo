@@ -237,11 +237,32 @@ func termsFloats(t model.DebtTerms, digits int, origin bool) model.MathSnapshot 
 		Schedule: t.Schedule, Last: t.LastPaymentDate, Digits: digits, Origin: origin}
 }
 
+// mathTerms are the origin and later terms as the debt math reads them, with
+// the debt's rate changes (always through WithRates, which makes the payment
+// in force the changes' or the origin's).
+func mathTerms(changes []*model.DebtRateChange, digits int, origin model.DebtTerms, later ...model.DebtTerms) []model.MathSnapshot {
+	out := []model.MathSnapshot{termsFloats(origin, digits, true)}
+	for _, t := range later {
+		out = append(out, termsFloats(t, digits, false))
+	}
+	return model.WithRates(out, mathRates(changes, origin.Schedule))
+}
+
+// mathRates are the rate changes per period of schedule.
+func mathRates(changes []*model.DebtRateChange, schedule model.RecurringSchedule) []model.MathRate {
+	out := make([]model.MathRate, 0, len(changes))
+	for _, c := range changes {
+		out = append(out, model.MathRate{From: c.EffectiveDate, PeriodRate: model.AnnualToPeriodRate(toFloat(c.AnnualRate), schedule),
+			Payment: toFloat(c.Payment)})
+	}
+	return out
+}
+
 // validateTerms checks terms about to become a statement as of terms.AsOf
 // after origin, in a currency with the given fraction digits. A balance of 0
-// needs no payments left; any other must be repayable by the regular payment
-// at the loan's rate (the origin's), which a statement keeps.
-func validateTerms(t, origin model.DebtTerms, digits int) error {
+// needs no payments left; any other must be repayable by the payment in
+// force at the rate in force (the loan's, the origin's, until a rate change).
+func validateTerms(t, origin model.DebtTerms, digits int, changes []*model.DebtRateChange) error {
 	if err := validatePayment(t.Payment); err != nil {
 		return err
 	}
@@ -251,7 +272,8 @@ func validateTerms(t, origin model.DebtTerms, digits int) error {
 	if !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
-	if err := model.StatementRepayable(termsFloats(origin, digits, true), termsFloats(t, digits, false)); err != nil {
+	ms := mathTerms(changes, digits, origin, t)
+	if err := model.StatementRepayable(ms[0], ms[1]); err != nil {
 		return paymentsDontCover()
 	}
 	return nil
@@ -278,7 +300,7 @@ func validateCover(t model.DebtTerms, digits int, origin bool) error {
 	if model.DebtTermTooLong(t.AsOf, t.LastPaymentDate) {
 		return fieldError("lastPaymentDate", "This value is out of range.", errs.CodeOutOfRange)
 	}
-	if _, err := model.SnapshotRate(termsFloats(t, digits, origin)); err != nil {
+	if _, err := model.SnapshotRate(model.WithRates([]model.MathSnapshot{termsFloats(t, digits, origin)}, nil)[0]); err != nil {
 		return paymentsDontCover()
 	}
 	return nil
@@ -327,7 +349,17 @@ func roundTo(x float64, digits int) float64 {
 }
 
 func amountString(x float64, digits int) string {
-	return vo.NewDecimal(strconv.FormatFloat(roundTo(x, digits), 'f', digits, 64)).String()
+	return decimalOf(x, digits).String()
+}
+
+func decimalOf(x float64, digits int) vo.DecimalNumber {
+	return vo.NewDecimal(strconv.FormatFloat(roundTo(x, digits), 'f', digits, 64))
+}
+
+// rateString is a yearly percent as the wire and the store carry it: at most
+// 8 decimals, trailing zeros trimmed.
+func rateString(annual float64) string {
+	return vo.NewDecimal(strconv.FormatFloat(annual, 'f', rateDigits, 64)).String()
 }
 
 func dateString(t time.Time) string {

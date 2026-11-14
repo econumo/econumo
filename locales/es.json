@@ -2575,7 +2575,8 @@
       "last_payment_before_start": "La fecha del último pago debe ser posterior a la fecha de inicio.",
       "start_in_future": "La fecha de inicio debe ser hoy o anterior.",
       "not_set_up": "Primero termina de configurar esta deuda.",
-      "conflicts_with_reconciliation": "Esto entra en conflicto con un saldo que introdujiste de un extracto. Cambia o elimina primero esa conciliación."
+      "conflicts_with_reconciliation": "Esto entra en conflicto con un saldo que introdujiste de un extracto. Cambia o elimina primero esa conciliación.",
+      "conflicts_with_rate_change": "Esta fecha de inicio es posterior a un cambio de tipo de interés."
     },
     "authserver": {
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",

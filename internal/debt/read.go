@@ -110,7 +110,7 @@ func idString(id *vo.Id) *string {
 
 // result presents a debt; one not set up has only its identity, rules,
 // payment and schedule, with every term and figure empty.
-func (s *Service) result(st *debtState, proj model.Projection, b model.DebtBudget, icon string, rules []model.DebtRuleResult) model.DebtResult {
+func (s *Service) result(st *debtState, proj model.Projection, today time.Time, b model.DebtBudget, icon string, rules []model.DebtRuleResult) model.DebtResult {
 	d, digits := st.debt, st.digits
 	startDate := ""
 	if d.StartDate != nil {
@@ -138,7 +138,14 @@ func (s *Service) result(st *debtState, proj model.Projection, b model.DebtBudge
 	res.MoneyLeft, res.OverpaymentLeft = amountString(proj.MoneyLeft, digits), amountString(proj.OverpaymentLeft, digits)
 	res.OverpaidSoFar, res.PayoffDate = amountString(proj.OverpaidSoFar, digits), dateString(payoff)
 	res.NextDueDate, res.ExtraPaid = dateString(proj.NextDueDate), amountString(proj.ExtraPaid, digits)
-	res.PeriodRate = strconv.FormatFloat(model.PeriodRate(st.mathSnaps()), 'f', 10, 64)
+	snaps := st.mathSnaps()
+	rate, schedule := model.PeriodRateOn(snaps, today), d.Current.Schedule
+	res.PeriodRate = strconv.FormatFloat(rate, 'f', 10, 64)
+	res.AnnualRate = rateString(model.PeriodToAnnualRate(rate, schedule))
+	if len(snaps) > 0 {
+		implied, _ := model.SnapshotRate(snaps[0])
+		res.ImpliedAnnualRate = rateString(model.PeriodToAnnualRate(implied, schedule))
+	}
 	return res
 }
 
@@ -155,7 +162,7 @@ func (s *Service) presentAll(ctx context.Context, b model.DebtBudget, states []*
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, s.result(st, st.project(today, nil, nil), b, icon, rules))
+		items = append(items, s.result(st, st.project(today, nil, nil), today, b, icon, rules))
 	}
 	return items, nil
 }
@@ -243,7 +250,12 @@ func (s *Service) GetDebt(ctx context.Context, userID vo.Id, req model.GetDebtRe
 	if err != nil {
 		return nil, err
 	}
-	res := &model.DebtDetailsResult{Item: items[0], Snapshots: []model.DebtSnapshotResult{}, Payments: []model.DebtPaymentResult{}}
+	res := &model.DebtDetailsResult{Item: items[0], Snapshots: []model.DebtSnapshotResult{}, Payments: []model.DebtPaymentResult{},
+		RateChanges: []model.DebtRateChangeResult{}}
+	for _, c := range st.rates {
+		res.RateChanges = append(res.RateChanges, model.DebtRateChangeResult{Id: c.ID.String(), Date: dateString(c.EffectiveDate),
+			AnnualRate: c.AnnualRate.String(), Payment: c.Payment.String()})
+	}
 	computed := st.computedBalances()
 	for i, sn := range st.snaps {
 		item := model.DebtSnapshotResult{Id: sn.ID.String(), AsOf: dateString(sn.AsOf), Balance: sn.Balance.String(),

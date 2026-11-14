@@ -155,7 +155,7 @@ func (in debtInput) setupTerms(base model.DebtTerms, today time.Time, digits int
 	out := []model.DebtTerms{origin}
 	if in.hasOwed {
 		owed := in.statement(origin, today, digits)
-		if err := validateStatement(owed, origin, today, digits); err != nil {
+		if err := validateStatement(owed, origin, today, digits, nil); err != nil {
 			return nil, err
 		}
 		out = append(out, owed)

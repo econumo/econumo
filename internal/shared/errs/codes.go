@@ -155,6 +155,7 @@ const (
 	CodeDebtStartInFuture               = "debt.start_in_future"
 	CodeDebtNotSetUp                    = "debt.not_set_up"
 	CodeDebtConflictsWithReconciliation = "debt.conflicts_with_reconciliation"
+	CodeDebtConflictsWithRateChange     = "debt.conflicts_with_rate_change"
 
 	CodeAuthServerDisabled         = "authserver.disabled"
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
@@ -316,4 +317,5 @@ var AllCodes = []string{
 	CodeDebtStartInFuture,
 	CodeDebtNotSetUp,
 	CodeDebtConflictsWithReconciliation,
+	CodeDebtConflictsWithRateChange,
 }

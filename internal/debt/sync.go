@@ -24,7 +24,8 @@ type debtState struct {
 	debt   *model.Debt
 	view   model.DebtView
 	snaps  []*model.DebtSnapshot
-	pays   []payment // by date, then id
+	rates  []*model.DebtRateChange // by effective date
+	pays   []payment               // by date, then id
 	digits int
 }
 
@@ -36,7 +37,10 @@ func (st *debtState) mathSnaps() []model.MathSnapshot {
 		out = append(out, model.MathSnapshot{AsOf: s.AsOf, Balance: toFloat(s.Balance), Payment: toFloat(s.Payment),
 			Schedule: s.Schedule, Last: s.LastPaymentDate, Digits: st.digits, Origin: i == 0})
 	}
-	return out
+	if len(out) == 0 {
+		return out
+	}
+	return model.WithRates(out, mathRates(st.rates, st.snaps[0].Schedule))
 }
 
 func (st *debtState) mathPays() ([]model.MathPayment, map[string]float64) {
@@ -166,6 +170,10 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 	if err != nil {
 		return nil, err
 	}
+	rates, err := s.repo.RateChanges(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 	splits, err := s.repo.Splits(ctx, ids)
 	if err != nil {
 		return nil, err
@@ -232,6 +240,10 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 	for _, sn := range snaps {
 		snapsByDebt[sn.DebtID] = append(snapsByDebt[sn.DebtID], sn)
 	}
+	ratesByDebt := map[vo.Id][]*model.DebtRateChange{}
+	for _, c := range rates {
+		ratesByDebt[c.DebtID] = append(ratesByDebt[c.DebtID], c)
+	}
 	digitsByCurrency := map[vo.Id]int{}
 	states := make([]*debtState, 0, len(debts))
 	for _, d := range debts {
@@ -242,7 +254,7 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 			}
 			digitsByCurrency[d.CurrencyID] = digits
 		}
-		st := &debtState{debt: d, view: views[d.ID], snaps: snapsByDebt[d.ID], digits: digits}
+		st := &debtState{debt: d, view: views[d.ID], snaps: snapsByDebt[d.ID], rates: ratesByDebt[d.ID], digits: digits}
 		if err := s.fillPayments(ctx, st, assigned[d.ID], stored, persist); err != nil {
 			return nil, err
 		}

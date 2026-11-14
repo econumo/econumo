@@ -16263,6 +16263,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.DebtPaymentResult"
                     }
                 },
+                "rateChanges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.DebtRateChangeResult"
+                    }
+                },
                 "snapshots": {
                     "type": "array",
                     "items": {
@@ -16429,10 +16435,31 @@ const docTemplate = `{
                 }
             }
         },
+        "model.DebtRateChangeResult": {
+            "type": "object",
+            "properties": {
+                "annualRate": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment": {
+                    "type": "string"
+                }
+            }
+        },
         "model.DebtResult": {
             "type": "object",
             "properties": {
                 "amountBorrowed": {
+                    "type": "string"
+                },
+                "annualRate": {
+                    "description": "AnnualRate is the yearly percent in force today, ImpliedAnnualRate the\none the loan's terms imply; at most 8 decimals, \"\" while not set up.",
                     "type": "string"
                 },
                 "balance": {
@@ -16460,6 +16487,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "impliedAnnualRate": {
                     "type": "string"
                 },
                 "isPaidOff": {

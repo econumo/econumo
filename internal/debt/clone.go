@@ -8,9 +8,9 @@ import (
 )
 
 // CloneDebts copies the debts of one budget into another (clone-budget): every
-// column, the rules and the snapshots, under new ids. A copy keeps its
-// original creation time and day, so the tiebreak between debts and the
-// planning start are the same in the copy. Splits are not copied: the next
+// column, the rules, the snapshots and the rate changes, under new ids. A copy
+// keeps its original creation time and day, so the tiebreak between debts and
+// the planning start are the same in the copy. Splits are not copied: the next
 // sync rebuilds them on the new budget's accounts. It joins the caller's
 // transaction and returns the new id of every debt.
 func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id) (map[vo.Id]vo.Id, error) {
@@ -41,6 +41,10 @@ func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id
 		if err != nil {
 			return err
 		}
+		rates, err := s.repo.RateChanges(ctx, old)
+		if err != nil {
+			return err
+		}
 		for _, d := range debts {
 			cp := *d
 			cp.ID, cp.BudgetID = s.repo.NextIdentity(), toBudgetID
@@ -62,6 +66,13 @@ func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id
 			cp := *sn
 			cp.ID, cp.DebtID = s.repo.NextIdentity(), ids[sn.DebtID]
 			if err := s.repo.AddSnapshot(ctx, &cp); err != nil {
+				return err
+			}
+		}
+		for _, c := range rates {
+			cp := *c
+			cp.ID, cp.DebtID = s.repo.NextIdentity(), ids[c.DebtID]
+			if err := s.repo.SaveRateChange(ctx, &cp); err != nil {
 				return err
 			}
 		}

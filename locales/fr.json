@@ -2575,7 +2575,8 @@
       "last_payment_before_start": "La date du dernier paiement doit être postérieure à la date de début.",
       "start_in_future": "La date de début doit être aujourd'hui ou antérieure.",
       "not_set_up": "Terminez d'abord la configuration de cette dette.",
-      "conflicts_with_reconciliation": "Cela entre en conflit avec un solde que vous avez saisi depuis un relevé. Modifiez ou supprimez d'abord ce rapprochement."
+      "conflicts_with_reconciliation": "Cela entre en conflit avec un solde que vous avez saisi depuis un relevé. Modifiez ou supprimez d'abord ce rapprochement.",
+      "conflicts_with_rate_change": "Cette date de début est postérieure à un changement de taux."
     },
     "authserver": {
       "disabled": "La connexion d'applications n'est pas disponible sur ce serveur.",

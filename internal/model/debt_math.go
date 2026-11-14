@@ -308,7 +308,8 @@ func PeriodRate(snaps []MathSnapshot) float64 {
 // WithRates attaches the loan's rate changes to every snapshot. From then on
 // the payment before the first change is the origin's: a statement's payment
 // is never read, so one stored under a change that is later deleted cannot
-// keep that change's payment alive.
+// keep that change's payment alive. The rule holds only through WithRates, so
+// a debt's snapshots must pass through it even with no rate changes.
 func WithRates(snaps []MathSnapshot, rates []MathRate) []MathSnapshot {
 	sorted := make([]MathRate, len(rates))
 	for i, r := range rates {
