@@ -51,7 +51,7 @@ func (s *Service) result(st *debtState, proj model.Projection, today time.Time, 
 		ElementType: string(d.ElementType), Status: string(status), EndedAt: endedAt, Name: name, Icon: icon,
 		CurrencyId: d.CurrencyID.String(), StartDate: startDate, Payment: d.Payment.String(), Schedule: string(d.Schedule),
 	}
-	if canEdit(b) && !d.IsPaidOff() {
+	if canEdit(b) {
 		res.CanEdit = 1
 	}
 	if !d.IsSetUp() {

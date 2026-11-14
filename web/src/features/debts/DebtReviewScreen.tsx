@@ -106,15 +106,15 @@ const tabClass =
   '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground shadow-none after:hidden hover:text-foreground focus-visible:ring-0 focus-visible:outline-none focus-visible:underline data-active:border-foreground data-active:bg-transparent data-active:text-foreground dark:data-active:border-foreground dark:data-active:bg-transparent'
 
 // Balance (reconciling with a statement) needs the loan's facts: a debt not
-// set up has no such tab. Settings changes the debt: a reader who cannot edit
-// it (a guest, an archived budget, a paid-off debt) gets none. The Danger zone
-// is also there for a paid-off debt, whose Reopen and Delete are the only
-// writes left (canEdit is 0 on it; a refusal shows its reason)
-const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean; editOnly?: boolean; paidOffToo?: boolean }[] = [
+// set up has no such tab. Settings changes the debt: a reader who cannot plan
+// in its budget (a guest, an archived budget) or a paid-off debt gets none. The
+// Danger zone needs the right to plan (canEdit, independent of the debt's
+// status); on a paid-off debt it offers Reopen and Delete only
+const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean; editOnly?: boolean; writable?: boolean }[] = [
   { value: 'overview', label: 'debts.review.tab.overview' },
   { value: 'balance', label: 'debts.review.tab.balance', setUpOnly: true },
-  { value: 'settings', label: 'debts.review.tab.settings', editOnly: true },
-  { value: 'danger', label: 'debts.review.danger.title', editOnly: true, paidOffToo: true },
+  { value: 'settings', label: 'debts.review.tab.settings', editOnly: true, writable: true },
+  { value: 'danger', label: 'debts.review.danger.title', editOnly: true },
 ]
 
 function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
@@ -134,10 +134,12 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
   const [error, setError] = useState<string | null>(null)
 
   const item = data?.item
+  // canEdit: may plan in the unarchived budget; a paid-off debt is read-only until reopened
   const canEdit = item?.canEdit === 1
   const paidOff = item?.status === 'paid_off'
+  const canWrite = canEdit && !paidOff
   const tabShown = (entry: (typeof TABS)[number]) =>
-    !!item && (!entry.setUpOnly || item.isSetUp === 1) && (!entry.editOnly || canEdit || (paidOff && !!entry.paidOffToo))
+    !!item && (!entry.setUpOnly || item.isSetUp === 1) && (!entry.editOnly || (entry.writable ? canWrite : canEdit))
   // a read-only debt opened on Settings (Finish setup from a stale screen) shows its Overview
   const shownTab = item && TABS.some((entry) => entry.value === tab && entry.editOnly && !tabShown(entry)) ? 'overview' : tab
 
@@ -165,11 +167,11 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
   useEffect(() => {
     if (!opened.current && initialTab === 'settings' && item) {
       opened.current = true
-      if (canEdit) {
+      if (canWrite) {
         loadSettings()
       }
     }
-  }, [initialTab, item, canEdit, loadSettings])
+  }, [initialTab, item, canWrite, loadSettings])
 
   const switchTab = (next: DebtDetailsTab) => {
     setTab(next)
@@ -234,10 +236,10 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
               </TabsContent>
               {item.isSetUp === 1 ? (
                 <TabsContent value="balance" className="flex flex-col gap-5">
-                  <DebtBalanceTab details={data} amount={(value) => money(value, item)} lang={i18n.language} readOnly={!canEdit} />
+                  <DebtBalanceTab details={data} amount={(value) => money(value, item)} lang={i18n.language} readOnly={!canWrite} />
                 </TabsContent>
               ) : null}
-              {canEdit ? (
+              {canWrite ? (
                 <>
                   {/* kept mounted: edits survive a look at the Overview */}
                   <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
@@ -259,11 +261,11 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
                   </TabsContent>
                 </>
               ) : null}
-              {canEdit || paidOff ? (
+              {canEdit ? (
                 <TabsContent value="danger" className="flex flex-col gap-5">
                   <OfflineNotice />
                   <DangerZone
-                    canMarkPaidOff={item.isSetUp === 1 && item.status === 'active' && canEdit}
+                    canMarkPaidOff={item.isSetUp === 1 && item.status === 'active'}
                     canReopen={paidOff}
                     busy={danger.markingPaidOff || danger.reopening}
                     onMarkPaidOff={() => {
@@ -563,7 +565,7 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
               <span className="text-3xl leading-tight">{amount(paidSoFar)}</span>
             </div>
             <p className="text-sm text-muted-foreground">{t('debts.review.not_set_up')}</p>
-            {item.canEdit === 1 ? (
+            {item.canEdit === 1 && item.status === 'active' ? (
               <Button type="button" className="h-11" onClick={onFinishSetup}>
                 {t('debts.terms.finish_setup')}
               </Button>

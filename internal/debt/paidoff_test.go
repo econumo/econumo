@@ -42,7 +42,7 @@ func TestMarkDebtPaidOff_EndsTheDebt(t *testing.T) {
 	}
 
 	got := e.markPaidOff(t, res.Id, "2026-02-01")
-	if got.Status != "paid_off" || got.EndedAt != "2026-02-01" || got.IsPaidOff != 1 || got.CanEdit != 0 {
+	if got.Status != "paid_off" || got.EndedAt != "2026-02-01" || got.IsPaidOff != 1 || got.CanEdit != 1 {
 		t.Fatalf("result = %+v, want paid off on 2026-02-01, read-only", got)
 	}
 	snaps := e.snapshots(t, res.Id)

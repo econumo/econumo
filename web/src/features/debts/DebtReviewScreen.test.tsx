@@ -657,7 +657,7 @@ it('Danger zone hides Mark as paid off while not set up', async () => {
 })
 
 it('Danger zone hides Mark as paid off once the debt is paid off', async () => {
-  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1, status: 'paid_off', endedAt: '2026-11-07', canEdit: 0 } })))
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1, status: 'paid_off', endedAt: '2026-11-07', canEdit: 1 } })))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
@@ -1328,7 +1328,7 @@ describe('a debt on an element', () => {
     server.use(
       http.post('*/api/v1/debt/mark-debt-paid-off', async ({ request }) => {
         bodies.push((await request.json()) as Record<string, unknown>)
-        return ok({ ...wireDebt, status: 'paid_off', endedAt: '2026-11-08', isPaidOff: 1, canEdit: 0 })
+        return ok({ ...wireDebt, status: 'paid_off', endedAt: '2026-11-08', isPaidOff: 1, canEdit: 1 })
       }),
     )
     const user = userEvent.setup()
@@ -1361,7 +1361,7 @@ describe('a debt on an element', () => {
   })
 
   describe('a paid-off debt', () => {
-    const paidOff: DebtDetailsDto = { ...details, item: { ...details.item, status: 'paid_off', endedAt: '2026-11-07', isPaidOff: 1, canEdit: 0, currentBalance: '0', paymentsLeft: 0 } }
+    const paidOff: DebtDetailsDto = { ...details, item: { ...details.item, status: 'paid_off', endedAt: '2026-11-07', isPaidOff: 1, canEdit: 1, currentBalance: '0', paymentsLeft: 0 } }
 
     beforeEach(() => {
       server.use(http.get('*/api/v1/debt/get-debt', () => ok(paidOff)))
@@ -1378,6 +1378,29 @@ describe('a debt on an element', () => {
       expect(within(zone).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
       expect(within(zone).getByRole('button', { name: 'Reopen debt' })).toBeInTheDocument()
       expect(within(zone).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    })
+
+    it('an editor gets no Settings and no write forms on the Balance tab', async () => {
+      const user = userEvent.setup()
+      renderScreen()
+      await openScreen()
+
+      expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
+      await user.click(screen.getByRole('tab', { name: 'Balance' }))
+      expect(screen.queryByRole('button', { name: 'Reconcile' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
+    })
+
+    it('a guest (canEdit 0) sees no Danger zone tab, no Reopen and no Delete', async () => {
+      server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...paidOff, item: { ...paidOff.item, canEdit: 0 } })))
+      renderScreen()
+      await openScreen()
+
+      expect(screen.queryByRole('tab', { name: 'Danger zone' })).toBeNull()
+      expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Reopen debt' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+      expect(screen.getByTestId('debt-review-ended')).toBeInTheDocument()
     })
 
     it('Reopen sends the id and fires DEBT_REOPEN', async () => {

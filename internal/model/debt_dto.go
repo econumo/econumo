@@ -194,7 +194,7 @@ type DebtForecastResult struct {
 // dated up to today went above the regular payment, window by window (a
 // payment on the start date in full). While isSetUp is 0 the terms and
 // figures are "" and the counts 0. canEdit: the caller can plan in the debt's
-// budget, it is not archived and the debt is active.
+// budget and it is not archived, whatever the debt's status.
 type DebtResult struct {
 	Id              string `json:"id"`
 	BudgetId        string `json:"budgetId"`

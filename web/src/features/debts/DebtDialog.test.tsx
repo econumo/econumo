@@ -4,7 +4,7 @@ import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
+import { coreHandlers, fixtureCategories, fixtureWireBudget } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenDebtParams } from '@/app/uiStore'
@@ -78,9 +78,8 @@ it('the header is the element\'s icon and name, and the form asks only payment a
 })
 
 it('an envelope\'s header is the envelope\'s name and icon, read from the budget', async () => {
-  const user = { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'budget' ? { ...o, value: 'b1' } : o)) }
+  // the user has no default budget: the row's own budget is read
   server.use(
-    ...coreHandlers({ user }),
     http.get('*/api/v1/budget/get-budget', () => ok({ item: fixtureWireBudget })),
   )
   renderDialog()

@@ -10,7 +10,9 @@ import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenDebtParams } from '@/app/uiStore'
 import type { DebtDto } from '@/api/dto/debt'
-import { useBudget, useBudgets } from '@/features/budgets/queries'
+import { useQuery } from '@tanstack/react-query'
+import { budgetQueryOptions, useBudgets } from '@/features/budgets/queries'
+import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useCreateDebt } from './queries'
@@ -32,7 +34,9 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   const { data: categories = [] } = useCategories()
   const { data: currencies } = useCurrencies()
   const { data: budgets } = useBudgets()
-  const { data: openBudget } = useBudget()
+  // the row's own budget, not the default one: an envelope is read from its structure
+  const selectedDate = useBudgetPeriodStore((st) => st.selectedDate)
+  const { data: openBudget } = useQuery(budgetQueryOptions(params.budgetId, selectedDate))
   const createDebt = useCreateDebt()
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
 
