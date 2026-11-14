@@ -1,5 +1,7 @@
 # Debts belong to a budget, with several payment rules
 
+**Superseded** by `2026-11-13-debts-on-elements-design.md` for how debts sit in the budget.
+
 **Date:** 2026-11-12 · **Status:** design, awaiting approval · builder-checked
 **Builds on:** `2026-10-29-budget-debts-design.md` and `2026-11-07-debt-setup-redesign-design.md`
 (branch `feature/budget-debts`, PR #424, not released). Everything not changed here stays as those

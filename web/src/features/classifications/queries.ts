@@ -97,13 +97,21 @@ type EntityDto = CategoryDto | PayeeDto | TagDto | LabelDto
 function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
   const queryClient = useQueryClient()
   const key = queryKeys[kind]
+  // debts are attached to categories (and envelopes): only a category's delete,
+  // merge, rename or re-icon reaches them
+  const touchesDebts = kind === 'categories'
+  const invalidateDebts = () => {
+    if (touchesDebts) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+    }
+  }
   // A merge or delete drops a budget element (and re-points or cascades its
   // limits, transactions and comments). The Plan view reads its own queries,
   // separate from the Budget view's, so every one of them must refetch or the
   // Plan keeps the gone row until a manual sync.
   const invalidateBudgetViews = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
-    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+    invalidateDebts()
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetComments })
@@ -115,8 +123,8 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-        // a debt shows its element's icon
-        void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+        // a debt shows its element's name and icon
+        invalidateDebts()
       }
     },
     setArchived: (id: Id, isArchived: 0 | 1) => {
@@ -124,8 +132,8 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-        // a debt shows its element's icon
-        void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+        // a debt shows its element's name and icon
+        invalidateDebts()
       }
     },
     remove: (id: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {

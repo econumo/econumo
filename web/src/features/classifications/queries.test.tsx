@@ -218,13 +218,16 @@ function invalidatedCaches(queryClient: QueryClient) {
   return Object.fromEntries(Object.entries(budgetCaches).map(([name, key]) => [name, queryClient.getQueryState(key)?.isInvalidated]))
 }
 
-const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true, debts: true }
+const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true }
+// debts are attached to categories only: a category's delete or merge refreshes them too
+const withDebts = { ...allInvalidated, debts: true }
+const withoutDebts = { ...allInvalidated, debts: false }
 
 it.each([
   ['category', '*/api/v1/category/merge-category', useMergeCategory],
   ['tag', '*/api/v1/tag/merge-tag', useMergeTag],
   ['payee', '*/api/v1/payee/merge-payee', useMergePayee],
-] as const)('merging a %s refreshes the plan, budget, sheet transactions and comments', async (_kind, url, useMerge) => {
+] as const)('merging a %s refreshes the plan, budget, sheet transactions and comments', async (kind, url, useMerge) => {
   server.use(http.post(url, () => HttpResponse.json({ success: true, message: '', data: {} })))
   const { queryClient, wrapper } = makeWrapper()
   seedBudgetCaches(queryClient)
@@ -233,16 +236,15 @@ it.each([
   result.current.mutate({ sourceId: 'src', targetId: 'dst' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-  expect(invalidatedCaches(queryClient)).toEqual(allInvalidated)
+  expect(invalidatedCaches(queryClient)).toEqual(kind === 'category' ? withDebts : withoutDebts)
 })
 
 it.each([
   ['category', '*/api/v1/category/delete-category', useDeleteCategory],
   ['tag', '*/api/v1/tag/delete-tag', useDeleteTag],
-  // a debt rule naming the payee or label widens server-side when it goes
   ['payee', '*/api/v1/payee/delete-payee', useDeletePayee],
   ['label', '*/api/v1/label/delete-label', useDeleteLabel],
-] as const)('deleting a %s refreshes the plan, budget, sheet transactions and comments', async (_kind, url, useDelete) => {
+] as const)('deleting a %s refreshes the plan, budget, sheet transactions and comments', async (kind, url, useDelete) => {
   server.use(http.post(url, () => HttpResponse.json({ success: true, message: '', data: {} })))
   const { queryClient, wrapper } = makeWrapper()
   seedBudgetCaches(queryClient)
@@ -251,10 +253,10 @@ it.each([
   result.current.mutate('src')
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-  expect(invalidatedCaches(queryClient)).toEqual(allInvalidated)
+  expect(invalidatedCaches(queryClient)).toEqual(kind === 'category' ? withDebts : withoutDebts)
 })
 
-// A debt shows its category's icon, so renaming, re-iconing or archiving a
+// A debt shows its element's name and icon, so renaming, re-iconing or archiving a
 // category must refetch the debt list too.
 it('updating or archiving a category refreshes the debt list', async () => {
   server.use(

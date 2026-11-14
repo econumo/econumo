@@ -448,20 +448,18 @@ navigation (single-pane vs sidebar).
       default icon instead of keeping the old suggestion.
 - [ ] With AI, after an import whose history shows a loan repayment (e.g. a
       "Mortgage" category paid in at least 2 of the last 6 complete months), a
-      debt named in the UI language, counting that one category, appears in the
-      Debts block of the budget the import created (or the default budget the
-      user may plan in)
-      without a reload, not set up (Finish setup), monthly, its payment the
-      median of the paid months; the category's Plan moves to the debt row. A
-      loan category paid only once gets none, nor do rent, utilities,
+      debt appears on that category's row in the budget the import created (or
+      the default budget the user may plan in) without a reload: a debt line
+      with Finish setup (not set up), monthly, its payment the median of the
+      paid months; the category keeps its plan and its spending (nothing
+      moves). A loan category paid only once gets none, nor do rent, utilities,
       subscriptions, insurance or income categories. The debt can be deleted.
 - [ ] With AI, on a manual setup, planning a loan category (e.g. "Car loan"
-      450) on Budget & plan creates a not-set-up monthly debt with payment 450
-      shortly after Save and continue; an unplanned (blank or 0) loan category
-      gets none; a category a debt of that budget already counts (e.g. one the
-      import created) never gets a second, and the amount planned for it lands on
-      that debt's row (one "Mortgage" row with the plan, no category row
-      carrying it), with or without AI. Without AI no debt is ever created.
+      450) on Budget & plan attaches a not-set-up monthly debt with payment 450
+      to that category shortly after Save and continue; an unplanned (blank or
+      0) loan category gets none; a category that already carries an active
+      debt (e.g. one the import created) never gets a second; the plan typed
+      stays on the category's row. Without AI no debt is ever created.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
@@ -2471,85 +2469,127 @@ and on tablet/phone only with a hardware keyboard.
 
 ### Debts
 
-A debt is a loan a budget pays down through expense categories (`internal/debt`);
-it is not an account, so it shows in no account list, account total or net worth.
-A debt belongs to one budget, not to a user: everyone who may plan in that budget
-manages it, a guest reads it, and only payments on the budget's member accounts
-count. Share a budget with a partner ("Can edit") and a guest, and in it create a
-debt "Car loan" (currency USD, category "Car", payment 500.00 monthly) and finish
-its setup (amount borrowed 10,000.00, start date four months ago, last payment
-date 20 months out), and add a second budget member account in USD, before
-running these.
+A debt is a loan tracked on an expense category or an envelope of a budget
+(`internal/debt`); it is not an account and not a budget row, so it shows in no
+account list, account total or net worth, and the element keeps its own plans,
+comments, spending, folder and position. A debt belongs to one budget, not to a
+user: everyone who may plan in that budget manages it, a guest reads it, and only
+payments on the budget's member accounts count. An element has one active debt
+plus a history of paid-off ones. Share a budget with a partner ("Can edit") and a
+guest, and in it have a top-level expense category "Car" (USD) with a plan of
+500.00 and a debt "Car" (payment 500.00 monthly) finished up (amount borrowed
+10,000.00, start date four months ago, last payment date 20 months out), and add
+a second budget member account in USD, before running these.
 
-- [ ] 📱 Settings has no Debts entry (the Finances group goes Accounts,
-      Connections, Budgets, Recurring) and `/settings/debts` is not a page: a
-      debt is reached only from its budget's row.
-- [ ] 📱 **Create form** (a budget category row's "Track as debt") is short: an
-      intro line, Name with an icon button at the start of the field (it shows
-      the category's icon; tapping it opens the icon list, picking closes it, and
-      the debt is saved with the picked icon; untouched, it keeps showing its
-      category's), no Budget row (the debt goes to that row's budget), a "Which
-      payments count" card holding one "Payments from" sentence per category (chips:
-      Category, then an optional payee and an optional tag, each opening a
-      searchable picker with an "any ..." row at the top that is hidden while
-      searching; no explainer line under it), "+ Add a category" under the
-      sentences (gone at 10 lines), a remove button on each line while there are
-      two or more, and one row holding the Payment card (a plain amount field with its currency
-      symbol, no calculator keypad, the decimal keyboard on a phone) and,
-      beside it at the same height, an "every month ▾" card (every week /
-      every 2 weeks / every month / every quarter / every year). Amounts
-      typed as "2000", "2 000", "2,000.50", "1,200" or "1,5" save as 2000,
-      2000, 2000.50, 1200 and 1.5; while the text holds a "," or "." a muted
-      line under the field shows how it is read ("= 1,500.00 $" for "1,500",
-      "= 1.50 $" for "1.500"); "5+5" or letters show "Enter a valid
-      number". There is no
-      currency line: the debt takes the converted row's currency, else the
-      budget's (check on the review screen's Loan card). Name defaults to the
-      category name. The category picker offers the active expense categories
-      of every participant who may plan in the budget (income categories and a
-      guest's never), the user's own group first and each other participant's
-      under their name; the payee and tag pickers list the payees, tags and
-      reporting tags of the chosen category's owner. Picking a partner's
-      category clears a payee or tag picked on that line; picking one of your
-      own keeps it. Saving with two lines creates one debt counting payments in
-      both categories. No balance or last payment date is
-      asked. Saving creates the debt and opens its review screen (no list
-      flash). A payment of 0 or less, or a missing name or category, shows a
-      field error. When the currency it would take is refused (a deleted
-      custom currency, or one no longer usable), the error appears in a
-      Currency row that shows up only then; picking another currency and
-      saving again creates the debt.
-- [ ] 📱 On a 360 px wide phone the Payment card and the "every month ▾"
-      card still share one row (the amount card wider, both the same
-      height), as on tablet and desktop; "every 2 weeks" stays readable.
-- [ ] 📱 **Tag or reporting tag**: the tag chip's picker lists Tags and
-      Reporting tags as two headed groups (a search narrows both, and a group
-      with no match disappears). Picking a reporting tag shows its name in the
-      chip and saves the debt with that reporting tag and no tag; picking a
-      tag clears the reporting tag; "any tag" clears both. The server refuses
-      a debt that names both (field error on the reporting tag).
-- [ ] 📱 **Start date only when needed**: the create form has no start date
-      field. Saving a second debt that matches the same payments as an
-      existing one (same category, payee, tag and reporting tag) is refused
-      with "another debt ... already starts on this date" and only then a
-      Start date field appears ("When the loan began"); entering a date and
-      saving again creates the debt. An overlapping debt (category alone vs category plus payee, or a
-      labelled and an unlabelled one) is refused with its message under the
-      payment rules and shows no start date field; so are two lines of one debt
-      that could match the same payment (a category alone and the same category
-      with a payee), while two lines on one category with different reporting
-      tags are accepted. A debt in another budget never conflicts.
-- [ ] **Reporting tags tell debts apart**: two debts on one category, one
-      with reporting tag "Car" and one with "Student", are both accepted; a
-      transaction in that category carrying only "Car" counts on the first
-      debt, only "Student" on the second, and one with neither tag stays on
-      the category. A transaction carrying BOTH tags counts on the OLDER debt
-      (created first) only, in Settings, the budget row, its Paid list and the
-      category's Spent (it is gone from the category once). A debt with no
-      reporting tag ignores the tags a transaction carries. Removing the tag
-      from a transaction moves it off the debt; a recurring template with the
-      tag leaves the category's upcoming money and shows on the older matching
-      debt only.
+- [ ] 📱 Settings has no Debts entry and `/settings/debts` is not a page: a debt
+      is reached only from the row of its category or envelope.
+- [ ] 📱 **Track as debt** (⋮ menu of a top-level expense category row or of an
+      envelope, in the Budget view, the Plan grid and the phone sheet, for anyone who may
+      plan in an unarchived budget) opens a short form: the header shows the
+      element's icon and name, and there is only the Payment card (amount and
+      "every month ▾"); no name, icon, category picker, "Which payments count"
+      lines or Budget row, and no currency line (the payment shows the element's
+      symbol). Saving creates the debt and opens its review screen. The entry is
+      not offered on an archived element, on income, a tag, a savings row or
+      Uncategorized, nor on a category inside an envelope (the envelope itself
+      has it), nor to a guest, nor in an archived budget; once the element has an
+      active debt the menu offers Debt details, Mark as paid off (set-up debts
+      only) and Delete instead.
+- [ ] 📱 On a 360 px wide phone the Payment card and the "every month ▾" card sit side by side
+      at the same height.
+- [ ] 📱 **Start date only when needed**: the create form has no start date field. Create a debt on an element whose
+      previous debt ended on a given date, then pick a start date on or before it
+      through the field that appears after a refusal: "The start date must be after the end of the
+      previous debt on this category or envelope." is shown under it; a later date saves.
+- [ ] **The element keeps everything**: after tracking a debt on "Car" its plans,
+      comments, Spent, Available, folder, position and drill-down are exactly as before, and
+      so are its folder's and envelope's totals and the Totals block; the same on the
+      Plan grid. No "Debts" block and no debt row exists anywhere; tracking a debt on a
+      category inside a folder leaves it in the folder, and on an envelope the envelope's
+      children and sums are unchanged.
+- [ ] 📱 **The row shows the debt**: under the element's name a quiet line gives payments left and the
+      payoff month (e.g. "36 payments left · paid off by Mar 2029"), opening the debt's
+      review; a debt not set up shows "Finish setup" to anyone who may plan and nothing to a
+      guest; a paid-off debt reads "Paid off" in the period it was paid off or before and the row
+      shows no debt in later periods. On a phone the item sheet has a Debt section (summary,
+      balance at the end of the month, Details, or Finish setup); on the Plan grid each cell
+      shows the debt in force in its own month. Spent, Planned and Available figures are the
+      element's own in every case.
+- [ ] 📱 **Past months show the debt then**: in a month the debt was in force the row shows it, in
+      a month before the debt started or after it was paid off the row shows none (a newer debt
+      on the same element shows in its own months).
+- [ ] **Payments are the element's Spent**: an EXPENSE in the element's category (an envelope's child
+      categories) dated from the debt's start (any date while not set up) counts as a payment;
+      transfers never do; an expense carrying a tag counted on its tag row, and one on a savings
+      member account, is not a payment; a category added to the envelope later counts from then on.
+      A debt not set up still matches: such payments show in its payment list with interest 0.
+- [ ] 📱 **A plan above the scheduled payment is an extra**: plan the element for a coming month above
+      its regular payment (500.00 payment, plan 5,000.00): the debt's payoff and payments left move
+      earlier on the row and in the review, and the same plan is the element's ordinary plan (Planned,
+      Available, Totals unchanged by the debt). A plan below the scheduled amount in the current or a
+      future month shows in red on the element's row (a plan of 0 too, an empty plan not); an expense
+      hint of "plan below spent plus upcoming" is not shown on the row while its debt is active.
+      Months before the debt starts or after it ends are ordinary: editable, never an extra.
+- [ ] 📱 **Mark as paid off with a date** (review screen's Danger zone tab, or the element's ⋮ menu; set-up
+      debts only, asks first with a date field defaulting to today): the debt becomes paid off as of
+      that date: "Paid off" shows in the review, the payment list keeps its history, a statement of 0
+      is added to the Balance tab's history as "Marked paid off" (one entered that day is replaced),
+      payments after the date no longer count as payments (they stay in the element's Spent), the
+      element is a regular element again and its menu offers "Track as debt" and "Past debts (1)".
+      The date is refused under its field when on or before the start date, in the future, or before the
+      latest statement; the debt can be marked while it still owes (refinancing: mark the old debt paid
+      off, then track a new one on the same element, starting after the old end). A debt not set up
+      cannot be marked paid off.
+- [ ] 📱 **Reopen** (Danger zone of a paid-off debt, opened from "Past debts"): removes the end, the status and the
+      closing statement of 0, payments after the old end count again, and the debt is the element's active
+      one; it is how a wrong paid-off date is fixed (reopen, mark again with the right date). Refused with a
+      message when the element already has an active debt or a debt that started after it, and when the
+      element can no longer carry a debt (it was moved into an envelope). Reopening is not offered to a guest.
+- [ ] 📱 **Past debts (N)** (⋮ menu of an element with paid-off debts): a short list newest first (start and end
+      dates, amount borrowed) opening each debt's review read-only: Overview, Balance (summary and
+      history, no forms) and a Danger zone with Reopen and Delete only; no Settings tab, no Finish setup, no
+      reconcile or rate-change forms, the closing statement has no delete button. The list's opening fires its
+      analytics event.
+- [ ] 📱 **Envelope rules**: dragging or moving a category with an ACTIVE debt into an envelope (move-element,
+      the envelope's category picker in create and edit) is refused with "A category that tracks a debt cannot
+      go into an envelope", also through the MCP; a category with only paid-off debts can go in; adding a
+      category to an envelope that carries a debt is allowed and its expenses count as payments from then on.
+      A category inside an envelope has no "Track as debt" (the envelope has).
+- [ ] **Element currency change** (change the currency of a category or envelope row in the budget): the active
+      debt follows it (stored numbers kept and read in the new currency, payments converted and split
+      again, no statement added); a paid-off debt on that element keeps the currency it ended in.
+- [ ] **Deleting**: deleting the category or the envelope deletes the debts attached to it, active and past,
+      with their history; a partner or guest deleting their own category that carries a shared debt succeeds.
+      Merging category A into B moves A's debts to B only when B has no debt at all, is a top-level
+      category and its row has the same currency; otherwise A's debts are deleted with it. Payee, tag
+      and reporting tag deletes and merges never touch debts. Deleting a debt (review screen's Danger zone, or
+      the element's menu; asks first) leaves the element's plans, comments and transactions untouched;
+      it is offered on active and past debts, and a guest cannot.
+- [ ] **Participants and clones**: removing a participant (or the participant leaving) keeps the budget's debts;
+      those on the leaver's categories show again if the category returns. Deleting the budget deletes its
+      debts. Duplicating (cloning) a budget copies its debts with their elements, start dates, terms,
+      statements and rate changes (set up or not as before, past debts too); the copies are separate debts of
+      the new budget, their payments show on the copy at once, and deleting one leaves the original alone.
+- [ ] **Guest and archived budget**: a guest sees the debt line and opens Details read-only (Overview, and for
+      a set-up debt the Balance tab with no forms); no Track as debt, Mark as paid off, Reopen, Delete,
+      Settings or Danger zone anywhere; the same on an archived budget.
+- [ ] 📱 **Offline**, debts need the server: the create form's Save, the review's Settings Save, Danger zone
+      actions (Mark as paid off, Reopen, Delete), statements and rate changes are disabled under the
+      offline notice, and the element menu's Track as debt, Mark as paid off, Delete and Past debts' Reopen
+      are greyed out. An offline limit on an element carrying a debt shows the new plan at once with the
+      not-saved icon and the element's Available moves; payments left keep the server's figures until the
+      change is sent, then the debt screen's future payments reflect the extra payment.
+- [ ] 📱 **Shared loan**: the partner's categories are theirs: only elements of the budget's owner or participants
+      can carry a debt (the element must appear in the budget); a payment from the partner's account in
+      the budget in a category of the element counts for the debt; one from an account outside the budget
+      (or removed from it) does not and stays out of the payments list, and the balance goes back up on the
+      next load after removing it.
+- [ ] 📱 **Two budgets, one account**: an account in two budgets, each with a debt on its own element
+      including the same category: a matching payment counts once in each budget's debt, never on the
+      other budget's debt.
+- [ ] 📱 In a budget whose months start on the 15th, a debt paid on the 10th counts in the period holding that
+      day (the period starting on the 15th of the previous month); the debt shows in the periods from the
+      one holding its first day to the one holding its end.
 - [ ] 📱 **Owed now follows the recorded payments**: with no statement,
       Owed now (the Balance tab's balance today; the Overview's caption shows
       the amount borrowed less it as repaid) is the amount borrowed less the principal of the payments
@@ -2563,31 +2603,17 @@ running these.
       open, add a matching expense, then open the Settings tab and save
       without changes: no snapshot is written (the Balance tab's history
       does not grow) and the payment keeps counting.
-- [ ] 📱 **Settings tab** holds one form with the loan contract's facts:
-      Name with the debt's icon at the start of the field (tapping it opens
-      the icon list, the current icon selected; picking one closes it), the "Which payments count" lines (add, edit and remove lines as on
-      the create form, the partner's categories offered too), Amount borrowed, one row of two
-      same-height date cards (Start date first, then Last payment date; no
+- [ ] 📱 **Settings tab** (active debts only) holds one form with the loan contract's facts: Amount borrowed,
+      one row of two same-height date cards (Start date first, then Last payment date; no
       clear X on a set-up debt; it fits a 360 px phone, the hints are read
-      only by screen readers), the Payment row (amount and its "every month ▾"
-      card, as on the create form) and Currency (no "Owed now" field: a
-      statement balance is the Balance tab's), then Cancel and Save. Save
-      sends one request and returns to the Overview with the new figures;
-      Cancel puts back what was loaded. Switching to the Overview and back
-      keeps unsaved edits; with no edits, each visit reloads the debt. No date
-      is filled in or recalculated while typing. Saving payments that cannot
-      cover the amount borrowed, a last payment date not after the start
-      date, a start date after today, an empty name, a line with no category
-      ("Required field") or a refused line (key conflict) shows the error next to
-      its field. A partner who may plan edits the shared debt the same way. The tab ends at
-      Cancel and Save; while the debt loads it shows the loader, not the
-      buttons alone.
-- [ ] 📱 **Debt icon**: a new debt shows its category's icon unless one was picked
-      on the create form. In Settings pick
-      another icon and Save: the header, the budget's Debts row (Budget and
-      Plan, for every participant, a guest included), the item sheet and "Add
-      to a debt" show the new one; changing the category afterwards keeps it.
-      Saving with the icon untouched keeps whatever icon another device set.
+      only by screen readers), and the Payment row (amount and its "every month ▾"
+      card, as on the create form), then Cancel and Save; there is no name, icon, category line
+      or currency (they are the element's). Save sends one request and returns to the Overview with the
+      new figures; Cancel puts back what was loaded. Switching to the Overview and back keeps unsaved
+      edits; with no edits, each visit reloads the debt. No date is filled in or recalculated while
+      typing. Saving payments that cannot cover the amount borrowed, a last payment date not after the
+      start date, or a start date after today shows the error next to its field. A partner who may plan
+      edits the shared debt the same way.
 - [ ] 📱 **Balance tab** (set-up debts only; a debt not set up has no such
       tab): Econumo's balance today, and once there is a statement "Last
       statement X on date" with the difference (statement less Econumo's
@@ -2619,7 +2645,7 @@ running these.
       one asks first, then removes it and the payments after its date are
       split again. After Mark as paid off the history shows a 0 entry marked
       "Marked paid off" (no difference; a statement entered the same day is
-      replaced, not doubled); deleting it warns that the debt reopens. Both
+      replaced, not doubled); deleting it is refused on a paid-off debt (it is Reopen that removes it). Both
       actions are greyed out offline.
 - [ ] 📱 **Rate changes** (Balance tab, "Rate changes" card under the history; set-up
       debts only): with no change recorded the table has one row, "From the
@@ -2646,39 +2672,13 @@ running these.
       start row's payment, its rate kept. A guest and an archived budget
       see the table without the form or delete buttons. Offline the form and
       deletes are greyed out.
-- [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists Mark as
-      paid off (set-up debts that are not paid off only; "Sets the balance to
-      0 and stops the countdown.") and Delete ("Removes the debt. Its payments
-      count in their categories again."; its confirm says the debt leaves its
-      budget and the payments themselves are not changed), each a row with its description and button,
-      both asking first; on a phone the button sits under its description.
-      Neither is on the Settings tab. After Mark as paid off the screen
-      returns to the Overview; changing only the payment in Settings then
-      saves the corrected payment without touching the paid-off balance (the
-      debt stays paid off).
-- [ ] 📱 **Change the currency** (Settings tab → Currency, a searchable picker), on a
-      set-up debt with a payment and a plan in a budget: leave the other
-      fields and save. No snapshot is added (also when moving an amount
-      borrowed with cents, e.g. 1,000.50, to a currency without them such as
-      JPY: the balance shown keeps reflecting the payments made since); the
-      amount borrowed and payment keep their numbers, now in the new currency
-      (no conversion); the payments list shows each payment converted into
-      the new currency and split again; the debt's budget row shows the new
-      currency with its plans unchanged. Typing a new amount borrowed or
-      payment together with the currency saves them in the new currency (a
-      correction of the loan's facts). A debt not set up can change its currency the same way. A
-      deleted custom currency is not offered. With
-      the review screen open on two devices, change the currency on the
-      second, then rename (or change the sentence) on the first without
-      reloading: the debt keeps the second device's currency. Finishing setup
-      of a whole-category debt (or giving one a later start date) together
-      with a currency change hands the category its plans outside the debt's
-      months, as without the currency change.
-- [ ] 📱 A rename and a change of the "Payments from" sentence (Settings
-      tab, saved together in one Save) write no new snapshot (the history
-      does not grow). Correcting the amount borrowed, start date, payment,
-      repeats or last payment date rewrites the first entry of the Balance
-      tab's history (the loan's start) instead of adding one, and every listed
+- [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists, for an active set-up debt, Mark as paid off
+      (asks the date, default today) and Delete (its confirm says the element's plans and transactions are
+      not changed); for a paid-off debt Reopen and Delete. Each is a row with its description and button; on a
+      phone the button sits under its description. Neither is on the Settings tab. After Mark as paid
+      off the screen returns to the Overview.
+- [ ] 📱 Correcting the amount borrowed, start date, payment, repeats or last payment date rewrites the first entry
+      of the Balance tab's history (the loan's start) instead of adding one, and every listed
       payment's interest is recomputed from the corrected facts; a statement
       on file keeps its date and balance and takes the corrected payment,
       repeats and last payment date. A correction that would put the start
@@ -2686,20 +2686,18 @@ running these.
       still owes, is refused with "This conflicts with a balance you entered
       from a statement..." under the field. Saving the form without touching
       the start date sends no start date (a start changed on another device
-      meanwhile stays). A refused change (key conflict) shows its message under the
-      sentence and keeps the old filters. With the review screen open on
-      two devices, edit the terms on the second, then rename (or change the
-      sentence) on the first without reloading: the debt keeps the second
-      device's terms and the history does not grow.
+      meanwhile stays). With the review screen open on two devices, edit the terms on the second, then
+      save a different fact on the first without reloading: the debt keeps the second device's terms and
+      the history does not grow.
 - [ ] 📱 **Review screen** (one entry, "Details": the
-      budget row's ⋮ menu, the desktop row, or on a phone/tablet the item
+      row's ⋮ menu "Debt details", the debt line on the row, or on a phone/tablet the item
       sheet's "Details" button; for every participant, there is no separate
       Edit entry or pencil): on desktop a centred dialog about 90% of the screen's
       height and only as wide as its content (about 52rem, narrower on a
       small window) that scrolls inside, its four corners rounded (the
-      header never squares the top ones); on a phone a full page. The header is the debt's icon, name and the close X, with no ⋮
+      header never squares the top ones); on a phone a full page. The header is the element's (category's or envelope's) icon, name and the close X, with no ⋮
       menu on any width. Under it the tabs Overview (selected on open),
-      Balance (set-up debts only), Settings and Danger zone. The header and the tabs are one opaque block
+      Balance (set-up debts only), Settings and Danger zone (a paid-off debt has no Settings tab). The header and the tabs are one opaque block
       with a bottom border that never scrolls: scroll a long Overview (or
       Settings on a phone) and nothing (no "N payments left", no card title)
       shows between the header and the tabs or above the tabs; content
@@ -2731,7 +2729,7 @@ running these.
       extra is what the budget plans above the regular payment from now on
       (0.00 with no plans); it appears only once the plans have loaded and
       stays hidden offline with nothing loaded before;
-      below it (no "Which payments count" card: the rules are in Settings) the
+      below it the
       payments (Date / Payment / Interest / Principal / Balance, newest
       first; Balance is what was owed after that payment, the newest one
       matching the Balance tab's balance today when it is not dated after
@@ -2743,13 +2741,13 @@ running these.
       the progress moves by one when the payment lands in a new due window
       (several payments in one window count once; payments from before setup
       count).
-- [ ] 📱 **Guest review**: a guest of the budget opens the debt's Details (row menu or
+- [ ] 📱 **Guest review**: a guest of the budget opens the debt's Details (row debt line or
       item sheet) and gets a read-only screen: the Overview and,
       for a set-up debt, the Balance tab with the summary and the history but no
       reconcile form and no delete buttons; there is no Settings or Danger zone tab
       and no Finish setup button. Opened from a "Finish setup" path (an old link)
       it shows the Overview.
-- [ ] 📱 **Overview follows the plans**: in the debt's budget, plan the debt row above
+- [ ] 📱 **Overview follows the plans**: in the debt's budget, plan the element's row above
       its regular payment in a coming month, then open the debt's Details: "N payments left" and the "X of Y paid" total drop (an
       earlier payoff) and Planned extra shows the plan above the regular
       payment (a plan of 5,000 against a payment of 450: 4,550.00) while the repaid
@@ -2770,7 +2768,7 @@ running these.
       turns into "Hide future payments", which takes the projected rows, the
       Recorded line and the note away again. Wherever the screen was
       opened from (a budget row or the item sheet), the plans
-      are those of the debt's own budget: a month whose plan for the debt row
+      are those of the debt's own budget: a month whose plan for the element
       is above the regular payments adds the difference to that month's first
       payment and the note reads "Includes extra payments planned in
       <budget>"; with no extra planned the list is the regular schedule and
@@ -2780,7 +2778,7 @@ running these.
       A payment recorded with a date after today is not projected again: the
       list starts after the last recorded payment, its first balance being
       the newest booked Balance less that row's principal. A projected due
-      dated before today is marked "overdue". Change the debt row's plan in
+      dated before today is marked "overdue". Change the element's plan in
       the budget (a cell, Fill or Copy), reopen the screen or hide and show
       the list: it reflects the new plan at once.
 - [ ] 📱 **Not set up**: a debt created without terms shows "Paid so far" (the
@@ -2793,25 +2791,15 @@ running these.
       paid off is not offered (and the server refuses it). Finish setup
       switches to the Settings tab with the Amount borrowed field focused (the
       start date chip when the amount is there, then the last payment date);
-      the budget row's "Finish setup" and the item sheet's "Finish setup" button
+      the row's debt line "Finish setup" and the item sheet's "Finish setup" button
       of such a debt open the screen straight on
-      that tab (offline the budget row's Left cell shows a dash instead). Saving with the amount borrowed, start date and last payment
+      that tab (offline Finish setup is hidden). Saving with the amount borrowed, start date and last payment
       date finishes the setup (Owed now optional on top); once any of them or
       Owed now is typed the missing ones are field errors, and with none of
-      them Save keeps just the other fields (name, sentence, payment, repeats,
-      start date, currency). After finishing, the Overview shows payments left, the progress and
+      them Save keeps just the other fields (payment, repeats,
+      start date). After finishing, the Overview shows payments left, the progress and
       the Loan card, payments entered before setup are split into interest and
       principal, and "Finish setup" fires its analytics event once.
-- [ ] 📱 A debt not set up is still a real debt for matching: payments in its
-      category (and payee / tag / reporting tag) count on its budget row as
-      Paid and leave the category row, with a 0 interest part.
-- [ ] A payment is an EXPENSE in the debt's category (and the debt's payee /
-      tag / reporting tag when set) dated inside the debt's range; transfers never match. With
-      two debts on one category and no payee, tag or reporting tag, the one with the later
-      start date takes payments from that date and the earlier one the days
-      before it. Saving a second debt with the same start date, or one whose
-      payee/tag could overlap another debt's on the same category, is refused
-      with a clear message.
 - [ ] Interest and principal: a payment equal to the schedule splits into an
       interest part and a debt part; an extra payment in the same period goes
       entirely to the debt; a period with no payment adds nothing to the
@@ -2819,244 +2807,13 @@ running these.
       converted to the debt's currency with the rates the app uses for its day
       (the month's average) and shows in the
       payment list in the debt currency.
-- [ ] **Mark as paid off** (review screen's Danger zone tab, or the budget's debt row ⋮ menu →
-      asks first): current balance becomes 0,
-      "Paid off" shows in the list and the row, the payment list keeps its
-      history. A later matching payment or a new snapshot with a balance
-      reopens the debt; marking it paid off again then settles it (a new zero
-      snapshot), even when the balance already showed 0.
-- [ ] **Delete** a debt (review screen's Danger zone tab, or the budget's debt row ⋮ menu →
-      asks first): its transactions stay
-      untouched and return to their category row. When the debt carries plans
-      or comments in its budget (it has several categories or a payee, tag or
-      reporting tag, or the category row could not take its plans back), a
-      second confirmation names what is deleted and "Delete" resends; cancel
-      leaves everything as it was. A debt with two categories never hands its
-      plans back to either. A partner who may plan can mark the shared debt
-      paid off and delete it; a guest cannot.
-
-#### Debts in the Budget
-
-- [ ] 📱 The debt's budget shows a "Debts"
-      section between Savings and Expenses (desktop/tablet: Planned · Paid ·
-      Left columns with "N payments left" or "Paid off" under Left; phone: a
-      folded "Debts" card with Planned · Paid in its summary, after the
-      Savings card, rows open the item sheet with Planned / Paid / Left,
-      payments left and a "Details" button for every reader; there is
-      no pencil on a debt's sheet). Every
-      participant, guests included, sees the row's name and figures. Another
-      budget never shows the debt, even when it shares the debt's accounts or
-      categories. The budget
-      settings dialog (create and edit) says under its fields, without
-      opening any picker, that debts are visible to everyone with access.
-- [ ] **Debt row ⋮ menu** (Budget view and Plan grid): Details, Mark as
-      paid off (set-up debts that are not paid off only) and Delete (in red), in that order,
-      for the owner and every participant who may plan (also the one who did not create the
-      debt); a guest, and anyone on an archived budget, gets Details only, opening the
-      read-only review.
-      Mark as paid off and Delete ask the same questions as the Danger zone tab, the second
-      question about plans and comments included; a refusal shows as a toast. After a delete
-      the row leaves the budget; after Mark as paid off it reads "Paid off".
-- [ ] Paid is the month's matching payments from the budget's member
-      accounts, in the debt's currency; Left is the balance at the month's
-      end (booked for past months, projected from the current month on).
-- [ ] 📱 **Shared loan**: the debt has two lines, your "Mortgage" and the partner's
-      "Mortgage". A payment you record in yours and one the partner records in
-      theirs, each from an account in the budget, both count: on the debt row's
-      Paid and its drill-down, in the payments list of the review screen (on both
-      users' screens) and off both category rows.
-- [ ] Only the budget's accounts count: a payment in the debt's category from an
-      account that is not in the budget (e.g. the partner's account left out of
-      it) does not count for the debt and stays out of its payments list. Remove a
-      member account from the budget (or remove the partner from it): its
-      payments stop counting on the next load, and the debt's balance goes back up
-      by their principal.
-- [ ] 📱 **Two budgets, one account**: an account in two budgets, each with its own
-      debt on the same category. A matching payment counts once in each budget,
-      on that budget's own debt row (Paid, drill-down, balance), and never on the
-      other budget's debt; each budget's Expenses count it once.
-- [ ] 📱 **Track as debt** (⋮ menu of any participant's expense category row, yours
-      or a partner's, also inside an envelope, on a Plan row, for anyone who may
-      plan in the budget; not offered to a guest or in an archived budget) opens
-      the debt form in that budget with the category (locked) and name filled in (the short create form: no
-      balance, last payment date or currency; the debt silently takes the
-      row's currency, shown afterwards on the review screen's Loan card). On save the Debts block
-      gets the debt and its review screen opens. Known gaps (not new bugs): it is still offered for
-      a category already covered by a whole-category debt and for a category
-      inside an archived envelope.
-- [ ] 📱 **Add to a debt…** (⋮ menu of any participant's expense category row, next to
-      Track as debt, shown only when the budget has a debt and for anyone who may
-      plan in it) opens a list of the budget's debts (a dialog on desktop, a sheet
-      on a phone) with each one's icon, name and "Payments in ..." (its
-      categories, a partner's named with its owner); with 7 or more debts it has
-      a search box. A debt that already counts the category, or that another debt
-      would conflict with, is greyed out with the reason under its name. Picking
-      one adds the category as another line of that debt and closes: its
-      payments now count there, and the category row's plans and comments move
-      onto the debt row, adding up with the debt's own plan in a month both plan.
-      A refusal shows in the list, which stays open. Offline every entry is
-      greyed out. It fires its analytics event once.
-- [ ] Convert from the budget, whole category (no payee, tag, reporting tag
-      or start date, same currency): the category row's plans and comments in the
-      budget move to the debt row in the same save, the category row shows no
-      spending afterwards, and Expenses / Available / Balance are unchanged.
-      Plans and comments of months before the debt starts (or after its last
-      payment) stay on the category row. With another currency, or a
-      payee/tag/reporting tag/start date, the plans and comments stay on the
-      category row. Clearing the payee of a payee-narrowed line (the review
-      screen's Settings tab) so it covers the whole category moves the
-      category's plans the same way; a month both rows plan adds up. Removing a
-      line, or narrowing it, leaves the debt row's plans where they are. A
-      debt created without terms is whole-category too: plans move at once and
-      the plannable months run from the creation day on with no end.
-- [ ] Finish setup of a whole-category debt created without terms: give the
-      category plans for the next two years and a comment in a month after
-      the planned end, convert (no terms), then Finish setup with a start date
-      of today and a last payment six months out. The debt row keeps the plans up to the last
-      payment's month; the months after it show their plans (and that
-      comment) on the category row again (a month both rows
-      plan adds up). A debt with a payee, tag or reporting tag, or with two
-      categories, moves nothing back.
-      Finishing setup with a start date months before the conversion moves
-      the category's plans and comments of those earlier months to the debt
-      row; one after the conversion day hands the months before it back. Finishing setup through the API or MCP in a request that
-      also adds a payee or changes the category still hands those months back
-      to the category the debt covered before.
-- [ ] A later start date on a whole-category debt (set up or not): give the
-      category plans and a comment in the months before the new start,
-      convert, then set a start date two months after the debt's creation.
-      Those months show their plans (and the comment) on the category row
-      again (a month both rows plan adds up); the debt row
-      keeps the months from its start on (a debt with two categories keeps
-      them all). An earlier start date moves the plans and comments of the
-      months it adds from each whole category to the debt row instead; a line
-      with a payee, tag or reporting tag moves nothing.
-- [ ] A partial debt (payee set): payments to that payee leave the category
-      row's Spent (and its drill-down) and count on the debt row, payments to
-      other payees stay in the category row.
-- [ ] A matching payment counts on the debt row only: it is gone from the
-      category's, tag's and envelope's Spent and from their transaction
-      drill-downs, opening the Debts row's Paid lists those payments (from
-      member accounts), and the Expenses total, Available and Balance equal
-      what they were with the loan as an ordinary category. Reporting tags
-      (labels) still count the payment.
-- [ ] 📱 Plan the debt for a month above its scheduled amount (payment ×
-      scheduled payments that month): the plan editor says what it buys
-      ("Paid off 14 months earlier, 21,000.00 $ less overpayment"), the
-      payments left, projected payoff and overpayment left shorten from that
-      month on: the months before it keep the count they had without the plan
-      and fall by one a month, the month of the extra drops by more (Plan grid row shows only the projection, "Paid off by Mar
-      2028", or plain "Paid off" once paid; the "N months earlier" note is not
-      repeated in the row header; plans in the past months do not change
-      the future). In the current month, an extra already paid counts against
-      the plan: pay 7,000.00 on a 2,000.00 schedule, plan 7,000.00 for this
-      month, and Left, payments left and the payoff equal those with no plan
-      (nothing is projected twice), and they do not jump on the 1st of the
-      next month. With no plan, or a plan below the
-      scheduled amount, the scheduled payments are still projected; a plan
-      below it shows red in the current and future months (income, savings and
-      a past month never turn red).
-- [ ] 📱 Months before the debt starts or after it ends are read-only: the
-      cell cannot be edited, filled, pasted into (a fill over a mixed range
-      skips those months), the phone/tablet sheet has no Set plan, and a
-      `set-limit` there is refused. The start is the start date's month (else
-      the earlier of the first matched payment's and the first snapshot's: a
-      category planned in the month it is converted keeps that plan on the
-      debt row after the first payment lands next month); the end is the
-      last payment date's month, or the payoff month once paid off.
-      Clearing a stale plan outside the debt's life is allowed. Those cells
-      (Plan grid and month view) offer no "Add comment" corner, and an
-      existing thread there opens read-only.
-- [ ] After the debt is paid off, its row disappears from months after the
-      last payment, unless it still carries a balance (an unspent plan or an
-      overspend from unplanned payments): then the row stays, read-only, like
-      an overspent category row. Plans stored for months after an early
-      payoff do not count: they neither raise the row's Available nor keep it
-      on screen.
-- [ ] 📱 In a budget whose months start on the 15th, a debt paid on the 10th:
-      a payment on 12 June counts as Paid in "May" (15 May - 14 Jun), the
-      10 July due is still due and scheduled in "June" (15 Jun - 14 Jul) and
-      its balance at that period's end already drops by it; the red plan
-      hint starts from the budget's current period; plannable months run
-      from the period holding the debt's first day to the one holding its
-      last payment date (a plan for the calendar month after that is
-      refused). A day-1 budget shows the same figures as before.
-- [ ] 📱 **Debt not set up in the Budget**: a debt created without terms
-      shows its row in the Debts block with Planned and Paid (what was paid
-      this month counts) and no balance: for everyone who may plan in the budget
-      (the partner too) the Left cell is a
-      "Finish setup" link that opens the review screen on its Settings tab
-      (the phone/tablet item sheet shows "—" for Left, no payments-left
-      sentence, and its Details button reads "Finish setup" and opens the
-      same tab); a guest sees a dash, and the sheet's
-      button reads "Details" and opens the Overview. The Debts section's Left total skips it. It has no payoff,
-      no "N payments left", no projected upcoming payments and no red plan
-      hint; planning works from its creation month (in the timezone of the user
-      who created it, the same for every viewer: a debt created at 20:00 on 31 Oct by a user
-      in New York plans from October, also for a partner in Sydney, and
-      still does after its creator moves to another timezone) with
-      no end, so any later month is plannable, and months before it stay
-      read-only. After Finish setup the row shows balance, payments left and
-      the projection, and the plannable months end at the last payment date's
-      month.
-- [ ] 📱 Plan grid, debt not set up: each cell shows what was paid (like any
-      row), no balance and no payments-left line, and the row header has no
-      payoff line.
-- [ ] Changing a debt row's currency (change element currency) is refused; the
-      row is in the debt's currency and follows it when the debt's currency
-      is changed on its review screen (plans keep their numbers).
-- [ ] A debt row cannot be dragged into a folder; it keeps its own ordering in
-      the Debts section.
-- [ ] The Expenses section header (the rows of the expense section only)
-      differs from the Totals "Expenses" line, which adds the debts' payments
-      (and plans); Balance, Available and the month's Balance at month end
-      equal the figures with the loan as an ordinary category.
-- [ ] A future-dated matching transaction and a recurring template matching
-      the debt leave the category's upcoming money; the debt row's own
-      upcoming is its unpaid scheduled payments, counted once per scheduled
-      date whether or not a template exists for it (the matching future rows
-      are not added on top). The debt's Paid drill-down still lists the
-      matching future-dated rows.
-- [ ] 📱 Plan grid: a "Debts" section sits after Savings; each cell shows the
-      balance, the plan and "N payments left" / "Paid off", the row shows the
-      projected payoff; a past month's balance opens the Paid drill-down;
-      folding it persists across reload; the cells are read-only outside the
-      debt's life. The Plan totals' Expenses and Balance include the debt
-      payments exactly as a category row would.
-- [ ] Deleting a category, payee, tag or reporting tag a debt uses succeeds, also
-      for a partner or a guest deleting their own category that a shared debt
-      counts, and for someone who has left the budget; archiving it is allowed.
-      The debt stays: a deleted category's line disappears from it (a debt whose
-      only line it was matches nothing until a category is added, its plans stay
-      on its row); a deleted payee, tag or reporting tag no longer narrows its
-      line, which now counts every payment in the category. When that makes two
-      debts' lines able to match the same payments, the newer debt loses its
-      line (with the same start date) or both stay, split by their start dates;
-      two identical lines of one debt become one. Merging
-      category/payee/tag/reporting tag A into B is never refused: the debt's line
-      moves to B and its payments follow (a line that would then duplicate or
-      conflict goes the same way as on a delete); for a whole-category line on
-      B, B's merged plans move onto the debt row, adding up with the debt's plan
-      in a month both plan (nothing is lost). A
-      whole-category debt deleted from Settings returns its plans and
-      comments to the category row, or asks first when the category row can
-      no longer take them (other currency, or the category sits inside an
-      envelope, whose child rows show no plan of their own). Merging a
-      category with no debt into one a whole-category debt covers moves the
-      merged plans onto the debt row too (a month both plan adds up).
-- [ ] Removing a participant (or the participant leaving) keeps the budget's debts,
-      their rows, plans and comments; the debts' lines on the former participant's
-      categories stay and match nothing more, since their accounts left with them.
-      Deleting the budget deletes its debts.
-- [ ] MCP `get_budget` lists the debt rows under `structure.debts` (in the
-      debt's currency, payments counted there and not on the category), and
-      `set_limit` on a debt id works in the debt's months and is refused
-      outside them. The debt itself has no MCP tool.
-- [ ] Analytics: creating, editing, deleting, converting from the budget, adding a
-      category to a debt (Add to a debt…) and marking paid off a debt each fire their
-      event once; saving terms on a
-      debt that was not set up fires the "finish setup" event once (and not
-      the edit event).
+- [ ] MCP `get_budget` carries the `debt` object on a category or envelope with a debt in force that
+      month (payments stay in the element's Spent; there is no `structure.debts`), `set_limit` takes no
+      debt id, and `move_element` refuses putting a category whose debt is active into an envelope. The debt
+      itself has no MCP tool.
+- [ ] Analytics: creating (converting from the budget), editing, deleting, marking paid off, reopening and
+      opening the Past debts list each fire their event once; saving terms on a debt that was not set up
+      fires the "finish setup" event once (and not the edit event).
 
 ## 10. Budget lifecycle & list
 
@@ -3070,10 +2827,9 @@ running these.
       deep copy with/without plans from a chosen start month (a savings
       account's Savings row carries over, and its planned limits carry over
       too when plans are copied); copy starts unarchived/open-ended;
-      structure and sharing carried. The budget's debts are copied too (name,
-      lines, start date, terms and statements; set up or not as before), each with
-      its row in the copy (with its plans when plans are copied); the copies are
-      separate debts of the new budget, and editing or deleting one leaves the
+      structure and sharing carried. The budget's debts are copied too (with their
+      elements, start date, terms, statements and rate changes; set up or not as before);
+      the copies are separate debts of the new budget, and editing or deleting one leaves the
       original alone. Their payments show on the copy at once.
 - [ ] **Duplicate/Complete as shared admin** ("Full control", not owner): both
       actions are offered and succeed; the cloner owns the copy, the former
@@ -3783,14 +3539,6 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Offline limit: change a plan in the Budget view, the phone sheet, the Plan grid (single
       cell and fill right). The new number shows at once with a small not-saved icon beside it and
       Total follows; changing the same cell again keeps one waiting change.
-- [ ] 📱 Offline limit on a debt row (Budget view's Debts block, Plan grid): the new plan shows at
-      once with the not-saved icon and the row's Available moves by the change; Left and payments
-      left keep the server's figures until the change is sent, then update, and the debt screen's
-      future payments reflect the extra payment.
-- [ ] 📱 Offline, debts need the server: the debt form's Add, the debt screen's Settings Save and
-      its Danger zone's Mark as paid off and Delete are disabled under the offline notice, and a
-      budget row's Track as debt and Add to a debt… menu items, every entry of the Add to a
-      debt list and the debt row's Details, Mark as paid off and Delete are greyed out.
 - [ ] 📱 Budget figures do not guess offline: Spent, Available and the budget cell's transaction
       list keep the server's numbers for a waiting transaction (an edit or delete of a listed row
       shows there, a new one only once sent), and update when the server confirms it.

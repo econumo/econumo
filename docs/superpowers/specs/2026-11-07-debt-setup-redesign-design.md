@@ -1,5 +1,7 @@
 # Debts: short creation, label matching, and a full-screen review
 
+**Superseded** by `2026-11-13-debts-on-elements-design.md` for how debts sit in the budget.
+
 **Date:** 2026-11-07 · **Status:** design, awaiting approval · builder-checked
 **Builds on:** `docs/superpowers/specs/2026-10-29-budget-debts-design.md` (branch
 `feature/budget-debts`, PR #424, not released). Everything not changed here stays
