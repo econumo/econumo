@@ -77,7 +77,8 @@ func (s *Service) result(st *debtState, proj model.Projection, today time.Time, 
 		implied, _ := model.SnapshotRate(snaps[0])
 		res.ImpliedAnnualRate = rateString(model.PeriodToAnnualRate(implied, schedule))
 	}
-	res.MonthlyToFinish = monthlyToFinish(d, proj, today, model.MinPeriodStartDay, digits)
+	// over the budget's periods, as the element's figure, so both agree
+	res.MonthlyToFinish = monthlyToFinish(d, proj, today, b.PeriodStartDay, digits)
 	return res
 }
 
@@ -282,7 +283,7 @@ func (s *Service) Views(ctx context.Context, scope model.DebtScope) ([]model.Deb
 			return nil, err
 		}
 		var plans map[string]float64
-		if hasNoFixedPayments(st.debt) {
+		if hasNoFixedPayments(st.debt) && !st.debt.IsPaidOff() {
 			if s.elements == nil {
 				return nil, errNoElements
 			}

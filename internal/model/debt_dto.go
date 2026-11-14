@@ -229,11 +229,11 @@ type DebtResult struct {
 	ImpliedAnnualRate string `json:"impliedAnnualRate"`
 	IsPaidOff         int    `json:"isPaidOff"`
 	IsSetUp           int    `json:"isSetUp"`
-	// MonthlyToFinish is, for a debt with no fixed payments, what a month
-	// repays it by its return-by date: the balance over the calendar months
-	// from the current one through the return-by month. "" for any other
-	// schedule, while not set up, paid off, with nothing owed or once that
-	// month is past.
+	// MonthlyToFinish is, for a debt with no fixed payments, what a period
+	// repays it by its return-by date: the balance over the budget's periods
+	// from the current one through the one holding the return-by date. "" for
+	// any other schedule, while not set up, paid off, with nothing owed or
+	// once that period is past.
 	MonthlyToFinish string `json:"monthlyToFinish"`
 }
 

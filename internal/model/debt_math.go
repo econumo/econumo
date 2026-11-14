@@ -430,6 +430,9 @@ func debtDays(from, to time.Time) float64 { return to.Sub(from).Hours() / 24 }
 // full period [prevDue, due). A change inside the period is so prorated by
 // days, and one dated on a due starts with the period after it.
 func windowInterest(s MathSnapshot, balance float64, from, prevDue, due time.Time) float64 {
+	if s.Schedule == DebtScheduleNone {
+		return 0
+	}
 	if from.Before(prevDue) {
 		from = prevDue
 	}
@@ -465,6 +468,9 @@ func windowInterest(s MathSnapshot, balance float64, from, prevDue, due time.Tim
 // dueInterest is windowInterest for the window ending at due; first is the
 // origin's first due (originFirst), whose window accrues from the start.
 func dueInterest(s MathSnapshot, balance float64, due, first time.Time) float64 {
+	if s.Schedule == DebtScheduleNone {
+		return 0
+	}
 	prev := shiftDue(s.Schedule, debtDay(s.Last).Day(), due, -1)
 	from := prev
 	if s.Origin && due.Equal(first) {

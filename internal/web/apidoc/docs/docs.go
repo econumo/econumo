@@ -16508,7 +16508,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "monthlyToFinish": {
-                    "description": "MonthlyToFinish is, for a debt with no fixed payments, what a month\nrepays it by its return-by date: the balance over the calendar months\nfrom the current one through the return-by month. \"\" for any other\nschedule, while not set up, paid off, with nothing owed or once that\nmonth is past.",
+                    "description": "MonthlyToFinish is, for a debt with no fixed payments, what a period\nrepays it by its return-by date: the balance over the budget's periods\nfrom the current one through the one holding the return-by date. \"\" for\nany other schedule, while not set up, paid off, with nothing owed or\nonce that period is past.",
                     "type": "string"
                 },
                 "name": {

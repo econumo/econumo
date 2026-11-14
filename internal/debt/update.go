@@ -247,8 +247,12 @@ func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInpu
 	stored := roundedTerms(snapshotTerms(snaps[0]), digits)
 	origin := in.origin(stored, digits)
 	if termsDiffer(stored, origin) {
-		if err := startRateConflict(changes, stored.AsOf, origin.AsOf); err != nil {
-			return false, err
+		// a debt with no fixed payments does not read the rate changes an
+		// earlier schedule left, and offers no way to delete them
+		if origin.Schedule != model.DebtScheduleNone {
+			if err := startRateConflict(changes, stored.AsOf, origin.AsOf); err != nil {
+				return false, err
+			}
 		}
 		if err := validateOrigin(origin, today, digits); err != nil {
 			return false, err

@@ -161,3 +161,38 @@ func TestViews_NoFixedPaymentsPlanningEnd(t *testing.T) {
 		t.Fatalf("repaid in April 2027: last day = %v, want 2027-04-30", got)
 	}
 }
+
+// Rate changes an earlier schedule left are not read once the debt has no
+// fixed payments, and there is no way to delete them, so they do not stop
+// its start from moving.
+func TestUpdateDebt_NoFixedPaymentsStartIgnoresOldRateChanges(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, func(r *createSpec) { r.StartDate = ptr("2026-01-01") })
+	e.mustAddRate(t, res.Id, "2026-02-01", "5", "1000")
+	start := "2026-03-01"
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), model.UpdateDebtRequest{Id: res.Id, StartDate: &start,
+		Payment: vo.NewFlexString("0"), Schedule: "none"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.StartDate != start || got.Schedule != "none" || got.CurrentBalance != "10000" {
+		t.Fatalf("result = %+v", got)
+	}
+}
+
+// On a budget whose periods start on the 15th the debt's own figure and the
+// element's count the same periods: February 2026 (holding March 10) through
+// February 2027, thirteen of them.
+func TestRead_MonthlyToFinishFollowsTheBudgetPeriods(t *testing.T) {
+	e := newEnv(t)
+	e.fakeBudget(e.budget).startDay = 15
+	res := e.noFixedPayments(t)
+	tl, err := e.svc.Timelines(context.Background(), model.DebtTimelineRequest{Scope: e.scope(e.budget), DebtIDs: []string{res.Id},
+		Months: []time.Time{ymd(2026, 2, 1)}, Today: ymd(2026, 3, 10), PeriodStartDay: 15})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.MonthlyToFinish != "230.77" || tl[res.Id].MonthlyToFinish != res.MonthlyToFinish {
+		t.Fatalf("debt %q, element %q, want both 230.77", res.MonthlyToFinish, tl[res.Id].MonthlyToFinish)
+	}
+}
