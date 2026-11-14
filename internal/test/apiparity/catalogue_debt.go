@@ -494,6 +494,50 @@ func init() {
 		}
 	}})
 
+	// debt_rate_change: a loan of 300 taken two weeks ago takes a rate change
+	// a week ago, the same date again replaces it, deleting it restores the
+	// loan's own rate; a guest may not add one and a debt not set up refuses it.
+	register(Scenario{Name: "debt_rate_change", Calls: func() []Call {
+		const unknownDebt = "d0000000-0000-0000-0000-0000000000ff"
+		var debtID, draftID, categoryID, changeID string
+		add := func(label, auth string, body map[string]any) Call {
+			return Call{Label: label, Method: "POST", Path: "/api/v1/debt/add-debt-rate-change", Auth: auth, Body: body}
+		}
+		return []Call{
+			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"amountBorrowed": "300", "startDate": day(-14)}), CaptureIDInto: &debtID},
+			add("add-rate-change", "owner", map[string]any{"id": &debtID, "date": day(-7), "annualRate": "5", "payment": "105"}),
+			add("add-same-date-replaces", "owner", map[string]any{"id": &debtID, "date": day(-7), "annualRate": "6", "payment": "110"}),
+			{Label: "get", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID,
+				CaptureIDInto: &changeID, CapturePath: "data.rateChanges.0.id"},
+			{Label: "list", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-list"},
+			add("err:before-start", "owner", map[string]any{"id": &debtID, "date": day(-15), "annualRate": "5", "payment": "105"}),
+			add("err:bad-rate", "owner", map[string]any{"id": &debtID, "date": day(-6), "annualRate": "1e1", "payment": "105"}),
+			add("err:rate-out-of-range", "owner", map[string]any{"id": &debtID, "date": day(-6), "annualRate": "101", "payment": "105"}),
+			add("err:unknown", "owner", map[string]any{"id": unknownDebt, "date": day(-6), "annualRate": "5", "payment": "105"}),
+			add("err:invited-add", "guest", map[string]any{"id": &debtID, "date": day(-6), "annualRate": "5", "payment": "105"}),
+			add("err:readonly-add", "readonly", map[string]any{"id": unknownDebt, "date": day(-6), "annualRate": "5", "payment": "105"}),
+			{Label: "delete-rate-change", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "rateChangeId": &changeID}},
+			{Label: "err:delete-again", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "rateChangeId": &changeID}},
+			{Label: "err:invited-delete", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "guest",
+				Body: map[string]any{"id": &debtID, "rateChangeId": &changeID}},
+			{Label: "get-after-delete", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			{Label: "accept-access", Method: "POST", Path: "/api/v1/budget/accept-access", Auth: "guest",
+				Body: map[string]any{"budgetId": Budget}},
+			{Label: "make-guest", Method: "POST", Path: "/api/v1/budget/grant-access", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "userId": GuestID, "role": "guest"}},
+			add("err:guest-add", "guest", map[string]any{"id": &debtID, "date": day(-6), "annualRate": "5", "payment": "105"}),
+			{Label: "create-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body:          map[string]any{"id": "d6000000-0000-0000-0000-0000000000a1", "name": "Student loan", "type": "expense", "icon": "school"},
+				CaptureIDInto: &categoryID},
+			{Label: "create-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: withoutTerms(map[string]any{"name": "Student loan", "rules": rules(rule(&categoryID, nil))}), CaptureIDInto: &draftID},
+			add("err:not-set-up", "owner", map[string]any{"id": &draftID, "date": day(0), "annualRate": "5", "payment": "105"}),
+		}
+	}})
+
 	// debt_readonly: a lapsed-trial user may read but not write.
 	register(Scenario{Name: "debt_readonly", Calls: func() []Call {
 		return []Call{

@@ -5457,6 +5457,87 @@
                 }
             }
         },
+        "/api/v1/debt/add-debt-rate-change": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Records that from date on (on or after the start date, no later than the last payment date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments from that date are split again. A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Add a rate change to a debt",
+                "parameters": [
+                    {
+                        "description": "Add debt rate change request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AddDebtRateChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/debt/add-debt-rule": {
             "post": {
                 "security": [
@@ -5661,6 +5742,87 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.DeleteDebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/delete-debt-rate-change": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Removes one rate change by its id; the payments from its date are split again. The loan's starting rate cannot be deleted (not found).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Delete a debt's rate change",
+                "parameters": [
+                    {
+                        "description": "Delete debt rate change request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DeleteDebtRateChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
                                         }
                                     }
                                 }
@@ -14774,6 +14936,23 @@
                 }
             }
         },
+        "model.AddDebtRateChangeRequest": {
+            "type": "object",
+            "properties": {
+                "annualRate": {
+                    "$ref": "#/definitions/vo.FlexString"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment": {
+                    "$ref": "#/definitions/vo.FlexString"
+                }
+            }
+        },
         "model.AddDebtRuleRequest": {
             "type": "object",
             "properties": {
@@ -16778,6 +16957,17 @@
         },
         "model.DeleteCurrencyResult": {
             "type": "object"
+        },
+        "model.DeleteDebtRateChangeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "rateChangeId": {
+                    "type": "string"
+                }
+            }
         },
         "model.DeleteDebtReconciliationRequest": {
             "type": "object",

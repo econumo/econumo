@@ -349,3 +349,32 @@ func TestReconcileDebtRequest_Validate(t *testing.T) {
 		t.Errorf("delete without a reconciliation: %v", got)
 	}
 }
+
+func TestAddDebtRateChangeRequest_Validate(t *testing.T) {
+	id := "0197c8b2-1111-7000-8000-000000000001"
+	ok := AddDebtRateChangeRequest{Id: id, Date: "2026-01-05", AnnualRate: vo.NewFlexString("5.5"), Payment: vo.NewFlexString("100")}
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("valid: %v", err)
+	}
+	for _, bad := range []string{"NaN", "Inf", "1e1", "0x10", "-1", "101"} {
+		r := ok
+		r.AnnualRate = vo.NewFlexString(bad)
+		if got := debtFieldCodes(t, r.Validate()); got["annualRate"] == "" {
+			t.Errorf("annualRate %q accepted", bad)
+		}
+	}
+	for _, bad := range []string{"NaN", "Inf", "1e1", "0x10", "0", "-1"} {
+		r := ok
+		r.Payment = vo.NewFlexString(bad)
+		if got := debtFieldCodes(t, r.Validate()); got["payment"] == "" {
+			t.Errorf("payment %q accepted", bad)
+		}
+	}
+	if got := debtFieldCodes(t, (AddDebtRateChangeRequest{Id: id}).Validate()); got["date"] != errs.CodeIsBlank || got["annualRate"] != errs.CodeIsBlank || got["payment"] != errs.CodeIsBlank {
+		t.Errorf("blank: %v", got)
+	}
+	del := DeleteDebtRateChangeRequest{Id: id}
+	if got := debtFieldCodes(t, del.Validate()); got["rateChangeId"] != errs.CodeIsBlank {
+		t.Errorf("delete without id: %v", got)
+	}
+}

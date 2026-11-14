@@ -261,3 +261,43 @@ func (h *Handlers) ReconcileDebt(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) DeleteDebtReconciliation(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DeleteDebtReconciliation)
 }
+
+// AddDebtRateChange handles POST /api/v1/debt/add-debt-rate-change (auth).
+//
+// @Summary     Add a rate change to a debt
+// @Description Records that from date on (on or after the start date, no later than the last payment date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments from that date are split again. A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up).
+// @Tags        Debt
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.AddDebtRateChangeRequest true "Add debt rate change request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DebtResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/debt/add-debt-rate-change [post]
+func (h *Handlers) AddDebtRateChange(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.AddDebtRateChange)
+}
+
+// DeleteDebtRateChange handles POST /api/v1/debt/delete-debt-rate-change (auth).
+//
+// @Summary     Delete a debt's rate change
+// @Description Removes one rate change by its id; the payments from its date are split again. The loan's starting rate cannot be deleted (not found).
+// @Tags        Debt
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.DeleteDebtRateChangeRequest true "Delete debt rate change request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DebtResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/debt/delete-debt-rate-change [post]
+func (h *Handlers) DeleteDebtRateChange(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.DeleteDebtRateChange)
+}

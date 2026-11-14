@@ -215,6 +215,17 @@ definitions:
       item:
         $ref: '#/definitions/model.MetaResult'
     type: object
+  model.AddDebtRateChangeRequest:
+    properties:
+      annualRate:
+        $ref: '#/definitions/vo.FlexString'
+      date:
+        type: string
+      id:
+        type: string
+      payment:
+        $ref: '#/definitions/vo.FlexString'
+    type: object
   model.AddDebtRuleRequest:
     properties:
       id:
@@ -1569,6 +1580,13 @@ definitions:
         type: string
     type: object
   model.DeleteCurrencyResult:
+    type: object
+  model.DeleteDebtRateChangeRequest:
+    properties:
+      id:
+        type: string
+      rateChangeId:
+        type: string
     type: object
   model.DeleteDebtReconciliationRequest:
     properties:
@@ -7419,6 +7437,59 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/debt/add-debt-rate-change:
+    post:
+      consumes:
+      - application/json
+      description: Records that from date on (on or after the start date, no later
+        than the last payment date) the loan's yearly rate is annualRate percent (0
+        to 100) and its regular payment is payment; interest and the schedule's dues
+        follow it, and the payments from that date are split again. A change on a
+        date that already has one replaces it. A debt not set up is refused (debt.not_set_up).
+      parameters:
+      - description: Add debt rate change request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AddDebtRateChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Add a rate change to a debt
+      tags:
+      - Debt
   /api/v1/debt/add-debt-rule:
     post:
       consumes:
@@ -7584,6 +7655,56 @@ paths:
       security:
       - Bearer: []
       summary: Delete a debt
+      tags:
+      - Debt
+  /api/v1/debt/delete-debt-rate-change:
+    post:
+      consumes:
+      - application/json
+      description: Removes one rate change by its id; the payments from its date are
+        split again. The loan's starting rate cannot be deleted (not found).
+      parameters:
+      - description: Delete debt rate change request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteDebtRateChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a debt's rate change
       tags:
       - Debt
   /api/v1/debt/delete-debt-reconciliation:

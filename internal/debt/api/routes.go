@@ -24,5 +24,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/debt/mark-debt-paid-off", auth(h.MarkDebtPaidOff))
 		mux.Handle("POST /api/v1/debt/reconcile-debt", auth(h.ReconcileDebt))
 		mux.Handle("POST /api/v1/debt/delete-debt-reconciliation", auth(h.DeleteDebtReconciliation))
+		mux.Handle("POST /api/v1/debt/add-debt-rate-change", auth(h.AddDebtRateChange))
+		mux.Handle("POST /api/v1/debt/delete-debt-rate-change", auth(h.DeleteDebtRateChange))
 	}
 }
