@@ -2282,10 +2282,12 @@ data unreadable. Most are also asserted by the test suite.
   **Debt SPA flow** (`web/src/features/debts`, `web/src/features/budgets`): a debt is reached from
   its element. **Row menu** (`useBudgetLineMenus`) of a top-level expense category or an envelope
   (Budget view, Plan grid; on a phone or tablet the Budget view's edit mode; a category inside an envelope or Uncategorized never has
-  the entries), for whoever may plan in an unarchived budget, online: "Track as debt" while the
-  element has no active debt (hidden on an archived element); with one, "Debt details", "Mark as
-  paid off" (set up debts only) and "Delete"; "Past debts (N)" when the element has paid-off ones,
-  opening `PastDebtsDialog` (dates and amount borrowed, each opening that debt's review). The
+  the entries), for whoever may plan in an unarchived budget, online: a lone "Track as debt" item
+  while the element has no debt and no history (hidden on an archived element); otherwise ONE "Debt"
+  submenu (a `MenuAction` with `children`, rendered by `RowMenu` as a Radix `DropdownMenuSub`, on a
+  phone's edit mode too) holding "Track as debt" (no active debt), "Debt details", "Mark as paid off"
+  (active, set up), "Past debts (N)" (when the element has paid-off ones, opening `PastDebtsDialog`)
+  and, after a separator, "Delete debt" (active, destructive) (dates and amount borrowed, each opening that debt's review). The
   row's own `debt` object wins over the cached `get-debt-list` (`useDebts({ enabled })`, never
   fetched for a guest, refreshed when it disagrees); a guest sees only "Debt details" of the
   debt the row shows. **The row shows the debt**: its normal Planned / Spent / Available plus a

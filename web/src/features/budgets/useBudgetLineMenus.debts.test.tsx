@@ -54,8 +54,12 @@ function renderMenus(userId = 'u1', adjust?: (b: BudgetDto) => void, debts: Debt
 }
 
 const labels = (actions: { label: string }[]) => actions.map((a) => a.label)
-const DEBT_LABELS = ['Track as debt', 'Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)']
-const debtLabels = (actions: { label: string }[]) => labels(actions).filter((l) => DEBT_LABELS.includes(l) || l.startsWith('Past debts'))
+const DEBT_LABELS = ['Track as debt', 'Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt']
+type Entry = { label: string; children?: Entry[]; destructive?: boolean; separatorBefore?: boolean; disabled?: boolean; onSelect: () => void }
+// the debt entries in menu order, the "Debt" submenu opened up
+const flat = (actions: Entry[]): Entry[] => actions.flatMap((a) => (a.children ? a.children : [a]))
+const debtLabels = (actions: Entry[]) => labels(flat(actions)).filter((l) => DEBT_LABELS.includes(l) || l.startsWith('Past debts'))
+const find = (actions: Entry[], label: string) => flat(actions).find((a) => a.label === label)!
 
 // the caller joins the fixture budget (owned by u1) with a role
 const joinAs = (userId: string, role: 'admin' | 'user' | 'guest') => (b: BudgetDto) => {
@@ -73,7 +77,7 @@ describe('an element with no active debt', () => {
     const food = { ...element('cat-food'), debt: undefined }
     const actions = result.current.expenseRowMenu(food)
     expect(debtLabels(actions)).toEqual(['Track as debt'])
-    act(() => actions.find((a) => a.label === 'Track as debt')!.onSelect())
+    act(() => find(actions, 'Track as debt').onSelect())
     expect(useUiStore.getState().debtModal).toEqual({ elementId: 'cat-food', budgetId: 'b1' })
   })
 
@@ -113,13 +117,50 @@ describe('an element with no active debt', () => {
   })
 })
 
+describe('the Debt submenu', () => {
+  const top = (actions: Entry[]) => labels(actions).filter((l) => l === 'Debt' || DEBT_LABELS.includes(l) || l.startsWith('Past debts'))
+
+  it('an active debt with history: one Debt entry in the debt items\' place, holding them in order', () => {
+    const { result, element } = renderMenus()
+    const actions = result.current.expenseRowMenu(element('cat-food'))
+    expect(top(actions)).toEqual(['Debt'])
+    expect(labels(actions).indexOf('Debt')).toBe(labels(actions).indexOf('Move to folder…') + 1)
+    const sub = actions.find((a) => a.label === 'Debt')!.children!
+    expect(labels(sub)).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
+    expect(sub.map((a) => !!a.separatorBefore)).toEqual([false, false, false, true])
+    expect(sub[3].destructive).toBe(true)
+  })
+
+  it('history without an active debt: Track as debt and Past debts inside it', () => {
+    const { result, element } = renderMenus('u1', undefined, history)
+    const food = { ...element('cat-food'), debt: undefined }
+    const actions = result.current.expenseRowMenu(food)
+    expect(top(actions)).toEqual(['Debt'])
+    expect(labels(actions.find((a) => a.label === 'Debt')!.children!)).toEqual(['Track as debt', 'Past debts (2)'])
+  })
+
+  it('no debt and no history: Track as debt stays one top-level item', () => {
+    const { result, element } = renderMenus('u1', undefined, [])
+    const actions = result.current.expenseRowMenu({ ...element('cat-food'), debt: undefined })
+    expect(top(actions)).toEqual(['Track as debt'])
+    expect(actions.some((a) => a.children)).toBe(false)
+  })
+
+  it('a guest: Debt details only, top-level', () => {
+    const { result, element } = renderMenus('u2', joinAs('u2', 'guest'))
+    const actions = result.current.expenseRowMenu(element('cat-food'))
+    expect(top(actions)).toEqual(['Debt details'])
+    expect(actions.some((a) => a.children)).toBe(false)
+  })
+})
+
 describe('an element carrying its active debt', () => {
   it('offers Debt details, Mark as paid off, Delete debt and the past debts', () => {
     const { result, element } = renderMenus()
     const actions = result.current.expenseRowMenu(element('cat-food'))
-    expect(debtLabels(actions)).toEqual(['Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)'])
-    expect(actions.find((a) => a.label === 'Delete debt')!.destructive).toBe(true)
-    act(() => actions.find((a) => a.label === 'Debt details')!.onSelect())
+    expect(debtLabels(actions)).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
+    expect(find(actions, 'Delete debt').destructive).toBe(true)
+    act(() => find(actions, 'Debt details').onSelect())
     expect(useUiStore.getState().debtDetailsId).toBe('d1')
     expect(useUiStore.getState().debtDetailsTab).toBe('overview')
   })
@@ -146,22 +187,22 @@ describe('an element carrying its active debt', () => {
     const { result, element } = renderMenus('u2', joinAs('u2', 'guest'))
     const actions = result.current.expenseRowMenu(element('cat-food'))
     expect(debtLabels(actions)).toEqual(['Debt details'])
-    act(() => actions.find((a) => a.label === 'Debt details')!.onSelect())
+    act(() => find(actions, 'Debt details').onSelect())
     expect(useUiStore.getState().debtDetailsId).toBe('d1')
   })
 
   it('a participant with the user role gets every action', () => {
     const { result, element } = renderMenus('u2', joinAs('u2', 'user'))
-    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)'])
+    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
   })
 
   it('offline the debt entries stay listed, greyed out', () => {
     act(() => onlineManager.setOnline(false))
     onTestFinished(() => act(() => onlineManager.setOnline(true)))
     const { result, element } = renderMenus()
-    const actions = result.current.expenseRowMenu(element('cat-food')).filter((a) => debtLabels([a]).length > 0)
-    expect(labels(actions)).toEqual(['Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)'])
-    expect(actions.every((a) => a.disabled)).toBe(true)
+    const actions = result.current.expenseRowMenu(element('cat-food')).filter((a) => a.label === 'Debt')
+    expect(labels(flat(actions))).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
+    expect(flat(actions).every((a) => a.disabled)).toBe(true)
   })
 })
 
@@ -176,7 +217,7 @@ describe('the row and a stale debt list disagree: the row wins and the list is r
     // tracked on another device after the list was read
     const { result, element, queryClient } = renderMenus('u1', thisPeriod, history)
     const spy = refresh(queryClient)
-    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)'])
+    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
     await waitFor(() => expect(spy).toHaveBeenCalledWith(listOnly))
   })
 
@@ -197,7 +238,7 @@ describe('the row and a stale debt list disagree: the row wins and the list is r
       b.structure.elements[0].debt = fixtureElementDebt({ id: 'd-new' })
     })
     const spy = refresh(queryClient)
-    act(() => result.current.expenseRowMenu(element('cat-food')).find((a) => a.label === 'Debt details')!.onSelect())
+    act(() => find(result.current.expenseRowMenu(element('cat-food')), 'Debt details').onSelect())
     expect(useUiStore.getState().debtDetailsId).toBe('d-new')
     await waitFor(() => expect(spy).toHaveBeenCalledWith(listOnly))
   })
@@ -214,7 +255,7 @@ describe('the row and a stale debt list disagree: the row wins and the list is r
       b.structure.elements[0].debt = undefined
     })
     const spy = refresh(queryClient)
-    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)'])
+    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
     await new Promise((r) => setTimeout(r, 0))
     expect(spy).not.toHaveBeenCalled()
   })
@@ -247,7 +288,7 @@ describe('the menus\' dialogs', () => {
       </QueryClientProvider>,
     )
     const select = (label: string) =>
-      act(() => menus.current!.expenseRowMenu(budget.structure.elements[0]).find((a) => a.label === label)!.onSelect())
+      act(() => find(menus.current!.expenseRowMenu(budget.structure.elements[0]), label).onSelect())
     return { select }
   }
 

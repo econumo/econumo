@@ -2497,8 +2497,10 @@ a second budget member account in USD, before running these.
       not offered on an archived element, on income, a tag, a savings row or
       Uncategorized, nor on a category inside an envelope (the envelope itself
       has it), nor to a guest, nor in an archived budget; once the element has an
-      active debt the menu offers Debt details, Mark as paid off (set-up debts
-      only) and Delete instead.
+      active debt, or a paid-off one, the menu has one "Debt" submenu instead (Track as debt only without an
+      active debt, Debt details, Mark as paid off for set-up debts, Past debts (N), a separator, Delete debt in
+      red); with neither, a lone "Track as debt"; a guest or an archived budget gets a lone "Debt details".
+      On a phone the submenu opens by tap.
 - [ ] 📱 On a 360 px wide phone the Payment card and the "every month ▾" card sit side by side
       at the same height.
 - [ ] 📱 **Start date only when needed**: the create form has no start date field. Create a debt on an element whose

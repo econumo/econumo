@@ -91,6 +91,10 @@ export interface MenuAction {
   disabled?: boolean
   /** why a disabled action is greyed out, shown after its label: "Edit (no access)" */
   reason?: string
+  /** a submenu: the entry only opens these, its own onSelect is never called */
+  children?: MenuAction[]
+  /** a separator line above this entry */
+  separatorBefore?: boolean
 }
 
 /** How a line's controls (its ⋮ menu and drag grip) show: under the pointer with a

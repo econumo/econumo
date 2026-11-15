@@ -285,25 +285,32 @@ export function useBudgetLineMenus({
         ? undefined
         : listedActive && { id: listedActive.id, isSetUp: listedActive.isSetUp }
     const past = (listed ?? []).filter((d) => d.status === 'paid_off' && d.id !== active?.id).sort((a, b) => b.endedAt.localeCompare(a.endedAt))
-    return [
-      ...(active
+    const track: MenuAction = { label: t('budgets.page.debts.track'), onSelect: () => openDebtModal({ elementId: el.id, budgetId: budget.meta.id }) }
+    const pastEntry: MenuAction[] =
+      past.length > 0
         ? [
-            details(active.id),
-            ...(active.isSetUp === 1 ? [{ label: t('debts.details.mark_paid_off'), onSelect: () => debtDanger.askMarkPaidOff(active.id) }] : []),
-            { label: t('budgets.page.debts.delete'), destructive: true, onSelect: () => debtDanger.askDelete(active.id) },
-          ]
-        : el.isArchived === 1
-          ? []
-          : [{ label: t('budgets.page.debts.track'), onSelect: () => openDebtModal({ elementId: el.id, budgetId: budget.meta.id }) }]),
-      ...(past.length > 0
-        ? [{ label: t('budgets.page.debts.past', { count: past.length }), onSelect: () => {
-              trackEvent(METRICS.DEBT_PAST_LIST_OPEN)
-              setPastDebts({ name: el.name, debts: past })
+            {
+              label: t('budgets.page.debts.past', { count: past.length }),
+              onSelect: () => {
+                trackEvent(METRICS.DEBT_PAST_LIST_OPEN)
+                setPastDebts({ name: el.name, debts: past })
+              },
             },
-          },
+          ]
+        : []
+    if (!active && past.length === 0) {
+      return el.isArchived === 1 ? [] : [track]
+    }
+    // the debt items sit in one submenu; Track as debt only while no debt is active
+    const items: MenuAction[] = active
+      ? [
+          details(active.id),
+          ...(active.isSetUp === 1 ? [{ label: t('debts.details.mark_paid_off'), onSelect: () => debtDanger.askMarkPaidOff(active.id) }] : []),
+          ...pastEntry,
+          { label: t('budgets.page.debts.delete'), destructive: true, separatorBefore: true, onSelect: () => debtDanger.askDelete(active.id) },
         ]
-        : []),
-    ]
+      : [...(el.isArchived === 1 ? [] : [track]), ...pastEntry]
+    return [{ label: t('budgets.page.debts.section'), children: items, onSelect: () => {} }]
   }
   // the transaction list opens from a row's figures (Spent, Received, Saved), not from the menu
   const expenseRowMenu = (element: BudgetElementDto): MenuAction[] =>
@@ -595,7 +602,11 @@ export function useBudgetLineMenus({
   ) : null
 
   const gate = (actions: MenuAction[]): MenuAction[] =>
-    online ? actions : actions.map((a) => ({ ...a, disabled: true, reason: a.reason ?? t('settings.sync.offline') }))
+    online
+      ? actions
+      : actions.map((a) =>
+          a.children ? { ...a, children: gate(a.children) } : { ...a, disabled: true, reason: a.reason ?? t('settings.sync.offline') },
+        )
   const gateOpt = (actions: MenuAction[] | undefined): MenuAction[] | undefined => (actions ? gate(actions) : undefined)
 
   return {
