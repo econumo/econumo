@@ -289,7 +289,11 @@ it('a debt not set up can drop its start date', async () => {
   const user = userEvent.setup()
   renderForm({ ...wireDebtNotSetUp, startDate: '2026-03-01' })
 
-  await user.click(screen.getByRole('button', { name: 'Clear the start date' }))
+  const clear = screen.getByRole('button', { name: 'Clear the start date' })
+  const card = startChip().closest('[data-date-chip]')!.parentElement!
+  expect(card.contains(clear)).toBe(true)
+  await user.click(clear)
+  expect(screen.queryByRole('button', { name: 'Clear the start date' })).toBeNull()
   expect(startChip()).toHaveTextContent('Choose a date')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 

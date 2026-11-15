@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { Label } from '@/components/ui/label'
@@ -170,12 +170,17 @@ export function DateField({
           {label}
         </span>
         {hint ? <span className="sr-only">{hint}</span> : null}
-        <span data-date-chip className="flex min-w-0 items-center gap-1">
+        <span data-date-chip className={cn('relative flex min-w-0 items-center', onClear && value && 'pr-6')}>
           <TransactionDatePicker variant="field" label={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
           {onClear && value ? (
-            <Button type="button" variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label={clearLabel} onClick={onClear}>
-              <X className="size-4" />
-            </Button>
+            <button
+              type="button"
+              className="absolute top-1/2 right-0 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+              aria-label={clearLabel}
+              onClick={onClear}
+            >
+              <X className="size-3.5" />
+            </button>
           ) : null}
         </span>
       </div>
