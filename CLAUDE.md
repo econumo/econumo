@@ -2453,8 +2453,8 @@ data unreadable. Most are also asserted by the test suite.
   quiet debt line under the name (`ElementDebtLine`, `debtRow.tsx`; `useDebtSummary`: payments left
   and the payoff month, or "Paid off"; a debt not set up offers whoever may plan "Finish setup"
   and shows nothing to anyone else), opening the review; the item sheet has a Debt section
-  (`sheet-debt`: the summary line only, "N payments left · Paid off by <month>", and Details, or
-  Finish setup); the Plan grid cell shows the debt in
+  (`sheet-debt`, laid out like the comments line: "N payments left" over a muted "Paid off by
+  <month>", and a "Debt details" link, or Finish setup); the Plan grid cell shows the debt in
   force in its month and the red hint. **Create** (`DebtDialog`, opened with `OpenDebtParams`
   `{elementId, budgetId}`) is a short form: payment (`PaymentField`: the amount card and, beside
   it at the same height on every breakpoint, an "every month" schedule card) and schedule; the

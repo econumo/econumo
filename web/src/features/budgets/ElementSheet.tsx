@@ -78,7 +78,7 @@ export function ElementSheet({
   canPlanDebt = false,
 }: ElementSheetProps) {
   const { t, i18n } = useTranslation()
-  const debtSummary = useDebtSummaryText()
+  const debtSummary = useDebtSummaryText({ lines: true })
   if (!target) {
     return null
   }
@@ -189,23 +189,19 @@ export function ElementSheet({
           </p>
         ) : null}
         {debt && onDebtDetails ? (
-          <div className="flex items-start gap-2 border-t pt-3" data-testid="sheet-debt">
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-[13px] text-muted-foreground">{t('budgets.page.debts.section')}</span>
-              {debt.isSetUp === 1 ? (
-                <span className="text-sm">{debtSummary(debt)}</span>
-              ) : (
-                <span className="text-sm text-muted-foreground">{t('budgets.page.debts.not_set_up')}</span>
-              )}
+          // laid out like the comments line below: the text, then a link across from it
+          <div className="flex items-center gap-2 border-t pt-3" data-testid="sheet-debt">
+            <div className="min-w-0 flex-1 text-sm">
+              {debt.isSetUp === 1 ? debtSummary(debt) : <span className="text-muted-foreground">{t('budgets.page.debts.not_set_up')}</span>}
             </div>
             {debt.isSetUp === 0 && canPlanDebt ? (
-              <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => onDebtDetails(debt.id, 'settings')}>
+              <button type="button" className="shrink-0 text-sm font-medium text-econumo-link hover:underline" onClick={() => onDebtDetails(debt.id, 'settings')}>
                 {t('debts.terms.finish_setup')}
-              </Button>
+              </button>
             ) : (
-              <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => onDebtDetails(debt.id, 'overview')}>
-                {t('budgets.page.debts.details')}
-              </Button>
+              <button type="button" className="shrink-0 text-sm font-medium text-econumo-link hover:underline" onClick={() => onDebtDetails(debt.id, 'overview')}>
+                {t('budgets.page.debts.debt_details')}
+              </button>
             )}
           </div>
         ) : null}

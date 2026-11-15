@@ -23,8 +23,24 @@ export function useDebtSummary() {
   }
 }
 
+// every summary joins its parts with " · " in every language: as lines, each part on its own
+function SummaryText({ text, lines }: { text: string | null; lines: boolean }) {
+  if (!lines || text === null) {
+    return <>{text}</>
+  }
+  return (
+    <>
+      {text.split(' · ').map((part, i) => (
+        <span key={i} className={`block ${i > 0 ? 'text-muted-foreground' : ''}`}>
+          {part}
+        </span>
+      ))}
+    </>
+  )
+}
+
 /** "3,000.00 $ left · return by Dec 2027" for a loan with no fixed payments, from the debt list */
-function NoFixedText({ debt, fallback }: { debt: ElementDebtDto; fallback: string | null }) {
+function NoFixedText({ debt, fallback, lines }: { debt: ElementDebtDto; fallback: string | null; lines: boolean }) {
   const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data } = useDebts()
@@ -34,25 +50,28 @@ function NoFixedText({ debt, fallback }: { debt: ElementDebtDto; fallback: strin
   }
   const listed: DebtDto | undefined = data.find((d) => d.id === debt.id)
   if (listed?.schedule !== 'none') {
-    return <>{fallback}</>
+    return <SummaryText text={fallback} lines={lines} />
   }
   const amount = moneyFormat(listed.currentBalance, currencies?.find((c) => c.id === listed.currencyId))
-  return (
-    <>
-      {listed.lastPaymentDate === ''
-        ? t('budgets.page.debts.left', { amount })
-        : t('budgets.page.debts.left_return_by', { amount, date: debtMonth(listed.lastPaymentDate, i18n.language) })}
-    </>
-  )
+  const text =
+    listed.lastPaymentDate === ''
+      ? t('budgets.page.debts.left', { amount })
+      : t('budgets.page.debts.left_return_by', { amount, date: debtMonth(listed.lastPaymentDate, i18n.language) })
+  return <SummaryText text={text} lines={lines} />
 }
 
-/** a debt's summary line; a set-up debt still owed with no payments counted may be a loan with
- *  no fixed payments, which the element's figures cannot tell from the debt list (asked only then) */
-export function useDebtSummaryText() {
+/** a debt's summary line (`lines`: each part on its own line, the first in the foreground);
+ *  a set-up debt still owed with no payments counted may be a loan with no fixed payments,
+ *  which the element's figures cannot tell from the debt list (asked only then) */
+export function useDebtSummaryText({ lines = false }: { lines?: boolean } = {}) {
   const summary = useDebtSummary()
   return (debt: ElementDebtDto): ReactNode => {
     const plain = summary(debt)
-    return debt.isSetUp === 1 && debt.isPaidOff === 0 && debt.paymentsLeft === 0 ? <NoFixedText debt={debt} fallback={plain} /> : plain
+    return debt.isSetUp === 1 && debt.isPaidOff === 0 && debt.paymentsLeft === 0 ? (
+      <NoFixedText debt={debt} fallback={plain} lines={lines} />
+    ) : (
+      <SummaryText text={plain} lines={lines} />
+    )
   }
 }
 

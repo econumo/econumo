@@ -166,7 +166,7 @@ it('on a tablet the cell\'s sheet has a Debt section whose Details opens the rev
   expect(within(sheet).getByTestId('sheet-figure-budget')).toBeInTheDocument()
   const debt = within(sheet).getByTestId('sheet-debt')
   expect(debt).toHaveTextContent('22 payments left')
-  await user.click(within(debt).getByRole('button', { name: 'Details' }))
+  await user.click(within(debt).getByRole('button', { name: 'Debt details' }))
   expect(useUiStore.getState().debtDetailsId).toBe('d1')
   expect(useUiStore.getState().debtDetailsTab).toBe('overview')
 })

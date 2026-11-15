@@ -271,11 +271,11 @@ describe('the Debt section', () => {
     expect(screen.getByTestId('sheet-figure-budget')).toHaveTextContent('Budget200.00')
     expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('Spent45.50')
     const debt = screen.getByTestId('sheet-debt')
-    expect(debt).toHaveTextContent('24 payments left · Paid off by Aug 2027')
+    expect(debt).toHaveTextContent('24 payments leftPaid off by Aug 2027')
     // only the summary line: no month-end balance, no extra-payment effect
     expect(debt).not.toHaveTextContent('23,000.00')
     expect(within(debt).queryByTestId('debt-extra-effect')).toBeNull()
-    await userEvent.click(within(debt).getByRole('button', { name: 'Details' }))
+    await userEvent.click(within(debt).getByRole('button', { name: 'Debt details' }))
     expect(onDebtDetails).toHaveBeenCalledWith('debt-1', 'overview')
   })
 
@@ -306,7 +306,7 @@ describe('the Debt section', () => {
     renderSheet({ target: { kind: 'expense', element: { ...food, debt: fixtureElementDebtNotSetUp() } }, onDebtDetails: vi.fn(), canPlanDebt: false })
     const debt = screen.getByTestId('sheet-debt')
     expect(within(debt).queryByRole('button', { name: 'Finish setup' })).toBeNull()
-    expect(within(debt).getByRole('button', { name: 'Details' })).toBeInTheDocument()
+    expect(within(debt).getByRole('button', { name: 'Debt details' })).toBeInTheDocument()
   })
 
   it('the plan hint follows the scheduled amount', () => {
