@@ -1,0 +1,6 @@
+== get-suggestion-list GET /api/v1/import/get-suggestion-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"0f000000-0000-0000-0000-000000000001","matchField":"external_payee","matchText":"EMPLOYER","type":"income","categoryId":"","payeeId":"20000000-0000-0000-0000-000000000001","transactions":[{"transactionId":"d0000000-0000-0000-0000-000000000002","accountId":"a0000000-0000-0000-0000-000000000001","amount":"1000","currency":"USD","date":"<datetime>","externalPayee":"Employer"}]}]}}
+
+== get-suggestion-list-guest GET /api/v1/import/get-suggestion-list [guest] -> 200
+{"success":true,"message":"","data":{"items":[]}}
+

@@ -690,7 +690,8 @@
       "failed": "Nieudane importy",
       "to_review": "Do przejrzenia",
       "failed_writes": "Niezapisane",
-      "skipped": "Pominięte ({count})"
+      "skipped": "Pominięte ({count})",
+      "suggested_rules": "Sugerowane reguły"
     },
     "due": {
       "overdue": "Zaległe · {date}",
@@ -1018,6 +1019,12 @@
       "reimport": "Importuj ponownie",
       "reimport_hint": "Zaimportuj ją ponownie, aby ją przywrócić lub dopasować do transakcji wprowadzonej przez Ciebie, np. przelewu.",
       "reimported": { "created": "Zaimportowano ponownie", "matched": "Dopasowano do istniejącej transakcji", "queued": "Zaimportowano ponownie; czeka w skrzynce odbiorczej", "skipped": "Nie dodano: pasuje reguła pomijania lub ignorowane konto" }
+    },
+    "suggestions": {
+      "dismiss": "Odrzuć",
+      "hint": "Reguły zasugerowane przez AI dla automatycznie zaimportowanych transakcji. Dotknij reguły, aby ją przejrzeć i zapisać.",
+      "prompt_summary": "Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji",
+      "transactions": "{count} transakcja | {count} transakcje | {count} transakcji"
     }
   },
   "user": {
@@ -1261,6 +1268,12 @@
             "label": "Pomóż ulepszać Econumo",
             "description": "Statystyki użytkowania pokazują nam, które funkcje aplikacji są najpopularniejsze i co warto ulepszyć.",
             "promise": "Twoje dane finansowe i osobowe pozostają prywatne i nie trafiają do statystyk."
+          },
+          "ai": {
+            "menu_item": "Funkcje AI",
+            "label": "Używaj funkcji AI",
+            "description": "AI pomaga utrzymać porządek w finansach i sprawia, że Econumo jest wygodniejsze w użyciu.",
+            "promise": "Twoje dane finansowe i osobowe pozostają prywatne i nie są przekazywane AI."
           }
         }
       }

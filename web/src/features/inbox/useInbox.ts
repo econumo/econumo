@@ -1,17 +1,18 @@
+import { isAxiosError } from 'axios'
 import type { AccountDto } from '@/api/dto/account'
 import { useUnavailableOffline } from '@/lib/offlineQuery'
-import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto } from '@/api/dto/imports'
+import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto, ImportSuggestionDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { Id } from '@/api/types'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { usePendingInvites, type PendingInvite } from '@/features/connections/pendingInvites'
 import { canWriteToAccount } from '@/features/connections/shared'
-import { useImportQueue, useImportSources } from '@/features/imports/queries'
+import { useImportQueue, useImportSources, useImportSuggestions } from '@/features/imports/queries'
 import { useRecurring } from '@/features/recurring/queries'
 import { useFailedWrites, useStoredQueueSettled } from '@/features/pendingWrites/hooks'
 import type { PendingOp } from '@/features/pendingWrites/types'
 import { hiddenFolderAccountIds } from '@/features/transactions/useTransactionForm'
-import { useUserData } from '@/features/user/queries'
+import { userAiOn, useUserData } from '@/features/user/queries'
 import { isFuture } from '@/lib/datetime'
 
 export interface Inbox {
@@ -24,13 +25,15 @@ export interface Inbox {
   failed: ImportFailedEventDto[]
   queued: ImportQueuedEventDto[]
   skipped: ImportQueuedEventDto[]
-  /** failedWrites + dueRecurring + invites + syncProblems + failed + queued; skipped is never counted */
+  /** rules the server proposes for imported transactions; none for a readonly user (who can neither accept nor dismiss them) or one who opted out of AI */
+  suggestions: ImportSuggestionDto[]
+  /** failedWrites + dueRecurring + invites + syncProblems + failed + queued + suggestions; skipped is never counted */
   count: number
   /** the changes stored on this device, the import queue, sources AND recurring have each resolved (success or error) at least once (no "All caught up" flash) */
   isLoaded: boolean
-  /** the import queue or the source list request failed; either section may be showing stale/partial data */
+  /** the import queue, the source list or the suggestion list request failed; any of those sections may be showing stale/partial data */
   importsError: boolean
-  // offline with the import queue or sources never loaded on this device
+  // offline with the import queue, sources or suggestions never loaded on this device
   importsOffline: boolean
   retryImports: () => void
 }
@@ -64,12 +67,16 @@ export function useInbox(): Inbox {
   const { invites } = usePendingInvites()
   const queue = useImportQueue()
   const sources = useImportSources()
-  const importsOffline = useUnavailableOffline(queue, sources)
+  const suggestionList = useImportSuggestions()
+  const { data: user } = useUserData()
+  // a readonly user cannot act on suggestions and one who opted out of AI gets none; either
+  // way they are shown none, so their list never decides the offline notice
+  const noSuggestions = user?.accessLevel === 'readonly' || !userAiOn(user)
+  const importsOffline = useUnavailableOffline(queue, sources, ...(noSuggestions ? [] : [suggestionList]))
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
   const folders = useFolders()
   const foldersKnown = folders.data !== undefined || folders.isError
-  const { data: user } = useUserData()
   // a hidden folder's accounts are out of the way on purpose, so they don't ask for attention
   const hiddenAccountIds = hiddenFolderAccountIds(accounts ?? [], folders.data ?? [])
   // useRecurring already sorts by next payment, so the oldest debt leads
@@ -80,6 +87,11 @@ export function useInbox(): Inbox {
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
   const failed = queue.data?.failed ?? []
+  // a 404 is an older server without the route: there is nothing to suggest (a list cached or
+  // restored from before shows nothing either), not a failure
+  const suggestionsGone = suggestionList.isError && isAxiosError(suggestionList.error) && suggestionList.error.response?.status === 404
+  const suggestions = noSuggestions || suggestionsGone ? [] : (suggestionList.data ?? [])
+  const suggestionsError = !noSuggestions && suggestionList.isError && !suggestionsGone
   return {
     failedWrites,
     dueRecurring,
@@ -88,18 +100,21 @@ export function useInbox(): Inbox {
     failed,
     queued,
     skipped,
-    count: failedWrites.length + dueRecurring.length + invites.length + syncProblems.length + failed.length + queued.length,
+    suggestions,
+    count: failedWrites.length + dueRecurring.length + invites.length + syncProblems.length + failed.length + queued.length + suggestions.length,
     isLoaded:
       storedQueueSettled &&
       (queue.data !== undefined || queue.isError) &&
+      (noSuggestions || suggestionList.data !== undefined || suggestionList.isError) &&
       (sources.data !== undefined || sources.isError) &&
       (recurring.data !== undefined || recurring.isError) &&
       foldersKnown,
-    importsError: !importsOffline && (queue.isError || sources.isError),
+    importsError: !importsOffline && (queue.isError || sources.isError || suggestionsError),
     importsOffline,
     retryImports: () => {
       void queue.refetch()
       void sources.refetch()
+      if (!noSuggestions) void suggestionList.refetch()
     },
   }
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/prompts"
 )
 
 // RateScopeSuggestIcon caps the icon suggestions per user: the forms ask while
@@ -27,11 +28,6 @@ const (
 	suggestIconTimeout   = 8 * time.Second
 	suggestIconCacheSize = 2048
 )
-
-var suggestIconSystem = `You pick the icon for an item a user is naming in their personal budget app. ` +
-	`A category is what money is spent on (type expense) or comes from (type income); ` +
-	`an account is where money is kept (a card, a bank account, cash, savings, an investment). ` + iconRules +
-	`Reply with JSON only, exactly {"icon":"<icon>"}; use "" when no icon fits.`
 
 type suggestIconFacts struct {
 	Timezone string `json:"timezone"`
@@ -51,6 +47,10 @@ func (s *Service) SuggestIcon(ctx context.Context, userID vo.Id, req model.Onboa
 	reqctx.AddLogAttr(ctx, "kind", req.Kind)
 	if s.completer == nil {
 		reqctx.AddLogAttr(ctx, "outcome", "no_ai")
+		return out, nil
+	}
+	if !s.mayAsk(ctx, userID) {
+		reqctx.AddLogAttr(ctx, "outcome", "opted_out")
 		return out, nil
 	}
 	f := s.promptContext(ctx, userID)
@@ -104,7 +104,7 @@ func (s *Service) askIcon(ctx context.Context, userID vo.Id, facts suggestIconFa
 	}
 	callCtx, cancel := context.WithTimeout(ctx, suggestIconTimeout)
 	defer cancel()
-	raw, err := s.completer.Complete(callCtx, userID.String(), suggestIconSystem, string(body))
+	raw, err := s.completer.Complete(callCtx, userID.String(), prompts.SuggestIcon, string(body), suggestIconSchema)
 	if err != nil {
 		return "", err
 	}

@@ -114,24 +114,21 @@ func TestFinishImport_CreatesADebtFromALoanCategory(t *testing.T) {
 	var prompt struct {
 		Timezone, Language string
 		Categories         []struct {
-			ID, Name string
-			Monthly  []string
+			Key, Name string
 		}
 	}
 	if err := json.Unmarshal([]byte(prompts[0]), &prompt); err != nil {
 		t.Fatal(err)
 	}
 	// the expense categories paid in at least two months: never income, archived
-	// or once-paid ones, and never the profile currency
-	asked := map[string][]string{}
+	// or once-paid ones, and never the profile currency, an id or an amount
+	asked := map[string]bool{}
 	for _, c := range prompt.Categories {
-		asked[c.ID] = c.Monthly
+		asked[c.Name] = c.Key != ""
 	}
-	if prompt.Language != "de" || len(asked) != 3 || asked[w.mortgage] == nil || asked[w.food] == nil || asked[w.rent] == nil || strings.Contains(prompts[0], "USD") {
+	if prompt.Language != "de" || len(asked) != 3 || !asked["Hypothek"] || !asked["Lebensmittel"] || !asked["Miete"] || strings.Contains(prompts[0], "USD") ||
+		strings.Contains(prompts[0], w.mortgage) || strings.Contains(prompts[0], "1050") || strings.Contains(prompts[0], "monthly") {
 		t.Fatalf("prompt = %s", prompts[0])
-	}
-	if got := strings.Join(asked[w.mortgage], ","); got != "0,900,950,1050,0,2000" {
-		t.Fatalf("mortgage history = %s", got)
 	}
 	got := e.debts()
 	if len(got) != 1 {
@@ -159,12 +156,12 @@ func TestFinishImport_DebtDetectionFailuresCreateNothing(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			e := newOnbEnv(t, stepNow)
-			w := seedDebtHistory(e)
+			seedDebtHistory(e)
 			e.ai.bySystem = func(system string) (string, error) {
 				if strings.Contains(system, debtsMarker) {
 					return reply(system)
 				}
-				return `{"categories":{"` + w.food + `":"shopping_cart"}}`, nil
+				return `{"savings":[]}`, nil
 			}
 			if status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()}); status != 200 {
 				t.Fatalf("status %d: %v", status, data)
@@ -172,9 +169,9 @@ func TestFinishImport_DebtDetectionFailuresCreateNothing(t *testing.T) {
 			if got := e.debts(); len(got) != 0 {
 				t.Fatalf("debts = %+v", got)
 			}
-			// the other parts still apply
-			if e.icon("categories", w.food) != "shopping_cart" {
-				t.Fatal("the category icon part did not run on its own")
+			// the savings part still runs on its own
+			if n := len(e.ai.promptsFor(`{"savings":`)); n != 1 {
+				t.Fatalf("savings prompts = %d", n)
 			}
 		})
 	}
@@ -223,8 +220,8 @@ func TestSavePlan_CreatesADebtFromAPlannedLoanCategory(t *testing.T) {
 		t.Fatalf("status %d: %v", status, data)
 	}
 	prompts := e.ai.promptsFor(debtsMarker)
-	if len(prompts) != 1 || !strings.Contains(prompts[0], loan) || !strings.Contains(prompts[0], food) ||
-		strings.Contains(prompts[0], lease) || strings.Contains(prompts[0], salary) || strings.Contains(prompts[0], "monthly") {
+	if len(prompts) != 1 || !strings.Contains(prompts[0], `"name":"Kredit"`) || !strings.Contains(prompts[0], `"name":"Food"`) ||
+		strings.Contains(prompts[0], `"name":"Leasing"`) || strings.Contains(prompts[0], `"name":"Salary"`) || strings.Contains(prompts[0], loan) || strings.Contains(prompts[0], "450") {
 		t.Fatalf("prompts = %v", prompts)
 	}
 	got := e.debts()

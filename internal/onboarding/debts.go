@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/prompts"
 )
 
 // Debt detection reads the six complete periods before the current one; after
@@ -22,12 +24,9 @@ const (
 	debtMinPaidMonths = 2
 )
 
-const debtsSystem = `You help set up a personal budget. Find the expense categories that are repayments of a loan: a mortgage, a car loan, a student loan, a personal loan, the instalments of a credit line. Rent, utilities, subscriptions, insurance and credit-card spending are not loan repayments. Names may be in any language; use the user's timezone and language to read local bank and product names. A category may carry "monthly", what was spent in it in each of the last months, oldest first: a loan is usually repaid in steady amounts. Reply with JSON only, exactly {"debts":[{"categoryId":"<id>"}]}, listing only the loan repayments; use an empty list when none is.`
-
 type debtCategory struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	Monthly []string `json:"monthly,omitempty"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
 }
 
 type debtFacts struct {
@@ -133,6 +132,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 
 	prompt := debtFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []debtCategory{}}
 	candidates := map[string]debtCandidate{}
+	keys := ai.NewKeys("c")
 	for _, c := range own {
 		key := strings.ToLower(c.Id)
 		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() || hasDebt[key] {
@@ -160,13 +160,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 		if payment = payment.Round(fd); !positive(payment) {
 			continue
 		}
-		item := debtCategory{ID: c.Id, Name: c.Name}
-		if slices.ContainsFunc(h.Amounts, func(a string) bool { return a != "" }) {
-			for _, a := range h.Amounts {
-				item.Monthly = append(item.Monthly, vo.NewDecimal(orZero(a)).Round(fd).String())
-			}
-		}
-		prompt.Categories = append(prompt.Categories, item)
+		prompt.Categories = append(prompt.Categories, debtCategory{Key: keys.Key(key), Name: c.Name})
 		candidates[key] = debtCandidate{id: vo.MustParseId(c.Id), payment: payment}
 	}
 	if len(candidates) == 0 {
@@ -176,7 +170,10 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 	if err != nil {
 		return err
 	}
-	reply, err := s.completer.Complete(ctx, userID.String(), debtsSystem, string(body))
+	if !s.mayAsk(ctx, userID) {
+		return nil
+	}
+	reply, err := s.completer.Complete(ctx, userID.String(), prompts.Debts, string(body), debtsSchema)
 	if err != nil {
 		return err
 	}
@@ -185,10 +182,14 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 		return MalformedReplyError{}
 	}
 	var firstErr error
-	created := 0
+	created, unknown := 0, 0
 	seen := map[string]bool{}
 	for _, f := range found {
-		key := strings.ToLower(strings.TrimSpace(f.CategoryID))
+		key, issued := keys.ID(f.CategoryKey)
+		if !issued {
+			unknown++
+			continue
+		}
 		c, asked := candidates[key]
 		if !asked || seen[key] {
 			continue
@@ -206,6 +207,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 			slog.DebugContext(ctx, "onboarding debt skipped", "user_id", userID.String(), "category_id", c.id.String())
 		}
 	}
+	ai.LogUnknownKeys(userID.String(), reviewDebts.part, unknown)
 	if created > 0 {
 		slog.InfoContext(ctx, "onboarding debts created", "user_id", userID.String(), "count", created)
 	}
@@ -213,7 +215,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 }
 
 type foundDebt struct {
-	CategoryID string `json:"categoryId"`
+	CategoryKey string `json:"categoryKey"`
 }
 
 // parseDebts reads {"debts":[...]} out of the reply, tolerating a code fence

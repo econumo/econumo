@@ -131,6 +131,12 @@ type IdentityEmailLister interface {
 	ListEmails(ctx context.Context, userID vo.Id) ([]string, error)
 }
 
+// AISuggestionClearer is the imports feature's removal of the user's open AI
+// import suggestions, called when they turn AI off. nil disables it (CLI, tests).
+type AISuggestionClearer interface {
+	ClearSuggestions(ctx context.Context, userID vo.Id) error
+}
+
 // LogoutURLBuilder is the oauth feature's end-session capability, consumed by
 // Logout for sessions minted through the custom OIDC slot. nil disables it.
 type LogoutURLBuilder interface {

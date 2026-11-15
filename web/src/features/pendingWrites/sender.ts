@@ -13,7 +13,7 @@ import { markOnboardingStepDone } from '@/features/onboarding/onboardingProgress
 import { applyTransactionItem } from '@/features/transactions/queries'
 import { consumeFullReload, transactionsQueryFn } from '@/features/transactions/revisionTracking'
 import { apiErrorMessage } from '@/lib/apiError'
-import { invalidateReports } from '@/lib/appQueryClient'
+import { invalidateAfterWrite } from '@/lib/appQueryClient'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
@@ -104,9 +104,9 @@ function applyAcceptedLimit(queryClient: QueryClient, change: LimitChange): void
   )
 }
 
-// The queue is not a mutation, so the MutationCache's report invalidation does not see it.
+// The queue is not a mutation, so the MutationCache's invalidation does not see it.
 function acknowledge(queryClient: QueryClient, change: OpChange): void {
-  invalidateReports(queryClient)
+  invalidateAfterWrite(queryClient)
   noteWrite()
   trackEvent(CONFIRM_METRIC[change.kind])
 }
@@ -130,7 +130,7 @@ function refreshAfterOtherTab(queryClient: QueryClient): void {
   for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.debts, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
     void queryClient.invalidateQueries({ queryKey })
   }
-  invalidateReports(queryClient)
+  invalidateAfterWrite(queryClient)
   noteWrite()
 }
 

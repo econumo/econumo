@@ -89,8 +89,7 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 	w := seedImport(e)
 	e.setProfileCurrency(e.f.Currency(fixture.Currency{Code: "CHF", Symbol: "Fr", Name: "Franc"}))
 	e.ai.reply = func() (string, error) {
-		return "```json\n" + `{"categories":{"` + strings.ToUpper(w.food) + `":"shopping_cart","` + w.salary + `":"not_an_icon","` + w.old + `":"payments","` + w.rent + `":"payments"},` +
-			`"accounts":{"` + w.card + `":"credit_card","` + w.deposit + `":"savings","` + w.savingsCard + `":"savings"},"savings":["` + w.deposit + `","` + fixture.NewID() + `"]}` + "\n```", nil
+		return `{"savings":["` + w.deposit + `","` + fixture.NewID() + `"]}`, nil
 	}
 	if _, err := e.db.Raw.Exec(e.db.Rebind(`UPDATE users SET timezone = ? WHERE id = ?`), "Europe/Berlin", e.user); err != nil {
 		t.Fatal(err)
@@ -124,55 +123,28 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 		t.Fatalf("user = %v", user)
 	}
 
-	// Three requests ran, after the commit: category icons, account icons and
-	// savings, each with timezone and language and never the profile currency.
-	if len(e.ai.prompts) != 3 {
+	// One request ran, after the commit: savings, with timezone and language and
+	// never the profile currency, over every live account. The icons are the
+	// CSV import's to ask for, so none is asked here.
+	if len(e.ai.prompts) != 1 || !strings.Contains(e.ai.systems[0], `{"savings":`) {
 		t.Fatalf("prompts = %d", len(e.ai.prompts))
 	}
-	type reviewPrompt struct {
+	var p struct {
 		Timezone, Language string
-		Categories         []struct{ ID, Name, Type string }
-		Accounts           []struct{ ID, Name, Currency string }
+		Accounts           []struct{ Key, Name, Currency string }
 	}
-	byPart := map[string]reviewPrompt{}
-	for i, raw := range e.ai.prompts {
-		var p reviewPrompt
-		if err := json.Unmarshal([]byte(raw), &p); err != nil {
-			t.Fatal(err)
-		}
-		if p.Language != "de" || p.Timezone != "Europe/Berlin" || strings.Contains(raw, "CHF") {
-			t.Fatalf("prompt %d = %s", i, raw)
-		}
-		switch sys := e.ai.systems[i]; {
-		case strings.Contains(sys, `{"categories":`):
-			byPart["categories"] = p
-			if !strings.Contains(sys, "shopping_cart") || strings.Contains(raw, "Altes") || strings.Contains(raw, "Miete") || !strings.Contains(raw, `"type":"income"`) {
-				t.Fatalf("categories prompt = %s", raw)
-			}
-		case strings.Contains(sys, `{"accounts":`):
-			byPart["accounts"] = p
-			if !strings.Contains(sys, "shopping_cart") {
-				t.Fatal("the account icon prompt does not list the icon catalogue")
-			}
-		case strings.Contains(sys, `{"savings":`):
-			byPart["savings"] = p
-		}
-		if left := time.Until(e.ai.deadlines[i]); left < 60*time.Second {
-			t.Fatalf("request %d has %s left, want its own 90 s budget", i, left)
-		}
+	raw := e.ai.prompts[0]
+	if err := json.Unmarshal([]byte(raw), &p); err != nil {
+		t.Fatal(err)
 	}
-	// category icons: the two still on a default icon; account icons: the three
-	// still on the import icon (Sparbuch has one the user picked); savings: all
-	// four live accounts.
-	if len(byPart["categories"].Categories) != 2 || len(byPart["accounts"].Accounts) != 3 || len(byPart["savings"].Accounts) != 4 {
-		t.Fatalf("parts = %+v", byPart)
+	if p.Language != "de" || p.Timezone != "Europe/Berlin" || strings.Contains(raw, "CHF") || len(p.Accounts) != 4 {
+		t.Fatalf("savings prompt = %s", raw)
 	}
-	if e.icon("categories", w.food) != "shopping_cart" || e.icon("categories", w.salary) != model.DefaultIcon ||
-		e.icon("categories", w.old) != model.ImportCategoryIcon || e.icon("categories", w.rent) != "home" || e.icon("accounts", w.savingsCard) != "pets" {
-		t.Fatalf("category icons: food %s, salary %s, archived %s", e.icon("categories", w.food), e.icon("categories", w.salary), e.icon("categories", w.old))
+	if left := time.Until(e.ai.deadlines[0]); left < 60*time.Second {
+		t.Fatalf("the request has %s left, want its 90 s budget", left)
 	}
-	if e.icon("accounts", w.card) != "credit_card" || e.icon("accounts", w.deposit) != "savings" {
-		t.Fatal("account icons not applied")
+	if e.icon("categories", w.food) != model.ImportCategoryIcon || e.icon("accounts", w.card) != "wallet" {
+		t.Fatal("finish-import repainted an icon")
 	}
 	if !e.isSavings(budget, w.deposit) || e.isSavings(budget, w.card) {
 		t.Fatal("savings flags")
@@ -185,42 +157,8 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 			t.Fatalf("again %d: %v", status, again)
 		}
 	}
-	if e.budgetCount() != 1 || len(e.ai.prompts) != 3 || e.onboarding() != "import" {
+	if e.budgetCount() != 1 || len(e.ai.prompts) != 1 || e.onboarding() != "import" {
 		t.Fatalf("budgets %d, prompts %d, onboarding %q", e.budgetCount(), len(e.ai.prompts), e.onboarding())
-	}
-}
-
-func TestFinishImport_UserEditsWinOverTheAI(t *testing.T) {
-	e := newOnbEnv(t, stepNow)
-	w := seedImport(e)
-	e.ai.reply = func() (string, error) {
-		// the user changes these while the AI is thinking
-		for _, q := range []string{`UPDATE categories SET icon = 'pets', updated_at = '2001-01-01 00:00:00' WHERE id = ?`, `UPDATE accounts SET icon = 'face', updated_at = '2001-01-01 00:00:00' WHERE id = ?`} {
-			id := w.food
-			if strings.Contains(q, "accounts") {
-				id = w.card
-			}
-			if _, err := e.db.Raw.Exec(e.db.Rebind(q), id); err != nil {
-				return "", err
-			}
-		}
-		return `{"categories":{"` + w.food + `":"shopping_cart","` + w.salary + `":"payments"},"accounts":{"` + w.card + `":"credit_card"},"savings":[]}`, nil
-	}
-	if status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()}); status != 200 {
-		t.Fatalf("status %d: %v", status, data)
-	}
-	if e.icon("categories", w.food) != "pets" || e.icon("accounts", w.card) != "face" || e.icon("categories", w.salary) != "payments" {
-		t.Fatalf("icons: food %s, card %s, salary %s", e.icon("categories", w.food), e.icon("accounts", w.card), e.icon("categories", w.salary))
-	}
-	// a failed compare writes nothing at all
-	for _, table := range []string{"categories", "accounts"} {
-		id := w.food
-		if table == "accounts" {
-			id = w.card
-		}
-		if got := e.str(`SELECT updated_at FROM `+table+` WHERE id = ?`, id); !strings.HasPrefix(got, "2001-01-01") {
-			t.Fatalf("%s updated_at = %s", table, got)
-		}
 	}
 }
 
@@ -238,73 +176,42 @@ func TestFinishImport_AIFailuresChangeNothing(t *testing.T) {
 				t.Fatalf("status %d: %v", status, data)
 			}
 			budget := data["budgetId"].(string)
-			if len(e.ai.prompts) != 3 || e.icon("categories", w.food) != model.ImportCategoryIcon || e.icon("accounts", w.deposit) != "wallet" || e.isSavings(budget, w.deposit) {
+			if len(e.ai.prompts) != 1 || e.icon("categories", w.food) != model.ImportCategoryIcon || e.icon("accounts", w.deposit) != "wallet" || e.isSavings(budget, w.deposit) {
 				t.Fatal("a failed job changed something")
 			}
 		})
 	}
 }
 
-// Each request stands alone: one that fails, times out or answers garbage
-// leaves the others to apply.
-func TestFinishImport_EachPartAppliesWhenAnotherFails(t *testing.T) {
-	parts := map[string]string{"categories": `{"categories":`, "accounts": `{"accounts":`, "savings": `{"savings":`}
-	for broken := range parts {
-		for _, how := range []string{"error", "garbage", "panic"} {
-			t.Run(broken+"/"+how, func(t *testing.T) {
-				e := newOnbEnv(t, stepNow)
-				w := seedImport(e)
-				good := `{"categories":{"` + w.food + `":"shopping_cart"},"accounts":{"` + w.card + `":"credit_card"},"savings":["` + w.deposit + `"]}`
-				e.ai.bySystem = func(system string) (string, error) {
-					if strings.Contains(system, parts[broken]) {
-						switch how {
-						case "error":
-							return "", errors.New("provider down")
-						case "panic":
-							panic("boom")
-						}
-						return "not json at all", nil
-					}
-					return good, nil
-				}
-				status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()})
-				if status != 200 {
-					t.Fatalf("status %d: %v", status, data)
-				}
-				budget := data["budgetId"].(string)
-				if got := e.icon("categories", w.food) == "shopping_cart"; got != (broken != "categories") {
-					t.Fatalf("category icon applied = %v", got)
-				}
-				if got := e.icon("accounts", w.card) == "credit_card"; got != (broken != "accounts") {
-					t.Fatalf("account icon applied = %v", got)
-				}
-				if got := e.isSavings(budget, w.deposit); got != (broken != "savings") {
-					t.Fatalf("savings applied = %v", got)
-				}
-			})
-		}
+// A savings request that panics changes nothing and does not fail the step.
+func TestFinishImport_SavingsPanicChangesNothing(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	w := seedImport(e)
+	e.ai.reply = func() (string, error) { panic("boom") }
+	status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()})
+	if status != 200 || e.isSavings(data["budgetId"].(string), w.deposit) {
+		t.Fatalf("status %d: %v", status, data)
 	}
 }
 
-// With a budget already in place the import reuses it: icons still come, but
-// no account turns savings in a budget the user set up.
+// With a budget already in place the import reuses it: no account turns
+// savings in a budget the user set up, and no request is sent at all.
 func TestFinishImport_ExistingBudgetGetsNoSavings(t *testing.T) {
 	e := newOnbEnv(t, stepNow)
 	w := seedImport(e)
 	budget := e.f.Budget(fixture.Budget{UserID: e.user})
 	e.f.BudgetAccount(budget, w.deposit)
 	e.ai.reply = func() (string, error) {
-		return `{"categories":{},"accounts":{"` + w.deposit + `":"savings"},"savings":["` + w.deposit + `"]}`, nil
+		return `{"savings":["` + w.deposit + `"]}`, nil
 	}
 	status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()})
 	if status != 200 || data["budgetId"] != budget || e.budgetCount() != 1 {
 		t.Fatalf("status %d: %v", status, data)
 	}
-	if e.icon("accounts", w.deposit) != "savings" || e.isSavings(budget, w.deposit) {
-		t.Fatal("want the icon, not the savings flag")
+	if e.isSavings(budget, w.deposit) {
+		t.Fatal("savings flag set in a budget the import did not create")
 	}
-	// no savings request is sent for a budget the import did not create
-	if len(e.ai.prompts) != 2 {
+	if len(e.ai.prompts) != 0 {
 		t.Fatalf("prompts = %d", len(e.ai.prompts))
 	}
 }
@@ -649,5 +556,43 @@ func TestGetPlanSuggestions_ADefaultBudgetTheUserCannotPlanSuggestsNothing(t *te
 	status, data := e.get("/api/v1/onboarding/get-plan-suggestions")
 	if status != 200 || data["budgetId"] != "" || len(data["items"].([]any)) != 0 {
 		t.Fatalf("status %d: %v", status, data)
+	}
+}
+
+// A user who opted out of AI gets the step writes with no job at all: no
+// import review after finish-import, no savings classification after
+// save-accounts.
+func TestOnboarding_OptedOutUserStartsNoAIJob(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	off := "0"
+	e.f.Option(e.user, model.OptionAI, &off)
+	seedImport(e)
+	if status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()}); status != 200 {
+		t.Fatalf("finish-import %d: %v", status, data)
+	}
+	body := accountsBody(fixture.NewID(), e.eur, nil, [4]string{"s", "Savings", "100", e.eur})
+	if status, data := e.post("/api/v1/onboarding/save-accounts", body); status != 200 {
+		t.Fatalf("save-accounts %d: %v", status, data)
+	}
+	if len(e.ai.prompts) != 0 {
+		t.Fatalf("prompts = %d", len(e.ai.prompts))
+	}
+}
+
+// Opting out after a job was scheduled but before it calls the provider: no
+// request goes out, for the import's savings job.
+func TestOnboarding_OptOutAfterSchedulingSendsNothing(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	seedImport(e)
+	e.beforeJob = func() {
+		off := "0"
+		e.f.Option(e.user, model.OptionAI, &off)
+		e.beforeJob = nil
+	}
+	if status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()}); status != 200 {
+		t.Fatalf("finish-import %d: %v", status, data)
+	}
+	if len(e.ai.prompts) != 0 {
+		t.Fatalf("prompts = %d", len(e.ai.prompts))
 	}
 }

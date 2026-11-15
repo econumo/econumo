@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureLabels, fixtureUsd, fixtureUser } from '@/test/fixtures'
 import { api } from '@/api/client'
-import { cancelAiRefresh } from '@/features/onboarding/finishImport'
+import { AI_REFRESH_DELAYS_MS, cancelAiRefresh } from '@/features/onboarding/finishImport'
 import { ImportCsvDialog } from './ImportCsvDialog'
 
 const CSV = 'Account,Date,Amount,Category,Description\nCash,2026-01-02,-5.5,Food,coffee\nBank,2026-01-03,100,Salary,pay\n'
@@ -161,6 +161,55 @@ describe('during onboarding', () => {
   it('sends nothing once the import step is done or onboarding is over', async () => {
     expect(await importWith('import')).toEqual([])
     expect(await importWith('completed')).toEqual([])
+  })
+})
+
+describe('AI icons after an import', () => {
+  async function importAndCountRefreshes(aiOption: string | null, aiEnabled = true) {
+    window.econumoConfig = { AI_ENABLED: aiEnabled }
+    const user = { ...fixtureUser, options: aiOption === null ? fixtureUser.options : [...fixtureUser.options, { name: 'ai', value: aiOption }] }
+    server.use(
+      ...coreHandlers({ user }),
+      http.post('*/api/v1/transaction/import-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } })),
+    )
+    const { queryClient, onComplete } = renderDialog()
+    queryClient.setQueryData(['user'], user)
+    const ui = await uploadCsv()
+    await screen.findByText(/Map the columns/)
+    await ui.click(screen.getByRole('button', { name: 'Import' }))
+    await waitFor(() => expect(onComplete).toHaveBeenCalled())
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const categoryRefreshes = () => invalidate.mock.calls.filter(([f]) => JSON.stringify(f?.queryKey) === JSON.stringify(['categories'])).length
+    return { categoryRefreshes }
+  }
+
+  afterEach(() => {
+    cancelAiRefresh()
+    vi.useRealTimers()
+  })
+
+  it('refetches the lists at each AI refresh delay after any import', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { categoryRefreshes } = await importAndCountRefreshes(null)
+    let elapsed = 0
+    for (const [i, delay] of AI_REFRESH_DELAYS_MS.entries()) {
+      await vi.advanceTimersByTimeAsync(delay - elapsed)
+      elapsed = delay
+      expect(categoryRefreshes()).toBe(i + 1)
+    }
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(categoryRefreshes()).toBe(AI_REFRESH_DELAYS_MS.length)
+  })
+
+  it('schedules nothing for a user who turned AI off, or without AI on the server', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const off = await importAndCountRefreshes('0')
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(off.categoryRefreshes()).toBe(0)
+    cleanup()
+    const noAi = await importAndCountRefreshes(null, false)
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(noAi.categoryRefreshes()).toBe(0)
   })
 })
 

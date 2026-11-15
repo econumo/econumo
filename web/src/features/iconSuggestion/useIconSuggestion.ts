@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
+import { QueryClientContext } from '@tanstack/react-query'
+import type { CurrentUserDto } from '@/api/dto/user'
 import { suggestIcon, type SuggestIconParams } from '@/api/onboarding'
 import { useOnline } from '@/hooks/useOnline'
+import { queryKeys } from '@/app/queryKeys'
+import { userAiOn } from '@/features/user/queries'
 import { isAiEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId } from '@/lib/storage'
@@ -16,13 +20,17 @@ const NAME_MIN = 2
 const NAME_MAX = 64
 
 // The icon the server's AI suggests for a name being typed, once the typing has paused; null
-// while there is none. Without an AI provider (or offline) it asks nothing at all.
+// while there is none. Without an AI provider, with the user's AI option off, or offline it asks
+// nothing at all.
 export function useIconSuggestion({ kind, name, type, currency, enabled }: IconSuggestionOptions): string | null {
   const online = useOnline()
+  // read from the cache on every render (no fetch, and no provider needed): an opt-out applies
+  // from the next keystroke
+  const aiOn = userAiOn(useContext(QueryClientContext)?.getQueryData<CurrentUserDto>(queryKeys.user))
   const trimmed = name.trim()
   const length = [...trimmed].length
   const key =
-    enabled && online && isAiEnabled() && length >= NAME_MIN && length <= NAME_MAX
+    enabled && online && isAiEnabled() && aiOn && length >= NAME_MIN && length <= NAME_MAX
       ? [getSessionUserId() ?? '', kind, type ?? '', currency ?? '', trimmed.toLowerCase()].join('\0')
       : null
   const [answered, setAnswered] = useState<{ key: string; icon: string } | null>(null)

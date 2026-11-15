@@ -105,6 +105,16 @@ func TestSuggestIcon_OverTheLimitSuggestsNothing(t *testing.T) {
 	}
 }
 
+func TestSuggestIcon_OptedOutAsksNothingAndCountsNothing(t *testing.T) {
+	c := replying(`{"icon":"house"}`)
+	limiter := &countingLimiter{}
+	svc := onboarding.NewService(&fakeBudgets{}, fakeAccounts{}, fakeTimezones{aiOff: true})
+	svc.SetAdvisor(c, limiter)
+	if icon := suggest(t, svc, context.Background(), mortgage); icon != "" || c.calls != 0 || len(limiter.scopes) != 0 {
+		t.Fatalf("icon %q, calls %d, counted %d", icon, c.calls, len(limiter.scopes))
+	}
+}
+
 func TestSuggestIcon_CachesPerUserNameAndLanguage(t *testing.T) {
 	c := replying(`{"icon":"house"}`)
 	limiter := &countingLimiter{}
@@ -113,8 +123,8 @@ func TestSuggestIcon_CachesPerUserNameAndLanguage(t *testing.T) {
 	suggest(t, svc, ctx, mortgage)
 	again := mortgage
 	again.Name = "hypothek"
-	if icon := suggest(t, svc, ctx, again); icon != "house" || c.calls != 1 || limiter.n != 1 {
-		t.Fatalf("icon %q, calls %d, counted %d", icon, c.calls, limiter.n)
+	if icon := suggest(t, svc, ctx, again); icon != "house" || c.calls != 1 || len(limiter.scopes) != 1 {
+		t.Fatalf("icon %q, calls %d, counted %d", icon, c.calls, len(limiter.scopes))
 	}
 	// another language, kind, type or user asks again
 	suggest(t, svc, reqctx.WithLanguage(context.Background(), "fr"), mortgage)

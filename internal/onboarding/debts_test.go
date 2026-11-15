@@ -2,6 +2,10 @@ package onboarding_test
 
 import (
 	"context"
+	"encoding/json"
+	"reflect"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
@@ -21,7 +25,7 @@ func (fakeDebtCurrencies) FractionDigits(context.Context, string) (int, error) {
 
 // newDebtSvc answers the debt detection with a debt for the loan category.
 func newDebtSvc(debts *fakeDebts) *onboarding.Service {
-	svc, _ := newSvc(replying(`{"debts":[{"categoryId":"`+cash+`"}]}`), nil)
+	svc, _ := newSvc(replying(`{"debts":[{"categoryKey":"c1"}]}`), nil)
 	svc.SetSteps(onboarding.Steps{Categories: fakeCategorySteps{}, Budgets: fakeDebtBudgets{}, Currencies: fakeDebtCurrencies{}})
 	svc.SetDebts(debts)
 	return svc
@@ -51,12 +55,68 @@ func TestDetectDebts_SkipsARefusedCategory(t *testing.T) {
 // never asked about: with no other candidate the AI is not called at all.
 func TestDetectDebts_SkipsACategoryWithADebt(t *testing.T) {
 	debts := &fakeDebts{existing: ids(cash)}
-	ai := replying(`{"debts":[{"categoryId":"` + cash + `"}]}`)
+	ai := replying(`{"debts":[{"categoryKey":"c1"}]}`)
 	svc, _ := newSvc(ai, nil)
 	svc.SetSteps(onboarding.Steps{Categories: fakeCategorySteps{}, Budgets: fakeDebtBudgets{}, Currencies: fakeDebtCurrencies{}})
 	svc.SetDebts(debts)
 	svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
 	if ai.calls != 0 || debts.calls != 0 {
 		t.Fatalf("AI calls %d, create calls %d; want neither", ai.calls, debts.calls)
+	}
+}
+
+// An opt-out before or after the job was scheduled sends nothing and creates
+// no debt.
+func TestDetectDebts_OptOutSendsNothing(t *testing.T) {
+	for name, users := range map[string]onboarding.UserFacts{"before": fakeTimezones{aiOff: true}, "after scheduling": &optOutAfter{n: 1}} {
+		t.Run(name, func(t *testing.T) {
+			debts := &fakeDebts{}
+			ai := replying(`{"debts":[{"categoryKey":"c1"}]}`)
+			svc := onboarding.NewService(&fakeBudgets{}, fakeAccounts{}, users)
+			svc.SetAdvisor(ai, nil)
+			svc.SetRunner(func(job func()) { job() })
+			svc.SetSteps(onboarding.Steps{Categories: fakeCategorySteps{}, Budgets: fakeDebtBudgets{}, Currencies: fakeDebtCurrencies{}})
+			svc.SetDebts(debts)
+			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
+			if ai.calls != 0 || debts.calls != 0 {
+				t.Fatalf("AI calls %d, create calls %d", ai.calls, debts.calls)
+			}
+		})
+	}
+}
+
+// The debt prompt carries only the data allowlist: category names under
+// per-request keys, the timezone and the language; never an id or an amount.
+func TestDetectDebts_PromptCarriesOnlyTheAllowlist(t *testing.T) {
+	c := replying(`{"debts":[]}`)
+	svc, _ := newSvc(c, nil)
+	svc.SetSteps(onboarding.Steps{Categories: fakeCategorySteps{}, Budgets: fakeDebtBudgets{}, Currencies: fakeDebtCurrencies{}})
+	svc.SetDebts(&fakeDebts{})
+	svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
+	var sent map[string]any
+	if err := json.Unmarshal([]byte(c.user), &sent); err != nil {
+		t.Fatal(err)
+	}
+	keysOf := func(m map[string]any) []string {
+		var out []string
+		for k := range m {
+			out = append(out, k)
+		}
+		sort.Strings(out)
+		return out
+	}
+	if got := keysOf(sent); !reflect.DeepEqual(got, []string{"categories", "language", "timezone"}) {
+		t.Fatalf("prompt keys = %v", got)
+	}
+	cats := sent["categories"].([]any)
+	if len(cats) != 1 {
+		t.Fatalf("categories = %v", cats)
+	}
+	cat := cats[0].(map[string]any)
+	if got := keysOf(cat); !reflect.DeepEqual(got, []string{"key", "name"}) || cat["key"] != "c1" || cat["name"] != "Loan" {
+		t.Fatalf("category = %v", cat)
+	}
+	if strings.Contains(c.user, cash) || strings.Contains(c.user, "450") {
+		t.Fatalf("prompt leaks an id or an amount: %s", c.user)
 	}
 }

@@ -134,7 +134,7 @@ it("a category created on someone else's account asks for no icon", async () => 
 it('without a known session user the cached user decides', async () => {
   removeToken()
   const { queryClient, result } = setup()
-  queryClient.setQueryData(queryKeys.user, { id: 'u1' })
+  queryClient.setQueryData(queryKeys.user, { id: 'u1', options: [] })
   await result.current.mutateAsync({ name: 'Mortgage', type: 'expense' })
   await waitFor(() => expect(asked).toBe(1))
 })

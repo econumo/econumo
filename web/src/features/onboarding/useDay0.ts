@@ -224,11 +224,11 @@ export function useDay0() {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
         // the AI turns planned loan categories into debts in the background
-        if (userId) scheduleAiRefresh(queryClient, userId)
+        scheduleAiRefresh(queryClient)
       }
       trackEvent(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: amounts.length })
     },
-    [runStep, queryClient, userId],
+    [runStep, queryClient],
   )
 
   return { draft, ready: Boolean(user) && !accountsQuery.isPending, finishImport, saveCategories, saveAccounts, savePlan, pending, error }

@@ -269,3 +269,43 @@ JOIN transactions t ON t.id = l.transaction_id
 JOIN accounts a ON a.id = t.account_id
 WHERE a.user_id = $1 AND s.user_id <> a.user_id
 ORDER BY l.imported_at, l.id;
+
+-- name: InsertImportSuggestion :exec
+INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+
+-- name: TouchOpenImportSuggestion :execrows
+UPDATE import_suggestions SET updated_at = $1 WHERE id = $2 AND status = 'open';
+
+-- name: InsertImportSuggestionLink :exec
+INSERT INTO import_suggestion_links (suggestion_id, link_id) VALUES ($1, $2) ON CONFLICT (suggestion_id, link_id) DO NOTHING;
+
+-- name: GetImportSuggestionByID :one
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+FROM import_suggestions
+WHERE id = $1;
+
+-- name: ListOpenImportSuggestionsByUser :many
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+FROM import_suggestions
+WHERE user_id = $1 AND status = 'open'
+ORDER BY created_at, id;
+
+-- name: ListImportSuggestionLinks :many
+SELECT suggestion_id, link_id FROM import_suggestion_links WHERE suggestion_id = $1 ORDER BY link_id;
+
+-- name: ListOpenImportSuggestionLinksByUser :many
+SELECT sl.suggestion_id, sl.link_id
+FROM import_suggestion_links sl
+JOIN import_suggestions s ON s.id = sl.suggestion_id
+WHERE s.user_id = $1 AND s.status = 'open'
+ORDER BY sl.suggestion_id, sl.link_id;
+
+-- name: LockImportSuggestion :execrows
+UPDATE import_suggestions SET status = status WHERE id = $1;
+
+-- name: DeleteImportSuggestionLink :exec
+DELETE FROM import_suggestion_links WHERE suggestion_id = $1 AND link_id = $2;
+
+-- name: DeleteImportSuggestion :exec
+DELETE FROM import_suggestions WHERE id = $1;

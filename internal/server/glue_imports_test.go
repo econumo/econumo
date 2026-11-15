@@ -12,6 +12,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 type stubAccounts struct {
@@ -335,3 +336,36 @@ func TestTransactionImportCategories_MarksIncomeCategories(t *testing.T) {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 }
+
+func TestImportsOwnerFacts(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.NewSQLite(t)
+	now := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	f := fixture.New(t, db).At(now)
+	expired := now.Add(-time.Hour)
+	lapsed := f.User(fixture.User{Email: "lapsed@example.test", AccessUntil: &expired})
+	active := f.User(fixture.User{Email: "active@example.test"})
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET language = ?, timezone = ? WHERE id = ?`), "de", "Europe/Berlin", lapsed); err != nil {
+		t.Fatal(err)
+	}
+	facts := NewImportsOwnerFacts(userrepo.NewRepo("sqlite", db.TX), fixedImportsClock{now})
+
+	off := "0"
+	optedOut := f.User(fixture.User{Email: "optout@example.test"})
+	f.Option(optedOut, model.OptionAI, &off)
+
+	o, err := facts.OwnerFacts(ctx, vo.MustParseId(lapsed))
+	if err != nil || o.Language != "de" || o.Timezone != "Europe/Berlin" || !o.Readonly || o.AIOff {
+		t.Fatalf("lapsed = %+v %v", o, err)
+	}
+	if o, err := facts.OwnerFacts(ctx, vo.MustParseId(active)); err != nil || o.Readonly || o.AIOff {
+		t.Fatalf("active = %+v %v", o, err)
+	}
+	if o, err := facts.OwnerFacts(ctx, vo.MustParseId(optedOut)); err != nil || !o.AIOff {
+		t.Fatalf("opted out = %+v %v", o, err)
+	}
+}
+
+type fixedImportsClock struct{ t time.Time }
+
+func (c fixedImportsClock) Now() time.Time { return c.t }

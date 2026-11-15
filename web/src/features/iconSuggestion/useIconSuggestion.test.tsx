@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react
 import type { ReactNode } from 'react'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureUser } from '@/test/fixtures'
+import { queryKeys } from '@/app/queryKeys'
 import { useIconSuggestion, type IconSuggestionOptions } from './useIconSuggestion'
 
 let asked: URLSearchParams[]
@@ -21,8 +22,9 @@ function serve(icon: (name: string) => string = () => 'house') {
   )
 }
 
-function renderSuggestion(initial: IconSuggestionOptions) {
+function renderSuggestion(initial: IconSuggestionOptions, user?: typeof fixtureUser) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  if (user) queryClient.setQueryData(queryKeys.user, user)
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   return renderHook((opts: IconSuggestionOptions) => useIconSuggestion(opts), { initialProps: initial, wrapper })
 }
@@ -75,6 +77,15 @@ it('asks nothing for a short name, while disabled, offline, or without AI', asyn
   onlineManager.setOnline(true)
   window.econumoConfig = {}
   rerender({ kind: 'category', name: 'Rent', enabled: true })
+  await settle()
+  expect(asked).toHaveLength(0)
+  expect(result.current).toBeNull()
+})
+
+it('asks nothing while the user has turned AI off', async () => {
+  serve()
+  const optedOut = { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] }
+  const { result } = renderSuggestion({ kind: 'category', name: 'Mortgage', enabled: true }, optedOut)
   await settle()
   expect(asked).toHaveLength(0)
   expect(result.current).toBeNull()

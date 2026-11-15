@@ -6,6 +6,7 @@ import (
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -27,8 +28,17 @@ func TestOnboardingAccountReader(t *testing.T) {
 	if len(got) != 2 || got[0].Name != "Wallet" || got[0].CurrencyCode != "USD" || got[0].OwnerID != u || got[0].IsDeleted || !got[1].IsDeleted {
 		t.Fatalf("got %+v", got)
 	}
-	tz, err := server.NewOnboardingTimezones(userrepo.NewRepo(db.Engine, db.TX)).StoredTimezone(context.Background(), vo.MustParseId(u))
+	facts := server.NewOnboardingUserFacts(userrepo.NewRepo(db.Engine, db.TX))
+	tz, err := facts.StoredTimezone(context.Background(), vo.MustParseId(u))
 	if err != nil || tz != "" {
 		t.Fatalf("tz = %q, err = %v", tz, err)
+	}
+	if off, err := facts.AIOptedOut(context.Background(), vo.MustParseId(u)); err != nil || off {
+		t.Fatalf("absent option: off = %v, err = %v", off, err)
+	}
+	no := "0"
+	f.Option(u, model.OptionAI, &no)
+	if off, err := facts.AIOptedOut(context.Background(), vo.MustParseId(u)); err != nil || !off {
+		t.Fatalf("opted out: off = %v, err = %v", off, err)
 	}
 }
