@@ -140,11 +140,11 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
   return (
     <section data-testid="debt-rates-card" aria-label={t('debts.rates.title')} className="flex flex-col gap-3">
       <div className="rounded-lg bg-econumo-card px-4 py-1.5">
-        <div data-testid="debt-rate-summary" className="flex items-baseline justify-between gap-3 pb-3 pt-1.5">
+        <div data-testid="debt-rate-summary" className="flex items-center justify-between gap-3 pb-3 pt-1.5">
           <span className="text-sm text-muted-foreground">{t('debts.rates.title')}</span>
-          <span className="text-right text-sm">
-            {percent(prefillRate, lang)}
-            <span className="ml-2 text-xs text-muted-foreground">{t('debts.rates.per_month', { amount: amount(prefillPayment) })}</span>
+          <span className="flex shrink-0 flex-col items-end gap-0.5">
+            <span className="text-2xl tabular-nums">{percent(prefillRate, lang)}</span>
+            <span className="text-sm text-muted-foreground">{t('debts.rates.per_month', { amount: amount(prefillPayment) })}</span>
           </span>
         </div>
         <table className="w-full border-t border-border text-sm">

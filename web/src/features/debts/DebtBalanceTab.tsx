@@ -91,14 +91,14 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
     <div className="flex flex-col gap-5">
       {readOnly ? null : <OfflineNotice />}
       <div data-testid="debt-balance-card" className="rounded-lg bg-econumo-card px-4 py-1.5">
-        <div data-testid="debt-balance-summary" className="flex items-baseline justify-between gap-3 pb-1 pt-1.5">
-          <span className="text-sm text-muted-foreground">{t('debts.balance.econumo')}</span>
-          <span className="text-right text-sm">{amount(item.currentBalance)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-3 pb-3">
-          <p data-testid="debt-balance-hint" className="min-w-0 text-sm text-muted-foreground">
-            {t(isNoFixed(item.schedule) ? 'debts.balance.hint_none' : 'debts.balance.hint')}
-          </p>
+        <div data-testid="debt-balance-summary" className="flex items-center justify-between gap-3 pb-3 pt-1.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-sm text-muted-foreground">{t('debts.balance.econumo')}</span>
+            <p data-testid="debt-balance-hint" className="text-sm text-muted-foreground">
+              {t(isNoFixed(item.schedule) ? 'debts.balance.hint_none' : 'debts.balance.hint')}
+            </p>
+          </div>
+          <span className="shrink-0 text-right text-2xl tabular-nums">{amount(item.currentBalance)}</span>
         </div>
         <table className="w-full border-t border-border text-sm">
         <thead>

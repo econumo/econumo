@@ -99,7 +99,7 @@ function menuEntry(a: MenuAction): ReactNode {
       <Fragment key={a.label}>
         {separator}
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="whitespace-nowrap text-econumo-link focus:text-econumo-link data-open:text-econumo-link">{a.label}</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger className="whitespace-nowrap font-semibold">{a.label}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="min-w-44">{a.children.map(menuEntry)}</DropdownMenuSubContent>
         </DropdownMenuSub>
       </Fragment>

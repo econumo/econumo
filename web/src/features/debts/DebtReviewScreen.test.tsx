@@ -1056,7 +1056,7 @@ it('the Balance tab is one card: balance today, a hint with the button, and the 
   const panel = await openBalance(user)
 
   const card = within(panel).getByTestId('debt-balance-card')
-  expect(within(card).getByTestId('debt-balance-summary')).toHaveTextContent('Balance today990.00 $')
+  expect(within(card).getByTestId('debt-balance-summary')).toHaveTextContent('990.00 $')
   expect(within(card).getByTestId('debt-balance-hint')).toHaveTextContent('Compare it with your bank statement.')
   expect(within(card).getByRole('button', { name: 'Add a statement' })).toBeInTheDocument()
   expect(within(card).getByTestId('debt-balance-hint')).not.toContainElement(within(card).getByRole('button', { name: 'Add a statement' }))
