@@ -1840,7 +1840,6 @@
         "past_title": "Eerdere schulden",
         "borrowed": "Geleend: {amount}",
         "section": "Schuld",
-        "left_at_end": "Nog te betalen aan het einde van de maand: {amount}",
         "not_set_up": "Nog niet ingesteld"
       },
       "phone": {

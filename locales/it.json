@@ -1840,7 +1840,6 @@
         "past_title": "Debiti passati",
         "borrowed": "Preso in prestito: {amount}",
         "section": "Debito",
-        "left_at_end": "Ancora da pagare a fine mese: {amount}",
         "not_set_up": "Non ancora configurato"
       },
       "phone": {

@@ -11,7 +11,6 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import type { DebtDetailsTab } from '@/app/uiStore'
-import { DebtExtraNote } from './debtRow'
 import { useDebtSummaryText } from './debtSummary'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
@@ -194,13 +193,7 @@ export function ElementSheet({
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="text-[13px] text-muted-foreground">{t('budgets.page.debts.section')}</span>
               {debt.isSetUp === 1 ? (
-                <>
-                  <span className="text-sm">{debtSummary(debt)}</span>
-                  {debt.isPaidOff === 0 ? (
-                    <span className="text-xs text-muted-foreground">{t('budgets.page.debts.left_at_end', { amount: fmt(debt.closingBalance) })}</span>
-                  ) : null}
-                  <DebtExtraNote row={debt} currency={currency} />
-                </>
+                <span className="text-sm">{debtSummary(debt)}</span>
               ) : (
                 <span className="text-sm text-muted-foreground">{t('budgets.page.debts.not_set_up')}</span>
               )}

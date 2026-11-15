@@ -1840,7 +1840,6 @@
         "past_title": "Прошлые долги",
         "borrowed": "Взято в долг: {amount}",
         "section": "Долг",
-        "left_at_end": "Осталось выплатить на конец месяца: {amount}",
         "not_set_up": "Ещё не настроен"
       },
       "phone": {

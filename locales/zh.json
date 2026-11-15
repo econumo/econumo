@@ -1840,7 +1840,6 @@
         "past_title": "过往债务",
         "borrowed": "借款 {amount}",
         "section": "债务",
-        "left_at_end": "月末待还：{amount}",
         "not_set_up": "尚未设置"
       },
       "phone": {

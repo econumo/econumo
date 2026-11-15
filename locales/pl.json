@@ -1840,7 +1840,6 @@
         "past_title": "Poprzednie długi",
         "borrowed": "Pożyczono: {amount}",
         "section": "Dług",
-        "left_at_end": "Do zapłaty na koniec miesiąca: {amount}",
         "not_set_up": "Jeszcze nie skonfigurowano"
       },
       "phone": {

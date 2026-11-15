@@ -2601,8 +2601,9 @@ a second budget member account in USD, before running these.
       payoff month (e.g. "36 payments left · paid off by Mar 2029"), opening the debt's
       review; a debt not set up shows "Finish setup" to anyone who may plan and nothing to a
       guest; a paid-off debt reads "Paid off" in the period it was paid off or before and the row
-      shows no debt in later periods. On a phone the item sheet has a Debt section (summary,
-      balance at the end of the month, Details, or Finish setup); on the Plan grid each cell
+      shows no debt in later periods. On a phone the item sheet has a Debt section (the summary
+      line only, with no month-end balance or "paid off N months earlier" line, Details, or
+      Finish setup); on the Plan grid each cell
       shows the debt in force in its own month. Spent, Planned and Available figures are the
       element's own in every case.
 - [ ] 📱 **Past months show the debt then**: in a month the debt was in force the row shows it, in

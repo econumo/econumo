@@ -272,9 +272,9 @@ describe('the Debt section', () => {
     expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('Spent45.50')
     const debt = screen.getByTestId('sheet-debt')
     expect(debt).toHaveTextContent('24 payments left · Paid off by Aug 2027')
-    expect(debt).toHaveTextContent('23,000.00')
-    // what the planned extras buy
-    expect(within(debt).getByTestId('debt-extra-effect')).toBeInTheDocument()
+    // only the summary line: no month-end balance, no extra-payment effect
+    expect(debt).not.toHaveTextContent('23,000.00')
+    expect(within(debt).queryByTestId('debt-extra-effect')).toBeNull()
     await userEvent.click(within(debt).getByRole('button', { name: 'Details' }))
     expect(onDebtDetails).toHaveBeenCalledWith('debt-1', 'overview')
   })

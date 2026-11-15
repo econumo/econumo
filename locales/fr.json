@@ -1840,7 +1840,6 @@
         "past_title": "Dettes passées",
         "borrowed": "Emprunté : {amount}",
         "section": "Dette",
-        "left_at_end": "Reste à payer en fin de mois : {amount}",
         "not_set_up": "Pas encore configurée"
       },
       "phone": {

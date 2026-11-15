@@ -468,7 +468,7 @@ describe('the item sheet of an element carrying a debt', () => {
     const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
     renderPage()
     const debt = await openSheet(user)
-    expect(debt).toHaveTextContent('23,000.00')
+    expect(debt).not.toHaveTextContent('23,000.00')
     await user.click(within(debt).getByRole('button', { name: 'Details' }))
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     expect(useUiStore.getState().debtDetailsTab).toBe('overview')
