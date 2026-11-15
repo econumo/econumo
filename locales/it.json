@@ -558,22 +558,16 @@
       "finish_setup": "Completa la configurazione"
     },
     "balance": {
-      "econumo": "Saldo di Econumo oggi",
-      "econumo_hint": "Quanto devi ancora secondo Econumo: l'importo preso in prestito meno ciò che i tuoi pagamenti registrati hanno estinto, contato dall'ultimo estratto conto se ne hai inserito uno. Confrontalo con l'estratto conto del tuo finanziatore.",
-      "econumo_hint_none": "Quanto devi ancora secondo Econumo: l'importo preso in prestito meno i pagamenti che hai registrato.",
+      "econumo": "Saldo di oggi",
+      "hint": "Confrontalo con l'estratto conto.",
+      "hint_none": "Confrontalo con quanto concordato.",
       "enter": "Inserisci un estratto conto",
-      "no_statement": "Nessun estratto conto ancora. Confronta con l'estratto conto del tuo finanziatore ogni pochi mesi.",
-      "last_statement": "Ultimo estratto conto",
-      "statement_on": "{amount} il {date}",
-      "difference": "Differenza",
       "form": {
-        "hint": "Inserisci il capitale ancora dovuto secondo l'estratto conto del tuo finanziatore. Dalla sua data Econumo parte da lì, e le rate dovute fino ad allora contano come pagate; gli interessi dall'ultimo pagamento vengono addebitati alla rata successiva, per un periodo intero.",
         "balance": "Saldo dell'estratto conto",
         "date": "Data dell'estratto conto",
         "date_range": "Scegli una data successiva alla data di inizio e non oltre oggi. Per cambiare l'importo preso in prestito, correggilo nelle impostazioni.",
         "save": "Riconcilia"
       },
-      "history": "Estratti conto",
       "column": {
         "date": "Data",
         "statement": "Estratto conto",

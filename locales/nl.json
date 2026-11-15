@@ -558,22 +558,16 @@
       "finish_setup": "Instellen voltooien"
     },
     "balance": {
-      "econumo": "Saldo in Econumo vandaag",
-      "econumo_hint": "Wat u volgens Econumo nog verschuldigd bent: het geleende bedrag min wat uw geregistreerde betalingen hebben afgelost, geteld vanaf uw laatste afschrift als u er een hebt ingevoerd. Vergelijk het met het afschrift van uw kredietverstrekker.",
-      "econumo_hint_none": "Wat u volgens Econumo nog verschuldigd bent: het geleende bedrag min de betalingen die u hebt geregistreerd.",
+      "econumo": "Saldo vandaag",
+      "hint": "Vergelijk het met uw bankafschrift.",
+      "hint_none": "Vergelijk het met wat u hebt afgesproken.",
       "enter": "Afschrift invoeren",
-      "no_statement": "Nog geen afschrift. Vergelijk om de paar maanden met het afschrift van uw kredietverstrekker.",
-      "last_statement": "Laatste afschrift",
-      "statement_on": "{amount} op {date}",
-      "difference": "Verschil",
       "form": {
-        "hint": "Vul de nog openstaande hoofdsom van het afschrift van uw kredietverstrekker in. Vanaf die datum rekent Econumo daarmee, en de termijnen tot dan gelden als betaald; rente sinds de laatste betaling wordt bij de volgende betaling voor een volledige periode berekend.",
         "balance": "Saldo volgens afschrift",
         "date": "Datum van het afschrift",
         "date_range": "Kies een datum na de startdatum en uiterlijk vandaag. Wilt u het geleende bedrag wijzigen, corrigeer het dan in de instellingen.",
         "save": "Afstemmen"
       },
-      "history": "Afschriften",
       "column": {
         "date": "Datum",
         "statement": "Afschrift",

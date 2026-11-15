@@ -558,22 +558,16 @@
       "finish_setup": "Einrichtung abschließen"
     },
     "balance": {
-      "econumo": "Saldo in Econumo heute",
-      "econumo_hint": "Was Sie laut Econumo noch schulden: der geliehene Betrag abzüglich dessen, was Ihre erfassten Zahlungen getilgt haben, ab Ihrem letzten Kontoauszug gerechnet, falls Sie einen eingegeben haben. Vergleichen Sie ihn mit dem Kontoauszug Ihres Kreditgebers.",
-      "econumo_hint_none": "Was Sie laut Econumo noch schulden: der geliehene Betrag abzüglich der von Ihnen erfassten Zahlungen.",
+      "econumo": "Saldo heute",
+      "hint": "Vergleichen Sie ihn mit Ihrem Kontoauszug.",
+      "hint_none": "Vergleichen Sie ihn mit dem Vereinbarten.",
       "enter": "Kontoauszug eingeben",
-      "no_statement": "Noch kein Kontoauszug. Vergleichen Sie alle paar Monate mit dem Kontoauszug Ihres Kreditgebers.",
-      "last_statement": "Letzter Kontoauszug",
-      "statement_on": "{amount} am {date}",
-      "difference": "Differenz",
       "form": {
-        "hint": "Geben Sie die noch offene Restschuld laut Kontoauszug Ihres Kreditgebers ein. Ab seinem Datum rechnet Econumo damit, und die bis dahin fälligen Raten gelten als bezahlt; Zinsen seit der letzten Zahlung werden mit der nächsten Rate für eine volle Periode berechnet.",
         "balance": "Saldo laut Kontoauszug",
         "date": "Datum des Kontoauszugs",
         "date_range": "Wählen Sie ein Datum nach dem Startdatum und spätestens heute. Um den geliehenen Betrag zu ändern, korrigieren Sie ihn in den Einstellungen.",
         "save": "Abgleichen"
       },
-      "history": "Kontoauszüge",
       "column": {
         "date": "Datum",
         "statement": "Kontoauszug",

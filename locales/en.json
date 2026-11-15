@@ -558,22 +558,16 @@
       "finish_setup": "Finish setup"
     },
     "balance": {
-      "econumo": "Econumo's balance today",
-      "econumo_hint": "What you still owe as Econumo counts it: the amount borrowed less what your recorded payments paid off, counted from your latest statement if you entered one. Compare it with your lender's statement.",
-      "econumo_hint_none": "What you still owe as Econumo counts it: the amount borrowed less the payments you recorded.",
+      "econumo": "Balance today",
+      "hint": "Compare it with your bank statement.",
+      "hint_none": "Compare it with what you agreed.",
       "enter": "Enter a statement",
-      "no_statement": "No statement yet. Compare with your lender's statement every few months.",
-      "last_statement": "Last statement",
-      "statement_on": "{amount} on {date}",
-      "difference": "Difference",
       "form": {
-        "hint": "Enter the principal still owed from your loan statement. From the statement's date, Econumo counts from this balance, and every payment due before it counts as paid. Interest since the last payment is added to the next one.",
         "balance": "Statement balance",
         "date": "Statement date",
         "date_range": "Pick a date after the loan's start and no later than today. To change the amount borrowed, edit it in Settings.",
         "save": "Reconcile"
       },
-      "history": "Statements",
       "column": {
         "date": "Date",
         "statement": "Statement",

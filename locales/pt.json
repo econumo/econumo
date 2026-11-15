@@ -558,22 +558,16 @@
       "finish_setup": "Concluir configuração"
     },
     "balance": {
-      "econumo": "Saldo no Econumo hoje",
-      "econumo_hint": "O que ainda deve segundo o Econumo: o montante do empréstimo menos o que os seus pagamentos registados amortizaram, contado a partir do último extrato, se introduziu algum. Compare-o com o extrato do seu credor.",
-      "econumo_hint_none": "O que ainda deve segundo o Econumo: o montante do empréstimo menos os pagamentos que registou.",
+      "econumo": "Saldo de hoje",
+      "hint": "Compare-o com o seu extrato bancário.",
+      "hint_none": "Compare-o com o que foi acordado.",
       "enter": "Introduzir um extrato",
-      "no_statement": "Ainda sem extrato. Compare com o extrato do seu credor de poucos em poucos meses.",
-      "last_statement": "Último extrato",
-      "statement_on": "{amount} a {date}",
-      "difference": "Diferença",
       "form": {
-        "hint": "Introduza o capital ainda em dívida indicado no extrato do seu credor. A partir da sua data o Econumo conta a partir dele, e as prestações vencidas até lá contam como pagas; os juros desde o último pagamento são cobrados no pagamento seguinte, por um período completo.",
         "balance": "Saldo do extrato",
         "date": "Data do extrato",
         "date_range": "Escolha uma data posterior à data de início e, no máximo, hoje. Para alterar o montante do empréstimo, corrija-o nas definições.",
         "save": "Reconciliar"
       },
-      "history": "Extratos",
       "column": {
         "date": "Data",
         "statement": "Extrato",

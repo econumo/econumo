@@ -2534,12 +2534,12 @@ data unreadable. Most are also asserted by the test suite.
   start date only when it changed (a debt not set up always sends it, null clearing it), so the
   server keeps what another device may have changed; no date is projected or auto-filled, every
   fact is typed from the contract. The **Balance** tab (`DebtBalanceTab`) reconciles with a
-  statement in ONE card: Econumo's balance today with a muted explanation line (a shorter one for
-  Return by a date), then the latest statement ("X on date") with the difference (statement less
-  Econumo's figure for that date) or "No statement yet", and an "Enter a statement" button (a
-  reader without write rights has none) that expands the form inline (statement balance, statement
-  date defaulting to today, after the start date and no later than today, checked before sending;
-  its hint says the balance is the principal still owed; Cancel or a save collapses it) and sends `reconcile-debt` (`appDebtReconcile`); a history table lists the origin first (the
+  statement in ONE card: "Balance today" with the amount, a short muted line ("Compare it with
+  your bank statement."; a shorter one for Return by a date) with a compact "Enter a statement"
+  button on its right (a reader without write rights has none) that opens the form inside the card
+  (statement balance, statement date defaulting to today, after the start date and no later than
+  today, checked before sending; Cancel or a save collapses it), and the statements table below a
+  divider, no heading; the form sends `reconcile-debt` (`appDebtReconcile`); the table lists the origin first (the
   amount borrowed, marked, never deletable) and every statement (date, statement, Econumo then,
   hidden on a phone, difference; a statement of 0 reads "Marked paid off" with no difference; a
   paid-off debt's Balance tab has no delete buttons at all) with a delete button behind a confirm

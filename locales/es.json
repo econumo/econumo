@@ -558,22 +558,16 @@
       "finish_setup": "Terminar configuración"
     },
     "balance": {
-      "econumo": "Saldo de Econumo hoy",
-      "econumo_hint": "Lo que aún debes según Econumo: el importe del préstamo menos lo que han amortizado tus pagos registrados, contado desde tu último extracto si introdujiste uno. Compáralo con el extracto de tu prestamista.",
-      "econumo_hint_none": "Lo que aún debes según Econumo: el importe del préstamo menos los pagos que registraste.",
+      "econumo": "Saldo de hoy",
+      "hint": "Compárelo con su extracto bancario.",
+      "hint_none": "Compárelo con lo acordado.",
       "enter": "Introducir un extracto",
-      "no_statement": "Aún no hay extracto. Compara con el extracto de tu prestamista cada pocos meses.",
-      "last_statement": "Último extracto",
-      "statement_on": "{amount} el {date}",
-      "difference": "Diferencia",
       "form": {
-        "hint": "Introduce el capital pendiente según el extracto de tu prestamista. Desde su fecha Econumo cuenta a partir de él, y los pagos vencidos hasta entonces cuentan como pagados; los intereses desde el último pago se cobran en el siguiente pago, por un periodo completo.",
         "balance": "Saldo del extracto",
         "date": "Fecha del extracto",
         "date_range": "Elige una fecha posterior a la fecha de inicio y como muy tarde hoy. Para cambiar el importe del préstamo, corrígelo en Ajustes.",
         "save": "Conciliar"
       },
-      "history": "Extractos",
       "column": {
         "date": "Fecha",
         "statement": "Extracto",

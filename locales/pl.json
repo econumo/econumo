@@ -558,22 +558,16 @@
       "finish_setup": "Dokończ konfigurację"
     },
     "balance": {
-      "econumo": "Saldo w Econumo dziś",
-      "econumo_hint": "Ile jeszcze jesteś winien według Econumo: pożyczona kwota minus to, co spłaciły zapisane płatności, liczone od ostatniego wyciągu, jeśli go wpisano. Porównaj to z wyciągiem od pożyczkodawcy.",
-      "econumo_hint_none": "Ile jeszcze jesteś winien według Econumo: pożyczona kwota minus zapisane przez ciebie płatności.",
+      "econumo": "Saldo na dziś",
+      "hint": "Porównaj je z wyciągiem bankowym.",
+      "hint_none": "Porównaj je z ustaleniami.",
       "enter": "Wpisz wyciąg",
-      "no_statement": "Brak wyciągu. Co kilka miesięcy porównuj z wyciągiem od pożyczkodawcy.",
-      "last_statement": "Ostatni wyciąg",
-      "statement_on": "{amount} z dnia {date}",
-      "difference": "Różnica",
       "form": {
-        "hint": "Wpisz kapitał pozostały do spłaty z wyciągu od pożyczkodawcy. Od jego daty Econumo liczy od niego, a raty należne do tego dnia liczą się jako zapłacone; odsetki od ostatniej płatności są naliczane przy następnej płatności, za pełny okres.",
         "balance": "Saldo z wyciągu",
         "date": "Data wyciągu",
         "date_range": "Wybierz datę po dacie rozpoczęcia i najpóźniej dzisiaj. Aby zmienić pożyczoną kwotę, popraw ją w ustawieniach.",
         "save": "Uzgodnij"
       },
-      "history": "Wyciągi",
       "column": {
         "date": "Data",
         "statement": "Wyciąg",

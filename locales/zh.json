@@ -558,22 +558,16 @@
       "finish_setup": "完成设置"
     },
     "balance": {
-      "econumo": "Econumo 今日余额",
-      "econumo_hint": "按 Econumo 计算你仍欠的金额：借款金额减去已记录还款所偿还的部分；若你输入过对账单，则从最近一份对账单起算。可与贷款方的对账单对照。",
-      "econumo_hint_none": "按 Econumo 计算你仍欠的金额：借款金额减去你已记录的还款。",
+      "econumo": "今日余额",
+      "hint": "请与银行对账单核对。",
+      "hint_none": "请与约定的金额核对。",
       "enter": "输入对账单",
-      "no_statement": "暂无对账单。每隔几个月与贷款方的对账单核对一次。",
-      "last_statement": "最近对账单",
-      "statement_on": "{date} 为 {amount}",
-      "difference": "差额",
       "form": {
-        "hint": "输入贷款方对账单上尚欠的本金。自该日期起 Econumo 以此计算，截至该日期的应还款视为已还；自上次还款以来的利息在下次还款时按整期收取。",
         "balance": "对账单余额",
         "date": "对账单日期",
         "date_range": "请选择开始日期之后、不晚于今天的日期。如需更改借款金额，请在设置中修改。",
         "save": "核对"
       },
-      "history": "对账单",
       "column": {
         "date": "日期",
         "statement": "对账单",
