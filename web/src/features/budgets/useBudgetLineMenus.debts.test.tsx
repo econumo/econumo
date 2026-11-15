@@ -126,9 +126,9 @@ describe('the Debt submenu', () => {
     expect(top(actions)).toEqual(['Debt'])
     expect(labels(actions).indexOf('Debt')).toBe(labels(actions).indexOf('Move to folder…') + 1)
     const sub = actions.find((a) => a.label === 'Debt')!.children!
-    expect(labels(sub)).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
-    expect(sub.map((a) => !!a.separatorBefore)).toEqual([false, false, false, true])
-    expect(sub[3].destructive).toBe(true)
+    expect(labels(sub)).toEqual(['Debt details', 'Move debt to…', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
+    expect(sub.map((a) => !!a.separatorBefore)).toEqual([false, false, false, false, true])
+    expect(sub[4].destructive).toBe(true)
   })
 
   it('history without an active debt: Track as debt and Past debts inside it', () => {
@@ -201,7 +201,7 @@ describe('an element carrying its active debt', () => {
     onTestFinished(() => act(() => onlineManager.setOnline(true)))
     const { result, element } = renderMenus()
     const actions = result.current.expenseRowMenu(element('cat-food')).filter((a) => a.label === 'Debt')
-    expect(labels(flat(actions))).toEqual(['Debt details', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
+    expect(labels(flat(actions))).toEqual(['Debt details', 'Move debt to…', 'Mark as paid off', 'Past debts (2)', 'Delete debt'])
     expect(flat(actions).every((a) => a.disabled)).toBe(true)
   })
 })

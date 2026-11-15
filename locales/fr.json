@@ -588,6 +588,13 @@
         "question": "La dette redevient active : le solde est recalculé à partir des relevés et paiements précédents."
       }
     },
+    "move": {
+      "action": "Déplacer la dette vers…",
+      "title": "Déplacer la dette",
+      "hint": "Ses conditions, relevés et changements de taux sont déplacés avec elle.",
+      "empty": "Aucune autre catégorie ou enveloppe ne peut recevoir cette dette : il faut une catégorie de dépenses hors enveloppe, ou une enveloppe, dans la même devise et sans dette active.",
+      "envelope_note": "Toutes ses dépenses comptent comme paiements"
+    },
     "rates": {
       "title": "Taux aujourd'hui",
       "from_start": "Dès le début",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Terminez d'abord la configuration de cette dette.",
       "conflicts_with_reconciliation": "Cela contredit un relevé que vous avez saisi. Modifiez ou supprimez d'abord ce relevé.",
       "conflicts_with_rate_change": "Cette date de début est postérieure à un changement de taux. Supprimez d'abord ce changement de taux.",
-      "no_fixed_payments": "Cette dette n'a pas de paiements fixes, il n'y a donc pas de taux à modifier."
+      "no_fixed_payments": "Cette dette n'a pas de paiements fixes, il n'y a donc pas de taux à modifier.",
+      "element_currency": "Cette catégorie ou enveloppe est dans une autre devise. Déplacez la dette vers une catégorie ou une enveloppe dans sa devise."
     },
     "authserver": {
       "disabled": "La connexion d'applications n'est pas disponible sur ce serveur.",

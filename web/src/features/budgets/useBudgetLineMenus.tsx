@@ -59,6 +59,8 @@ import type { PlanCellFigures, SheetTarget } from './phoneMonth'
 import { folderSides } from './planMath'
 import { currentPeriod, periodOf, periodStartDayOf } from './period'
 import { PastDebtsDialog } from './PastDebtsDialog'
+import { MoveDebtDialog } from './MoveDebtDialog'
+import type { MoveDebtTarget } from './MoveDebtDialog'
 import type { PastDebtsTarget } from './PastDebtsDialog'
 
 /** a row that can carry a debt: its element and the debt the row shows */
@@ -122,6 +124,7 @@ export function useBudgetLineMenus({
   const changeCurrency = useChangeElementCurrency()
   const debtDanger = useDebtDangerActions()
   const [pastDebts, setPastDebts] = useState<PastDebtsTarget | null>(null)
+  const [moveDebt, setMoveDebt] = useState<MoveDebtTarget | null>(null)
 
   // the section a folder is being created in; null while the prompt is closed
   const [createFolderSide, setCreateFolderSide] = useState<BudgetFolderSide | null>(null)
@@ -305,6 +308,7 @@ export function useBudgetLineMenus({
     const items: MenuAction[] = active
       ? [
           details(active.id),
+          { label: t('debts.move.action'), onSelect: () => setMoveDebt({ debtId: active.id, elementId: el.id }) },
           ...(active.isSetUp === 1 ? [{ label: t('debts.details.mark_paid_off'), onSelect: () => debtDanger.askMarkPaidOff(active.id) }] : []),
           ...pastEntry,
           { label: t('budgets.page.debts.delete'), destructive: true, separatorBefore: true, onSelect: () => debtDanger.askDelete(active.id) },
@@ -494,6 +498,8 @@ export function useBudgetLineMenus({
       {classificationMenu.dialogs}
 
       {debtDanger.dialogs}
+
+      <MoveDebtDialog budget={budget} target={moveDebt} debts={debtList} onClose={() => setMoveDebt(null)} />
 
       <PastDebtsDialog
         target={pastDebts}

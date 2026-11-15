@@ -144,6 +144,19 @@ func (r ReopenDebtRequest) Validate() error {
 	return debtValidation(debtIDField("id", r.Id, true))
 }
 
+// MoveDebtRequest attaches an active debt, with its history, to another
+// element of its budget.
+type MoveDebtRequest struct {
+	Id        string `json:"id"`
+	ElementId string `json:"elementId"`
+}
+
+func (r MoveDebtRequest) Validate() error {
+	fields := debtIDField("id", r.Id, true)
+	fields = append(fields, debtIDField("elementId", r.ElementId, true)...)
+	return debtValidation(fields)
+}
+
 type GetDebtRequest struct {
 	Id string `json:"id"`
 }

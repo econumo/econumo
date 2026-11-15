@@ -100,6 +100,11 @@ func elementHasDebt() error {
 		errs.CodeDebtElementHasDebt)
 }
 
+func elementCurrency() error {
+	return fieldError("elementId", "This category or envelope is in another currency. Move the debt to one in its currency.",
+		errs.CodeDebtElementCurrency)
+}
+
 func cannotReopen() error {
 	return &errs.ValidationError{Msg: "This debt cannot be reopened: its category or envelope tracks another debt that is active or started later.",
 		MsgCode: errs.CodeDebtCannotReopen}

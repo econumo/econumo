@@ -588,6 +588,13 @@
         "question": "A dívida volta a ficar ativa: o valor em dívida é recalculado a partir dos extratos anteriores e dos pagamentos."
       }
     },
+    "move": {
+      "action": "Mover dívida para…",
+      "title": "Mover dívida",
+      "hint": "As condições, extratos e alterações da taxa movem-se com ela.",
+      "empty": "Nenhuma outra categoria ou envelope pode receber esta dívida: é preciso uma categoria de despesas fora de um envelope, ou um envelope, na mesma moeda e sem uma dívida ativa.",
+      "envelope_note": "Todas as despesas contam como pagamentos"
+    },
     "rates": {
       "title": "Taxa atual",
       "from_start": "Desde o início",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Conclua primeiro a configuração desta dívida.",
       "conflicts_with_reconciliation": "Isto entra em conflito com um saldo que introduziu a partir de um extrato. Altere ou elimine primeiro essa reconciliação.",
       "conflicts_with_rate_change": "Esta data de início é posterior a uma alteração da taxa. Elimine primeiro essa alteração.",
-      "no_fixed_payments": "Esta dívida não tem pagamentos fixos, por isso não tem uma taxa para alterar."
+      "no_fixed_payments": "Esta dívida não tem pagamentos fixos, por isso não tem uma taxa para alterar.",
+      "element_currency": "Esta categoria ou envelope está noutra moeda. Mova a dívida para uma na moeda dela."
     },
     "authserver": {
       "disabled": "A conexão de aplicações não está disponível neste servidor.",

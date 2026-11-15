@@ -240,6 +240,8 @@ VALUES (?1, ?2, ?3, ?4, ?5,
     CAST(?8 AS TEXT), ?9, CAST(?10 AS TEXT), ?11, ?12, ?13,
     CAST(?14 AS TEXT), CAST(?15 AS TEXT), ?16, ?17)
 ON CONFLICT (id) DO UPDATE SET
+    element_external_id = excluded.element_external_id,
+    element_type      = excluded.element_type,
     status            = excluded.status,
     ended_at          = excluded.ended_at,
     currency_id       = excluded.currency_id,
@@ -274,7 +276,8 @@ type UpsertDebtParams struct {
 }
 
 // The budget is written once, at insert: a debt never moves to another budget.
-// The element moves only with a category merge (MoveDebtsToElement).
+// The element moves with move-debt (every write holds the budget lock and
+// re-reads the debt) and with a category merge (MoveDebtsToElement).
 func (q *Queries) UpsertDebt(ctx context.Context, arg UpsertDebtParams) error {
 	_, err := q.db.ExecContext(ctx, upsertDebt,
 		arg.ID,

@@ -6121,6 +6121,87 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/debt/move-debt": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Attaches an active debt, with its terms, statements and rate changes, to another element of its budget: a top-level expense category or an envelope that carries no active debt and none created after this one, in the debt's currency. The payments are matched again on the new element (every stored split is dropped and the next read splits them again). Refused with debt.paid_off on a paid-off debt, debt.element_not_eligible, debt.element_has_debt, debt.element_currency, or debt.start_before_previous_end when the debt starts before the end of a debt the element carried. Moving to its own element returns the debt unchanged.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Move a debt to another element",
+                "parameters": [
+                    {
+                        "description": "Move debt request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MoveDebtRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/debt/reconcile-debt": {
             "post": {
                 "security": [
@@ -18476,6 +18557,17 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.CategoryResult"
                     }
+                }
+            }
+        },
+        "model.MoveDebtRequest": {
+            "type": "object",
+            "properties": {
+                "elementId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
                 }
             }
         },

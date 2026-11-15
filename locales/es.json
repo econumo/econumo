@@ -588,6 +588,13 @@
         "question": "La deuda vuelve a estar activa: lo pendiente se recalcula a partir de los extractos anteriores y los pagos."
       }
     },
+    "move": {
+      "action": "Mover deuda a…",
+      "title": "Mover deuda",
+      "hint": "Sus condiciones, extractos y cambios de tipo se mueven con ella.",
+      "empty": "Ninguna otra categoría o sobre puede recibir esta deuda: hace falta una categoría de gastos fuera de un sobre, o un sobre, en la misma moneda y sin una deuda activa.",
+      "envelope_note": "Todos sus gastos cuentan como pagos"
+    },
     "rates": {
       "title": "Tipo actual",
       "from_start": "Desde el inicio",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Primero termina de configurar esta deuda.",
       "conflicts_with_reconciliation": "Esto entra en conflicto con un saldo que introdujiste de un extracto. Cambia o elimina primero esa conciliación.",
       "conflicts_with_rate_change": "Esta fecha de inicio es posterior a un cambio de tipo. Elimina primero ese cambio de tipo.",
-      "no_fixed_payments": "Esta deuda no tiene pagos fijos, así que no tiene un tipo de interés que cambiar."
+      "no_fixed_payments": "Esta deuda no tiene pagos fijos, así que no tiene un tipo de interés que cambiar.",
+      "element_currency": "Esta categoría o sobre está en otra moneda. Mueve la deuda a uno en su moneda."
     },
     "authserver": {
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",

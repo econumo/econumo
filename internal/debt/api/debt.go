@@ -190,6 +190,26 @@ func (h *Handlers) ReopenDebt(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.ReopenDebt)
 }
 
+// MoveDebt handles POST /api/v1/debt/move-debt (auth).
+//
+// @Summary     Move a debt to another element
+// @Description Attaches an active debt, with its terms, statements and rate changes, to another element of its budget: a top-level expense category or an envelope that carries no active debt and none created after this one, in the debt's currency. The payments are matched again on the new element (every stored split is dropped and the next read splits them again). Refused with debt.paid_off on a paid-off debt, debt.element_not_eligible, debt.element_has_debt, debt.element_currency, or debt.start_before_previous_end when the debt starts before the end of a debt the element carried. Moving to its own element returns the debt unchanged.
+// @Tags        Debt
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.MoveDebtRequest true "Move debt request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DebtResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/debt/move-debt [post]
+func (h *Handlers) MoveDebt(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MoveDebt)
+}
+
 // ReconcileDebt handles POST /api/v1/debt/reconcile-debt (auth).
 //
 // @Summary     Reconcile a debt with a statement

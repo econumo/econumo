@@ -588,6 +588,13 @@
         "question": "De schuld wordt weer actief: het saldo wordt opnieuw berekend uit de eerdere afschriften en betalingen."
       }
     },
+    "move": {
+      "action": "Schuld verplaatsen naar…",
+      "title": "Schuld verplaatsen",
+      "hint": "De voorwaarden, afschriften en rentewijzigingen gaan mee.",
+      "empty": "Geen andere categorie of envelop kan deze schuld overnemen: daarvoor is een uitgavencategorie buiten een envelop, of een envelop, nodig in dezelfde valuta en zonder actieve schuld.",
+      "envelope_note": "Alle uitgaven daarin tellen als betalingen"
+    },
     "rates": {
       "title": "Rente vandaag",
       "from_start": "Vanaf het begin",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Rond eerst het instellen van deze schuld af.",
       "conflicts_with_reconciliation": "Dit botst met een afschrift dat u hebt ingevoerd. Wijzig of verwijder eerst dat afschrift.",
       "conflicts_with_rate_change": "Deze startdatum ligt na een rentewijziging. Verwijder eerst die rentewijziging.",
-      "no_fixed_payments": "Deze schuld heeft geen vaste betalingen en dus geen rente die u kunt wijzigen."
+      "no_fixed_payments": "Deze schuld heeft geen vaste betalingen en dus geen rente die u kunt wijzigen.",
+      "element_currency": "Deze categorie of envelop heeft een andere valuta. Verplaats de schuld naar een categorie of envelop in haar valuta."
     },
     "authserver": {
       "disabled": "Apps koppelen is niet beschikbaar op deze server.",

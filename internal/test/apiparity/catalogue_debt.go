@@ -305,6 +305,41 @@ func init() {
 		}
 	}})
 
+	// debt_move: a debt moves with its history to an envelope, so its
+	// category is then free to go into an envelope; a target that cannot
+	// carry a debt, already carries one or is the debt's own element is
+	// refused or changes nothing, and a guest cannot move it.
+	register(Scenario{Name: "debt_move", Calls: func() []Call {
+		const envelope = "d7000000-0000-0000-0000-0000000000e1"
+		var debtID, busyCat, busyDebt string
+		return calls(
+			setUp("create-debt", "owner", &debtID, nil, map[string]any{"amountBorrowed": "300", "startDate": day(-14)}),
+			[]Call{
+				{Label: "create-envelope", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
+					Body: map[string]any{"budgetId": Budget, "id": envelope, "name": "Housing", "icon": "home",
+						"currencyId": USD, "folderId": BudgetFolder1, "categories": []any{}}},
+				createCategory("create-busy-category", "owner", "d7000000-0000-0000-0000-0000000000a1", "Car loan", &busyCat),
+				{Label: "debt-on-busy-category", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+					Body: debtBody(map[string]any{"elementId": &busyCat}), CaptureIDInto: &busyDebt},
+				{Label: "err:income-category", Method: "POST", Path: "/api/v1/debt/move-debt", Auth: "owner",
+					Body: map[string]any{"id": &debtID, "elementId": CatSalary}},
+				{Label: "err:has-a-debt", Method: "POST", Path: "/api/v1/debt/move-debt", Auth: "owner",
+					Body: map[string]any{"id": &debtID, "elementId": &busyCat}},
+				{Label: "err:guest", Method: "POST", Path: "/api/v1/debt/move-debt", Auth: "guest",
+					Body: map[string]any{"id": &debtID, "elementId": envelope}},
+				{Label: "err:bad-element", Method: "POST", Path: "/api/v1/debt/move-debt", Auth: "owner",
+					Body: map[string]any{"id": &debtID, "elementId": "nope"}},
+				{Label: "same-element", Method: "POST", Path: "/api/v1/debt/move-debt", Auth: "owner",
+					Body: map[string]any{"id": &debtID, "elementId": CatFood}},
+				{Label: "move-to-envelope", Method: "POST", Path: "/api/v1/debt/move-debt", Auth: "owner",
+					Body: map[string]any{"id": &debtID, "elementId": envelope}},
+				{Label: "get-moved", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+				{Label: "category-into-envelope", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+					Body: map[string]any{"budgetId": Budget, "id": CatFood, "envelopeId": envelope}},
+			},
+		)
+	}})
+
 	// debt_paid_off: a loan taken two weeks ago is marked paid off a week
 	// ago and becomes read-only; a new debt on the same category starts after
 	// that end. The older debt cannot be reopened while the newer one exists;

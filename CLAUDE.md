@@ -285,10 +285,10 @@ The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
 `debt` (a loan tracked on an expense category or envelope of a budget, adding payments-left and payoff
-figures and planning on top of the element's own plans and spending) exposes twelve routes under
+figures and planning on top of the element's own plans and spending) exposes thirteen routes under
 `/api/v1/debt/` (`get-debt-list`, `get-debt`, `get-debt-forecast`, `create-debt`, `update-debt`,
 `delete-debt`, `mark-debt-paid-off`, `reopen-debt`, `reconcile-debt`, `delete-debt-reconciliation`,
-`add-debt-rate-change`, `delete-debt-rate-change`); a debt belongs to a budget, not a user, and is
+`add-debt-rate-change`, `delete-debt-rate-change`, `move-debt`); a debt belongs to a budget, not a user, and is
 attached to one of its elements: a caller without accepted access to it gets not-found, a guest
 reads it, writes need the right to plan there. A debt is created on a top-level expense category
 or an envelope with a payment and a schedule; its terms (the loan contract's amount borrowed, start
@@ -2336,7 +2336,14 @@ data unreadable. Most are also asserted by the test suite.
   **Envelopes**: moving a category that carries an ACTIVE debt into an envelope (move-element with
   an `envelopeId`, create-envelope, update-envelope's `categories`; only the categories joining
   count) is refused `budget.element_has_debt` (`refuseDebtCarriers`, under the budget's row lock
-  so a debt created meanwhile is seen); the owner splits a mixed envelope instead. Adding a
+  so a debt created meanwhile is seen); the owner splits a mixed envelope instead, or first moves the debt
+  (`move-debt` `{id, elementId}`: an active debt, with its terms, statements and rate changes, to another
+  eligible element of its budget in the debt's currency with no debt that is active or created after it,
+  and its start after the end of the ones before; `debt.paid_off`, `debt.element_not_eligible`,
+  `debt.element_has_debt`, `debt.element_currency`, `debt.start_before_previous_end`; every stored split
+  dropped, so the payments are matched again on the new element; the SPA's "Move debt to…" in the Debt
+  submenu, `MoveDebtDialog`, lists the candidates, an envelope noting that all its spending counts as
+  payments, `appDebtMove`). Adding a
   category to an envelope that carries a debt is allowed: its expenses count as payments from
   then on. Deleting an envelope deletes its debts (`DeleteElementDebts`, all history).
   **Classification deletes and merges** are never refused and need no access to the debts (a
@@ -2439,7 +2446,7 @@ data unreadable. Most are also asserted by the test suite.
   the entries), for whoever may plan in an unarchived budget, online: a lone "Track as debt" item
   while the element has no debt and no history (hidden on an archived element); otherwise ONE "Debt"
   submenu (a `MenuAction` with `children`, rendered by `RowMenu` as a Radix `DropdownMenuSub`, on a
-  phone's edit mode too) holding "Track as debt" (no active debt), "Debt details", "Mark as paid off"
+  phone's edit mode too) holding "Track as debt" (no active debt), "Debt details", "Move debt to…" (active), "Mark as paid off"
   (active, set up), "Past debts (N)" (when the element has paid-off ones, opening `PastDebtsDialog`,
   which lists them by dates and amount borrowed, each opening that debt's review)
   and, after a separator, "Delete debt" (active, destructive). The

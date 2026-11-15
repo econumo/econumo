@@ -14,13 +14,16 @@ ORDER BY created_at, id;
 
 -- name: UpsertDebt :exec
 -- The budget is written once, at insert: a debt never moves to another budget.
--- The element moves only with a category merge (MoveDebtsToElement).
+-- The element moves with move-debt (every write holds the budget lock and
+-- re-reads the debt) and with a category merge (MoveDebtsToElement).
 INSERT INTO debts (id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
 VALUES (sqlc.arg(id), sqlc.arg(budget_id), sqlc.arg(element_external_id), sqlc.arg(element_type), sqlc.arg(status),
     sqlc.narg(ended_at)::text::date, sqlc.arg(currency_id),
     sqlc.narg(start_date)::text::date, sqlc.narg(amount_borrowed), sqlc.narg(as_of)::text::date, sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
     sqlc.narg(last_payment_date)::text::date, sqlc.arg(created_day)::text::date, sqlc.arg(created_at), sqlc.arg(updated_at))
 ON CONFLICT (id) DO UPDATE SET
+    element_external_id = excluded.element_external_id,
+    element_type      = excluded.element_type,
     status            = excluded.status,
     ended_at          = excluded.ended_at,
     currency_id       = excluded.currency_id,

@@ -588,6 +588,13 @@
         "question": "Dług znów będzie aktywny: kwota do spłaty zostanie przeliczona z wcześniejszych wyciągów i płatności."
       }
     },
+    "move": {
+      "action": "Przenieś dług do…",
+      "title": "Przenieś dług",
+      "hint": "Warunki, wyciągi i zmiany oprocentowania przenoszą się razem z nim.",
+      "empty": "Żadna inna kategoria ani koperta nie może przejąć tego długu: potrzebna jest kategoria wydatków poza kopertą albo koperta, w tej samej walucie i bez aktywnego długu.",
+      "envelope_note": "Wszystkie jej wydatki liczą się jako płatności"
+    },
     "rates": {
       "title": "Aktualne oprocentowanie",
       "from_start": "Od początku",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Najpierw dokończ konfigurowanie tego długu.",
       "conflicts_with_reconciliation": "To jest sprzeczne z saldem wpisanym z wyciągu. Najpierw zmień lub usuń to uzgodnienie.",
       "conflicts_with_rate_change": "Ta data rozpoczęcia przypada po zmianie oprocentowania. Najpierw usuń tę zmianę.",
-      "no_fixed_payments": "Ten dług nie ma stałych płatności, więc nie ma oprocentowania do zmiany."
+      "no_fixed_payments": "Ten dług nie ma stałych płatności, więc nie ma oprocentowania do zmiany.",
+      "element_currency": "Ta kategoria lub koperta ma inną walutę. Przenieś dług do takiej w jego walucie."
     },
     "authserver": {
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",

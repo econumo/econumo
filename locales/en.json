@@ -588,6 +588,13 @@
         "question": "The debt will be open again: what's owed is recalculated from the earlier statements and payments."
       }
     },
+    "move": {
+      "action": "Move debt to…",
+      "title": "Move debt",
+      "hint": "Its terms, statements and rate changes move with it.",
+      "empty": "No other category or envelope can take this debt: it needs an expense category outside an envelope, or an envelope, in the same currency and without an active debt.",
+      "envelope_note": "All its spending counts as payments"
+    },
     "rates": {
       "title": "Rate today",
       "from_start": "From the start",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Finish setting up this debt first.",
       "conflicts_with_reconciliation": "This conflicts with a balance you entered from a statement. Change or delete that reconciliation first.",
       "conflicts_with_rate_change": "This start date comes after a rate change. Delete that rate change first.",
-      "no_fixed_payments": "This debt has no fixed payments, so it has no rate to change."
+      "no_fixed_payments": "This debt has no fixed payments, so it has no rate to change.",
+      "element_currency": "This category or envelope is in another currency. Move the debt to one in its currency."
     },
     "authserver": {
       "disabled": "Connecting apps is not available on this server.",

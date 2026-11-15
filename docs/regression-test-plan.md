@@ -2570,9 +2570,17 @@ a second budget member account in USD, before running these.
       Uncategorized, nor on a category inside an envelope (the envelope itself
       has it), nor to a guest, nor in an archived budget; once the element has an
       active debt, or a paid-off one, the menu has one "Debt" submenu instead (Track as debt only without an
-      active debt, Debt details, Mark as paid off for set-up debts, Past debts (N), a separator, Delete debt in
-      red); with neither, a lone "Track as debt"; a guest or an archived budget gets a lone "Debt details".
-      On a phone the submenu opens by tap.
+      active debt, Debt details, Move debt to… for an active debt, Mark as paid off for set-up debts, Past
+      debts (N), a separator, Delete debt in red); with neither, a lone "Track as debt"; a guest or an
+      archived budget gets a lone "Debt details". On a phone the submenu opens by tap.
+- [ ] 📱 **Move debt to…**: on a category carrying an active debt, the dialog lists the budget's other
+      top-level expense categories and envelopes in the debt's currency that carry no active debt, not
+      archived (an envelope says "All its spending counts as payments"); with none it says why. Picking
+      an envelope moves the debt: the category row loses its debt line, the envelope row shows it, the
+      review keeps the amount borrowed, statements and rate changes, and its payments become the
+      envelope's spending. The category can then be moved into the envelope. A paid-off debt has no such
+      item; a refusal (another device gave the target a debt) shows under the list. Offline the items are
+      disabled.
 - [ ] 📱 On a 360 px wide phone the Payment card and the "every month ▾" card sit side by side
       at the same height.
 - [ ] 📱 **Start date only when needed**: the create form has no start date field. Create a debt on an element whose

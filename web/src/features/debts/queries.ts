@@ -130,6 +130,25 @@ export function useReopenDebt() {
   })
 }
 
+// A debt moved to another element matches its payments again there: its
+// payments, figures and projected payments all change, as do both rows.
+export function useMoveDebt() {
+  const queryClient = useQueryClient()
+  const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
+  return useMutation({
+    // the move dialog shows a refusal itself
+    meta: { handlesOwnErrors: true },
+    mutationFn: ({ id, elementId }: { id: Id; elementId: Id }) => debtApi.moveDebt(id, elementId),
+    onSuccess: (saved) => {
+      storeSaved(saved)
+      invalidate()
+      void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
+      trackEvent(METRICS.DEBT_MOVE)
+    },
+  })
+}
+
 // A statement written or removed moves the debt's history, every split after
 // its date, the figures and the projected payments.
 function useReconciliationWrite<T>(write: (form: T) => Promise<DebtDto>, metric: Metric) {

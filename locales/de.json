@@ -588,6 +588,13 @@
         "question": "Die Schuld wird wieder aktiv: Der Saldo wird aus den früheren Kontoauszügen und Zahlungen neu berechnet."
       }
     },
+    "move": {
+      "action": "Schuld verschieben nach…",
+      "title": "Schuld verschieben",
+      "hint": "Konditionen, Kontoauszüge und Zinsänderungen werden mit verschoben.",
+      "empty": "Keine andere Kategorie und kein anderer Umschlag kann diese Schuld übernehmen: Dafür braucht es eine Ausgabenkategorie außerhalb eines Umschlags oder einen Umschlag in derselben Währung und ohne aktive Schuld.",
+      "envelope_note": "Alle Ausgaben darin zählen als Zahlungen"
+    },
     "rates": {
       "title": "Zinssatz heute",
       "from_start": "Ab Beginn",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Schließen Sie zuerst die Einrichtung dieser Schuld ab.",
       "conflicts_with_reconciliation": "Das widerspricht einem eingetragenen Kontoauszug. Ändern oder löschen Sie zuerst diesen Kontoauszug.",
       "conflicts_with_rate_change": "Dieses Startdatum liegt nach einer Zinsänderung. Löschen Sie zuerst diese Zinsänderung.",
-      "no_fixed_payments": "Diese Schuld hat keine festen Raten, daher gibt es keinen Zinssatz zu ändern."
+      "no_fixed_payments": "Diese Schuld hat keine festen Raten, daher gibt es keinen Zinssatz zu ändern.",
+      "element_currency": "Diese Kategorie bzw. dieser Umschlag hat eine andere Währung. Verschieben Sie die Schuld in eine Kategorie oder einen Umschlag in ihrer Währung."
     },
     "authserver": {
       "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",

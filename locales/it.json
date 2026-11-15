@@ -588,6 +588,13 @@
         "question": "Il debito torna attivo: il residuo viene ricalcolato dagli estratti conto precedenti e dai pagamenti."
       }
     },
+    "move": {
+      "action": "Sposta debito in…",
+      "title": "Sposta debito",
+      "hint": "Condizioni, estratti e variazioni del tasso si spostano con lui.",
+      "empty": "Nessun'altra categoria o busta può ricevere questo debito: serve una categoria di spesa fuori da una busta, o una busta, nella stessa valuta e senza un debito attivo.",
+      "envelope_note": "Tutte le sue spese contano come pagamenti"
+    },
     "rates": {
       "title": "Tasso attuale",
       "from_start": "Dall'inizio",
@@ -2592,7 +2599,8 @@
       "not_set_up": "Completa prima la configurazione di questo debito.",
       "conflicts_with_reconciliation": "Questo è in conflitto con un saldo che hai inserito da un estratto conto. Modifica o elimina prima quella riconciliazione.",
       "conflicts_with_rate_change": "Questa data di inizio è successiva a una variazione del tasso. Elimina prima quella variazione.",
-      "no_fixed_payments": "Questo debito non ha pagamenti fissi, quindi non ha un tasso da modificare."
+      "no_fixed_payments": "Questo debito non ha pagamenti fissi, quindi non ha un tasso da modificare.",
+      "element_currency": "Questa categoria o busta è in un'altra valuta. Sposta il debito in una nella sua valuta."
     },
     "authserver": {
       "disabled": "Il collegamento di app non è disponibile su questo server.",

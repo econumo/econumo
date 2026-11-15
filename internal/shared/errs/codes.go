@@ -155,6 +155,7 @@ const (
 	CodeDebtConflictsWithReconciliation = "debt.conflicts_with_reconciliation"
 	CodeDebtConflictsWithRateChange     = "debt.conflicts_with_rate_change"
 	CodeDebtNoFixedPayments             = "debt.no_fixed_payments"
+	CodeDebtElementCurrency             = "debt.element_currency"
 
 	CodeAuthServerDisabled         = "authserver.disabled"
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
@@ -316,4 +317,5 @@ var AllCodes = []string{
 	CodeDebtConflictsWithReconciliation,
 	CodeDebtConflictsWithRateChange,
 	CodeDebtNoFixedPayments,
+	CodeDebtElementCurrency,
 }

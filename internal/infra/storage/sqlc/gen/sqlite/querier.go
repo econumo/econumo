@@ -763,7 +763,8 @@ type Querier interface {
 	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	// The budget is written once, at insert: a debt never moves to another budget.
-	// The element moves only with a category merge (MoveDebtsToElement).
+	// The element moves with move-debt (every write holds the budget lock and
+	// re-reads the debt) and with a category merge (MoveDebtsToElement).
 	UpsertDebt(ctx context.Context, arg UpsertDebtParams) error
 	UpsertDebtRateChange(ctx context.Context, arg UpsertDebtRateChangeParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error

@@ -58,6 +58,11 @@ export async function reopenDebt(id: Id): Promise<DebtDto> {
   return response.data.data
 }
 
+export async function moveDebt(id: Id, elementId: Id): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/move-debt'), { id, elementId })
+  return response.data.data
+}
+
 export async function reconcileDebt(form: ReconcileDebtForm): Promise<DebtDto> {
   const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/reconcile-debt'), form)
   return response.data.data
