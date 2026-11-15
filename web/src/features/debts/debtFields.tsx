@@ -28,6 +28,7 @@ export function AmountField({
   error,
   echo,
   onChange,
+  cardClassName,
 }: {
   id: string
   label: string
@@ -39,10 +40,12 @@ export function AmountField({
   /** how the typed amount is read (`amountEcho`), shown while there is no error */
   echo?: string | null
   onChange: (value: string) => void
+  /** overrides the card's look, e.g. a raised surface when the field sits on a card */
+  cardClassName?: string
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <CardField label={label} htmlFor={id} error={error}>
+      <CardField label={label} htmlFor={id} error={error} className={cardClassName}>
         <div className="flex items-baseline gap-2">
           <div className="min-w-0 flex-1">
             <AmountInput id={id} value={value} onChange={onChange} />
@@ -155,6 +158,7 @@ export function DateField({
   clearLabel,
   min,
   max,
+  cardClassName,
 }: {
   label: string
   hint?: string
@@ -167,10 +171,11 @@ export function DateField({
   onChange: (value: string) => void
   onClear?: () => void
   clearLabel?: string
+  cardClassName?: string
 }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring">
+      <div className={cn('flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring', cardClassName)}>
         <span className="truncate text-[11px] text-muted-foreground" title={hint}>
           {label}
         </span>

@@ -16,6 +16,9 @@ import { useDeleteDebtReconciliation, useReconcileDebt } from './queries'
 import { RateChangesCard } from './RateChangesCard'
 import { amountEcho, amountError, isNoFixed, plainAmount } from './useDebtForm'
 
+// the card is econumo-card, so its fields take the dialog's own surface
+const raisedField = 'bg-background'
+
 const negate = (v: string) => (v.startsWith('-') ? v.slice(1) : `-${v}`)
 
 /** a statement of 0 is the debt marked paid off: no difference to show */
@@ -137,6 +140,7 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
                     value={balance}
                     symbol={currency?.symbol ?? ''}
                     error={errors.balance}
+                    cardClassName={raisedField}
                     echo={amountEcho(balance, currency)}
                     onChange={(value) => {
                       setErrors((prev) => ({ ...prev, balance: undefined }))
@@ -150,6 +154,7 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
                   min={item.startDate ? shiftDay(item.startDate, 1) : undefined}
                   max={today}
                   error={errors.date}
+                  cardClassName={raisedField}
                   onChange={(day) => {
                     setErrors((prev) => ({ ...prev, date: undefined }))
                     setDate(day)
@@ -173,7 +178,7 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
           </section>
         ) : (
           <div className="border-t border-border py-3">
-            <Button type="button" variant="secondary" disabled={!online} onClick={() => setFormOpen(true)}>
+            <Button type="button" variant="outline" size="sm" className="bg-background" disabled={!online} onClick={() => setFormOpen(true)}>
               {t('debts.balance.enter')}
             </Button>
           </div>
