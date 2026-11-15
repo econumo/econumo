@@ -25,6 +25,12 @@ import (
 // pass. Models drift between runs, so up to 10% may fail before the area does.
 const PassThreshold = 0.90
 
+// EvalQuery is the model and options the suite measures. The DSN usually names
+// only the provider, key and host (`anthropic://<key>@api.anthropic.com`), so
+// the measured model lives in the code, next to the cases it was tuned on; a
+// DSN that carries its own query (a local experiment) is used as given.
+const EvalQuery = "model=claude-haiku-5-5&json=1"
+
 // Completer is the configured provider. Each call that fails is retried once,
 // so a transient provider error does not count as a wrong answer.
 type Completer struct {
@@ -41,6 +47,9 @@ func Provider(t *testing.T) *Completer {
 	dsn := os.Getenv("ECONUMO_AI_DSN")
 	if strings.TrimSpace(dsn) == "" {
 		t.Skip("ECONUMO_AI_DSN is not set: the AI eval suite needs a real provider")
+	}
+	if !strings.Contains(dsn, "?") {
+		dsn = strings.TrimRight(dsn, "/") + "?" + EvalQuery
 	}
 	dialect, endpoint, key, model, jsonSchema, err := config.ParseAIDSN(dsn)
 	if err != nil {

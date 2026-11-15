@@ -8,7 +8,9 @@ name: AI evals
 #
 # The provider comes from the secret ECONUMO_AI_EVAL_DSN of the `ai-evals`
 # environment, in the ECONUMO_AI_DSN format, e.g.
-#   anthropic://<api-key>@api.anthropic.com?model=claude-haiku-5-5&json=1
+#   anthropic://<api-key>@api.anthropic.com
+# (provider, key and host only: the suite adds the measured model and json=1,
+# aieval.EvalQuery).
 # The environment has a required reviewer, so every run (PR, manual, release)
 # waits for approval before the job, and its code, can read the key.
 # Without the secret (forks, or before it is added) the job skips with a notice.

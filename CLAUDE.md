@@ -945,7 +945,7 @@ Tests live alongside the Go code:
   (dispatch, PRs touching the prompts, the suggestion/savings/icon code, `icons/icons.json`,
   `internal/infra/ai` or the evals, and report-only from the release workflow) runs in the
   `ai-evals` environment, whose required reviewer must approve every run before the job can
-  read its secret `ECONUMO_AI_EVAL_DSN` (e.g. `anthropic://<key>@api.anthropic.com?model=claude-haiku-5-5&json=1`;
+  read its secret `ECONUMO_AI_EVAL_DSN` (provider, key and host only, e.g. `anthropic://<key>@api.anthropic.com`: a DSN with no query gets `aieval.EvalQuery`, `model=claude-haiku-5-5&json=1`, the model the cases were tuned on;
   a same-repo PR branch would otherwise hand the key to PR-controlled code), skips with a notice without it, and writes the per-area table to the job summary. A prompt
   change that drops an area under the bar needs a better prompt or a corrected case, not a
   lower threshold.

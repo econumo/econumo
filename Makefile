@@ -231,7 +231,7 @@ test-upgrade:
 		go test -tags upgrade -v -timeout 30m -count=1 ./internal/test/upgradetest/
 
 # AI eval suite: sends the real AI prompts to the provider in ECONUMO_AI_DSN
-# (e.g. anthropic://<key>@api.anthropic.com?model=claude-haiku-5-5&json=1) and
+# (e.g. anthropic://<key>@api.anthropic.com; without a query the suite adds aieval.EvalQuery) and
 # fails an area (per language) that passes under 90% of its cases. Skips
 # without the variable. Never part of go-test/test: it costs money and depends
 # on a model. AIEVAL_TABLE / AIEVAL_FAILURES name the Markdown files the
