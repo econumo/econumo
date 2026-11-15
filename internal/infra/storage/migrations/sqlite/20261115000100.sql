@@ -1,10 +1,20 @@
 -- Budget debts: a debt attached to one budget element (a top-level expense
 -- category or an envelope), its snapshots, payment splits and rate changes.
--- Numbered above every migration on main. Unreleased builds created these
--- tables under five earlier versions (20261110000500 .. 20261114000000, files
--- since removed); a database that ran them already holds the same tables, so
--- every statement here is IF NOT EXISTS and keeps their rows.
-CREATE TABLE IF NOT EXISTS debts
+-- Numbered above every migration on main. Unreleased builds created debt
+-- tables in earlier shapes under five lower versions (20261110000500 ..
+-- 20261114000000, files since removed), and a database may have stopped at any
+-- of them, so whatever debt tables exist are dropped and created fresh, and
+-- the debt budget rows (type 6) of the earliest shape go with their plans and
+-- comments. Debt data from those builds is not kept.
+DELETE FROM budgets_elements_limits WHERE element_id IN (SELECT id FROM budgets_elements WHERE type = 6);
+DELETE FROM budgets_elements_comments WHERE element_id IN (SELECT id FROM budgets_elements WHERE type = 6);
+DELETE FROM budgets_elements WHERE type = 6;
+DROP TABLE IF EXISTS debts_rate_changes;
+DROP TABLE IF EXISTS debts_payments;
+DROP TABLE IF EXISTS debts_snapshots;
+DROP TABLE IF EXISTS debts_rules;
+DROP TABLE IF EXISTS debts;
+CREATE TABLE debts
 (
     id                    TEXT          NOT NULL
     , budget_id           TEXT          NOT NULL
@@ -27,12 +37,12 @@ CREATE TABLE IF NOT EXISTS debts
     , FOREIGN KEY (budget_id) REFERENCES budgets (id) ON DELETE CASCADE
     , FOREIGN KEY (currency_id) REFERENCES currencies (id)
 );
-CREATE INDEX IF NOT EXISTS debts_budget_element_idx ON debts (budget_id, element_external_id);
-CREATE INDEX IF NOT EXISTS debts_element_idx ON debts (element_external_id);
-CREATE INDEX IF NOT EXISTS debts_currency_idx ON debts (currency_id);
-CREATE UNIQUE INDEX IF NOT EXISTS debts_active_element_uniq ON debts (budget_id, element_external_id) WHERE status = 'active';
+CREATE INDEX debts_budget_element_idx ON debts (budget_id, element_external_id);
+CREATE INDEX debts_element_idx ON debts (element_external_id);
+CREATE INDEX debts_currency_idx ON debts (currency_id);
+CREATE UNIQUE INDEX debts_active_element_uniq ON debts (budget_id, element_external_id) WHERE status = 'active';
 
-CREATE TABLE IF NOT EXISTS debts_snapshots
+CREATE TABLE debts_snapshots
 (
     id                  TEXT          NOT NULL
     , debt_id           TEXT          NOT NULL
@@ -45,9 +55,9 @@ CREATE TABLE IF NOT EXISTS debts_snapshots
     , PRIMARY KEY (id)
     , FOREIGN KEY (debt_id) REFERENCES debts (id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS debts_snapshots_debt_as_of_idx ON debts_snapshots (debt_id, as_of);
+CREATE INDEX debts_snapshots_debt_as_of_idx ON debts_snapshots (debt_id, as_of);
 
-CREATE TABLE IF NOT EXISTS debts_payments
+CREATE TABLE debts_payments
 (
     debt_id           TEXT          NOT NULL
     , transaction_id  TEXT          NOT NULL
@@ -56,9 +66,9 @@ CREATE TABLE IF NOT EXISTS debts_payments
     , FOREIGN KEY (debt_id) REFERENCES debts (id) ON DELETE CASCADE
     , FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS debts_payments_transaction_idx ON debts_payments (transaction_id);
+CREATE INDEX debts_payments_transaction_idx ON debts_payments (transaction_id);
 
-CREATE TABLE IF NOT EXISTS debts_rate_changes
+CREATE TABLE debts_rate_changes
 (
     id                  TEXT          NOT NULL
     , debt_id           TEXT          NOT NULL
@@ -69,5 +79,5 @@ CREATE TABLE IF NOT EXISTS debts_rate_changes
     , PRIMARY KEY (id)
     , FOREIGN KEY (debt_id) REFERENCES debts (id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX IF NOT EXISTS debts_rate_changes_debt_date_uniq ON debts_rate_changes (debt_id, effective_date);
-CREATE INDEX IF NOT EXISTS debts_rate_changes_debt_idx ON debts_rate_changes (debt_id);
+CREATE UNIQUE INDEX debts_rate_changes_debt_date_uniq ON debts_rate_changes (debt_id, effective_date);
+CREATE INDEX debts_rate_changes_debt_idx ON debts_rate_changes (debt_id);

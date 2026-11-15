@@ -2101,7 +2101,7 @@ data unreadable. Most are also asserted by the test suite.
   rows, so a deleted savings account with a balance but no row in the window still
   moves its money out of the everyday Balance.
 - **Budget debts** (`internal/debt`; spec `docs/superpowers/specs/2026-11-13-debts-on-elements-design.md`,
-  which replaced the budget-row model of the three earlier debt specs; migration `20261115000100`, IF NOT EXISTS throughout because unreleased builds created the same tables under five lower versions whose files are gone):
+  which replaced the budget-row model of the three earlier debt specs; migration `20261115000100`, which drops whatever debt tables and type-6 budget rows unreleased builds left under five lower versions whose files are gone, and creates the tables fresh):
   a loan tracked on an expense element of a budget, deliberately NOT an account (in no account
   list, total or report) and NOT a budget row: the element keeps its plans, comments, spending,
   folder and position, so every folder, envelope and total reads as without debts. **A debt belongs
