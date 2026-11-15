@@ -9,3 +9,7 @@ export function rateChangeInForce(rateChanges: DebtRateChangeDto[], today: strin
 export function paymentInForce(rateChanges: DebtRateChangeDto[], today: string, contractPayment: string): string {
   return rateChangeInForce(rateChanges, today)?.payment ?? contractPayment
 }
+
+/** a yearly rate in percent ("3.69") as the UI shows it, "" for none */
+export const percent = (rate: string, lang: string) =>
+  rate === '' ? '' : new Intl.NumberFormat(lang, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(rate) / 100)

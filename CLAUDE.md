@@ -2485,7 +2485,7 @@ data unreadable. Most are also asserted by the test suite.
   (`periodsPaid` of `periodsPaid + paymentsLeft`, hidden at 0), captioned "6 of 46 paid (2,000.00 $
   of 16,500.00 $)": the principal repaid (`amountBorrowed - currentBalance`, never below 0) of the
   amount borrowed, in the debt currency (a paid-off debt keeps "N of N paid" and "Owed now X" under
-  it; no payoff date shows), a "Loan" card (borrowed: the amount and the start date, payment,
+  it; no payoff date shows), a "Loan" card (first Balance today: `currentBalance` · `annualRate`, the amount alone with no fixed payments, none once paid off; borrowed: the amount and the start date, payment,
   repeats, next payment, Last payment: the forecast summary's `payoffDate`, so planned extras move
   it, with "contract: <last payment date>" beside it when they differ, the contract's date until
   the forecast answers; Paid extra (`extraPaid`, 0 included), Planned extra (the forecast summary's

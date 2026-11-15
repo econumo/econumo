@@ -226,15 +226,17 @@ it('the Loan card holds the loan\'s figures and nothing to edit', async () => {
   const figure = (label: string) => within(loan).getByText(label).nextElementSibling
   // the forecast fails here: Planned extra waits for it rather than show a plan-free number
   expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual([
-    'Borrowed', 'Payment', 'Next payment', 'Last payment', 'Paid extra',
+    'Balance today', 'Borrowed', 'Payment', 'Next payment', 'Last payment', 'Paid extra',
   ])
+  // the balance today first, with the rate in force
+  expect(figure('Balance today')).toHaveTextContent('1,090.00 $ · 0.00%')
   expect(figure('Borrowed')).toHaveTextContent('1,200.00 $ · Oct 1, 2026')
   expect(figure('Payment')).toHaveTextContent('100.00 $ · Monthly')
   expect(figure('Next payment')).toHaveTextContent('Dec 5, 2026')
   // without the forecast it is the contract's last payment date, with nothing beside it
   expect(figure('Last payment')).toHaveTextContent(/^Jul 5, 2050$/)
   expect(figure('Paid extra')).toHaveTextContent('40.00 $')
-  // what is owed is the hero's, interest the payments table's; the currency shows on every amount
+  // interest is the payments table's; the currency shows on every amount
   for (const gone of ['Owed now', 'Left to pay', 'Currency', 'Start date', 'Overpaid', 'Planned overpayment', 'Planned extra']) {
     expect(within(loan).queryByText(gone)).toBeNull()
   }
@@ -287,7 +289,7 @@ describe('the Overview follows the budget\'s plans', () => {
     expect(top).not.toHaveTextContent('Paid off by')
     const loan = screen.getByRole('region', { name: 'Loan' })
     expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual([
-      'Borrowed', 'Payment', 'Next payment', 'Last payment', 'Paid extra', 'Planned extra',
+      'Balance today', 'Borrowed', 'Payment', 'Next payment', 'Last payment', 'Paid extra', 'Planned extra',
     ])
     expect(within(loan).getByText('Planned extra').nextElementSibling).toHaveTextContent('3,000.00 $')
     // the plans pay the loan off before the contract's date, which stays beside it

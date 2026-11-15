@@ -2832,7 +2832,9 @@ a second budget member account in USD, before running these.
       of the amount borrowed (hidden when both counts are 0); no "Owed now"
       or "Paid off by" line. Once paid off: "Paid off", "N of N paid" with no
       amounts, and "Owed now 0.00 $".
-      The "Loan" card (no Edit button) lists Borrowed (the amount · the start
+      The "Loan" card (no Edit button) lists first Balance today (the amount owed
+      now · the rate in force, e.g. "588,465.22 CA$ · 3.69%"; the amount alone for
+      a Return-by-a-date debt; no such row once paid off), then Borrowed (the amount · the start
       date), payment · repeats, next payment, Last payment, Paid extra and
       Planned extra (no interest, Owed now, Left to pay or Currency row; interest
       stays in the payments table). Last payment is where the budget's plans

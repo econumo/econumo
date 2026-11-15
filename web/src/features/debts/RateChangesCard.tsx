@@ -9,14 +9,11 @@ import { formatDate } from '@/lib/datetime'
 import type { DebtDetailsDto, DebtRateChangeDto } from '@/api/dto/debt'
 import { debtDay } from './debtDates'
 import { AmountField, DateField } from './debtFields'
-import { paymentInForce } from './rateChanges'
+import { paymentInForce, percent } from './rateChanges'
 import { useAddDebtRateChange, useDeleteDebtRateChange } from './queries'
 import { amountEcho, amountError, plainAmount } from './useDebtForm'
 
 const raisedField = 'bg-background'
-
-const percent = (rate: string, lang: string) =>
-  rate === '' ? '' : new Intl.NumberFormat(lang, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(rate) / 100)
 
 function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: initialPayment, onClose }: { details: DebtDetailsDto; symbol: string; amountEchoOf: (raw: string) => string | null; rate: string; payment: string; onClose: () => void }) {
   const { t } = useTranslation()

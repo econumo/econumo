@@ -23,7 +23,7 @@ import { debtDay, debtMonth } from './debtDates'
 import { isNoFixed } from './useDebtForm'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
-import { paymentInForce } from './rateChanges'
+import { paymentInForce, percent } from './rateChanges'
 import { useDebt, useDebtForecast, useFetchDebtForEdit } from './queries'
 import { useDebtDangerActions } from './useDebtDangerActions'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
@@ -602,6 +602,12 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
       <section aria-labelledby={loanHeadingId}>
         <SectionHeading id={loanHeadingId}>{t('debts.review.loan')}</SectionHeading>
         <dl className="divide-y divide-border rounded-lg bg-econumo-card px-4 py-1.5">
+          {/* a paid-off debt's balance is the top card's "Owed now" */}
+          {setUp && item.status === 'active' ? (
+            <Figure label={t('debts.balance.econumo')}>
+              {noFixed || item.annualRate === '' ? amount(item.currentBalance) : `${amount(item.currentBalance)} · ${percent(item.annualRate, lang)}`}
+            </Figure>
+          ) : null}
           {setUp ? (
             <Figure label={t('debts.review.borrowed')}>{`${amount(item.amountBorrowed)} · ${debtDay(item.startDate, lang)}`}</Figure>
           ) : null}
@@ -626,7 +632,7 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
           {setUp ? null : (
             <Figure label={t('debts.review.start_date')}>{item.startDate ? debtDay(item.startDate, lang) : t('debts.review.from_first_payment')}</Figure>
           )}
-          {/* what is owed now is the top card's, interest the payments table's; a
+          {/* interest is the payments table's; a
               set-up debt's amounts name its currency. Planned extra follows the
               plans: until the forecast answers there is no number to show. */}
           {setUp ? (
