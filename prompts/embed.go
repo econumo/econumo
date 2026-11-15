@@ -26,7 +26,6 @@ var (
 	Payee     = load("payee.md")
 	MatchText = load("match_text.md")
 	Savings   = load("savings.md")
-	Debts     = load("debts.md")
 
 	iconRules = strings.NewReplacer("{{icons}}", strings.Join(icons.Names, ", ")).Replace(load("icon_rules.md"))
 

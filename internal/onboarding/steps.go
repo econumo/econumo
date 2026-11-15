@@ -778,14 +778,10 @@ func matchAccounts(rows []model.OnboardingAccountRow, own []model.OnboardingAcco
 
 // SavePlan writes the plan step's amounts as limits of the budget's current
 // period (the request's budget, else the user's default one) and marks the
-// step done, in one transaction. After the commit, when an AI provider is
-// configured, a background request asks which of the planned expense
-// categories repay a loan and creates a debt for each, its payment the plan.
+// step done, in one transaction.
 func (s *Service) SavePlan(ctx context.Context, userID vo.Id, req model.OnboardingSavePlanRequest) (*model.OnboardingSavePlanResult, error) {
 	out := &model.OnboardingSavePlanResult{}
-	var planned map[string]vo.DecimalNumber
 	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
-		planned = map[string]vo.DecimalNumber{}
 		user, proceed, err := s.begin(ctx, userID, req.Id, StepPlan)
 		if err != nil {
 			return err
@@ -819,7 +815,6 @@ func (s *Service) SavePlan(ctx context.Context, userID vo.Id, req model.Onboardi
 			}); lerr != nil {
 				return lerr
 			}
-			planned[strings.ToLower(strings.TrimSpace(a.CategoryId))] = vo.NewDecimal(raw)
 		}
 		done, err := s.finish(ctx, userID, req.Id, StepPlan)
 		if err != nil {
@@ -831,6 +826,5 @@ func (s *Service) SavePlan(ctx context.Context, userID vo.Id, req model.Onboardi
 	if err != nil {
 		return nil, err
 	}
-	s.startPlanDebts(ctx, userID, out.BudgetId, planned)
 	return out, nil
 }

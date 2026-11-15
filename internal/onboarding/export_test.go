@@ -11,8 +11,3 @@ import (
 func (s *Service) Schedule(ctx context.Context, userID, budgetID vo.Id, accountIDs []vo.Id) {
 	s.scheduleClassify(ctx, userID, budgetID, accountIDs)
 }
-
-// StartPlanDebts exposes save-plan's debt detection to the external tests.
-func (s *Service) StartPlanDebts(ctx context.Context, userID vo.Id, budgetID string, planned map[string]vo.DecimalNumber) {
-	s.startPlanDebts(ctx, userID, budgetID, planned)
-}

@@ -10,8 +10,8 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft } from './draft'
 import { onboardingProgress, storedStepState } from './onboardingProgress'
 
-// when, after a CSV import, finish-import, save-accounts and save-plan, the lists are refetched to
-// show the AI's icons, savings and debts: the icon review starts 15 s after an import's last chunk
+// when, after a CSV import, finish-import and save-accounts, the lists are refetched to
+// show the AI's icons and savings: the icon review starts 15 s after an import's last chunk
 // and every job may take up to 90 s
 export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 60_000, 110_000]
 
@@ -43,7 +43,7 @@ export function scheduleAiRefresh(queryClient: QueryClient): void {
         cancelAiRefresh()
         return
       }
-      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget, queryKeys.budgetPlan, queryKeys.debts]) {
+      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget, queryKeys.budgetPlan]) {
         void queryClient.invalidateQueries({ queryKey })
       }
     }, delay),

@@ -18,9 +18,6 @@ var (
 	categoryIconsSchema = iconsSchema("category_icons", "categories")
 	accountIconsSchema  = iconsSchema("account_icons", "accounts")
 
-	debtsSchema = &ai.Schema{Name: "loan_categories", JSON: json.RawMessage(`{"type":"object","properties":{"debts":{"type":"array","items":{"type":"object",` +
-		`"properties":{"categoryKey":{"type":"string"}},"required":["categoryKey"],"additionalProperties":false}}},"required":["debts"],"additionalProperties":false}`)}
-
 	suggestIconSchema = func() *ai.Schema {
 		enum, _ := json.Marshal(append([]string{""}, icons.Names...))
 		return &ai.Schema{Name: "icon_suggestion", JSON: json.RawMessage(`{"type":"object","properties":{"icon":{"type":"string","enum":` + string(enum) + `}},` +

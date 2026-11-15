@@ -22,29 +22,26 @@ const StepImport = "import"
 // account outside a hidden folder, when there is one) and marks the import step
 // done. The categories and accounts steps stay open: they become reviews of
 // what the import created. After the commit, when an AI provider is configured,
-// background requests flag the savings accounts in the budget this call
-// created and turn the categories that repay a loan into debts. The icons of
+// a background request flags the savings accounts in the budget this call
+// created. The icons of
 // what the import created were already asked for by the import itself
 // (ReviewImportedIcons), so this call asks for none.
 func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.OnboardingFinishImportRequest) (*model.OnboardingFinishImportResult, error) {
 	out := &model.OnboardingFinishImportResult{}
 	var review bool
-	var savingsBudget, debtBudget *vo.Id
+	var savingsBudget *vo.Id
 	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
-		review, savingsBudget, debtBudget = false, nil, nil
+		review, savingsBudget = false, nil
 		user, proceed, err := s.begin(ctx, userID, req.Id, StepImport)
 		if err != nil {
 			return err
 		}
-		budgetID, writable, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
+		budgetID, _, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
 		if err != nil {
 			return err
 		}
 		if found {
 			out.BudgetId = budgetID.String()
-			if writable {
-				debtBudget = &budgetID
-			}
 		}
 		if !proceed {
 			out.User = *user
@@ -60,7 +57,7 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 					return err
 				}
 				id := vo.MustParseId(out.BudgetId)
-				savingsBudget, debtBudget = &id, &id
+				savingsBudget = &id
 			}
 		}
 		done, err := s.finish(ctx, userID, req.Id, StepImport)
@@ -75,7 +72,7 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 		return nil, err
 	}
 	if review {
-		s.startReview(ctx, userID, savingsBudget, debtBudget)
+		s.startReview(ctx, userID, savingsBudget)
 	}
 	return out, nil
 }
@@ -86,7 +83,6 @@ var (
 	reviewCategories = withPart(jobIcons, "categories")
 	reviewAccounts   = withPart(jobIcons, "accounts")
 	reviewSavings    = withPart(jobReview, "savings")
-	reviewDebts      = withPart(jobReview, "debts")
 )
 
 func withPart(spec jobSpec, part string) jobSpec {
@@ -94,32 +90,20 @@ func withPart(spec jobSpec, part string) jobSpec {
 	return spec
 }
 
-// startReview starts finish-import's requests: savings (when this call created
-// the budget) and debts (when the user may plan the budget). Together they
-// count once against the per-user cap.
-func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget, debtBudget *vo.Id) {
-	if debtBudget != nil && s.debts == nil {
-		debtBudget = nil
-	}
-	if savingsBudget == nil && debtBudget == nil {
+// startReview starts finish-import's savings request, when this call created
+// the budget.
+func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget *vo.Id) {
+	if savingsBudget == nil {
 		return
 	}
 	if !s.reserveJob(ctx, userID, jobReview) {
 		return
 	}
 	facts := s.promptContext(ctx, userID)
-	if savingsBudget != nil {
-		budgetID := *savingsBudget
-		s.runJob(userID, reviewSavings, facts, func(jobCtx context.Context, facts promptFacts) error {
-			return s.reviewSavings(jobCtx, userID, budgetID, facts)
-		})
-	}
-	if debtBudget != nil {
-		budgetID := *debtBudget
-		s.runJob(userID, reviewDebts, facts, func(jobCtx context.Context, facts promptFacts) error {
-			return s.detectDebts(jobCtx, userID, budgetID, facts, nil)
-		})
-	}
+	budgetID := *savingsBudget
+	s.runJob(userID, reviewSavings, facts, func(jobCtx context.Context, facts promptFacts) error {
+		return s.reviewSavings(jobCtx, userID, budgetID, facts)
+	})
 }
 
 // pendingIcons collects what a user's CSV import chunks created until the

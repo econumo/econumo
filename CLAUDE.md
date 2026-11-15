@@ -519,7 +519,7 @@ query invalidated; the client never writes `import` through `update-onboarding`,
 pre-marked step would make `finish-import` a no-op with no budget and no AI job. With
 `AI_ENABLED` and the user's AI option on, every successful CSV import (onboarding or not; the
 server asks for the icons of what it created) and every finish-import then refetch
-categories/accounts/budgets/plan/debts at 10, 30, 60 and 110 s (`scheduleAiRefresh`, module-level timers,
+categories/accounts/budgets/plan at 10, 30, 60 and 110 s (`scheduleAiRefresh`, module-level timers,
 not stopped by completing onboarding; dropped once the cached user changes). The Import step only retries a failed `finish-import` (Import is disabled meanwhile,
 so the file cannot be imported twice) and moves on to Categories; Categories and Accounts are
 NOT ticked by an import, they become review steps), `categories`, `accounts`, `plan` (budget
@@ -1200,8 +1200,7 @@ it). Key vars:
   configured provider for savings detection; after every CSV import, two separate requests go out for
   what that import created (category names and types for category icons, the names and currencies
   of accounts still on the import icon for account icons), and after `finish-import` one more with
-  every live account's name and currency for savings; after `finish-import` and `save-plan` the
-  debt detection sends the names of the expense categories it asks about (see "Debt detection");
+  every live account's name and currency for savings;
   while a new category or account is named (onboarding rows, the create dialogs, an inline
   category create), `onboarding/suggest-icon` sends that one name (with the category's type or the
   account's currency code, the timezone and language) for an icon; import rule suggestions
@@ -1220,7 +1219,7 @@ it). Key vars:
   is not sent (a payee equal to the description is the memo and counts as none). Each prompt
   builder has a guard test asserting its exact key set and values. The system prompts are Markdown files in the top-level
   `prompts/` (`suggest.md`, `payee.md`, `match_text.md`, `savings.md`, `category_icons.md`,
-  `account_icons.md`, `debts.md`, `suggest_icon.md`, plus the shared `icon_rules.md`), embedded like `icons/` and exported by
+  `account_icons.md`, `suggest_icon.md`, plus the shared `icon_rules.md`), embedded like `icons/` and exported by
   `prompts/embed.go` (a file is exactly the text the model gets; `{{icons}}` and `{{icon_rules}}`
   are substituted at init). `internal/imports/prompts.go` and `internal/onboarding/prompts.go`
   hold only the JSON schema of each reply (array-shaped, every object closed with all properties
@@ -2561,9 +2560,8 @@ data unreadable. Most are also asserted by the test suite.
   Details in the sheet, opening the Overview (offline Finish setup is hidden too: Settings cannot
   load). Analytics: `appDebtConvert` (create), `appDebtUpdate`, `appDebtDelete`,
   `appDebtMarkPaidOff`, `appDebtReopen`, `appDebtPastListOpen`, `appDebtReconcile`,
-  `appDebtRateChange*`, `appDebtForecastView`, `appDebtFinishSetup`. With an AI provider,
-  onboarding attaches debts by itself to loan-like categories (see "Debt detection" under
-  Onboarding Day 0); the user finishes their setup or deletes them like any other.
+  `appDebtRateChange*`, `appDebtForecastView`, `appDebtFinishSetup`. Onboarding never
+  creates debts.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
   provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`

@@ -11,7 +11,7 @@ func TestReplySchemasFitStructuredOutputs(t *testing.T) {
 			t.Fatalf("icon schema has no catalogue enum: %.120s", s)
 		}
 	}
-	for _, s := range []interface{ Check() error }{*savingsSchema, *categoryIconsSchema, *accountIconsSchema, *debtsSchema, *suggestIconSchema} {
+	for _, s := range []interface{ Check() error }{*savingsSchema, *categoryIconsSchema, *accountIconsSchema, *suggestIconSchema} {
 		if err := s.Check(); err != nil {
 			t.Fatal(err)
 		}

@@ -61,7 +61,6 @@ type Service struct {
 	run       Runner
 	schedule  Scheduler
 	steps     Steps
-	debts     DebtSteps
 	iconCache *iconCache
 
 	iconsMu      sync.Mutex
@@ -81,10 +80,6 @@ func (s *Service) SetAdvisor(c Completer, limiter AttemptLimiter) {
 
 // SetSteps wires the dependencies of the three step writes.
 func (s *Service) SetSteps(steps Steps) { s.steps = steps }
-
-// SetDebts enables the debt detection; the debt service is built after this
-// one, so it cannot be a constructor argument.
-func (s *Service) SetDebts(d DebtSteps) { s.debts = d }
 
 // SetRunner replaces how background jobs start (tests run them inline).
 func (s *Service) SetRunner(r Runner) { s.run = r }

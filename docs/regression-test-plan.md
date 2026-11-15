@@ -448,21 +448,9 @@ navigation (single-pane vs sidebar).
 - [ ] With AI, a name that got a suggested icon and is then renamed to
       something with no match (e.g. "Rent" -> "Xyz") goes back to the
       default icon instead of keeping the old suggestion.
-- [ ] With AI, after an import whose history shows a loan repayment (e.g. a
-      "Mortgage" category paid in at least 2 of the last 6 complete months), a
-      debt appears on that category's row in the budget the import created (or
-      the default budget the user may plan in) without a reload: a debt line
-      with Finish setup (not set up), monthly, its payment the median of the
-      paid months; the category keeps its plan and its spending (nothing
-      moves). A loan category paid only once gets none, nor do rent, utilities,
-      subscriptions, insurance or income categories. The debt can be deleted.
-- [ ] With AI, on a manual setup, planning a loan category (e.g. "Car loan"
-      450) on Budget & plan attaches a not-set-up monthly debt with payment 450
-      to that category shortly after Save and continue; an unplanned (blank or
-      0) loan category gets none; a category that already carries an active
-      debt (e.g. one the import created) never gets a second; the plan typed
-      stays on the category's row. Without AI, or with the Profile's "Use AI
-      features" switch off, no debt is ever created.
+- [ ] Onboarding never creates debts, with or without AI: after an import or
+      after planning a loan category (e.g. "Mortgage") on Budget & plan, the
+      budget shows no debt line and the Debts list stays empty.
 - [ ] With AI, a CSV import from Settings → Data AFTER onboarding (onboarding
       completed) that creates a new account and new categories: about 30-110 s
       later they get matching icons without a reload (a file large enough to be

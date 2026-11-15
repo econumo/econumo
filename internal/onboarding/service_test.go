@@ -104,31 +104,6 @@ func (fakeCategorySteps) OwnCategories(context.Context, vo.Id) ([]model.Category
 	return []model.CategoryResult{{Id: cash, Name: "Loan", Type: "expense"}, {Id: deposit, Name: "Salary", Type: "income"}}, nil
 }
 
-// fakeDebts records each debt it creates: the budget and the category it is
-// attached to; refused lists the categories it refuses (one carrying an
-// active debt).
-type fakeDebts struct {
-	calls      int
-	created    []vo.Id
-	categories []vo.Id
-	refused    []vo.Id
-	existing   []vo.Id
-}
-
-func (f *fakeDebts) ElementIDs(context.Context, vo.Id) ([]vo.Id, error) { return f.existing, nil }
-
-func (f *fakeDebts) CreateDebt(_ context.Context, _, budgetID, categoryID vo.Id, _ vo.DecimalNumber, _ model.RecurringSchedule) (bool, error) {
-	f.calls++
-	for _, r := range f.refused {
-		if r.Equal(categoryID) {
-			return false, nil
-		}
-	}
-	f.created = append(f.created, budgetID)
-	f.categories = append(f.categories, categoryID)
-	return true, nil
-}
-
 func newSvc(c onboarding.Completer, l onboarding.AttemptLimiter) (*onboarding.Service, *fakeBudgets) {
 	b := &fakeBudgets{}
 	svc := onboarding.NewService(b, fakeAccounts{}, fakeTimezones{})
@@ -288,46 +263,5 @@ func TestClassification_OverTheCapSkipsTheJob(t *testing.T) {
 	schedule(context.Background(), svc, allIDs...)
 	if len(b.marked) != 0 || c.calls != 0 {
 		t.Fatalf("marked = %v, calls = %d", b.marked, c.calls)
-	}
-}
-
-func TestPlanDebts_NoAIOrOverTheCapStartsNothing(t *testing.T) {
-	planned := map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")}
-	for name, c := range map[string]*fakeCompleter{"no AI": nil, "over the cap": replying(`{"debts":[]}`)} {
-		t.Run(name, func(t *testing.T) {
-			var svc *onboarding.Service
-			if c == nil {
-				svc, _ = newSvc(nil, nil)
-			} else {
-				svc, _ = newSvc(c, denyLimiter{})
-			}
-			debts := &fakeDebts{}
-			svc.SetDebts(debts)
-			// the budget steps are not wired: a job that started would panic and log
-			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, planned)
-			if debts.calls != 0 || (c != nil && c.calls != 0) {
-				t.Fatalf("debts %d", debts.calls)
-			}
-		})
-	}
-}
-
-func TestPlanDebts_NoPositiveExpensePlanReservesNothing(t *testing.T) {
-	for name, planned := range map[string]map[string]vo.DecimalNumber{
-		"zero plan":        {cash: vo.NewDecimal("0")},
-		"income only":      {deposit: vo.NewDecimal("3000")},
-		"unknown category": {gone: vo.NewDecimal("10")},
-	} {
-		t.Run(name, func(t *testing.T) {
-			c := replying(`{"debts":[]}`)
-			reserved := &countingLimiter{}
-			svc, _ := newSvc(c, reserved)
-			debts := &fakeDebts{}
-			svc.SetDebts(debts)
-			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, planned)
-			if len(reserved.scopes) != 0 || c.calls != 0 || debts.calls != 0 {
-				t.Fatalf("reserved %d, calls %d, debts %d", len(reserved.scopes), c.calls, debts.calls)
-			}
-		})
 	}
 }
