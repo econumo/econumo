@@ -11,6 +11,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/prompts"
 )
 
 const (
@@ -156,7 +157,7 @@ func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, lan
 		})
 	}
 	b, _ := json.Marshal(payload)
-	return suggestSystemPrompt, string(b), keys
+	return prompts.Suggest, string(b), keys
 }
 
 // resolveCategories maps step 1's category keys back to the ids they stand
@@ -266,7 +267,7 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		payload.Rows = append(payload.Rows, pr)
 	}
 	b, _ := json.Marshal(payload)
-	return payeeSystemPrompt, string(b), keys
+	return prompts.Payee, string(b), keys
 }
 
 // parsePayeeReply reads each row's payee key; a repeated row keeps its first.

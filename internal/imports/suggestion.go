@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/prompts"
 )
 
 const suggestionNotFoundMessage = "Import suggestion not found"
@@ -441,7 +442,7 @@ func (s *Service) askMatchText(ctx context.Context, userID string, l model.Impor
 	}
 	ctx, cancel := context.WithTimeout(ctx, suggestMatchTextTimeout)
 	defer cancel()
-	reply, err := s.completer.Complete(ctx, userID, suggestMatchTextSystem, string(payload), matchTextSchema)
+	reply, err := s.completer.Complete(ctx, userID, prompts.MatchText, string(payload), matchTextSchema)
 	var parsed struct {
 		MatchText string `json:"matchText"`
 	}

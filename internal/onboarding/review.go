@@ -11,6 +11,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/prompts"
 )
 
 // StepImport is the import step's name in the onboarding option.
@@ -318,7 +319,7 @@ func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts p
 	if len(prompt.Categories) == 0 {
 		return nil
 	}
-	icons, err := s.askIcons(ctx, userID, categoryIconsSystem, categoryIconsSchema, prompt, keys, reviewCategories.part)
+	icons, err := s.askIcons(ctx, userID, prompts.CategoryIcons, categoryIconsSchema, prompt, keys, reviewCategories.part)
 	if err != nil {
 		return err
 	}
@@ -347,7 +348,7 @@ func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts pr
 	if len(prompt.Accounts) == 0 {
 		return nil
 	}
-	icons, err := s.askIcons(ctx, userID, accountIconsSystem, accountIconsSchema, prompt, keys, reviewAccounts.part)
+	icons, err := s.askIcons(ctx, userID, prompts.AccountIcons, accountIconsSchema, prompt, keys, reviewAccounts.part)
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/prompts"
 )
 
 type promptAccount struct {
@@ -58,7 +59,7 @@ func (s *Service) classify(ctx context.Context, userID, budgetID vo.Id, accountI
 	if !s.mayAsk(ctx, userID) {
 		return nil
 	}
-	reply, err := s.completer.Complete(ctx, userID.String(), classifySystem, string(body), savingsSchema)
+	reply, err := s.completer.Complete(ctx, userID.String(), prompts.Savings, string(body), savingsSchema)
 	if err != nil {
 		return err
 	}

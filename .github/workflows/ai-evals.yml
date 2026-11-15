@@ -26,6 +26,7 @@ on:
             - "internal/onboarding/review.go"
             - "internal/onboarding/service.go"
             - "icons/icons.json"
+            - "prompts/**"
             - "internal/infra/ai/**"
             - "internal/imports/aieval_test.go"
             - "internal/onboarding/aieval_test.go"

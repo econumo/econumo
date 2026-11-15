@@ -207,8 +207,8 @@ name as written in the user's language or script and a short brand form when the
 category (a well-known chain or a merchant whose name says what it sells counts as confident when
 a listed category fits; a person-to-person transfer or a bare payment processor never does)
 (reply `{rows:[{key, matchText, merchants[], categoryKey|null}]}`; a row left out, an empty list
-or a null field means not confident). Every prompt of this feature is a constant in
-`internal/imports/prompts.go`, with its reply schema.
+or a null field means not confident). Every prompt of this feature is a Markdown file in the top-level `prompts/`
+(`suggest.md`, `payee.md`, `match_text.md`), its reply schema in `internal/imports/prompts.go`.
 The server then picks, without AI, up to 5 of the owner's non-archived payees per row whose
 names resemble any merchant name or the match text (`payeeCandidates`, each payee by its best score: equal, one containing
 the other, Levenshtein ratio >= 0.8, or a shared word of 3+ letters; lowercased, punctuation
@@ -942,7 +942,7 @@ Tests live alongside the Go code:
   validator), and an area fails, per language, when it passes under `aieval.PassThreshold`
   (0.90: up to 10% may fail, models drift) of its cases. The provider is `ECONUMO_AI_DSN`
   (openai:// or anthropic://; unset skips). Workflow `.github/workflows/ai-evals.yml`
-  (dispatch, PRs touching the prompts, the suggestion/savings/icon code, `icons/icons.json`,
+  (dispatch, PRs touching the prompts, the suggestion/savings/icon code, `icons/icons.json`, `prompts/*.md`,
   `internal/infra/ai` or the evals, and report-only from the release workflow) reads the
   repository secret `ECONUMO_AI_EVAL_DSN` (provider, key and host only, e.g. `anthropic://<key>@api.anthropic.com`: a DSN with no query gets `aieval.EvalQuery`, `model=claude-haiku-5-5&json=1`, the model the cases were tuned on;
   no approval gate, by the owner's choice: only trusted collaborators can push branches), skips with a notice without it, and writes the per-area table to the job summary. A prompt
@@ -1198,9 +1198,12 @@ it). Key vars:
   unknown keys`, `user_id` + `part` + `count` only). NEVER amounts, balances, opening balances,
   plans, dates, a transaction's description/memo, user names or emails; a row with no payee text
   is not sent (a payee equal to the description is the memo and counts as none). Each prompt
-  builder has a guard test asserting its exact key set and values. The prompts are constants in
-  one file per feature (`internal/imports/prompts.go`, `internal/onboarding/prompts.go`), each
-  next to the JSON schema of its reply (array-shaped, every object closed with all properties
+  builder has a guard test asserting its exact key set and values. The system prompts are Markdown files in the top-level
+  `prompts/` (`suggest.md`, `payee.md`, `match_text.md`, `savings.md`, `category_icons.md`,
+  `account_icons.md`, plus the shared `icon_rules.md`), embedded like `icons/` and exported by
+  `prompts/embed.go` (a file is exactly the text the model gets; `{{icons}}` and `{{icon_rules}}`
+  are substituted at init). `internal/imports/prompts.go` and `internal/onboarding/prompts.go`
+  hold only the JSON schema of each reply (array-shaped, every object closed with all properties
   required, optional values nullable; `ai.Schema.Check` guards them). Every call passes its
   schema (`ai.Client.Complete`'s last argument), but it reaches the provider only when the DSN
   sets `json=1` (or `json=true`; `0`/`false`/absent = off, the default, anything else fails at

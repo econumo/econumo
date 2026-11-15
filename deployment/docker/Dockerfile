@@ -39,9 +39,10 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 # internal/infra/i18n imports github.com/econumo/econumo/locales, which lives
 # at the module root alongside cmd/ and internal/; internal/onboarding imports
-# the icons package the same way.
+# the icons package and the prompts package the same way.
 COPY locales/ ./locales/
 COPY icons/ ./icons/
+COPY prompts/ ./prompts/
 # The built SPA is embedded into the binary (web/embed.go, go:embed): the
 # image and the downloadable release binary share one code path, and the
 # runtime stage no longer carries a separate /app/web.
