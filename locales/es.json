@@ -504,7 +504,7 @@
           "monthly": "cada mes",
           "quarterly": "cada trimestre",
           "yearly": "cada año",
-          "none": "Devolver antes de una fecha"
+          "none": "devolver antes de una fecha"
         }
       },
       "return_by": {

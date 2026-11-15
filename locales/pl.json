@@ -504,7 +504,7 @@
           "monthly": "co miesiąc",
           "quarterly": "co kwartał",
           "yearly": "co rok",
-          "none": "Zwrot do określonej daty"
+          "none": "zwrot do określonej daty"
         }
       },
       "return_by": {

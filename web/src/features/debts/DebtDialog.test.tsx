@@ -316,7 +316,7 @@ describe('Return by a date', () => {
 
   async function chooseReturnByADate(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('combobox', { name: 'Repeats' }))
-    await user.click(await screen.findByRole('option', { name: 'Return by a date' }))
+    await user.click(await screen.findByRole('option', { name: 'return by a date' }))
   }
 
   async function pick(user: ReturnType<typeof userEvent.setup>, field: string, ordinal: string) {
@@ -332,7 +332,7 @@ describe('Return by a date', () => {
 
     expect(screen.queryByLabelText('Payment')).toBeNull()
     expect(screen.getByLabelText('Amount')).toHaveAttribute('inputmode', 'decimal')
-    expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Return by a date')
+    expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('return by a date')
     expect(screen.queryByRole('button', { name: 'Borrowed on' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Return by' })).toHaveTextContent('Choose a date')
 

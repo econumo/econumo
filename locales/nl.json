@@ -504,7 +504,7 @@
           "monthly": "elke maand",
           "quarterly": "elk kwartaal",
           "yearly": "elk jaar",
-          "none": "Terugbetalen vóór een datum"
+          "none": "terugbetalen vóór een datum"
         }
       },
       "return_by": {

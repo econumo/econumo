@@ -504,7 +504,7 @@
           "monthly": "tous les mois",
           "quarterly": "tous les trimestres",
           "yearly": "tous les ans",
-          "none": "À rembourser avant une date"
+          "none": "à rembourser avant une date"
         }
       },
       "return_by": {

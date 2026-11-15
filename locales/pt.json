@@ -504,7 +504,7 @@
           "monthly": "todos os meses",
           "quarterly": "todos os trimestres",
           "yearly": "todos os anos",
-          "none": "Devolver até uma data"
+          "none": "devolver até uma data"
         }
       },
       "return_by": {

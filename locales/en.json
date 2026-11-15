@@ -504,7 +504,7 @@
           "monthly": "every month",
           "quarterly": "every quarter",
           "yearly": "every year",
-          "none": "Return by a date"
+          "none": "return by a date"
         }
       },
       "return_by": {

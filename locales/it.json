@@ -504,7 +504,7 @@
           "monthly": "ogni mese",
           "quarterly": "ogni trimestre",
           "yearly": "ogni anno",
-          "none": "Restituzione entro una data"
+          "none": "restituzione entro una data"
         }
       },
       "return_by": {
