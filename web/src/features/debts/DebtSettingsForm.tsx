@@ -10,6 +10,7 @@ import { isNotEmpty } from '@/lib/validation'
 import type { DebtDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUpdateDebt } from './queries'
+import { shiftDay } from './debtDates'
 import { AmountField, DatesRow, PaymentField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { amountEcho, amountError, buildTermsPayload, factsAsked, isNoFixed, paymentError, useDebtTermsForm } from './useDebtForm'
@@ -147,6 +148,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             startError={errors.startDate}
             lastPaymentError={errors.lastPaymentDate}
             returnBy={isNoFixed(form.schedule)}
+            lastMin={form.startDate ? shiftDay(form.startDate, 1) : undefined}
             // a set-up debt always has its start: only a debt not set up drops it
             clearable={settingUp}
             onStartDateChange={(startDate) => {

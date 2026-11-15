@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "Segnare come estinto?",
         "question": "Il saldo viene impostato a 0 dalla data qui sotto. I tuoi pagamenti restano invariati.",
-        "date": "Estinto il"
+        "date": "Estinto il",
+        "error": {
+          "future": "La data di estinzione non può essere nel futuro.",
+          "before_start": "Scegli una data successiva all'inizio del prestito ({date}).",
+          "before_statement": "Scegli una data uguale o successiva all'ultimo estratto conto ({date})."
+        }
       },
       "delete_confirm": {
         "title": "Eliminare questo debito?",

@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "Markeren als afbetaald?",
         "question": "Het saldo wordt vanaf de datum hieronder op 0 gezet. Uw betalingen blijven ongewijzigd.",
-        "date": "Afbetaald op"
+        "date": "Afbetaald op",
+        "error": {
+          "future": "De datum van aflossing mag niet in de toekomst liggen.",
+          "before_start": "Kies een datum na de start van de lening ({date}).",
+          "before_statement": "Kies een datum op of na het laatste overzicht ({date})."
+        }
       },
       "delete_confirm": {
         "title": "Deze schuld verwijderen?",

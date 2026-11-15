@@ -375,18 +375,16 @@ describe('Return by a date', () => {
     expect(bodies).toHaveLength(0)
   })
 
-  it('refuses a return-by day that is not after today', async () => {
+  it('offers no return-by day up to today', async () => {
     const bodies = captureCreate()
     const user = userEvent.setup()
     renderDialog()
     await openCreate()
     await chooseReturnByADate(user)
 
-    await user.type(screen.getByLabelText('Amount'), '500')
-    await pick(user, 'Return by', '10th')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-
-    expect(await screen.findByText('Pick a date after today.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Return by' }))
+    expect(await dayButton('10th')).toBeDisabled()
+    expect(await dayButton('11th')).toBeEnabled()
     expect(bodies).toHaveLength(0)
   })
 })

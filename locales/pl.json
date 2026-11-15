@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "Oznaczyć jako spłacony?",
         "question": "Saldo zostanie ustawione na 0 od daty poniżej. Twoje płatności pozostają bez zmian.",
-        "date": "Spłacony dnia"
+        "date": "Spłacony dnia",
+        "error": {
+          "future": "Data spłaty nie może być w przyszłości.",
+          "before_start": "Wybierz datę po rozpoczęciu kredytu ({date}).",
+          "before_statement": "Wybierz datę równą ostatniemu zestawieniu lub późniejszą ({date})."
+        }
       },
       "delete_confirm": {
         "title": "Usunąć ten dług?",

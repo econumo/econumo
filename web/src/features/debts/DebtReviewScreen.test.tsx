@@ -1092,7 +1092,7 @@ it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', 
   await waitFor(() => expect(within(panel).getByLabelText('Statement balance')).toHaveValue(''))
 })
 
-it('the statement date defaults to today and must not precede the start date', async () => {
+it('the statement date defaults to today and the calendar offers nothing up to the start date or after today', async () => {
   let called = false
   server.use(
     http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, startDate: '2026-11-05' } })),
@@ -1106,11 +1106,10 @@ it('the statement date defaults to today and must not precede the start date', a
   expect(within(panel).getByRole('button', { name: 'Statement date' })).toHaveTextContent('Nov 8, 2026')
   await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
   expect(await within(panel).findByText('Required field')).toBeInTheDocument()
-  await user.type(within(panel).getByLabelText('Statement balance'), '1000')
   await user.click(within(panel).getByRole('button', { name: 'Statement date' }))
-  await user.click(await screen.findByRole('button', { name: /November 2nd, 2026/ }))
-  await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
-  expect(await within(panel).findByText(/Pick a date after the loan's start/)).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /November 5th, 2026/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /November 6th, 2026/ })).toBeEnabled()
+  expect(screen.getByRole('button', { name: /November 9th, 2026/ })).toBeDisabled()
   expect(called).toBe(false)
 })
 
@@ -1341,6 +1340,21 @@ describe('a debt on an element', () => {
 
     await waitFor(() => expect(bodies).toEqual([{ id: 'd1', date: '2026-11-08' }]))
     expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_MARK_PAID_OFF)
+  })
+
+  it('the paid-off calendar offers no day before the start, after the latest statement\'s limit or after today', async () => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, snapshots: [...details.snapshots, { id: 's1', isOrigin: 0, computedBalance: '1150', asOf: '2026-11-03', balance: '1100', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' }] })))
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    await user.click(within(await openDanger(user)).getByRole('button', { name: 'Mark as paid off' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Mark as paid off?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Paid off on' }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /November 9th, 2026/ })).toBeDisabled())
+    expect(screen.getByRole('button', { name: /November 8th, 2026/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /November 3rd, 2026/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /November 2nd, 2026/ })).toBeDisabled()
   })
 
   it('a refused date shows under the date field and keeps the dialog open', async () => {

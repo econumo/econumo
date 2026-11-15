@@ -61,6 +61,7 @@ function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: i
         <DateField
           label={t('debts.rates.form.date')}
           value={date}
+          min={details.item.startDate || undefined}
           error={errors.date}
           onChange={(day) => {
             setErrors((prev) => ({ ...prev, date: undefined }))

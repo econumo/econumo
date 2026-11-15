@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "Marquer comme remboursée ?",
         "question": "Le solde passe à 0 à compter de la date ci-dessous. Vos paiements restent inchangés.",
-        "date": "Remboursée le"
+        "date": "Remboursée le",
+        "error": {
+          "future": "La date de remboursement ne peut pas être dans le futur.",
+          "before_start": "Choisissez une date postérieure au début du prêt ({date}).",
+          "before_statement": "Choisissez une date égale ou postérieure au dernier relevé ({date})."
+        }
       },
       "delete_confirm": {
         "title": "Supprimer cette dette ?",

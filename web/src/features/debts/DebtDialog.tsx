@@ -18,6 +18,8 @@ import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useCreateDebt } from './queries'
+import { formatDate } from '@/lib/datetime'
+import { shiftDay } from './debtDates'
 import { DateField, PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { suggestedPayment } from './suggestedPayment'
@@ -206,6 +208,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
             label={t('debts.form.return_by.label')}
             hint={t('debts.form.return_by.hint')}
             value={form.returnBy}
+            min={shiftDay(formatDate(new Date()), 1)}
             placeholder={t('debts.form.last_payment_date.choose')}
             error={errors.lastPaymentDate}
             onChange={(day) => {

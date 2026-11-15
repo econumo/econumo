@@ -153,12 +153,17 @@ export function DateField({
   onChange,
   onClear,
   clearLabel,
+  min,
+  max,
 }: {
   label: string
   hint?: string
   value: string
   placeholder?: string
   error?: string | null
+  /** the first and last day the picker offers (Y-m-d) */
+  min?: string
+  max?: string
   onChange: (value: string) => void
   onClear?: () => void
   clearLabel?: string
@@ -171,7 +176,7 @@ export function DateField({
         </span>
         {hint ? <span className="sr-only">{hint}</span> : null}
         <span data-date-chip className={cn('relative flex min-w-0 items-center', onClear && value && 'pr-6')}>
-          <TransactionDatePicker variant="field" label={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
+          <TransactionDatePicker variant="field" label={label} placeholder={placeholder} value={value} min={min} max={max} onChange={(day) => onChange(formatDate(day))} />
           {onClear && value ? (
             <button
               type="button"
@@ -200,6 +205,7 @@ export function DatesRow({
   returnBy = false,
   startLabel: startLabelProp,
   clearable = false,
+  lastMin,
   onStartDateChange,
   onLastPaymentDateChange,
 }: {
@@ -212,6 +218,8 @@ export function DatesRow({
   /** the first date's label, "Start date" by default */
   startLabel?: string
   clearable?: boolean
+  /** the earliest day the second date offers */
+  lastMin?: string
   onStartDateChange: (value: string) => void
   onLastPaymentDateChange: (value: string) => void
 }) {
@@ -236,6 +244,7 @@ export function DatesRow({
           hint={returnBy ? t('debts.form.return_by.hint') : t('debts.form.last_payment_date.hint')}
           value={lastPaymentDate}
           placeholder={t('debts.form.last_payment_date.choose')}
+          min={lastMin}
           onChange={onLastPaymentDateChange}
         />
       </div>

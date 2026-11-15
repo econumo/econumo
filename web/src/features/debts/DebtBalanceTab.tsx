@@ -10,7 +10,7 @@ import { formatDate } from '@/lib/datetime'
 import { add } from '@/lib/decimal'
 import type { DebtDetailsDto, DebtSnapshotDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
-import { debtDay } from './debtDates'
+import { debtDay, shiftDay } from './debtDates'
 import { AmountField, DateField } from './debtFields'
 import { useDeleteDebtReconciliation, useReconcileDebt } from './queries'
 import { RateChangesCard } from './RateChangesCard'
@@ -132,6 +132,8 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
               <DateField
                 label={t('debts.balance.form.date')}
                 value={date}
+                min={item.startDate ? shiftDay(item.startDate, 1) : undefined}
+                max={today}
                 error={errors.date}
                 onChange={(day) => {
                   setErrors((prev) => ({ ...prev, date: undefined }))

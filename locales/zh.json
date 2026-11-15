@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "标记为已还清？",
         "question": "从下面的日期起余额将设为 0。你的还款记录保持不变。",
-        "date": "还清日期"
+        "date": "还清日期",
+        "error": {
+          "future": "还清日期不能在未来。",
+          "before_start": "请选择贷款开始日期（{date}）之后的日期。",
+          "before_statement": "请选择不早于最近一份对账单（{date}）的日期。"
+        }
       },
       "delete_confirm": {
         "title": "删除此债务？",

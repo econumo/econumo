@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "Als abbezahlt markieren?",
         "question": "Der Saldo wird ab dem unten gewählten Datum auf 0 gesetzt. Ihre Zahlungen bleiben unverändert.",
-        "date": "Abbezahlt am"
+        "date": "Abbezahlt am",
+        "error": {
+          "future": "Das Datum der Tilgung darf nicht in der Zukunft liegen.",
+          "before_start": "Wählen Sie ein Datum nach dem Beginn des Kredits ({date}).",
+          "before_statement": "Wählen Sie ein Datum am oder nach dem letzten Kontoauszug ({date})."
+        }
       },
       "delete_confirm": {
         "title": "Diese Schuld löschen?",

@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "Mark as paid off?",
         "question": "The balance is set to 0 as of the date below. Your payments stay as they are.",
-        "date": "Paid off on"
+        "date": "Paid off on",
+        "error": {
+          "future": "The paid-off date can't be in the future.",
+          "before_start": "Pick a date after the loan's start ({date}).",
+          "before_statement": "Pick a date on or after the latest statement ({date})."
+        }
       },
       "delete_confirm": {
         "title": "Delete this debt?",

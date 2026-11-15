@@ -10,8 +10,10 @@ import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
 import type { DebtDto } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
+import { debtDay, paidOffBounds, paidOffProblem } from './debtDates'
+import type { PaidOffProblem } from './debtDates'
 import { DateField } from './debtFields'
-import { useDeleteDebt, useMarkDebtPaidOff, useReopenDebt } from './queries'
+import { useDebt, useDeleteDebt, useMarkDebtPaidOff, useReopenDebt } from './queries'
 
 export interface DebtDangerActions {
   askMarkPaidOff: (id: Id) => void
@@ -39,13 +41,22 @@ export function useDebtDangerActions({
   onDeleted?: (id: Id) => void
   onError?: (message: string) => void
 } = {}): DebtDangerActions {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const online = useOnline()
   const markPaidOff = useMarkDebtPaidOff()
   const reopenDebt = useReopenDebt()
   const deleteDebt = useDeleteDebt()
   const [confirmDelete, setConfirmDelete] = useState<Id | null>(null)
   const [paidOff, setPaidOff] = useState<{ id: Id; date: string; error?: string } | null>(null)
+
+  const details = useDebt(paidOff?.id).data
+  const bounds = paidOffBounds(details, formatDate(new Date()))
+  const problemMessage = (problem: PaidOffProblem) =>
+    problem === 'future'
+      ? t('debts.details.paid_off_confirm.error.future')
+      : problem === 'before_start'
+        ? t('debts.details.paid_off_confirm.error.before_start', { date: debtDay(bounds.start, i18n.language) })
+        : t('debts.details.paid_off_confirm.error.before_statement', { date: debtDay(bounds.statement, i18n.language) })
 
   const fail = (err: unknown) => {
     const message = apiErrorMessage(err)
@@ -61,6 +72,11 @@ export function useDebtDangerActions({
       return
     }
     const { id, date } = paidOff
+    const problem = paidOffProblem(date, bounds)
+    if (problem) {
+      setPaidOff({ id, date, error: problemMessage(problem) })
+      return
+    }
     markPaidOff.mutate(
       { id, date },
       {
@@ -71,7 +87,8 @@ export function useDebtDangerActions({
         onError: (err) => {
           const refused = apiFieldErrors(err, 'date')?.[0]
           if (refused) {
-            setPaidOff({ id, date, error: refused })
+            const problem = paidOffProblem(date, bounds)
+            setPaidOff({ id, date, error: problem ? problemMessage(problem) : refused })
             return
           }
           setPaidOff(null)
@@ -94,6 +111,8 @@ export function useDebtDangerActions({
             label={t('debts.details.paid_off_confirm.date')}
             value={paidOff?.date ?? ''}
             error={paidOff?.error}
+            min={bounds.min || undefined}
+            max={bounds.max}
             onChange={(date) => setPaidOff((prev) => (prev ? { ...prev, date, error: undefined } : prev))}
           />
           <div className={dialogActionsClass}>

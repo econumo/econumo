@@ -2542,8 +2542,11 @@ a second budget member account in USD, before running these.
       is added to the Balance tab's history as "Marked paid off" (one entered that day is replaced),
       payments after the date no longer count as payments (they stay in the element's Spent), the
       element is a regular element again and its menu offers "Track as debt" and "Past debts (1)".
-      The date is refused under its field when on or before the start date, in the future, or before the
-      latest statement; the debt can be marked while it still owes (refinancing: mark the old debt paid
+      The date picker offers only possible days (after the start date, no earlier than the latest statement,
+      no later than today; Balance statement dates, rate-change dates, the Return by day and Settings' Last
+      payment date are limited the same way); a date the server still refuses shows under the field with
+      the specific reason ("can't be in the future", "after the loan's start", "on or after the latest
+      statement"); the debt can be marked while it still owes (refinancing: mark the old debt paid
       off, then track a new one on the same element, starting after the old end). A debt not set up
       cannot be marked paid off.
 - [ ] 📱 **Reopen** (Danger zone of a paid-off debt, opened from "Past debts"): removes the end, the status and the

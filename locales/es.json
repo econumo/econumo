@@ -542,7 +542,12 @@
       "paid_off_confirm": {
         "title": "¿Marcar como pagada?",
         "question": "El saldo pasa a 0 desde la fecha de abajo. Tus pagos se quedan como están.",
-        "date": "Pagada el"
+        "date": "Pagada el",
+        "error": {
+          "future": "La fecha de liquidación no puede estar en el futuro.",
+          "before_start": "Elige una fecha posterior al inicio del préstamo ({date}).",
+          "before_statement": "Elige una fecha igual o posterior al último extracto ({date})."
+        }
       },
       "delete_confirm": {
         "title": "¿Eliminar esta deuda?",

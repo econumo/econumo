@@ -20,6 +20,9 @@ interface TransactionDatePickerProps {
   variant?: 'chip' | 'field'
   className?: string
   disabled?: boolean
+  /** the first and last day offered (Y-m-d); days outside are disabled */
+  min?: string
+  max?: string
 }
 
 const fieldTriggerClass =
@@ -30,7 +33,12 @@ function fieldDate(day: Date, lang: string): string {
   return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', year: 'numeric' }).format(day)
 }
 
-export function TransactionDatePicker({ value, onChange, label, placeholder, variant = 'chip', className, disabled = false }: TransactionDatePickerProps) {
+function ymd(day: string): Date {
+  const [y, m, d] = day.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+export function TransactionDatePicker({ value, onChange, label, placeholder, variant = 'chip', className, disabled = false, min, max }: TransactionDatePickerProps) {
   const { t, i18n } = useTranslation()
   const isPhone = useIsPhone()
   const [open, setOpen] = useState(false)
@@ -65,6 +73,7 @@ export function TransactionDatePicker({ value, onChange, label, placeholder, var
       startMonth={new Date(Math.min(currentYear - 100, selectedDate.getFullYear()), 0)}
       endMonth={new Date(Math.max(currentYear + 100, selectedDate.getFullYear()), 11)}
       weekStartsOn={1}
+      disabled={min || max ? [...(min ? [{ before: ymd(min) }] : []), ...(max ? [{ after: ymd(max) }] : [])] : undefined}
       locale={calendarLocale(i18n.language)}
       selected={value ? selectedDate : undefined}
       className={isPhone ? 'mx-auto bg-transparent p-0 [--cell-size:min(2.75rem,calc((100vw-2rem)/7))] [&_button[data-day]]:text-base' : undefined}
