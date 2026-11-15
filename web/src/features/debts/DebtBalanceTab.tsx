@@ -113,7 +113,7 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
             </>
           ) : null}
         </dl>
-        {latest ? null : (
+        {latest || readOnly ? null : (
           <p data-testid="debt-balance-no-statement" className="pb-1.5 pt-1 text-sm text-muted-foreground">
             {t('debts.balance.no_statement')}
           </p>
@@ -122,54 +122,54 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
           <section aria-label={t('debts.balance.enter')} className="flex flex-col gap-3 border-t border-border py-3">
             <p className="text-sm text-muted-foreground">{t('debts.balance.form.hint')}</p>
             <form
-          className="flex flex-col gap-3"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault()
-            void submit()
-          }}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-            <div className="min-w-0 flex-1">
-              <AmountField
-                id={`${formId}-balance`}
-                label={t('debts.balance.form.balance')}
-                value={balance}
-                symbol={currency?.symbol ?? ''}
-                error={errors.balance}
-                echo={amountEcho(balance, currency)}
-                onChange={(value) => {
-                  setErrors((prev) => ({ ...prev, balance: undefined }))
-                  setBalance(value)
-                }}
-              />
-            </div>
-            <DateField
-              label={t('debts.balance.form.date')}
-              value={date}
-              min={item.startDate ? shiftDay(item.startDate, 1) : undefined}
-              max={today}
-              error={errors.date}
-              onChange={(day) => {
-                setErrors((prev) => ({ ...prev, date: undefined }))
-                setDate(day)
+              className="flex flex-col gap-3"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault()
+                void submit()
               }}
-            />
-          </div>
-          {serverError ? (
-            <p role="alert" className="text-sm text-destructive">
-              {serverError}
-            </p>
-          ) : null}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={closeForm}>
-              {t('common.button.cancel.label')}
-            </Button>
-            <Button type="submit" disabled={reconcile.isPending || !online}>
-              {t('debts.balance.form.save')}
-            </Button>
-          </div>
-        </form>
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="min-w-0 flex-1">
+                  <AmountField
+                    id={`${formId}-balance`}
+                    label={t('debts.balance.form.balance')}
+                    value={balance}
+                    symbol={currency?.symbol ?? ''}
+                    error={errors.balance}
+                    echo={amountEcho(balance, currency)}
+                    onChange={(value) => {
+                      setErrors((prev) => ({ ...prev, balance: undefined }))
+                      setBalance(value)
+                    }}
+                  />
+                </div>
+                <DateField
+                  label={t('debts.balance.form.date')}
+                  value={date}
+                  min={item.startDate ? shiftDay(item.startDate, 1) : undefined}
+                  max={today}
+                  error={errors.date}
+                  onChange={(day) => {
+                    setErrors((prev) => ({ ...prev, date: undefined }))
+                    setDate(day)
+                  }}
+                />
+              </div>
+              {serverError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {serverError}
+                </p>
+              ) : null}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={closeForm}>
+                  {t('common.button.cancel.label')}
+                </Button>
+                <Button type="submit" disabled={reconcile.isPending || !online}>
+                  {t('debts.balance.form.save')}
+                </Button>
+              </div>
+            </form>
           </section>
         ) : (
           <div className="border-t border-border py-3">
