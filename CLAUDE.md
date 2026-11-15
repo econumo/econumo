@@ -63,6 +63,28 @@ make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/
                    # AND publish the `dev` channel to the private R2 bucket with ship
 ```
 
+**Edge (production's early preview).** Every push to `main` that changes the
+binary or image runs `.github/workflows/publish-edge.yml` (pushes touching only
+`docs/`, `.claude/` or Markdown outside the embedded `prompts/` publish
+nothing), which publishes the `edge` image tag and the `edge` R2 channel;
+production follows it (`ship update econumo --version edge`). No tag, no
+GitHub release, no immutable R2 version. An edge build reports the highest
+published GitHub release (no draft, no pre-release) as its `VERSION`
+(`.github/scripts/latest-release.sh`: `dev` when there is no release, a failed
+GitHub call fails the build), so What's new, the update notice and new-account
+seeding behave as on that release with no app code knowing about edge: the
+card for v1.8 appears once v1.8.0 is released, never before. A tag whose
+release failed never counts, and an old-line patch for self-hosters (v1.6.2
+after v1.7.0) never changes production. Only `VERSION_REF` (the commit) tells edge builds
+apart; analytics, logs and the sidebar read the release number, and every edge
+build makes clients drop their cached data (the buster is
+`VERSION+VERSION_REF`). A release of the newest version (above every plain
+release tag, `push_latest` or not) dispatches Publish Edge on `main` as its
+last job, so `edge` is always main's head and never the release
+commit (which could be older code than production already runs). A build
+stamped before a release re-reads the latest release before moving `edge` and
+stands down. Manual runs publish only from `main`.
+
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 (`.github/workflows/publish-release.yml`), not locally; its "Publish Dev"
 checkbox can also move the `dev` tag. The workflow's `branch` input selects
@@ -71,10 +93,12 @@ versions). A release from `main` auto-creates `release/vX.Y.Z` at the released
 commit as the base for future hotfixes; a hotfix dispatches from a new
 `release/*` branch copied by hand from the fixed version's branch, and the
 workflow then creates no branch. `latest` only moves for the highest version
-released so far. See `.claude/skills/publish-release` for the full process.
+released so far, and every release of the newest version rebuilds `edge` from
+`main` whether or not it moves `latest`. See
+`.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
 
-**R2 release (ship).** Both `make publish-dev` and the release workflow also
+**R2 release (ship).** `make publish-dev`, Publish Edge and the release workflow also
 publish the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}`), the
 systemd unit template `deploy/ship/econumo.service` and
 `deploy/ship/econumo.env.example` to the **private** Cloudflare R2 bucket `ship`
@@ -945,7 +969,9 @@ Tests live alongside the Go code:
   login working, every value the release returned still returned (extra fields and rows allowed;
   changes a release made on purpose are listed in `intended`, scoped to older sources), exact
   balances and budget figures, working writes, and no ERROR log line. A new migration therefore
-  needs a version above every RELEASED one, a hotfix release included.
+  needs a version above every RELEASED one, a hotfix release included. Production runs `main`
+  (the `edge` channel) and has applied `main`'s migrations before any release holds them, so a
+  migration on a `release/*` hotfix branch needs a version above every migration on `main`.
 - **AI eval suite** (build tag `aieval`, `make ai-eval`; never in `go test ./...` or `make
   go-test`): measures the real AI prompts against a real model, where the unit tests use fakes.
   `internal/imports/aieval_test.go` (both suggestion steps through `askSuggestions` +
@@ -2655,6 +2681,7 @@ data unreadable. Most are also asserted by the test suite.
 
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
   - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
+  - `:edge` — main's head, published on every push to `main` (Publish Edge) and rebuilt by every release of the newest version; production runs it.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Docker-free: each release attaches single-file linux binaries (SPA embedded)
   + `SHA256SUMS`; walkthrough in `docs/run-without-docker.md` (linked from the
