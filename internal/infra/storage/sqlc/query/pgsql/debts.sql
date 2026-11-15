@@ -62,10 +62,13 @@ DELETE FROM debts_snapshots WHERE id = $1;
 
 -- name: InsertDebtSplit :exec
 -- Through the transaction row: a payment deleted since it was read inserts
--- nothing instead of failing the foreign key.
+-- nothing instead of failing the foreign key. KEY SHARE waits for a delete
+-- still in flight and then finds no row, where a plain read would insert and
+-- fail the foreign key once the delete commits.
 INSERT INTO debts_payments (debt_id, transaction_id, interest)
 SELECT CAST(sqlc.arg(debt_id) AS UUID), t.id, CAST(sqlc.arg(interest) AS NUMERIC(19,8))
 FROM transactions t WHERE t.id = sqlc.arg(transaction_id)
+FOR KEY SHARE
 ON CONFLICT (debt_id, transaction_id) DO UPDATE SET interest = excluded.interest;
 
 -- name: LockDebtBudget :one

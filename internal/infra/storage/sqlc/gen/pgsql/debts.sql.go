@@ -114,6 +114,7 @@ const insertDebtSplit = `-- name: InsertDebtSplit :exec
 INSERT INTO debts_payments (debt_id, transaction_id, interest)
 SELECT CAST($1 AS UUID), t.id, CAST($2 AS NUMERIC(19,8))
 FROM transactions t WHERE t.id = $3
+FOR KEY SHARE
 ON CONFLICT (debt_id, transaction_id) DO UPDATE SET interest = excluded.interest
 `
 
@@ -124,7 +125,9 @@ type InsertDebtSplitParams struct {
 }
 
 // Through the transaction row: a payment deleted since it was read inserts
-// nothing instead of failing the foreign key.
+// nothing instead of failing the foreign key. KEY SHARE waits for a delete
+// still in flight and then finds no row, where a plain read would insert and
+// fail the foreign key once the delete commits.
 func (q *Queries) InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams) error {
 	_, err := q.db.ExecContext(ctx, insertDebtSplit, arg.DebtID, arg.Interest, arg.TransactionID)
 	return err

@@ -298,7 +298,9 @@ type Querier interface {
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshotParams) error
 	// Through the transaction row: a payment deleted since it was read inserts
-	// nothing instead of failing the foreign key.
+	// nothing instead of failing the foreign key. KEY SHARE waits for a delete
+	// still in flight and then finds no row, where a plain read would insert and
+	// fail the foreign key once the delete commits.
 	InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
 	InsertIdempotencyKey(ctx context.Context, arg InsertIdempotencyKeyParams) error

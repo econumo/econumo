@@ -39,6 +39,19 @@ func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id
 		if err != nil {
 			return err
 		}
+		// a category delete committing meanwhile would leave a copy on
+		// nothing: it waits for this write and then deletes the copies
+		var categories []vo.Id
+		for _, d := range debts {
+			if d.ElementType == model.DebtElementCategory {
+				categories = append(categories, d.ElementID)
+			}
+		}
+		if len(categories) > 0 {
+			if err := s.repo.LockCategories(ctx, categories); err != nil {
+				return err
+			}
+		}
 		for _, d := range debts {
 			cp := *d
 			cp.ID, cp.BudgetID = s.repo.NextIdentity(), toBudgetID
