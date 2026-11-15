@@ -20,7 +20,7 @@
 - One open suggestion per (owner, merchant). Dismissal is not remembered.
 - Limits (constants, no env vars): new limiter scope `RateScopeSuggest = "import-ai-suggest"`, 30 jobs per window, IP-exempt; 50 rows per AI request; 60 s job timeout; 500 payees max in the prompt; `suggest-match-text` 10 s timeout, counted under `RateScopePreviewRule`.
 - Logs never carry the prompt, the reply, payee text or error text: `user_id` + `err_type` only.
-- New migration version: `20261112000000` (above every released one), both engines, identical tables.
+- New migration version: `20261115000000` (above every released one), both engines, identical tables.
 - `.sql` files ASCII-only. Comments sparse, the why only (CLAUDE.md "Comments").
 - Every new route gets an `apiparity` scenario + golden. Regenerate with `UPDATE_GOLDEN=1` and inspect the diff.
 - Every new i18n key in all 11 `locales/*.json`. Plural strings are pipe-joined (`pluralPick`).
@@ -53,7 +53,7 @@ Server (`internal/imports`):
 Shared:
 - `internal/model/imports.go` / `imports_dto.go`: `ImportSuggestion`, DTOs.
 - `internal/model/transaction_view.go`: `ImportNamed.Archived`.
-- `internal/infra/storage/migrations/{sqlite,pgsql}/20261112000000.sql`, `internal/infra/storage/sqlc/query/{sqlite,pgsql}/imports.sql`.
+- `internal/infra/storage/migrations/{sqlite,pgsql}/20261115000000.sql`, `internal/infra/storage/sqlc/query/{sqlite,pgsql}/imports.sql`.
 - `internal/server/glue_imports.go`, `glue_transaction.go`, `server.go`: `OwnerFacts` adapter, `Archived`, the limiter scope, wiring.
 
 SPA (`web/src`):
@@ -113,7 +113,7 @@ The "apply to existing?" question must count only rows that would actually chang
 ### Task 3: Suggestion storage
 
 **Files:**
-- Create: `internal/infra/storage/migrations/sqlite/20261112000000.sql`, `internal/infra/storage/migrations/pgsql/20261112000000.sql`
+- Create: `internal/infra/storage/migrations/sqlite/20261115000000.sql`, `internal/infra/storage/migrations/pgsql/20261115000000.sql`
 - Modify: `internal/infra/storage/sqlc/query/sqlite/imports.sql`, `.../pgsql/imports.sql`, then `sqlc generate` (config `internal/infra/storage/sqlc/sqlc.yaml`)
 - Modify: `internal/model/imports.go`, `internal/imports/repository.go`, `internal/imports/repo/sqlite.go`, `repo/pgsql.go`
 - Create: `internal/imports/repo/suggestion.go`
