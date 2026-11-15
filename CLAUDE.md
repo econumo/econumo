@@ -943,10 +943,9 @@ Tests live alongside the Go code:
   (0.90: up to 10% may fail, models drift) of its cases. The provider is `ECONUMO_AI_DSN`
   (openai:// or anthropic://; unset skips). Workflow `.github/workflows/ai-evals.yml`
   (dispatch, PRs touching the prompts, the suggestion/savings/icon code, `icons/icons.json`,
-  `internal/infra/ai` or the evals, and report-only from the release workflow) runs in the
-  `ai-evals` environment, whose required reviewer must approve every run before the job can
-  read its secret `ECONUMO_AI_EVAL_DSN` (provider, key and host only, e.g. `anthropic://<key>@api.anthropic.com`: a DSN with no query gets `aieval.EvalQuery`, `model=claude-haiku-5-5&json=1`, the model the cases were tuned on;
-  a same-repo PR branch would otherwise hand the key to PR-controlled code), skips with a notice without it, and writes the per-area table to the job summary. A prompt
+  `internal/infra/ai` or the evals, and report-only from the release workflow) reads the
+  repository secret `ECONUMO_AI_EVAL_DSN` (provider, key and host only, e.g. `anthropic://<key>@api.anthropic.com`: a DSN with no query gets `aieval.EvalQuery`, `model=claude-haiku-5-5&json=1`, the model the cases were tuned on;
+  no approval gate, by the owner's choice: only trusted collaborators can push branches), skips with a notice without it, and writes the per-area table to the job summary. A prompt
   change that drops an area under the bar needs a better prompt or a corrected case, not a
   lower threshold.
 - `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
