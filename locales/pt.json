@@ -477,26 +477,26 @@
     },
     "form": {
       "header": "Dívida",
-      "intro": "Acompanhe um empréstimo sem conta. Pode ajustá-lo mais tarde.",
+      "intro": "Acompanhe uma dívida sem criar uma conta. Pode ajustar os detalhes mais tarde.",
       "currency": {
         "label": "Moeda"
       },
       "start_date": {
         "label": "Data de início",
-        "hint": "Quando começou o empréstimo",
+        "hint": "Quando começou a dívida",
         "none": "Sem data",
         "clear": "Limpar a data de início"
       },
       "amount_borrowed": {
-        "label": "Montante do empréstimo"
+        "label": "Montante da dívida"
       },
       "amount": {
         "label": "Montante"
       },
       "payment": {
         "label": "Pagamento",
-        "label_start": "Prestação no início",
-        "now": "Agora {amount}, após uma alteração de taxa (separador Saldo)."
+        "label_start": "Pagamento no início",
+        "now": "Agora {amount}, após uma alteração da taxa (separador Saldo)."
       },
       "schedule": {
         "label": "Repetição",
@@ -511,7 +511,7 @@
       },
       "return_by": {
         "label": "Devolver até",
-        "hint": "O dia em que o empréstimo deve ser devolvido",
+        "hint": "A data até à qual deve devolver a dívida",
         "after_today": "Escolha uma data posterior a hoje."
       },
       "last_payment_date": {
@@ -533,21 +533,21 @@
       "forecast": {
         "show": "Mostrar pagamentos futuros",
         "hide": "Ocultar pagamentos futuros",
-        "with_plan": "Inclui os pagamentos extra planeados em {budget}",
+        "with_plan": "Inclui os pagamentos antecipados planeados em {budget}",
         "regular_only": "Apenas pagamentos regulares",
         "overdue": "em atraso",
         "recorded": "Registados",
         "more": "Mostrar mais {count} pagamento | Mostrar mais {count} pagamentos"
       },
       "mark_paid_off": "Marcar como liquidada",
-      "reopen": "Reabrir a dívida",
+      "reopen": "Marcar como ativa",
       "paid_off_confirm": {
         "title": "Marcar como liquidada?",
         "question": "O saldo passa a 0 a partir da data abaixo. Os seus pagamentos ficam como estão.",
         "date": "Liquidada em",
         "error": {
           "future": "A data de liquidação não pode estar no futuro.",
-          "before_start": "Escolha uma data posterior ao início do empréstimo ({date}).",
+          "before_start": "Escolha uma data posterior ao início da dívida ({date}).",
           "before_statement": "Escolha uma data igual ou posterior ao último extrato ({date})."
         }
       },
@@ -560,14 +560,14 @@
       "finish_setup": "Concluir configuração"
     },
     "balance": {
-      "econumo": "Saldo de hoje",
+      "econumo": "Saldo atual",
       "hint": "Compare-o com o seu extrato bancário.",
       "hint_none": "Compare-o com o que foi acordado.",
       "enter": "Adicionar um extrato",
       "form": {
         "balance": "Saldo do extrato",
         "date": "Data do extrato",
-        "date_range": "Escolha uma data posterior à data de início e, no máximo, hoje. Para alterar o montante do empréstimo, corrija-o nas definições.",
+        "date_range": "Escolha uma data posterior ao início da dívida e, no máximo, hoje. Para alterar o montante da dívida, corrija-o nas definições.",
         "save": "Reconciliar"
       },
       "column": {
@@ -576,7 +576,7 @@
         "econumo": "Econumo",
         "difference": "Diferença"
       },
-      "origin": "Montante do empréstimo",
+      "origin": "Montante da dívida",
       "paid_off": "Marcada como liquidada",
       "delete": "Eliminar o extrato de {date}",
       "delete_confirm": {
@@ -585,13 +585,13 @@
       },
       "delete_paid_off_confirm": {
         "title": "Eliminar a marca de liquidação?",
-        "question": "A dívida volta a ficar aberta: o valor em dívida volta a ser calculado a partir dos registos anteriores e dos pagamentos."
+        "question": "A dívida volta a ficar ativa: o valor em dívida é recalculado a partir dos extratos anteriores e dos pagamentos."
       }
     },
     "rates": {
-      "title": "Taxa hoje",
+      "title": "Taxa atual",
       "from_start": "Desde o início",
-      "from_terms": "dos termos do seu empréstimo",
+      "from_terms": "segundo as condições da dívida",
       "column": {
         "date": "Data",
         "rate": "Taxa",
@@ -609,31 +609,31 @@
         "question": "Os pagamentos posteriores à sua data voltam a ser contados com a taxa e o pagamento anteriores."
       },
       "per_month": "{amount} por mês",
-      "add": "Adicionar uma alteração de taxa"
+      "add": "Adicionar uma alteração da taxa"
     },
     "review": {
       "progress": "{paid} de {total} pagos",
       "progress_repaid": "{paid} de {total} pagos ({repaid} de {borrowed})",
-      "owed_now": "Em dívida agora: {amount}",
+      "owed_now": "Dívida atual: {amount}",
       "paid_so_far": "Pago até agora",
       "paid_off_on": "Liquidada em {date}",
-      "not_set_up": "Indique o montante do empréstimo e as datas do empréstimo para ver os pagamentos em falta",
-      "loan": "Empréstimo",
-      "borrowed": "Empréstimo",
+      "not_set_up": "Indique o montante da dívida e as suas datas para ver os pagamentos em falta",
+      "loan": "Dívida",
+      "borrowed": "Montante da dívida",
       "next_payment": "Próximo pagamento",
       "last_payment": "Último pagamento",
       "last_payment_contract": "segundo o contrato: {date}",
       "start_date": "Data de início",
       "from_first_payment": "Desde o primeiro pagamento",
-      "paid_extra": "Extra pago",
+      "paid_extra": "Pago antecipadamente",
       "left": "Faltam {amount}",
       "left_return_by": "Faltam {amount} · devolver até {date}",
       "monthly_to_finish": "≈ {amount} por mês para terminar a tempo",
-      "planned_extra": "Extra planeado",
+      "planned_extra": "Pagamentos antecipados planeados",
       "danger": {
         "title": "Zona de perigo",
-        "paid_off": "Põe o saldo a 0 e para a contagem decrescente.",
-        "delete": "Remove a dívida e o seu histórico. As suas transações não são alteradas.",
+        "paid_off": "O saldo passa a 0 e a contagem dos pagamentos termina.",
+        "delete": "Elimina a dívida e o histórico; as transações registadas mantêm-se.",
         "reopen": "Volta a ativar a dívida: pode alterá-la e os seus pagamentos voltam a contar."
       },
       "tab": {
@@ -1838,7 +1838,7 @@
         "delete": "Eliminar dívida",
         "past": "Dívidas anteriores ({count})",
         "past_title": "Dívidas anteriores",
-        "borrowed": "Emprestado: {amount}",
+        "borrowed": "Montante da dívida: {amount}",
         "section": "Dívida",
         "not_set_up": "Ainda não configurada"
       },
@@ -2520,7 +2520,7 @@
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
       "envelope_member_not_category": "Só é possível adicionar uma categoria a um envelope",
       "savings_folder_not_allowed": "As contas poupança não podem ser colocadas numa pasta",
-      "element_has_debt": "Uma categoria que acompanha uma dívida não pode ser adicionada a um envelope. Marque primeiro a dívida como liquidada.",
+      "element_has_debt": "Uma categoria com uma dívida não pode ser adicionada a um envelope. Marque primeiro a dívida como liquidada.",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "savings_account_not_member": "As contas poupança têm de ser contas suas neste orçamento",
       "savings_removal_unconfirmed": "Isto elimina os montantes planeados e os comentários das contas poupança que desativou ou removeu deste orçamento; confirme para continuar",
@@ -2582,17 +2582,17 @@
     },
     "debt": {
       "payments_dont_cover": "Os pagamentos não cobrem o saldo. Aumente o pagamento ou defina uma data de último pagamento posterior.",
-      "element_not_eligible": "Uma dívida pode ser acompanhada numa categoria de despesa fora de um envelope, ou num envelope.",
-      "element_has_debt": "Esta categoria ou envelope já acompanha uma dívida. Marque primeiro essa dívida como liquidada.",
+      "element_not_eligible": "Uma dívida pode ser associada a uma categoria de despesa fora de um envelope ou a um envelope.",
+      "element_has_debt": "Esta categoria ou envelope já tem uma dívida. Marque primeiro essa dívida como liquidada.",
       "start_before_previous_end": "A data de início tem de ser posterior ao fim da dívida anterior desta categoria ou envelope.",
-      "cannot_reopen": "Esta dívida não pode ser reaberta: a sua categoria ou envelope acompanha outra dívida ativa ou iniciada mais tarde.",
-      "paid_off": "Esta dívida está liquidada. Reabra-a para a alterar.",
+      "cannot_reopen": "Esta dívida não pode ser marcada como ativa: a sua categoria ou envelope tem outra dívida ativa ou iniciada mais tarde.",
+      "paid_off": "Esta dívida está liquidada. Marque-a como ativa para a alterar.",
       "last_payment_before_start": "A data do último pagamento tem de ser posterior à data de início.",
       "start_in_future": "A data de início tem de ser hoje ou anterior.",
       "not_set_up": "Conclua primeiro a configuração desta dívida.",
       "conflicts_with_reconciliation": "Isto entra em conflito com um saldo que introduziu a partir de um extrato. Altere ou elimine primeiro essa reconciliação.",
-      "conflicts_with_rate_change": "Esta data de início é posterior a uma alteração da taxa de juro. Elimine primeiro essa alteração.",
-      "no_fixed_payments": "Esta dívida não tem pagamentos fixos, por isso não tem uma taxa de juro para alterar."
+      "conflicts_with_rate_change": "Esta data de início é posterior a uma alteração da taxa. Elimine primeiro essa alteração.",
+      "no_fixed_payments": "Esta dívida não tem pagamentos fixos, por isso não tem uma taxa para alterar."
     },
     "authserver": {
       "disabled": "A conexão de aplicações não está disponível neste servidor.",

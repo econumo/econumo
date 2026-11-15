@@ -477,13 +477,13 @@
     },
     "form": {
       "header": "Schuld",
-      "intro": "Volg een lening zonder rekening. U kunt dit later verfijnen.",
+      "intro": "Houd een schuld bij zonder aparte rekening. Details kunt u later aanpassen.",
       "currency": {
         "label": "Valuta"
       },
       "start_date": {
         "label": "Startdatum",
-        "hint": "Wanneer de lening begon",
+        "hint": "Wanneer de schuld is ontstaan",
         "none": "Geen datum",
         "clear": "Startdatum wissen"
       },
@@ -495,7 +495,7 @@
       },
       "payment": {
         "label": "Betaling",
-        "label_start": "Betaling bij de start",
+        "label_start": "Betaling bij aanvang",
         "now": "Nu {amount}, na een rentewijziging (tabblad Saldo)."
       },
       "schedule": {
@@ -511,7 +511,7 @@
       },
       "return_by": {
         "label": "Terugbetalen vóór",
-        "hint": "De dag waarop de lening terug moet zijn",
+        "hint": "De dag waarop de schuld terugbetaald moet zijn",
         "after_today": "Kies een datum na vandaag."
       },
       "last_payment_date": {
@@ -533,22 +533,22 @@
       "forecast": {
         "show": "Toekomstige betalingen tonen",
         "hide": "Toekomstige betalingen verbergen",
-        "with_plan": "Inclusief de extra betalingen gepland in {budget}",
+        "with_plan": "Inclusief de vervroegde aflossingen gepland in {budget}",
         "regular_only": "Alleen vaste betalingen",
         "overdue": "achterstallig",
         "recorded": "Geregistreerd",
         "more": "Nog {count} betaling tonen | Nog {count} betalingen tonen"
       },
       "mark_paid_off": "Markeren als afbetaald",
-      "reopen": "Schuld heropenen",
+      "reopen": "Markeren als actief",
       "paid_off_confirm": {
         "title": "Markeren als afbetaald?",
-        "question": "Het saldo wordt vanaf de datum hieronder op 0 gezet. Uw betalingen blijven ongewijzigd.",
+        "question": "Het saldo wordt per onderstaande datum op 0 gezet. Uw betalingen blijven ongewijzigd.",
         "date": "Afbetaald op",
         "error": {
-          "future": "De datum van aflossing mag niet in de toekomst liggen.",
-          "before_start": "Kies een datum na de start van de lening ({date}).",
-          "before_statement": "Kies een datum op of na het laatste overzicht ({date})."
+          "future": "De datum mag niet in de toekomst liggen.",
+          "before_start": "Kies een datum na de startdatum ({date}).",
+          "before_statement": "Kies een datum op of na het laatste afschrift ({date})."
         }
       },
       "delete_confirm": {
@@ -563,11 +563,11 @@
       "econumo": "Saldo vandaag",
       "hint": "Vergelijk het met uw bankafschrift.",
       "hint_none": "Vergelijk het met wat u hebt afgesproken.",
-      "enter": "Een afschrift toevoegen",
+      "enter": "Afschrift toevoegen",
       "form": {
         "balance": "Saldo volgens afschrift",
         "date": "Datum van het afschrift",
-        "date_range": "Kies een datum na de startdatum en uiterlijk vandaag. Wilt u het geleende bedrag wijzigen, corrigeer het dan in de instellingen.",
+        "date_range": "Kies een datum na de startdatum en uiterlijk vandaag. Het geleende bedrag wijzigt u in de instellingen.",
         "save": "Afstemmen"
       },
       "column": {
@@ -581,17 +581,17 @@
       "delete": "Afschrift van {date} verwijderen",
       "delete_confirm": {
         "title": "Dit afschrift verwijderen?",
-        "question": "Betalingen na de datum ervan worden weer vanaf het eerdere saldo berekend."
+        "question": "Betalingen na de datum van dit afschrift worden weer vanaf het vorige saldo berekend."
       },
       "delete_paid_off_confirm": {
         "title": "Markering als afbetaald verwijderen?",
-        "question": "De schuld gaat weer open: wat verschuldigd is, wordt opnieuw berekend uit de eerdere gegevens en de betalingen."
+        "question": "De schuld wordt weer actief: het saldo wordt opnieuw berekend uit de eerdere afschriften en betalingen."
       }
     },
     "rates": {
       "title": "Rente vandaag",
       "from_start": "Vanaf het begin",
-      "from_terms": "uit de voorwaarden van de lening",
+      "from_terms": "volgens de voorwaarden van uw schuld",
       "column": {
         "date": "Datum",
         "rate": "Rente",
@@ -603,13 +603,13 @@
         "payment": "Betaling",
         "save": "Toevoegen"
       },
-      "delete": "Renteswijziging van {date} verwijderen",
+      "delete": "Rentewijziging van {date} verwijderen",
       "delete_confirm": {
-        "title": "Deze renteswijziging verwijderen?",
-        "question": "Betalingen na de datum ervan worden weer met de eerdere rente en betaling berekend."
+        "title": "Deze rentewijziging verwijderen?",
+        "question": "Betalingen na de datum ervan worden weer met de vorige rente en betaling berekend."
       },
       "per_month": "{amount} per maand",
-      "add": "Renteverandering toevoegen"
+      "add": "Rentewijziging toevoegen"
     },
     "review": {
       "progress": "{paid} van {total} betaald",
@@ -617,24 +617,24 @@
       "owed_now": "Nu verschuldigd: {amount}",
       "paid_so_far": "Tot nu toe betaald",
       "paid_off_on": "Afbetaald op {date}",
-      "not_set_up": "Vul het geleende bedrag en de data van de lening in om de resterende betalingen te zien",
-      "loan": "Lening",
+      "not_set_up": "Vul het geleende bedrag en de data van de schuld in om de resterende betalingen te zien",
+      "loan": "Schuld",
       "borrowed": "Geleend",
       "next_payment": "Volgende betaling",
       "last_payment": "Laatste betaling",
       "last_payment_contract": "volgens contract: {date}",
       "start_date": "Startdatum",
       "from_first_payment": "Vanaf de eerste betaling",
-      "paid_extra": "Extra betaald",
+      "paid_extra": "Vervroegd afgelost",
       "left": "Nog {amount}",
       "left_return_by": "Nog {amount} · terugbetalen vóór {date}",
-      "monthly_to_finish": "≈ {amount} per maand om op tijd klaar te zijn",
-      "planned_extra": "Extra gepland",
+      "monthly_to_finish": "≈ {amount} per maand om op tijd af te lossen",
+      "planned_extra": "Geplande vervroegde aflossingen",
       "danger": {
         "title": "Gevarenzone",
-        "paid_off": "Zet het saldo op 0 en stopt het aftellen.",
-        "delete": "Verwijdert de schuld en haar geschiedenis. Uw transacties blijven ongewijzigd.",
-        "reopen": "Maakt de schuld weer actief, zodat u haar kunt wijzigen en haar betalingen meetellen."
+        "paid_off": "Het saldo wordt 0 en de betalingen worden niet meer berekend.",
+        "delete": "Verwijdert de schuld en de geschiedenis ervan. Ingevoerde transacties blijven staan.",
+        "reopen": "De schuld wordt weer actief: u kunt haar wijzigen en haar betalingen tellen weer mee."
       },
       "tab": {
         "overview": "Overzicht",
@@ -1832,7 +1832,7 @@
         "payments_left": "Nog {count} betaling | Nog {count} betalingen",
         "extra_effect": "{months} maand eerder afbetaald, {amount} minder rente | {months} maanden eerder afbetaald, {amount} minder rente",
         "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
-        "track": "Volgen als schuld",
+        "track": "Als schuld bijhouden",
         "details": "Details",
         "debt_details": "Schulddetails",
         "delete": "Schuld verwijderen",
@@ -2520,7 +2520,7 @@
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
       "envelope_member_not_category": "Alleen een categorie kan aan een envelop worden toegevoegd",
       "savings_folder_not_allowed": "Spaarrekeningen kunnen niet in een map worden geplaatst",
-      "element_has_debt": "Een categorie die een schuld volgt, kan niet aan een envelop worden toegevoegd. Markeer de schuld eerst als afbetaald.",
+      "element_has_debt": "Een categorie met een schuld kan niet in een envelop worden geplaatst. Markeer de schuld eerst als afbetaald.",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "savings_account_not_member": "Spaarrekeningen moeten uw eigen rekeningen in dit budget zijn",
       "savings_removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen verwijderd van de spaarrekeningen die u in dit budget hebt uitgeschakeld of eruit hebt verwijderd; bevestig om door te gaan",
@@ -2582,15 +2582,15 @@
     },
     "debt": {
       "payments_dont_cover": "De betalingen dekken het saldo niet. Verhoog de betaling of kies een latere datum voor de laatste betaling.",
-      "element_not_eligible": "Een schuld kan worden gevolgd op een uitgavencategorie buiten een envelop, of op een envelop.",
-      "element_has_debt": "Deze categorie of envelop volgt al een schuld. Markeer die schuld eerst als afbetaald.",
+      "element_not_eligible": "U kunt een schuld bijhouden op een uitgavencategorie buiten een envelop, of op een envelop.",
+      "element_has_debt": "Deze categorie of envelop heeft al een schuld. Markeer die schuld eerst als afbetaald.",
       "start_before_previous_end": "De startdatum moet na het einde van de vorige schuld van deze categorie of envelop liggen.",
-      "cannot_reopen": "Deze schuld kan niet worden heropend: de categorie of envelop volgt een andere schuld die actief is of later is begonnen.",
-      "paid_off": "Deze schuld is afbetaald. Heropen haar om haar te wijzigen.",
+      "cannot_reopen": "Deze schuld kan niet als actief worden gemarkeerd: de categorie of envelop heeft een andere schuld die actief is of later is begonnen.",
+      "paid_off": "Deze schuld is afbetaald. Markeer haar als actief om haar te wijzigen.",
       "last_payment_before_start": "De datum van de laatste betaling moet na de startdatum liggen.",
-      "start_in_future": "De startdatum moet vandaag of eerder zijn.",
+      "start_in_future": "De startdatum mag niet in de toekomst liggen.",
       "not_set_up": "Rond eerst het instellen van deze schuld af.",
-      "conflicts_with_reconciliation": "Dit botst met een saldo dat u van een afschrift hebt ingevoerd. Wijzig of verwijder eerst die afstemming.",
+      "conflicts_with_reconciliation": "Dit botst met een afschrift dat u hebt ingevoerd. Wijzig of verwijder eerst dat afschrift.",
       "conflicts_with_rate_change": "Deze startdatum ligt na een rentewijziging. Verwijder eerst die rentewijziging.",
       "no_fixed_payments": "Deze schuld heeft geen vaste betalingen en dus geen rente die u kunt wijzigen."
     },

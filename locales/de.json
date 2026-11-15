@@ -477,13 +477,13 @@
     },
     "form": {
       "header": "Schuld",
-      "intro": "Verfolgen Sie einen Kredit ohne Konto. Die Details können Sie später anpassen.",
+      "intro": "Die Schuld wird ohne eigenes Konto erfasst. Details können Sie später anpassen.",
       "currency": {
         "label": "Währung"
       },
       "start_date": {
         "label": "Startdatum",
-        "hint": "Wann der Kredit begann",
+        "hint": "Wann die Schuld entstanden ist",
         "none": "Kein Datum",
         "clear": "Startdatum entfernen"
       },
@@ -511,7 +511,7 @@
       },
       "return_by": {
         "label": "Zurückzahlen bis",
-        "hint": "Der Tag, an dem Sie das Darlehen zurückzahlen",
+        "hint": "Bis zu diesem Tag muss die Schuld zurückgezahlt sein",
         "after_today": "Wählen Sie ein Datum nach heute."
       },
       "last_payment_date": {
@@ -528,27 +528,27 @@
         "amount": "Zahlung",
         "interest": "Zinsen",
         "principal": "Tilgung",
-        "balance": "Restschuld"
+        "balance": "Saldo"
       },
       "forecast": {
         "show": "Künftige Zahlungen anzeigen",
         "hide": "Künftige Zahlungen ausblenden",
-        "with_plan": "Mit den in {budget} geplanten Sonderzahlungen",
+        "with_plan": "Inklusive der in {budget} geplanten vorzeitigen Zahlungen",
         "regular_only": "Nur regelmäßige Zahlungen",
         "overdue": "überfällig",
         "recorded": "Erfasst",
         "more": "{count} weitere Zahlung anzeigen | {count} weitere Zahlungen anzeigen"
       },
       "mark_paid_off": "Als abbezahlt markieren",
-      "reopen": "Schuld wieder öffnen",
+      "reopen": "Als aktiv markieren",
       "paid_off_confirm": {
         "title": "Als abbezahlt markieren?",
-        "question": "Der Saldo wird ab dem unten gewählten Datum auf 0 gesetzt. Ihre Zahlungen bleiben unverändert.",
+        "question": "Der Saldo wird zum unten gewählten Datum auf 0 gesetzt. Ihre Zahlungen bleiben unverändert.",
         "date": "Abbezahlt am",
         "error": {
-          "future": "Das Datum der Tilgung darf nicht in der Zukunft liegen.",
-          "before_start": "Wählen Sie ein Datum nach dem Beginn des Kredits ({date}).",
-          "before_statement": "Wählen Sie ein Datum am oder nach dem letzten Kontoauszug ({date})."
+          "future": "Das Datum darf nicht in der Zukunft liegen.",
+          "before_start": "Wählen Sie ein Datum nach dem Startdatum ({date}).",
+          "before_statement": "Wählen Sie ein Datum ab dem letzten Kontoauszug ({date})."
         }
       },
       "delete_confirm": {
@@ -567,7 +567,7 @@
       "form": {
         "balance": "Saldo laut Kontoauszug",
         "date": "Datum des Kontoauszugs",
-        "date_range": "Wählen Sie ein Datum nach dem Startdatum und spätestens heute. Um den geliehenen Betrag zu ändern, korrigieren Sie ihn in den Einstellungen.",
+        "date_range": "Wählen Sie ein Datum nach dem Startdatum, spätestens heute. Den geliehenen Betrag ändern Sie in den Einstellungen.",
         "save": "Abgleichen"
       },
       "column": {
@@ -581,32 +581,32 @@
       "delete": "Kontoauszug vom {date} löschen",
       "delete_confirm": {
         "title": "Diesen Kontoauszug löschen?",
-        "question": "Zahlungen nach seinem Datum werden wieder vom früheren Saldo aus gerechnet."
+        "question": "Zahlungen nach dem Datum dieses Kontoauszugs werden wieder ab dem vorherigen Saldo berechnet."
       },
       "delete_paid_off_confirm": {
         "title": "Markierung als abbezahlt löschen?",
-        "question": "Die Schuld wird wieder geöffnet: Der offene Betrag wird erneut aus den früheren Einträgen und den Zahlungen berechnet."
+        "question": "Die Schuld wird wieder aktiv: Der Saldo wird aus den früheren Kontoauszügen und Zahlungen neu berechnet."
       }
     },
     "rates": {
       "title": "Zinssatz heute",
       "from_start": "Ab Beginn",
-      "from_terms": "aus den Kreditbedingungen",
+      "from_terms": "aus Ihren Angaben zur Schuld",
       "column": {
         "date": "Datum",
         "rate": "Zinssatz",
-        "payment": "Zahlung"
+        "payment": "Rate"
       },
       "form": {
         "date": "Datum",
         "rate": "Zinssatz, % pro Jahr",
-        "payment": "Zahlung",
+        "payment": "Rate",
         "save": "Hinzufügen"
       },
       "delete": "Zinsänderung vom {date} löschen",
       "delete_confirm": {
         "title": "Diese Zinsänderung löschen?",
-        "question": "Zahlungen nach ihrem Datum werden wieder mit dem vorherigen Zinssatz und der vorherigen Zahlung gerechnet."
+        "question": "Zahlungen nach ihrem Datum werden wieder mit dem vorherigen Zinssatz und der vorherigen Rate berechnet."
       },
       "per_month": "{amount} im Monat",
       "add": "Zinsänderung hinzufügen"
@@ -617,24 +617,24 @@
       "owed_now": "Aktuell geschuldet: {amount}",
       "paid_so_far": "Bisher bezahlt",
       "paid_off_on": "Abbezahlt am {date}",
-      "not_set_up": "Geben Sie den geliehenen Betrag und die Daten des Kredits an, um die verbleibenden Zahlungen zu sehen",
-      "loan": "Kredit",
+      "not_set_up": "Geben Sie den geliehenen Betrag und die Daten der Schuld ein, um die verbleibenden Zahlungen zu sehen",
+      "loan": "Schuld",
       "borrowed": "Geliehen",
       "next_payment": "Nächste Zahlung",
       "last_payment": "Letzte Zahlung",
       "last_payment_contract": "laut Vertrag: {date}",
       "start_date": "Startdatum",
       "from_first_payment": "Ab der ersten Zahlung",
-      "paid_extra": "Geleistete Sonderzahlungen",
+      "paid_extra": "Vorzeitig zurückgezahlt",
       "left": "{amount} offen",
       "left_return_by": "{amount} offen · zurückzahlen bis {date}",
-      "monthly_to_finish": "≈ {amount} pro Monat, um rechtzeitig fertig zu werden",
-      "planned_extra": "Geplante Sonderzahlungen",
+      "monthly_to_finish": "≈ {amount} pro Monat, um pünktlich zurückzuzahlen",
+      "planned_extra": "Geplante vorzeitige Zahlungen",
       "danger": {
         "title": "Gefahrenbereich",
-        "paid_off": "Setzt den Saldo auf 0 und beendet den Countdown.",
-        "delete": "Entfernt die Schuld samt Verlauf. Ihre Buchungen bleiben unverändert.",
-        "reopen": "Macht die Schuld wieder aktiv, sodass Sie sie ändern können und ihre Zahlungen zählen."
+        "paid_off": "Der Saldo wird auf 0 gesetzt, und die Zahlungen werden nicht mehr berechnet.",
+        "delete": "Löscht die Schuld und ihren Verlauf. Erfasste Transaktionen bleiben erhalten.",
+        "reopen": "Die Schuld wird wieder aktiv: Sie können sie ändern, und ihre Zahlungen zählen wieder."
       },
       "tab": {
         "overview": "Übersicht",
@@ -1832,7 +1832,7 @@
         "payments_left": "Noch {count} Zahlung | Noch {count} Zahlungen",
         "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Zinsen | {months} Monate früher abbezahlt, {amount} weniger Zinsen",
         "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",
-        "track": "Als Schuld verfolgen",
+        "track": "Als Schuld erfassen",
         "details": "Details",
         "debt_details": "Schulddetails",
         "delete": "Schuld löschen",
@@ -2520,7 +2520,7 @@
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
       "envelope_member_not_category": "Nur Kategorien können zu einem Umschlag hinzugefügt werden",
       "savings_folder_not_allowed": "Sparkonten können nicht in einen Ordner verschoben werden",
-      "element_has_debt": "Eine Kategorie, die eine Schuld verfolgt, kann nicht in einen Umschlag verschoben werden. Markieren Sie die Schuld zuerst als abbezahlt.",
+      "element_has_debt": "Eine Kategorie mit einer Schuld kann nicht in einen Umschlag verschoben werden. Markieren Sie die Schuld zuerst als abbezahlt.",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "savings_account_not_member": "Sparkonten müssen Ihre eigenen Konten in diesem Budget sein",
       "savings_removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare der Sparkonten gelöscht, die Sie in diesem Budget ausgeschaltet oder daraus entfernt haben; bestätigen Sie, um fortzufahren",
@@ -2581,18 +2581,18 @@
       "list_empty": "Die Tag-Liste ist leer"
     },
     "debt": {
-      "payments_dont_cover": "Die Zahlungen decken die Restschuld nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
-      "element_not_eligible": "Eine Schuld lässt sich für eine Ausgabenkategorie außerhalb eines Umschlags oder für einen Umschlag verfolgen.",
-      "element_has_debt": "Diese Kategorie bzw. dieser Umschlag verfolgt bereits eine Schuld. Markieren Sie diese Schuld zuerst als abbezahlt.",
+      "payments_dont_cover": "Die Zahlungen decken den Saldo nicht. Erhöhen Sie die Rate oder wählen Sie ein späteres Datum der letzten Zahlung.",
+      "element_not_eligible": "Eine Schuld lässt sich für eine Ausgabenkategorie außerhalb eines Umschlags oder für einen Umschlag erfassen.",
+      "element_has_debt": "Diese Kategorie bzw. dieser Umschlag hat bereits eine Schuld. Markieren Sie diese Schuld zuerst als abbezahlt.",
       "start_before_previous_end": "Das Startdatum muss nach dem Ende der vorherigen Schuld dieser Kategorie bzw. dieses Umschlags liegen.",
-      "cannot_reopen": "Diese Schuld kann nicht wieder geöffnet werden: Ihre Kategorie bzw. ihr Umschlag verfolgt eine andere Schuld, die aktiv ist oder später begonnen hat.",
-      "paid_off": "Diese Schuld ist abbezahlt. Öffnen Sie sie wieder, um sie zu ändern.",
+      "cannot_reopen": "Diese Schuld kann nicht als aktiv markiert werden: Die Kategorie bzw. der Umschlag hat eine andere Schuld, die aktiv ist oder später begonnen hat.",
+      "paid_off": "Diese Schuld ist abbezahlt. Markieren Sie sie als aktiv, um sie zu ändern.",
       "last_payment_before_start": "Das Datum der letzten Zahlung muss nach dem Startdatum liegen.",
-      "start_in_future": "Das Startdatum darf nicht nach heute liegen.",
+      "start_in_future": "Das Startdatum darf nicht in der Zukunft liegen.",
       "not_set_up": "Schließen Sie zuerst die Einrichtung dieser Schuld ab.",
-      "conflicts_with_reconciliation": "Das widerspricht einem Saldo, den Sie von einem Kontoauszug übernommen haben. Ändern oder löschen Sie zuerst diesen Abgleich.",
+      "conflicts_with_reconciliation": "Das widerspricht einem eingetragenen Kontoauszug. Ändern oder löschen Sie zuerst diesen Kontoauszug.",
       "conflicts_with_rate_change": "Dieses Startdatum liegt nach einer Zinsänderung. Löschen Sie zuerst diese Zinsänderung.",
-      "no_fixed_payments": "Diese Schuld hat keine festen Zahlungen und daher keinen Zinssatz, den Sie ändern können."
+      "no_fixed_payments": "Diese Schuld hat keine festen Raten, daher gibt es keinen Zinssatz zu ändern."
     },
     "authserver": {
       "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",
