@@ -1243,6 +1243,9 @@ describe('Rate changes on the Balance tab', () => {
     await openScreen()
     const panel = await openBalance(user)
 
+    expect(within(panel).getByTestId('debt-rate-summary')).toHaveTextContent('3.69%')
+    expect(within(panel).getByTestId('debt-rate-summary')).toHaveTextContent('120.00 $ a month')
+    await user.click(within(panel).getByRole('button', { name: 'Add a rate change' }))
     const rate = within(panel).getByLabelText('Rate, % a year')
     const payment = within(panel).getByLabelText('Payment')
     expect(rate).toHaveValue('3.6912')
@@ -1252,9 +1255,10 @@ describe('Rate changes on the Balance tab', () => {
     await user.type(rate, '4,5')
     await user.clear(payment)
     await user.type(payment, '130')
-    await user.click(within(panel).getByRole('button', { name: 'Add rate change' }))
+    await user.click(within(panel).getByRole('button', { name: 'Add' }))
 
     await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(within(panel).queryByLabelText('Rate, % a year')).toBeNull()
     expect(bodies[0]).toEqual({ id: 'd1', date: '2026-11-08', annualRate: '4.5', payment: '130' })
     expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RATE_CHANGE_ADD)
   })
@@ -1265,6 +1269,7 @@ describe('Rate changes on the Balance tab', () => {
     renderScreen()
     await openScreen()
     const panel = await openBalance(user)
+    await user.click(within(panel).getByRole('button', { name: 'Add a rate change' }))
     expect(within(panel).getByLabelText('Payment')).toHaveValue('100')
   })
 
@@ -1307,11 +1312,12 @@ describe('Rate changes on the Balance tab', () => {
     await openScreen()
     const panel = await openBalance(user)
 
-    await user.click(within(panel).getByRole('button', { name: 'Add rate change' }))
+    await user.click(within(panel).getByRole('button', { name: 'Add a rate change' }))
+    await user.click(within(panel).getByRole('button', { name: 'Add' }))
     expect(await within(panel).findByText('Rate is out of range')).toBeInTheDocument()
   })
 
-  it('read-only shows the table with no form and no delete', async () => {
+  it('read-only shows the table with no add link and no delete', async () => {
     useDetails({ ...stored, item: { ...stored.item, canEdit: 0 } })
     const user = userEvent.setup()
     renderScreen()
@@ -1319,7 +1325,7 @@ describe('Rate changes on the Balance tab', () => {
     const panel = await openBalance(user)
 
     expect(within(panel).getAllByTestId('debt-rate-change')).toHaveLength(2)
-    expect(within(panel).queryByLabelText('Rate, % a year')).toBeNull()
+    expect(within(panel).queryByRole('button', { name: 'Add a rate change' })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Delete the rate change/ })).toBeNull()
   })
 
@@ -1332,7 +1338,7 @@ describe('Rate changes on the Balance tab', () => {
 
     act(() => onlineManager.setOnline(false))
     onTestFinished(() => act(() => onlineManager.setOnline(true)))
-    expect(await within(panel).findByRole('button', { name: 'Add rate change' })).toBeDisabled()
+    expect(await within(panel).findByRole('button', { name: 'Add a rate change' })).toBeDisabled()
     expect(within(panel).getByRole('button', { name: 'Delete the rate change of Nov 1, 2026' })).toBeDisabled()
   })
 })

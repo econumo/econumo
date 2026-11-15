@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Rate changes",
+      "title": "Rate today",
       "from_start": "From the start",
       "from_terms": "from your loan's terms",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Payment"
       },
       "form": {
-        "title": "Record a rate change",
         "date": "Date",
         "rate": "Rate, % a year",
         "payment": "Payment",
-        "save": "Add rate change"
+        "save": "Add"
       },
       "delete": "Delete the rate change of {date}",
       "delete_confirm": {
         "title": "Delete this rate change?",
         "question": "Payments after its date will be counted at the previous rate and payment again."
-      }
+      },
+      "per_month": "{amount} a month",
+      "add": "Add a rate change"
     },
     "review": {
       "progress": "{paid} of {total} paid",

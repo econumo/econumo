@@ -2412,10 +2412,11 @@ data unreadable. Most are also asserted by the test suite.
   (`[{id, date, annualRate, payment}]`, oldest first) and on `item` `annualRate` (in force today) and
   `impliedAnnualRate` (from the terms), both `""` while not set up (`get-debt-list` items carry the
   two too); `periodRate` is the rate in force today. Forecast, `Timelines` and `Views` read the same list; `clone-budget` copies it; a currency change reads the payments
-  unconverted. SPA: the Balance tab's "Rate changes" card under the history (Date | Rate | Payment,
+  unconverted. SPA: the Balance tab's rate card under the balance card (one card: top row "Rate today" with the
+  rate in force and the payment a month, then Date | Rate | Payment,
   oldest first; with no stored start row the first row is the derived "From the start" from the loan's
-  terms, with no delete; every stored row has a delete behind a confirm; the form prefills the rate and
-  payment in force now; guests and archived budgets see the table only; disabled offline); both
+  terms, with no delete; every stored row has a delete behind a confirm; "+ Add a rate change", the table's last line, expands the form in place,
+  prefilled with the rate and payment in force now; guests and archived budgets see the table only; disabled offline); both
   actions refresh the debt, the lists and every forecast and fire `appDebtRateChangeAdd` /
   `appDebtRateChangeDelete`.
   **No fixed payments** (schedule `none`, "No fixed payments"; a loan returned by a date): `payment` may be

@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Cambios de tipo",
+      "title": "Tasa de hoy",
       "from_start": "Desde el inicio",
       "from_terms": "según las condiciones del préstamo",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Pago"
       },
       "form": {
-        "title": "Registrar un cambio de tipo",
         "date": "Fecha",
         "rate": "Tipo, % anual",
         "payment": "Pago",
-        "save": "Añadir cambio de tipo"
+        "save": "Añadir"
       },
       "delete": "Eliminar el cambio de tipo del {date}",
       "delete_confirm": {
         "title": "¿Eliminar este cambio de tipo?",
         "question": "Los pagos posteriores a su fecha vuelven a contarse con el tipo y el pago anteriores."
-      }
+      },
+      "per_month": "{amount} al mes",
+      "add": "Añadir un cambio de tasa"
     },
     "review": {
       "progress": "{paid} de {total} pagados",

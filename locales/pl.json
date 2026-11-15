@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Zmiany oprocentowania",
+      "title": "Oprocentowanie dziś",
       "from_start": "Od początku",
       "from_terms": "z warunków kredytu",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Płatność"
       },
       "form": {
-        "title": "Zapisz zmianę oprocentowania",
         "date": "Data",
         "rate": "Oprocentowanie, % rocznie",
         "payment": "Płatność",
-        "save": "Dodaj zmianę oprocentowania"
+        "save": "Dodaj"
       },
       "delete": "Usuń zmianę oprocentowania z dnia {date}",
       "delete_confirm": {
         "title": "Usunąć tę zmianę oprocentowania?",
         "question": "Płatności po jej dacie znów liczą się według poprzedniego oprocentowania i płatności."
-      }
+      },
+      "per_month": "{amount} miesięcznie",
+      "add": "Dodaj zmianę oprocentowania"
     },
     "review": {
       "progress": "Opłacono {paid} z {total}",

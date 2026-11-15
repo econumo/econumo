@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Alterações da taxa",
+      "title": "Taxa hoje",
       "from_start": "Desde o início",
       "from_terms": "dos termos do seu empréstimo",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Pagamento"
       },
       "form": {
-        "title": "Registar uma alteração da taxa",
         "date": "Data",
         "rate": "Taxa, % ao ano",
         "payment": "Pagamento",
-        "save": "Adicionar alteração da taxa"
+        "save": "Adicionar"
       },
       "delete": "Eliminar a alteração da taxa de {date}",
       "delete_confirm": {
         "title": "Eliminar esta alteração da taxa?",
         "question": "Os pagamentos posteriores à sua data voltam a ser contados com a taxa e o pagamento anteriores."
-      }
+      },
+      "per_month": "{amount} por mês",
+      "add": "Adicionar uma alteração de taxa"
     },
     "review": {
       "progress": "{paid} de {total} pagos",

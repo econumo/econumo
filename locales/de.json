@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Zinsänderungen",
+      "title": "Zinssatz heute",
       "from_start": "Ab Beginn",
       "from_terms": "aus den Kreditbedingungen",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Zahlung"
       },
       "form": {
-        "title": "Zinsänderung erfassen",
         "date": "Datum",
         "rate": "Zinssatz, % pro Jahr",
         "payment": "Zahlung",
-        "save": "Zinsänderung hinzufügen"
+        "save": "Hinzufügen"
       },
       "delete": "Zinsänderung vom {date} löschen",
       "delete_confirm": {
         "title": "Diese Zinsänderung löschen?",
         "question": "Zahlungen nach ihrem Datum werden wieder mit dem vorherigen Zinssatz und der vorherigen Zahlung gerechnet."
-      }
+      },
+      "per_month": "{amount} im Monat",
+      "add": "Zinsänderung hinzufügen"
     },
     "review": {
       "progress": "{paid} von {total} bezahlt",

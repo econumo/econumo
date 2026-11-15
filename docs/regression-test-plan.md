@@ -2742,11 +2742,14 @@ a second budget member account in USD, before running these.
       "Marked paid off" (no difference; a statement entered the same day is
       replaced, not doubled); deleting it is refused on a paid-off debt (it is Reopen that removes it). Both
       actions are greyed out offline.
-- [ ] 📱 **Rate changes** (Balance tab, "Rate changes" card under the history; set-up
+- [ ] 📱 **Rate changes** (Balance tab, one card under the balance card, no heading; set-up
       debts only): with no change recorded the table has one row, "From the
       start" with the rate implied by the loan's terms and the payment,
-      captioned "from your loan's terms", and no delete button. The form
-      prefills the rate and payment in force now. Adding a change dated after
+      captioned "from your loan's terms", and no delete button. The card's top
+      row shows "Rate today" with the rate and payment in force; "+ Add a
+      rate change" (last line of the table; hidden read-only, disabled
+      offline) expands the form in place, prefilled with them, and Cancel or
+      a save collapses it. Adding a change dated after
       the start (e.g. 3.69% and the same payment) lists the start row as a
       stored one (implied rate, origin payment, now with a delete button)
       plus the new row, oldest first; with the payment unchanged and a higher

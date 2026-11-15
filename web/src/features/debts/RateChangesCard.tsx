@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -13,10 +13,12 @@ import { paymentInForce } from './rateChanges'
 import { useAddDebtRateChange, useDeleteDebtRateChange } from './queries'
 import { amountEcho, amountError, plainAmount } from './useDebtForm'
 
+const raisedField = 'bg-background'
+
 const percent = (rate: string, lang: string) =>
   rate === '' ? '' : new Intl.NumberFormat(lang, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(rate) / 100)
 
-function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: initialPayment }: { details: DebtDetailsDto; symbol: string; amountEchoOf: (raw: string) => string | null; rate: string; payment: string }) {
+function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: initialPayment, onClose }: { details: DebtDetailsDto; symbol: string; amountEchoOf: (raw: string) => string | null; rate: string; payment: string; onClose: () => void }) {
   const { t } = useTranslation()
   const formId = useId()
   const online = useOnline()
@@ -37,7 +39,7 @@ function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: i
     }
     try {
       await add.mutateAsync({ id: details.item.id, date, annualRate: plainAmount(rate) ?? rate.trim(), payment: plainAmount(payment) ?? payment.trim() })
-      setDate(today)
+      onClose()
     } catch (err) {
       const named = { rate: apiFieldErrors(err, 'annualRate')?.[0], payment: apiFieldErrors(err, 'payment')?.[0], date: apiFieldErrors(err, 'date')?.[0] }
       setErrors(named)
@@ -56,13 +58,13 @@ function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: i
         void submit()
       }}
     >
-      <h4 className="text-sm text-muted-foreground">{t('debts.rates.form.title')}</h4>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <DateField
           label={t('debts.rates.form.date')}
           value={date}
           min={details.item.startDate || undefined}
           error={errors.date}
+          cardClassName={raisedField}
           onChange={(day) => {
             setErrors((prev) => ({ ...prev, date: undefined }))
             setDate(day)
@@ -75,6 +77,7 @@ function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: i
             value={rate}
             symbol="%"
             error={errors.rate}
+            cardClassName={raisedField}
             onChange={(value) => {
               setErrors((prev) => ({ ...prev, rate: undefined }))
               setRate(value)
@@ -88,6 +91,7 @@ function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: i
             value={payment}
             symbol={symbol}
             error={errors.payment}
+            cardClassName={raisedField}
             echo={amountEchoOf(payment)}
             onChange={(value) => {
               setErrors((prev) => ({ ...prev, payment: undefined }))
@@ -101,7 +105,10 @@ function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: i
           {serverError}
         </p>
       ) : null}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onClose}>
+          {t('common.button.cancel.label')}
+        </Button>
         <Button type="submit" disabled={add.isPending || !online}>
           {t('debts.rates.form.save')}
         </Button>
@@ -118,11 +125,11 @@ function RateForm({ details, symbol, amountEchoOf, rate: initialRate, payment: i
  */
 export function RateChangesCard({ details, amount, symbol, currency, lang, readOnly }: { details: DebtDetailsDto; amount: (value: string) => string; symbol: string; currency: Parameters<typeof amountEcho>[1]; lang: string; readOnly: boolean }) {
   const { t } = useTranslation()
-  const formId = useId()
   const online = useOnline()
   const remove = useDeleteDebtRateChange()
   const [deleting, setDeleting] = useState<DebtRateChangeDto | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
   const { item, snapshots, rateChanges } = details
   const today = formatDate(new Date())
   const originPayment = snapshots.find((s) => s.isOrigin === 1)?.payment ?? item.payment
@@ -131,12 +138,16 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
   const prefillPayment = paymentInForce(rateChanges, today, originPayment)
 
   return (
-    <section aria-labelledby={`${formId}-rates`} className="flex flex-col gap-3">
-      <h3 id={`${formId}-rates`} className="text-sm uppercase tracking-wide text-muted-foreground">
-        {t('debts.rates.title')}
-      </h3>
+    <section data-testid="debt-rates-card" aria-label={t('debts.rates.title')} className="flex flex-col gap-3">
       <div className="rounded-lg bg-econumo-card px-4 py-1.5">
-        <table className="w-full text-sm">
+        <div data-testid="debt-rate-summary" className="flex items-baseline justify-between gap-3 pb-3 pt-1.5">
+          <span className="text-sm text-muted-foreground">{t('debts.rates.title')}</span>
+          <span className="text-right text-sm">
+            {percent(prefillRate, lang)}
+            <span className="ml-2 text-xs text-muted-foreground">{t('debts.rates.per_month', { amount: amount(prefillPayment) })}</span>
+          </span>
+        </div>
+        <table className="w-full border-t border-border text-sm">
           <thead>
             <tr className="text-xs text-muted-foreground">
               <th scope="col" className="py-1 text-left font-normal">
@@ -191,10 +202,19 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
             ))}
           </tbody>
         </table>
+        {readOnly ? null : formOpen ? (
+          <section aria-label={t('debts.rates.add')} className="border-t border-border py-3">
+            <RateForm key={prefillRate + '|' + prefillPayment} details={details} symbol={symbol} amountEchoOf={(raw) => amountEcho(raw, currency)} rate={prefillRate} payment={prefillPayment} onClose={() => setFormOpen(false)} />
+          </section>
+        ) : (
+          <div className="border-t border-border py-1.5">
+            <button type="button" disabled={!online} className="inline-flex items-center gap-1 text-sm text-econumo-link disabled:opacity-50" onClick={() => setFormOpen(true)}>
+              <Plus className="size-4" aria-hidden="true" />
+              {t('debts.rates.add')}
+            </button>
+          </div>
+        )}
       </div>
-      {readOnly ? null : (
-        <RateForm key={`${prefillRate}|${prefillPayment}`} details={details} symbol={symbol} amountEchoOf={(raw) => amountEcho(raw, currency)} rate={prefillRate} payment={prefillPayment} />
-      )}
       {serverError ? (
         <p role="alert" className="text-sm text-destructive">
           {serverError}

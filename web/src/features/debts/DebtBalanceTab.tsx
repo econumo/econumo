@@ -95,7 +95,7 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
           <span className="text-sm text-muted-foreground">{t('debts.balance.econumo')}</span>
           <span className="text-right text-sm">{amount(item.currentBalance)}</span>
         </div>
-        <div className="flex items-center justify-between gap-3 pb-2">
+        <div className="flex items-center justify-between gap-3 pb-3">
           <p data-testid="debt-balance-hint" className="min-w-0 text-sm text-muted-foreground">
             {t(isNoFixed(item.schedule) ? 'debts.balance.hint_none' : 'debts.balance.hint')}
           </p>

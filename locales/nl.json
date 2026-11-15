@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Renteswijzigingen",
+      "title": "Rente vandaag",
       "from_start": "Vanaf het begin",
       "from_terms": "uit de voorwaarden van de lening",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Betaling"
       },
       "form": {
-        "title": "Een renteswijziging vastleggen",
         "date": "Datum",
         "rate": "Rente, % per jaar",
         "payment": "Betaling",
-        "save": "Renteswijziging toevoegen"
+        "save": "Toevoegen"
       },
       "delete": "Renteswijziging van {date} verwijderen",
       "delete_confirm": {
         "title": "Deze renteswijziging verwijderen?",
         "question": "Betalingen na de datum ervan worden weer met de eerdere rente en betaling berekend."
-      }
+      },
+      "per_month": "{amount} per maand",
+      "add": "Renteverandering toevoegen"
     },
     "review": {
       "progress": "{paid} van {total} betaald",

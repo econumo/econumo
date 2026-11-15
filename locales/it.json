@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Variazioni di tasso",
+      "title": "Tasso oggi",
       "from_start": "Dall'inizio",
       "from_terms": "dalle condizioni del prestito",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Pagamento"
       },
       "form": {
-        "title": "Registra una variazione di tasso",
         "date": "Data",
         "rate": "Tasso, % annuo",
         "payment": "Pagamento",
-        "save": "Aggiungi variazione di tasso"
+        "save": "Aggiungi"
       },
       "delete": "Elimina la variazione di tasso del {date}",
       "delete_confirm": {
         "title": "Eliminare questa variazione di tasso?",
         "question": "I pagamenti successivi alla sua data vengono di nuovo calcolati con il tasso e il pagamento precedenti."
-      }
+      },
+      "per_month": "{amount} al mese",
+      "add": "Aggiungi una variazione di tasso"
     },
     "review": {
       "progress": "{paid} di {total} pagati",

@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "Changements de taux",
+      "title": "Taux aujourd'hui",
       "from_start": "Dès le début",
       "from_terms": "selon les conditions de votre prêt",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "Paiement"
       },
       "form": {
-        "title": "Enregistrer un changement de taux",
         "date": "Date",
         "rate": "Taux, % par an",
         "payment": "Paiement",
-        "save": "Ajouter le changement de taux"
+        "save": "Ajouter"
       },
       "delete": "Supprimer le changement de taux du {date}",
       "delete_confirm": {
         "title": "Supprimer ce changement de taux ?",
         "question": "Les paiements postérieurs à sa date sont de nouveau comptés avec le taux et le paiement précédents."
-      }
+      },
+      "per_month": "{amount} par mois",
+      "add": "Ajouter un changement de taux"
     },
     "review": {
       "progress": "{paid} sur {total} payés",

@@ -587,7 +587,7 @@
       }
     },
     "rates": {
-      "title": "利率变更",
+      "title": "今日利率",
       "from_start": "从起始日起",
       "from_terms": "来自贷款条款",
       "column": {
@@ -596,17 +596,18 @@
         "payment": "还款"
       },
       "form": {
-        "title": "记录利率变更",
         "date": "日期",
         "rate": "利率，年化 %",
         "payment": "还款",
-        "save": "添加利率变更"
+        "save": "添加"
       },
       "delete": "删除 {date} 的利率变更",
       "delete_confirm": {
         "title": "删除此利率变更？",
         "question": "该日期之后的还款将重新按之前的利率和还款额计算。"
-      }
+      },
+      "per_month": "每月 {amount}",
+      "add": "添加利率变更"
     },
     "review": {
       "progress": "已还 {paid}/{total} 期",
