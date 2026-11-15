@@ -101,7 +101,7 @@ func (s *Service) DebtElement(ctx context.Context, budgetID, elementID vo.Id) (m
 		if err != nil {
 			return info, err
 		}
-		info.Type, info.Name, info.Icon, info.CategoryIDs = model.DebtElementEnvelope, env.Name, env.Icon, children
+		info.Type, info.Name, info.Icon, info.CategoryIDs, info.Archived = model.DebtElementEnvelope, env.Name, env.Icon, children, env.IsArchived
 		info.Eligible = row != nil && row.Type == model.ElementEnvelope
 		return info, nil
 	}
@@ -113,7 +113,7 @@ func (s *Service) DebtElement(ctx context.Context, budgetID, elementID vo.Id) (m
 		if c.ID != elementID.String() {
 			continue
 		}
-		info.Type, info.Name, info.Icon, info.CategoryIDs = model.DebtElementCategory, c.Name, c.Icon, []vo.Id{elementID}
+		info.Type, info.Name, info.Icon, info.CategoryIDs, info.Archived = model.DebtElementCategory, c.Name, c.Icon, []vo.Id{elementID}, c.IsArchived
 		hidden, err := s.inEnvelopeID(ctx, b, elementID)
 		if err != nil {
 			return info, err

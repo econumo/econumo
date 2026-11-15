@@ -67,6 +67,11 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if !cur.IsSetUp() && ((!in.hasOrigin && in.hasOwed) || (in.hasOrigin && in.start == nil)) {
 			return missingFacts(!in.hasOrigin, in.start == nil, !in.hasOrigin)
 		}
+		// a debt not set up counts payments from its start: one in the future
+		// would keep it out of the periods up to then (setup refuses it too)
+		if !sameDay(cur.StartDate, in.start) && in.start != nil && in.start.After(today) {
+			return startInFuture()
+		}
 		if !sameDay(cur.StartDate, in.start) {
 			budgetDebts, err := s.repo.ListByBudget(ctx, cur.BudgetID)
 			if err != nil {

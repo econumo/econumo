@@ -154,6 +154,10 @@ func validateTerms(t, origin model.DebtTerms, digits int, changes []*model.DebtR
 	return nil
 }
 
+func startInFuture() error {
+	return fieldError("startDate", "The start date must be today or earlier.", errs.CodeDebtStartInFuture)
+}
+
 // validateOrigin checks the loan's facts: the origin as of the start date,
 // which today may not precede, ending on the last payment date.
 func validateOrigin(o model.DebtTerms, today time.Time, digits int) error {
@@ -161,7 +165,7 @@ func validateOrigin(o model.DebtTerms, today time.Time, digits int) error {
 		return err
 	}
 	if o.AsOf.After(today) {
-		return fieldError("startDate", "The start date must be today or earlier.", errs.CodeDebtStartInFuture)
+		return startInFuture()
 	}
 	if !o.LastPaymentDate.After(o.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after the start date.", errs.CodeDebtLastPaymentBeforeStart)

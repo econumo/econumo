@@ -104,6 +104,10 @@ type DebtElementInfo struct {
 	CurrencyID  vo.Id
 	CategoryIDs []vo.Id
 	Eligible    bool
+	// Archived: a new debt (or a moved one) may not go there, since an
+	// archived row the budget hides would hide the debt; one it already
+	// carries stays.
+	Archived bool
 }
 
 // DebtClassification is a category as a debt's presentation reads it.

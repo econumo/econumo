@@ -2140,7 +2140,7 @@ data unreadable. Most are also asserted by the test suite.
   denied`), and every write on an archived budget is 403 `budget.archived`.
   **Eligibility** (`create-debt`, `Elements` port over the budget service): a top-level expense
   category (not inside an envelope) or an expense envelope of the budget; tags, income, savings
-  rows and a category inside an envelope are `debt.element_not_eligible` on `elementId`. An element
+  rows, a category inside an envelope and an archived category or envelope (a debt it already carries stays) are `debt.element_not_eligible` on `elementId`, for create and move alike; a start date after today is `debt.start_in_future` on a debt not set up too. An element
   has at most ONE active debt (`debt.element_has_debt`; unique index on `(budget_id,
   element_external_id)` where `status = 'active'`) plus any number of paid-off ones, whose life
   never overlaps: a new debt may not start before the end of the element's latest earlier debt

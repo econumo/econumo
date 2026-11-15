@@ -46,7 +46,7 @@ func (s *Service) moveDebt(ctx context.Context, userID vo.Id, req model.MoveDebt
 		if err != nil {
 			return err
 		}
-		if !el.Eligible {
+		if !el.Eligible || el.Archived {
 			return notEligible()
 		}
 		if !el.CurrencyID.Equal(cur.CurrencyID) {

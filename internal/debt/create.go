@@ -43,6 +43,11 @@ func (s *Service) createDebt(ctx context.Context, userID vo.Id, req model.Create
 		return nil, err
 	}
 	today, now := s.today(ctx), s.clock.Now()
+	// payments count from the start: one in the future would keep the debt
+	// out of the periods up to then (setup refuses it too)
+	if in.start != nil && in.start.After(today) {
+		return nil, startInFuture()
+	}
 	var d *model.Debt
 	var budget model.DebtBudget
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -62,7 +67,7 @@ func (s *Service) createDebt(ctx context.Context, userID vo.Id, req model.Create
 		if err != nil {
 			return err
 		}
-		if !el.Eligible {
+		if !el.Eligible || el.Archived {
 			return notEligible()
 		}
 		// a category delete committing meanwhile would leave the debt on

@@ -92,3 +92,35 @@ func TestMoveDebt_StartMustFollowTheTargetsPreviousDebt(t *testing.T) {
 	_, err := e.move(res.Id, target)
 	requireCode(t, err, errs.CodeDebtStartBeforePreviousEnd)
 }
+
+// An archived category or envelope takes no new debt, by create or move:
+// the budget hides an archived row, and the debt with it.
+func TestArchivedElementTakesNoDebt(t *testing.T) {
+	e := newEnv(t)
+	archived := e.newCategory(e.user, true)
+	el := e.elements.items[e.budget][archived]
+	el.Archived = true
+	e.elements.items[e.budget][archived] = el
+
+	_, err := e.tryCreate(createSpec{BudgetId: e.budget, ElementId: archived, Payment: vo.NewFlexString("100"), Schedule: "monthly"})
+	requireCode(t, err, errs.CodeDebtElementNotEligible)
+	res := e.createOrigin(t, nil)
+	_, err = e.move(res.Id, archived)
+	requireCode(t, err, errs.CodeDebtElementNotEligible)
+}
+
+// A debt not set up counts payments from its start: a start after today is
+// refused on create and on update, as setup refuses it.
+func TestNotSetUpDebtRefusesAFutureStart(t *testing.T) {
+	e := newEnv(t)
+	tomorrow := "2026-03-11"
+	_, err := e.tryCreate(createSpec{BudgetId: e.budget, ElementId: e.category, StartDate: &tomorrow, Payment: vo.NewFlexString("100"), Schedule: "monthly"})
+	requireCode(t, err, errs.CodeDebtStartInFuture)
+
+	res, err := e.tryCreate(createSpec{BudgetId: e.budget, ElementId: e.category, Payment: vo.NewFlexString("100"), Schedule: "monthly"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = e.svc.UpdateDebt(context.Background(), e.uid(), model.UpdateDebtRequest{Id: res.Id, StartDate: &tomorrow})
+	requireCode(t, err, errs.CodeDebtStartInFuture)
+}
