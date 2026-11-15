@@ -104,6 +104,21 @@ it('has no Debts section: the debt shows on its element row among the expenses',
   expect(within(living).queryByTestId('debt-payoff')).toBeNull()
 })
 
+it('an empty debt cell keeps its first line, so payments left sits on the second', async () => {
+  const plan = JSON.parse(JSON.stringify(debtPlan)) as BudgetPlanDto
+  const food = plan.structure.elements.find((el) => el.id === 'cat-food')!
+  food.cells[2] = { actual: '0', planned: '', debt: foodDebt({ paymentsLeft: 35 }) }
+  useHandlers()
+  server.use(planHandler(plan))
+  renderPage()
+  await screen.findByTestId('plan-section-expense')
+  const jul = screen.getByTestId('plan-cell-cat-food:1')
+  const placeholder = within(jul).getByTestId('cell-figures-placeholder')
+  const left = within(jul).getByTestId('cell-payments-left')
+  expect(left).toHaveTextContent('35 payments left')
+  expect(placeholder.compareDocumentPosition(left) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
 it('a cell shows the debt hint of its own month', async () => {
   useHandlers()
   renderPage()

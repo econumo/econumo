@@ -501,7 +501,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
               ) : (
                 <span data-testid="cell-planned" className={`ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums ${planHintClass(view.hint)}`}>
                   <PendingLimitMark budgetId={ctx.meta.id} elementId={el.id} period={m} className="mr-1 align-middle" />
-                  {planFigure !== null ? fmt(planFigure) : view.balance ? <Dash /> : ''}
+                  {planFigure !== null ? fmt(planFigure) : view.balance ? <Dash /> : view.paymentsLeft != null || view.paidOff ? <span data-testid="cell-figures-placeholder">{'\u00a0'}</span> : ''}
                 </span>
               )}
             </span>
