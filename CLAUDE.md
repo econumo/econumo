@@ -2503,7 +2503,7 @@ data unreadable. Most are also asserted by the test suite.
   forecast already loaded keeps standing offline), and hiding Planned extra meanwhile rather than
   show a plan-free number. The principal repaid does not depend on plans. The Overview shows no
   rules (there are none). Payments (with a Balance column on a set-up debt: `get-debt`'s additive
-  `balance` per payment, what was owed after it, from the snapshots and stored splits, `""` while
+  `balance` per payment, what was owed after it, from the snapshots and stored splits (a statement dated on the payment's day is left out: the row shows what its own principal left, and the Balance tab sets the statement against it), `""` while
   not set up; Principal is left out on a phone); the history of the loan's entries is the Balance
   tab's. Beside the Payments heading of a set-up debt that is not paid off, "Show future payments"
   shows `get-debt-forecast?id=`, the query the Overview already loaded (no second request; fires

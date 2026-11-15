@@ -2719,7 +2719,10 @@ a second budget member account in USD, before running these.
       was borrowed, correct Amount borrowed in Settings." (the server also
       refuses a date after today); Cancel collapses it
       unsaved and brings the link back; Reconcile writes it, the form collapses, and the table shows the
-      new statement and difference, Owed now following. Story: a loan started five years ago with monthly
+      new statement and difference, Owed now following. A statement dated on a payment's day
+      leaves that payment's row in the Overview's Payments table adding up: its Balance is the
+      previous row's less its Principal (Econumo's figure, as in the statement's Econumo
+      column), and the next payment starts from the statement. Story: a loan started five years ago with monthly
       dues and no payments entered: reconcile today with the statement
       balance; the Balance tab shows that balance as today's and the
       Overview "60 of N paid" with the amount borrowed less it as repaid.

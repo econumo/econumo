@@ -288,3 +288,29 @@ func TestReconcile_StatementMustBeRepayableAtTheLoansRate(t *testing.T) {
 	_, err = e.reconcile(res.Id, money(450/loanRate+1), "")
 	requireField(t, err, "payment", errs.CodeDebtPaymentsDontCover)
 }
+
+// A statement dated on a payment's day: the payment's row shows what its own
+// principal left (what the history calls Econumo's balance then), not the
+// statement, so its interest and principal add up; the next payment starts
+// from the statement.
+func TestReconcile_StatementOnAPaymentDayLeavesTheRowItsOwnBalance(t *testing.T) {
+	e := newEnv(t)
+	e.expense(t, e.account, ymd(2025, 4, 1), "600", "")
+	e.expense(t, e.account, ymd(2025, 5, 1), "600", "")
+	res := e.createOrigin(t, nil)
+	if _, err := e.reconcile(res.Id, "11000", "2025-04-01"); err != nil {
+		t.Fatal(err)
+	}
+	d := e.details(t, res.Id)
+	if len(d.Payments) != 2 {
+		t.Fatalf("payments = %+v", d.Payments)
+	}
+	may, april := d.Payments[0], d.Payments[1]
+	wantApril := vo.NewDecimal("12000").Sub(vo.NewDecimal(april.Principal))
+	if !vo.NewDecimal(april.Balance).Equals(wantApril) || april.Balance != d.Snapshots[1].ComputedBalance {
+		t.Fatalf("April row balance %s, want %s (its principal off the amount borrowed) = computed %s", april.Balance, wantApril, d.Snapshots[1].ComputedBalance)
+	}
+	if want := vo.NewDecimal("11000").Sub(vo.NewDecimal(may.Principal)); !vo.NewDecimal(may.Balance).Equals(want) {
+		t.Fatalf("May row balance %s, want %s (from the statement)", may.Balance, want)
+	}
+}

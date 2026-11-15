@@ -243,7 +243,10 @@ func (st *debtState) computedBalances() []float64 {
 
 // balancesAfter is what was owed after each payment (st.pays order), nil for
 // a debt not set up. BalanceAt closes a whole day, so the payments of one day
-// after this one are added back: they had not been made yet.
+// after this one are added back: they had not been made yet. A statement dated
+// on the payment's day is left out: the row shows what its own principal left
+// (the Balance tab sets the statement against it), and the statement is the
+// base for the payments after that day.
 func (st *debtState) balancesAfter() []float64 {
 	if !st.debt.IsSetUp() {
 		return nil
@@ -258,10 +261,20 @@ func (st *debtState) balancesAfter() []float64 {
 			out[i] = out[i+1] + next.amount - next.interest
 			continue
 		}
-		out[i] = model.BalanceAt(snaps, pays, interest, day)
+		out[i] = model.BalanceAt(withoutStatementsOn(snaps, day), pays, interest, day)
 	}
 	for i := range out {
 		out[i] = math.Max(out[i], 0)
+	}
+	return out
+}
+
+func withoutStatementsOn(snaps []model.MathSnapshot, day time.Time) []model.MathSnapshot {
+	out := make([]model.MathSnapshot, 0, len(snaps))
+	for _, sn := range snaps {
+		if sn.Origin || !sn.AsOf.Equal(day) {
+			out = append(out, sn)
+		}
 	}
 	return out
 }

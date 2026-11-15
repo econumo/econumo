@@ -206,9 +206,10 @@ func TestGetDebt_NotSetUpPaymentsHaveNoBalance(t *testing.T) {
 	}
 }
 
-// A snapshot holds the balance after its day's payments: a payment on the day
-// of a balance now leaves that balance, and one before it comes off the
-// amount borrowed.
+// A payment's row shows what its own principal left: one before a balance
+// entered later comes off the amount borrowed, and one on that balance's day
+// comes off the row before it (the Balance tab sets the entered balance
+// against it), so every row adds up.
 func TestGetDebt_BalanceAroundTheSnapshotDay(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, func(r *createSpec) {
@@ -226,11 +227,11 @@ func TestGetDebt_BalanceAroundTheSnapshotDay(t *testing.T) {
 		t.Fatalf("payments = %+v", got.Payments)
 	}
 	onDay, before := got.Payments[0], got.Payments[1]
-	if !vo.NewDecimal(onDay.Balance).Equals(vo.NewDecimal("10000")) {
-		t.Fatalf("on the snapshot's day: %q, want 10000", onDay.Balance)
-	}
 	if want := vo.NewDecimal("11000").Sub(vo.NewDecimal(before.Principal)); !vo.NewDecimal(before.Balance).Equals(want) {
 		t.Fatalf("before the snapshot: %q, want %s", before.Balance, want)
+	}
+	if want := vo.NewDecimal(before.Balance).Sub(vo.NewDecimal(onDay.Principal)); !vo.NewDecimal(onDay.Balance).Equals(want) {
+		t.Fatalf("on the snapshot's day: %q, want %s", onDay.Balance, want)
 	}
 }
 
