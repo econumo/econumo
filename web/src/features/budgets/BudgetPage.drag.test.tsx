@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
+import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
@@ -20,6 +21,11 @@ vi.mock('@dnd-kit/core', async (importOriginal) => {
       return children
     },
   }
+})
+
+vi.mock('sonner', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('sonner')>()
+  return { ...actual, toast: Object.assign(vi.fn(), actual.toast, { error: vi.fn() }) }
 })
 
 const userWithBudget = {
@@ -85,6 +91,20 @@ it('a category dropped on an envelope list joins that envelope', async () => {
   act(() => expenseDrop().onDragEnd({ active: { id: 'cat-food' }, over: { id: 'benv:env-1' } } as never))
   await waitFor(() => expect(moves).toEqual([{ budgetId: 'b1', id: 'cat-food', folderId: null, afterId: null, envelopeId: 'env-1' }]))
   expect(screen.queryByTestId('element-cat-food')).toBeNull()
+})
+
+it('a category the server refuses to put in an envelope shows the refusal and stays where it was', async () => {
+  renderPage()
+  const message = 'A category that tracks a debt cannot go into an envelope'
+  server.use(
+    http.post('*/api/v1/budget/move-element', () =>
+      HttpResponse.json({ success: false, message: 'Validation failed', code: 400, errors: { id: [message] } }, { status: 400 }),
+    ),
+  )
+  await screen.findByTestId('element-cat-food')
+  act(() => expenseDrop().onDragEnd({ active: { id: 'cat-food' }, over: { id: 'benv:env-1' } } as never))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
+  expect(await screen.findByTestId('element-cat-food')).toBeInTheDocument()
 })
 
 it('nothing moves for a drop back on its own envelope, or a non-category on a list', async () => {

@@ -805,7 +805,8 @@ func (s *Service) SavePlan(ctx context.Context, userID vo.Id, req model.Onboardi
 			return err
 		}
 		for _, a := range req.Amounts {
-			amount := vo.NewFlexString(strings.TrimSpace(a.Amount.String()))
+			raw := strings.TrimSpace(a.Amount.String())
+			amount := vo.NewFlexString(raw)
 			if _, lerr := s.steps.Budgets.SetLimit(ctx, userID, model.SetLimitRequest{
 				BudgetId:  out.BudgetId,
 				ElementId: strings.TrimSpace(a.CategoryId),

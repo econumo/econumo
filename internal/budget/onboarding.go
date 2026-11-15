@@ -84,8 +84,9 @@ func (s *Service) CurrentPeriod(ctx context.Context, userID, budgetID vo.Id) (ti
 	return openingPeriod(b.budget, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay)), nil
 }
 
-// CategoryHistory returns, for every category of the budget's participants,
-// its income or spending in each of the `months` periods before the current one
+// CategoryHistory returns, for every category of the budget's participants
+// (one with no transaction too, every amount "", so its element currency is
+// known), its income or spending in each of the `months` periods before the current one
 // (the budget's current period in the caller's timezone, never before its first
 // period), computed like the plan sheet's category rows but over every account
 // the CALLER owns, archived and deleted ones included, rather than the budget's
@@ -139,6 +140,11 @@ func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, m
 		order = append(order, index)
 		return it
 	}
+	for _, list := range []map[string]model.CategoryMeta{f.categories, f.incomeCategories} {
+		for _, cat := range list {
+			itemFor(cat)
+		}
+	}
 	toConvert := map[string][]model.ConvertItem{}
 	add := func(cat model.CategoryMeta, month, currencyID, amount string) error {
 		i, ok := monthIdx[month]
@@ -167,7 +173,7 @@ func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, m
 		return nil, err
 	}
 	if len(owned) == 0 {
-		return []model.BudgetCategoryHistory{}, nil
+		return historyItems(items, order, months, nil), nil
 	}
 	spending, err := s.read.SpendingByMonth(ctx, expenseIDs, owned, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
@@ -198,24 +204,38 @@ func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, m
 		}
 	}
 	if len(toConvert) == 0 {
-		return []model.BudgetCategoryHistory{}, nil
+		return historyItems(items, order, months, nil), nil
 	}
 	// The top-level range doubles as month 0's rate range (see buildPlanStructure).
 	converted, err := s.convertorFor(f.startDay).BulkConvert(ctx, windows[0][0], windows[0][1], toConvert)
 	if err != nil {
 		return nil, err
 	}
+	get := convertedGetter(converted)
+	return historyItems(items, order, months, func(key string) (string, bool) {
+		if _, ok := toConvert[key]; !ok {
+			return "", false
+		}
+		return get(key).String(), true
+	}), nil
+}
+
+// historyItems lists the items in id order, filling each period's amount from
+// amount (nil: none has one).
+func historyItems(items map[string]*model.BudgetCategoryHistory, order []string, months int, amount func(key string) (string, bool)) []model.BudgetCategoryHistory {
 	sort.Strings(order)
 	out := make([]model.BudgetCategoryHistory, 0, len(order))
 	for _, index := range order {
 		it := items[index]
 		for i := range months {
-			key := fmt.Sprintf("%d_%s_%t", i, it.CategoryID, it.IsIncome)
-			if _, ok := toConvert[key]; ok {
-				it.Amounts[i] = convertedGetter(converted)(key).String()
+			if amount == nil {
+				continue
+			}
+			if v, ok := amount(fmt.Sprintf("%d_%s_%t", i, it.CategoryID, it.IsIncome)); ok {
+				it.Amounts[i] = v
 			}
 		}
 		out = append(out, *it)
 	}
-	return out, nil
+	return out
 }

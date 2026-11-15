@@ -470,6 +470,186 @@
       }
     }
   },
+  "debts": {
+    "list": {
+      "payments_left": "{count} paiement restant | {count} paiements restants",
+      "paid_off": "Remboursée"
+    },
+    "form": {
+      "header": "Dette",
+      "intro": "Suivez une dette sans créer de compte. Vous pourrez affiner les détails plus tard.",
+      "currency": {
+        "label": "Devise"
+      },
+      "start_date": {
+        "label": "Date de début",
+        "hint": "Quand la dette a commencé",
+        "none": "Aucune date",
+        "clear": "Effacer la date de début"
+      },
+      "amount_borrowed": {
+        "label": "Montant emprunté"
+      },
+      "amount": {
+        "label": "Montant"
+      },
+      "payment": {
+        "label": "Paiement",
+        "label_start": "Paiement au départ",
+        "now": "Désormais {amount}, après un changement de taux (onglet Solde)."
+      },
+      "schedule": {
+        "label": "Répétition",
+        "every": {
+          "weekly": "toutes les semaines",
+          "biweekly": "toutes les 2 semaines",
+          "monthly": "tous les mois",
+          "quarterly": "tous les trimestres",
+          "yearly": "tous les ans",
+          "none": "à rembourser avant une date"
+        }
+      },
+      "return_by": {
+        "label": "À rembourser avant le",
+        "hint": "Le jour où la dette doit être remboursée",
+        "after_today": "Choisissez une date postérieure à aujourd'hui."
+      },
+      "last_payment_date": {
+        "label": "Date du dernier paiement",
+        "hint": "Quand la dette prend fin",
+        "choose": "Choisir une date"
+      }
+    },
+    "details": {
+      "payments": "Paiements",
+      "payments_empty": "Aucun paiement pour l’instant",
+      "column": {
+        "date": "Date",
+        "amount": "Paiement",
+        "interest": "Intérêts",
+        "principal": "Capital",
+        "balance": "Solde"
+      },
+      "forecast": {
+        "show": "Afficher les paiements à venir",
+        "hide": "Masquer les paiements à venir",
+        "with_plan": "Inclut les remboursements anticipés prévus dans {budget}",
+        "regular_only": "Paiements réguliers uniquement",
+        "overdue": "en retard",
+        "recorded": "Enregistrés",
+        "more": "Afficher {count} paiement de plus | Afficher {count} paiements de plus"
+      },
+      "mark_paid_off": "Marquer comme remboursée",
+      "reopen": "Marquer comme active",
+      "paid_off_confirm": {
+        "title": "Marquer comme remboursée ?",
+        "question": "Le solde passe à 0 à compter de la date ci-dessous. Vos paiements restent inchangés.",
+        "date": "Remboursée le",
+        "error": {
+          "future": "La date de remboursement ne peut pas être dans le futur.",
+          "before_start": "Choisissez une date postérieure à la date de début ({date}).",
+          "before_statement": "Choisissez une date à partir de celle du dernier relevé ({date})."
+        }
+      },
+      "delete_confirm": {
+        "title": "Supprimer cette dette ?",
+        "question": "La dette et son historique sont supprimés. Les plans et les transactions de sa catégorie ou de son enveloppe ne sont pas modifiés."
+      }
+    },
+    "terms": {
+      "finish_setup": "Terminer la configuration"
+    },
+    "balance": {
+      "econumo": "Solde aujourd'hui",
+      "hint": "Comparez-le avec votre relevé bancaire.",
+      "hint_none": "Comparez-le avec ce qui a été convenu.",
+      "enter": "Ajouter un relevé",
+      "form": {
+        "balance": "Solde du relevé",
+        "date": "Date du relevé",
+        "date_range": "Choisissez une date postérieure à la date de début et au plus tard aujourd'hui. Le montant emprunté se modifie dans les paramètres.",
+        "save": "Rapprocher"
+      },
+      "column": {
+        "date": "Date",
+        "statement": "Relevé",
+        "econumo": "Econumo",
+        "difference": "Écart"
+      },
+      "origin": "Montant emprunté",
+      "paid_off": "Marquée comme remboursée",
+      "delete": "Supprimer le relevé du {date}",
+      "delete_confirm": {
+        "title": "Supprimer ce relevé ?",
+        "question": "Les paiements postérieurs à la date de ce relevé sont de nouveau comptés à partir du solde précédent."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Supprimer la mention « remboursée » ?",
+        "question": "La dette redevient active : le solde est recalculé à partir des relevés et paiements précédents."
+      }
+    },
+    "move": {
+      "action": "Déplacer la dette vers…",
+      "title": "Déplacer la dette",
+      "hint": "Ses conditions, relevés et changements de taux sont déplacés avec elle.",
+      "empty": "Aucune autre catégorie ou enveloppe ne peut recevoir cette dette : il faut une catégorie de dépenses hors enveloppe, ou une enveloppe, dans la même devise et sans dette active.",
+      "envelope_note": "Toutes ses dépenses comptent comme paiements"
+    },
+    "rates": {
+      "title": "Taux aujourd'hui",
+      "from_start": "Dès le début",
+      "from_terms": "d'après les conditions de votre dette",
+      "column": {
+        "date": "Date",
+        "rate": "Taux",
+        "payment": "Paiement"
+      },
+      "form": {
+        "date": "Date",
+        "rate": "Taux, % par an",
+        "payment": "Paiement",
+        "save": "Ajouter"
+      },
+      "delete": "Supprimer le changement de taux du {date}",
+      "delete_confirm": {
+        "title": "Supprimer ce changement de taux ?",
+        "question": "Les paiements postérieurs à sa date sont de nouveau comptés avec le taux et le paiement précédents."
+      },
+      "per_month": "{amount} par mois",
+      "add": "Ajouter un changement de taux"
+    },
+    "review": {
+      "progress": "{paid} sur {total} payés",
+      "progress_repaid": "{paid} sur {total} payés ({repaid} sur {borrowed})",
+      "owed_now": "Reste dû : {amount}",
+      "paid_so_far": "Déjà payé",
+      "paid_off_on": "Remboursée le {date}",
+      "not_set_up": "Indiquez le montant emprunté et les dates de la dette pour voir les paiements restants",
+      "loan": "Dette",
+      "borrowed": "Emprunté",
+      "next_payment": "Prochain paiement",
+      "last_payment": "Dernier paiement",
+      "last_payment_contract": "selon le contrat : {date}",
+      "start_date": "Date de début",
+      "from_first_payment": "Dès le premier paiement",
+      "paid_extra": "Remboursé par anticipation",
+      "left": "Reste {amount}",
+      "left_return_by": "Reste {amount} · à rembourser avant le {date}",
+      "monthly_to_finish": "≈ {amount} par mois pour rembourser à temps",
+      "planned_extra": "Remboursements anticipés prévus",
+      "danger": {
+        "title": "Zone de danger",
+        "paid_off": "Le solde passe à 0 et le calcul des paiements s'arrête.",
+        "delete": "Supprime la dette et son historique. Les transactions saisies sont conservées.",
+        "reopen": "La dette redevient active : vous pouvez la modifier et ses paiements comptent à nouveau."
+      },
+      "tab": {
+        "overview": "Aperçu",
+        "balance": "Solde",
+        "settings": "Paramètres"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1341,6 +1521,7 @@
         "accounts_included": "{count} sur {total} inclus",
         "accounts_hidden": "Dans des dossiers masqués",
         "accounts_locked_hint": "Les comptes ayant des transactions dans des mois passés ne peuvent pas être retirés",
+        "debts_note": "Les dettes sont affichées par nom, avec leurs paiements et leurs soldes, à toutes les personnes ayant accès à ce budget.",
         "savings": {
           "label": "Comptes d'épargne",
           "description": "L'argent versé sur ces comptes compte comme épargné, pas comme dépensé.",
@@ -1650,6 +1831,23 @@
         "planned": "Prévu",
         "saved": "Épargné",
         "balance_hint": "Solde en fin de mois."
+      },
+      "debts": {
+        "payoff_by": "Remboursement prévu : {date}",
+        "left": "Reste {amount}",
+        "left_return_by": "Reste {amount} · à rembourser avant le {date}",
+        "payments_left": "{count} paiement restant | {count} paiements restants",
+        "extra_effect": "Remboursée {months} mois plus tôt, {amount} d'intérêts en moins | Remboursée {months} mois plus tôt, {amount} d'intérêts en moins",
+        "extra_effect_earlier": "Remboursée {months} mois plus tôt | Remboursée {months} mois plus tôt",
+        "track": "Suivre comme dette",
+        "details": "Détails",
+        "debt_details": "Détails de la dette",
+        "delete": "Supprimer la dette",
+        "past": "Dettes passées ({count})",
+        "past_title": "Dettes passées",
+        "borrowed": "Emprunté : {amount}",
+        "section": "Dette",
+        "not_set_up": "Pas encore configurée"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, dépensé {spent}",
@@ -2329,6 +2527,7 @@
       "folder_side_mixed": "Un dossier ne peut pas contenir à la fois des revenus et des dépenses.",
       "envelope_member_not_category": "Seule une catégorie peut être ajoutée à une enveloppe",
       "savings_folder_not_allowed": "Les comptes d'épargne ne peuvent pas être placés dans un dossier",
+      "element_has_debt": "Une catégorie liée à une dette ne peut pas être ajoutée à une enveloppe. Marquez d'abord la dette comme remboursée.",
       "account_not_removable": "Ce compte a des transactions dans des mois passés et ne peut plus être retiré du budget",
       "savings_account_not_member": "Les comptes d'épargne doivent être vos propres comptes dans ce budget",
       "savings_removal_unconfirmed": "Cela supprime les montants prévus et les commentaires des comptes d'épargne que vous avez désactivés ou retirés de ce budget ; confirmez pour continuer",
@@ -2387,6 +2586,21 @@
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
       "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
+    },
+    "debt": {
+      "payments_dont_cover": "Les paiements ne couvrent pas le solde. Augmentez le paiement ou repoussez la date du dernier paiement.",
+      "element_not_eligible": "Une dette peut être suivie sur une catégorie de dépenses hors enveloppe, ou sur une enveloppe.",
+      "element_has_debt": "Cette catégorie ou enveloppe est déjà liée à une dette. Marquez d'abord cette dette comme remboursée.",
+      "start_before_previous_end": "La date de début doit être postérieure à la fin de la dette précédente de cette catégorie ou enveloppe.",
+      "cannot_reopen": "Cette dette ne peut pas être marquée comme active : sa catégorie ou son enveloppe est liée à une autre dette, active ou commencée plus tard.",
+      "paid_off": "Cette dette est remboursée. Marquez-la comme active pour la modifier.",
+      "last_payment_before_start": "La date du dernier paiement doit être postérieure à la date de début.",
+      "start_in_future": "La date de début ne peut pas être dans le futur.",
+      "not_set_up": "Terminez d'abord la configuration de cette dette.",
+      "conflicts_with_reconciliation": "Cela contredit un relevé que vous avez saisi. Modifiez ou supprimez d'abord ce relevé.",
+      "conflicts_with_rate_change": "Cette date de début est postérieure à un changement de taux. Supprimez d'abord ce changement de taux.",
+      "no_fixed_payments": "Cette dette n'a pas de paiements fixes, il n'y a donc pas de taux à modifier.",
+      "element_currency": "Cette catégorie ou enveloppe est dans une autre devise. Déplacez la dette vers une catégorie ou une enveloppe dans sa devise."
     },
     "authserver": {
       "disabled": "La connexion d'applications n'est pas disponible sur ce serveur.",

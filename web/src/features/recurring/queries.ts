@@ -21,6 +21,7 @@ function useInvalidateBudgetUpcoming() {
   const queryClient = useQueryClient()
   return () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
   }

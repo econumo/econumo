@@ -1,8 +1,18 @@
+import { Fragment } from 'react'
 import type { HTMLAttributes, ReactNode } from 'react'
 import { ChevronDown, ChevronRight, MoreVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { MenuAction } from './monthLayout'
 import {
@@ -82,6 +92,35 @@ export function PlanDash() {
   )
 }
 
+function menuEntry(a: MenuAction): ReactNode {
+  const separator = a.separatorBefore ? <DropdownMenuSeparator key={`${a.label}-separator`} /> : null
+  if (a.children) {
+    return (
+      <Fragment key={a.label}>
+        {separator}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="whitespace-nowrap font-semibold">{a.label}</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-44">{a.children.map(menuEntry)}</DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </Fragment>
+    )
+  }
+  return (
+    <Fragment key={a.label}>
+      {separator}
+      <DropdownMenuItem
+        className="whitespace-nowrap"
+        variant={a.destructive ? 'destructive' : 'default'}
+        disabled={a.disabled}
+        onSelect={a.onSelect}
+      >
+        {a.label}
+        {a.disabled && a.reason ? <span className="-ml-1 text-muted-foreground"> ({a.reason})</span> : null}
+      </DropdownMenuItem>
+    </Fragment>
+  )
+}
+
 /** A line's ⋮ menu: with a mouse it shows while the pointer is over the line (and
  *  stays while open); in a touch screen's edit mode it shows on every line. */
 export function RowMenu({ name, actions }: { name: string; actions: MenuAction[] | undefined }) {
@@ -104,18 +143,7 @@ export function RowMenu({ name, actions }: { name: string; actions: MenuAction[]
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
-        {actions.map((a) => (
-          <DropdownMenuItem
-            key={a.label}
-            className="whitespace-nowrap"
-            variant={a.destructive ? 'destructive' : 'default'}
-            disabled={a.disabled}
-            onSelect={a.onSelect}
-          >
-            {a.label}
-            {a.disabled && a.reason ? <span className="-ml-1 text-muted-foreground"> ({a.reason})</span> : null}
-          </DropdownMenuItem>
-        ))}
+        {actions.map(menuEntry)}
       </DropdownMenuContent>
     </DropdownMenu>
   )

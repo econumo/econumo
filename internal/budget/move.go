@@ -190,9 +190,6 @@ func (s *Service) moveIntoEnvelope(ctx context.Context, b *budgetAggregate, move
 	}
 	now := s.clock.Now()
 	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		if err := s.leaveEnvelopes(txCtx, b, moved.ExternalID, &envelopeID); err != nil {
-			return err
-		}
 		ids, err := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
 		if err != nil {
 			return err
@@ -202,12 +199,50 @@ func (s *Service) moveIntoEnvelope(ctx context.Context, b *budgetAggregate, move
 			member = member || id.Equal(moved.ExternalID)
 		}
 		if !member {
+			if err := s.refuseDebtCarriers(txCtx, b, "id", moved.ExternalID); err != nil {
+				return err
+			}
+		}
+		if err := s.leaveEnvelopes(txCtx, b, moved.ExternalID, &envelopeID); err != nil {
+			return err
+		}
+		if !member {
 			if err := s.envelopes.AddEnvelopeCategory(txCtx, envelopeID, moved.ExternalID); err != nil {
 				return err
 			}
 		}
 		return s.syncElements(txCtx, b.budget.ID, now)
 	})
+}
+
+// refuseDebtCarriers refuses putting a category that carries an active debt
+// into an envelope: a category inside an envelope cannot show a debt. It
+// takes the budget's row lock first, so a debt created meanwhile is seen, and
+// the lock goes before any element row's.
+func (s *Service) refuseDebtCarriers(ctx context.Context, b *budgetAggregate, key string, categoryIDs ...vo.Id) error {
+	if s.debts == nil || len(categoryIDs) == 0 {
+		return nil
+	}
+	if err := s.debts.LockBudget(ctx, b.budget.ID); err != nil {
+		return err
+	}
+	views, err := s.debts.Views(ctx, b.debtScope())
+	if err != nil {
+		return err
+	}
+	for _, v := range views {
+		if v.Until != nil || v.ElementType != model.DebtElementCategory {
+			continue
+		}
+		for _, id := range categoryIDs {
+			if id.String() == v.ElementID {
+				return errs.NewValidation("Validation failed", errs.FieldError{
+					Key: key, Message: "A category that tracks a debt cannot go into an envelope", Code: errs.CodeBudgetElementHasDebt,
+				})
+			}
+		}
+	}
+	return nil
 }
 
 // leaveEnvelopes takes the category out of every envelope of the budget that
@@ -271,13 +306,7 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 	if err != nil {
 		return err
 	}
-	// Participant users = owner + accepted non-reader access.
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 
 	// Index existing elements by "<externalId>-<typeAlias>" AND by external id.
 	// The external index is what makes a type (side) change an in-place update:

@@ -20,6 +20,8 @@ const OFFLINE_EXEMPT: Record<string, string> = {
 // MonthDrag its drag handles.
 const OFFLINE_VIA_SHARED: Record<string, string[]> = {
   'src/features/accounts/useAccountActions.tsx': ['<ConfirmDialog', '<AccessLevelDialog'],
+  // both writes fire from a confirm: the Danger zone and the debt row menu also gray out their entries
+  'src/features/debts/useDebtDangerActions.tsx': ['<ConfirmDialog'],
   'src/features/classifications/CategoriesPage.tsx': ['<ClassificationList'],
   'src/features/classifications/PayeesPage.tsx': ['<ClassificationList'],
   'src/features/classifications/TagsPage.tsx': ['<ClassificationList'],

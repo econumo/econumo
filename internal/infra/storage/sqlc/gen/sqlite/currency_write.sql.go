@@ -14,6 +14,7 @@ const countCurrencyUsage = `-- name: CountCurrencyUsage :one
 SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = ? AND accounts.is_deleted = 0)
      + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = ?)
      + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = ?)
+     + (SELECT COUNT(*) FROM debts WHERE debts.currency_id = ?)
      + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = ?) AS usage_count
 `
 
@@ -21,6 +22,7 @@ type CountCurrencyUsageParams struct {
 	CurrencyID   string
 	CurrencyID_2 string
 	CurrencyID_3 *string
+	CurrencyID_4 string
 	Value        *string
 }
 
@@ -31,6 +33,7 @@ func (q *Queries) CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsage
 		arg.CurrencyID,
 		arg.CurrencyID_2,
 		arg.CurrencyID_3,
+		arg.CurrencyID_4,
 		arg.Value,
 	)
 	var usage_count int64

@@ -31,4 +31,6 @@ var (
 
 	CategoryIcons = strings.NewReplacer("{{icon_rules}}", iconRules).Replace(load("category_icons.md"))
 	AccountIcons  = strings.NewReplacer("{{icon_rules}}", iconRules).Replace(load("account_icons.md"))
+
+	SuggestIcon = strings.NewReplacer("{{icons}}", strings.Join(icons.Names, ", ")).Replace(load("suggest_icon.md"))
 )

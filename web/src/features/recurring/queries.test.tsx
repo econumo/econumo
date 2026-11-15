@@ -115,7 +115,7 @@ function invalidatedKeys(spy: { mock: { calls: unknown[][] } }): string[] {
   return spy.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown[] }).queryKey))
 }
 
-const budgetKeys = [queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions].map((k) => JSON.stringify(k))
+const budgetKeys = [queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions, queryKeys.debts].map((k) => JSON.stringify(k))
 
 it('skip recurring invalidates budget, plan and budget transactions', async () => {
   server.use(http.post('*/api/v1/recurring/skip-recurring-transaction', () =>

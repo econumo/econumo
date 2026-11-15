@@ -402,6 +402,7 @@ type Tag struct {
 
 	SortKey  string
 	Archived bool
+	Icon     string // default "tag", the column's default
 }
 
 func (b *Builder) Tag(tg Tag) string {
@@ -417,10 +418,13 @@ func (b *Builder) Tag(tg Tag) string {
 	if tg.SortKey == "" {
 		tg.SortKey = sortKeyAt(tg.Position)
 	}
+	if tg.Icon == "" {
+		tg.Icon = "tag"
+	}
 
 	now := b.now()
-	b.insert(`INSERT INTO tags (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, tg.UserID, tg.Name, tg.SortKey, now, now)
+	b.insert(`INSERT INTO tags (id, user_id, name, sort_key, is_archived, icon, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?, ?)`,
+		id, tg.UserID, tg.Name, tg.SortKey, tg.Icon, now, now)
 	return id
 }
 

@@ -10,6 +10,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { SortableList, type SortableHandleProps } from '@/components/SortableList'
 import type { Id } from '@/api/types'
 import { useCategories } from '@/features/classifications/queries'
+import { IconSuggestion } from '@/features/iconSuggestion/useIconSuggestion'
 import { useUserData } from '@/features/user/queries'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -216,6 +217,15 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
     const showInvalid = invalidName.has(row.key) && nameTouched.has(row.key)
     return (
       <div className="bg-card px-3 py-2" data-testid="category-row">
+        {/* a name the user typed or edited (an untouched default keeps its curated icon) */}
+        <IconSuggestion
+          kind="category"
+          name={row.name}
+          type={row.type}
+          enabled={!row.labelKey && !row.iconPicked}
+          current={row.icon}
+          onApply={(icon) => update(row.key, { icon })}
+        />
         <div className="flex items-center gap-3">
           {handle(row.name, props)}
           <button
@@ -318,7 +328,7 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
           <IconPicker
             value={editing.icon}
             onChange={(icon) => {
-              update(editing.key, { icon })
+              update(editing.key, { icon, iconPicked: true })
               setPickingKey(null)
             }}
             aria-label={t('onboarding.categories_step.icon_label')}

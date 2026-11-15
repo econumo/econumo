@@ -21,6 +21,8 @@ func upcomingShown(ctx context.Context, periodEnd, now time.Time, startDay int) 
 func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr ReadModel, f filters, result *model.BudgetResult) error {
 	sp := *s
 	sp.read = pr
+	// the debt figures come from the main pass
+	f.debtViews = nil
 	up, err := sp.buildBudget(ctx, b, f, now)
 	if err != nil {
 		return err
@@ -216,6 +218,7 @@ func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f fil
 	}
 	sp := *s
 	sp.read = pr
+	f.debtViews = nil
 	up, err := sp.buildBudgetPlan(ctx, b, f, months)
 	if err != nil {
 		return err

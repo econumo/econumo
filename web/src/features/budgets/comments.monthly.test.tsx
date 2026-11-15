@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
+import { coreHandlers, fixtureElementDebt, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 
@@ -455,4 +455,20 @@ it('lets a desktop user start a thread on an archived element with no comments, 
   expect(within(row).queryByLabelText(/^comments /)).toBeNull()
   await user.click(within(row).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+})
+
+it('an element carrying a debt takes comments like any other row', async () => {
+  registerMonthlyHandlers({
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      elements: fixtureWireBudget.structure.elements.map((el) => (el.id === 'env-1' ? { ...el, debt: fixtureElementDebt({ isPaidOff: 1 }) } : el)),
+    },
+  })
+  mockViewport()
+  renderPage('/budget')
+
+  const living = await screen.findByTestId('element-env-1')
+  expect(within(living).getByTestId('element-debt-line')).toBeInTheDocument()
+  expect(within(living).getByTestId('comment-marker-add')).toBeInTheDocument()
 })

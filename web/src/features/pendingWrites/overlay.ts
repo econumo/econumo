@@ -133,7 +133,7 @@ export function applyLimitToBudget(
 ): BudgetDto {
   const budgeted = form.amount ?? ''
   const isBudgeted = form.amount === null ? (0 as const) : (1 as const)
-  const savings = budget.structure.savings
+  const { savings } = budget.structure
   // from the current month on a savings row's closing balance still expects
   // its unmet plan, so the edit moves it by the change in that gap
   const projected = form.period >= currentPeriod(periodStartDayOf(budget.meta))
@@ -175,18 +175,18 @@ export function overlayBudget(budget: BudgetDto, ops: PendingOp[], budgetId: Id,
   return out
 }
 
-// A plan row's id is either an element's or, for a savings row, the savings
-// account's; the two sets never collide, so one patch covers both arrays.
+// A plan row's id is an element's or a savings row's savings account's; the sets
+// never collide, so one patch covers both arrays.
 export function patchPlanCells(
   plan: BudgetPlanDto | null | undefined,
   elementId: Id,
-  patch: (cell: PlanCellDto, monthIndex: number) => PlanCellDto,
+  patch: <C extends PlanCellDto>(cell: C, monthIndex: number) => C,
 ): BudgetPlanDto | null | undefined {
   if (!plan) {
     return plan
   }
-  const patchRow = <T extends { id: Id; cells: PlanCellDto[] }>(row: T): T =>
-    row.id === elementId ? { ...row, cells: row.cells.map(patch) } : row
+  const patchRow = <C extends PlanCellDto, T extends { id: Id; cells: C[] }>(row: T): T =>
+    row.id === elementId ? { ...row, cells: row.cells.map((c, i) => patch(c, i)) } : row
   const { savings } = plan.structure
   return {
     ...plan,

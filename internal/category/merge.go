@@ -58,6 +58,29 @@ func (s *Service) MergeCategory(ctx context.Context, userID vo.Id, req model.Mer
 			return cannotMerge
 		}
 
+		// Lock order (see DebtUsage): the debts' budget rows, then both rows
+		// in id order, before any other write. The source is deleted, so it
+		// takes the full lock; the target only the one that leaves foreign key
+		// checks unblocked, or a write moving a transaction onto it would wait
+		// on it while holding the row the reassignment below waits for.
+		if s.debts != nil {
+			if derr := s.debts.Prepare(txCtx, sourceID, targetID); derr != nil {
+				return derr
+			}
+			first, second := sourceID, targetID
+			if second.String() < first.String() {
+				first, second = second, first
+			}
+			for _, id := range []vo.Id{first, second} {
+				lock := s.repo.LockKeptRow
+				if id.Equal(sourceID) {
+					lock = s.repo.LockRow
+				}
+				if lerr := lock(txCtx, id); lerr != nil {
+					return lerr
+				}
+			}
+		}
 		if rerr := s.repo.ReassignTransactions(txCtx, sourceID, targetID); rerr != nil {
 			return rerr
 		}
@@ -66,6 +89,11 @@ func (s *Service) MergeCategory(ctx context.Context, userID vo.Id, req model.Mer
 		}
 		if berr := s.budget.MergeElements(txCtx, sourceID, targetID); berr != nil {
 			return berr
+		}
+		if s.debts != nil {
+			if derr := s.debts.Reassign(txCtx, sourceID, targetID); derr != nil {
+				return derr
+			}
 		}
 		return s.repo.Delete(txCtx, sourceID)
 	}); err != nil {

@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { act } from 'react'
-import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureElementDebt, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -611,6 +611,51 @@ it('the Budget view follows the phone order: Income, Savings, Expenses, then the
   expect(screen.getByTestId('month-total-balance')).toBeInTheDocument()
 })
 
+it('a debt shows on its element: no Debts block, and the expense totals are the elements\' own', async () => {
+  const budget = budgetWithSavings()
+  budget.structure.elements[0].debt = fixtureElementDebt()
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(),
+  )
+  renderPage()
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).getByTestId('element-debt-line')).toHaveTextContent('24 payments left')
+  expect(screen.queryByTestId('month-debts')).toBeNull()
+  // the Total row: the expenses' own 300.00 / 45.50 / 554.50
+  const totals = screen.getByTestId('budget-totals')
+  expect(totals).toHaveTextContent('300.00')
+  expect(totals).toHaveTextContent('45.50')
+  expect(totals).not.toHaveTextContent('945.50')
+  expect(screen.getByTestId('month-total-expenses')).toHaveTextContent('45.50')
+})
+
+it('the plan editor of an element carrying a debt says what an extra buys and plans the element', async () => {
+  let body: unknown
+  const budget = budgetWithSavings()
+  budget.structure.elements[0].debt = fixtureElementDebt({ payoffDate: '2027-08-05', overpaymentLeft: '1500' })
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const food = await screen.findByTestId('element-cat-food')
+  await user.click(within(food).getByRole('button', { name: 'limit Food' }))
+  expect(await screen.findByTestId('debt-extra-effect')).toHaveTextContent('Paid off 14 months earlier')
+  const input = await screen.findByLabelText('Budget')
+  await user.clear(input)
+  await user.type(input, '2000')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '2000' }))
+})
+
 it('the Budget view\'s Total and totals lines take the element rows\' hover tint', async () => {
   const budget = budgetWithSavings()
   server.use(
@@ -721,7 +766,7 @@ describe('the ⋮ menus on the Budget view', () => {
     await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Archive', 'Merge into…', 'Delete'])
+    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Track as debt', 'Archive', 'Merge into…', 'Delete'])
   })
 
   it('a greyed-out action says why: Edit on another member\'s category, Delete on a folder with items', async () => {
@@ -759,7 +804,7 @@ describe('the ⋮ menus on the Budget view', () => {
     await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    // a category is personal: its owner manages it in any budget
+    // a category is personal: its owner manages it in any budget; debts are for those who plan
     expect(items).toEqual(['Edit', 'Archive', 'Merge into…', 'Delete'])
     // and the Expenses line has no Create folder for a guest
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
@@ -816,6 +861,26 @@ describe('the ⋮ menus on the Budget view', () => {
     await user.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(sent).toMatchObject({ name: 'Home', folderId: null }))
     expect(sent).not.toHaveProperty('side')
+  })
+
+  it('a refused envelope save keeps the dialog open with the server\'s message under the categories', async () => {
+    const message = 'A category that tracks a debt cannot go into an envelope'
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(fixtureWirePlan),
+      http.post('*/api/v1/budget/create-envelope', () =>
+        HttpResponse.json({ success: false, message: 'Validation failed', code: 400, errors: { categories: [message] } }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New envelope' }))
+    await user.type(await screen.findByRole('textbox', { name: 'Name' }), 'Home')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    expect(await screen.findByTestId('envelope-server-error')).toHaveTextContent(message)
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Home')
   })
 
   it('Create folder from Income creates an income folder, listed under Income while still empty', async () => {

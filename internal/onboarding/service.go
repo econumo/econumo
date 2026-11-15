@@ -1,7 +1,7 @@
 // Package onboarding holds the Day 0 setup writes the SPA's first-run flow
 // makes. Each write answers at once; when an AI provider is configured, a
 // background job then asks it which of the new accounts are savings accounts
-// (and, after an import, which icons fit the categories and accounts) and
+// (and, after an import, which icons fit the categories and accounts), and
 // applies the answer.
 package onboarding
 
@@ -60,6 +60,7 @@ type Service struct {
 	run       Runner
 	schedule  Scheduler
 	steps     Steps
+	iconCache *iconCache
 
 	iconsMu      sync.Mutex
 	pendingIcons map[string]*pendingIcons
@@ -67,7 +68,7 @@ type Service struct {
 }
 
 func NewService(budgets BudgetWriter, accounts AccountReader, users UserFacts) *Service {
-	return &Service{budgets: budgets, accounts: accounts, users: users, run: GoRunner, schedule: AfterFunc, pendingIcons: map[string]*pendingIcons{}, iconInflight: map[string]int{}}
+	return &Service{budgets: budgets, accounts: accounts, users: users, run: GoRunner, schedule: AfterFunc, iconCache: newIconCache(suggestIconCacheSize), pendingIcons: map[string]*pendingIcons{}, iconInflight: map[string]int{}}
 }
 
 // SetAdvisor enables the background savings classification. A nil completer

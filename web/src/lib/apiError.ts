@@ -1,4 +1,5 @@
 import { isAxiosError } from 'axios'
+import { toast } from 'sonner'
 import i18n from '@/app/i18n'
 
 interface ErrEnvelope {
@@ -19,6 +20,14 @@ export function apiErrorMessage(err: unknown): string {
     if (data.message) return data.message
   }
   return i18n.t('common.app.error')
+}
+
+// A refusal the server answered, as a toast; a request with no response is
+// left to the app's global no-response toast.
+export function toastRefusal(err: unknown): void {
+  if (isAxiosError(err) && err.response) {
+    toast.error(apiErrorMessage(err))
+  }
 }
 
 // Per-field messages for inline form errors, as rendered by the backend.

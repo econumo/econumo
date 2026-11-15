@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { hashKey, keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
 import type { BudgetCommentDto, BudgetDto, BudgetTransactionListDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
-import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { apiErrorMessage } from '@/lib/apiError'
 import { compareNames } from '@/lib/collate'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -189,6 +190,11 @@ export function useBudget() {
   const { data } = query
   const overlaid = useMemo(() => (data && budgetId ? overlayBudget(data, ops, budgetId, period) : data), [data, ops, budgetId, period])
   return { ...query, data: overlaid, dataPeriod: period } as typeof query & { dataPeriod: string }
+}
+
+// the plan of an element carrying a debt is that debt's payment in its forecast
+function invalidateDebtForecasts(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
 }
 
 export function useSetLimit() {
@@ -395,6 +401,7 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
       context?.patches.forEach((patch) => patch.confirm())
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
+      invalidateDebtForecasts(queryClient)
     },
   })
 }
@@ -407,8 +414,20 @@ function useInvalidateBudget() {
   }
 }
 
-export function useCreateEnvelope() {
+// An envelope's membership decides what its debt counts, and a deleted
+// envelope or a row's currency takes its debt with it; the debts prefix
+// covers each debt's details and forecast too.
+function useInvalidateBudgetAndDebts() {
+  const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
+  return () => {
+    invalidate()
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+  }
+}
+
+export function useCreateEnvelope() {
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: budgetApi.createEnvelope,
     onSuccess: () => {
@@ -419,7 +438,7 @@ export function useCreateEnvelope() {
 }
 
 export function useUpdateEnvelope() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: budgetApi.updateEnvelope,
     onSuccess: () => {
@@ -430,7 +449,7 @@ export function useUpdateEnvelope() {
 }
 
 export function useDeleteEnvelope() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: ({ budgetId, id }: { budgetId: Id; id: Id }) => budgetApi.deleteEnvelope(budgetId, id),
     onSuccess: () => {
@@ -510,8 +529,9 @@ export function useMoveBudgetFolder() {
   })
 }
 
+// a category placed outside an envelope leaves the one it sat in
 export function useMoveElement() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: ({ budgetId, item }: { budgetId: Id; item: ElementMoveItem }) =>
       budgetApi.moveElement(budgetId, item.id, item.folderId, item.afterId),
@@ -524,11 +544,14 @@ export function useMoveElement() {
 
 // an account created from the budget's Savings line joins the budget as a savings member
 export function useAddSavingsAccount() {
+  const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
     mutationFn: ({ budgetId, accountId }: { budgetId: Id; accountId: Id }) => budgetApi.addAccount(budgetId, accountId, true),
     onSuccess: () => {
       invalidate()
+      // a debt counts only the payments on its budget's accounts
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
     },
   })
@@ -536,7 +559,7 @@ export function useAddSavingsAccount() {
 
 // joining an envelope changes its membership, as editing the envelope's categories does
 export function useMoveIntoEnvelope() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: ({ budgetId, id, envelopeId }: { budgetId: Id; id: Id; envelopeId: Id }) => budgetApi.moveIntoEnvelope(budgetId, id, envelopeId),
     onSuccess: () => {
@@ -547,7 +570,7 @@ export function useMoveIntoEnvelope() {
 }
 
 export function useChangeElementCurrency() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: budgetApi.changeElementCurrency,
     onSuccess: () => {
@@ -572,10 +595,16 @@ export function useUpdateBudgetDetail({ handlesOwnErrors = false }: OwnErrorHand
     mutationFn: ({ previousSavingsAccountIds: _prev, ...form }: budgetApi.UpdateBudgetForm & { previousSavingsAccountIds?: Id[] }) =>
       budgetApi.updateBudget(form),
     onSuccess: (meta, variables) => {
+      const before = queryClient.getQueryData<BudgetMetaDto[]>(queryKeys.budgets)?.find((b) => b.id === variables.id)
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) =>
         (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
       )
       invalidate()
+      // a debt counts only the payments on its budget's accounts, and a debt on
+      // a row with no currency of its own follows the budget's currency
+      if (variables.accountIds !== undefined || before?.currencyId !== variables.currencyId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+      }
       trackEvent(METRICS.BUDGET_UPDATE)
       if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
       // the dialog sends the day only when it differs from the stored one; the
@@ -632,6 +661,7 @@ export function useRevokeBudgetAccess() {
     mutationFn: (form: { budgetId: Id; userId: Id }) => budgetApi.revokeAccess(form),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_REVOKE_ACCESS)
     },
   })
@@ -653,6 +683,7 @@ export function useAcceptBudgetAccess() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tags })
       void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
       void queryClient.invalidateQueries({ queryKey: queryKeys.currencyRates })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_ACCEPT_ACCESS)
     },
   })
@@ -666,6 +697,7 @@ export function useDeclineBudgetAccess() {
       // drop it synchronously so the invite disappears before the refetch lands
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => (prev ?? []).filter((b) => b.id !== budgetId))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_DECLINE_ACCESS)
     },
   })
@@ -679,6 +711,8 @@ export function useDeleteBudget() {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => (prev ?? []).filter((b) => b.id !== id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      // the budget's debts go with it
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_DELETE)
     },
   })
@@ -692,6 +726,8 @@ function useReplaceBudgetMeta() {
       (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
     )
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    // an archived budget's debts are read-only
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
   }
 }
 
@@ -725,6 +761,8 @@ export function useCloneBudget() {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => [...(prev ?? []), meta])
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      // the copy has the debts of the budget it was cloned from
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_CLONE)
     },
   })

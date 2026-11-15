@@ -24,7 +24,13 @@ type Service struct {
 	read   ReadModel
 	access AccountAccess
 	budget BudgetElementMerger
+	debts  DebtUsage
 }
+
+// SetDebtUsage installs the debt peer; the debt service is built after this
+// one, so it cannot be a constructor argument. Nil leaves debts out of the
+// checks.
+func (s *Service) SetDebtUsage(d DebtUsage) { s.debts = d }
 
 // NewService wires the category service. read is the own+shared category view
 // (the same ReadModel get-category-list uses); order-category-list returns that

@@ -23,8 +23,9 @@ const StepImport = "import"
 // done. The categories and accounts steps stay open: they become reviews of
 // what the import created. After the commit, when an AI provider is configured,
 // a background request flags the savings accounts in the budget this call
-// created. The icons of what the import created were already asked for by the
-// import itself (ReviewImportedIcons), so this call asks for none.
+// created. The icons of
+// what the import created were already asked for by the import itself
+// (ReviewImportedIcons), so this call asks for none.
 func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.OnboardingFinishImportRequest) (*model.OnboardingFinishImportResult, error) {
 	out := &model.OnboardingFinishImportResult{}
 	var review bool
@@ -35,8 +36,12 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 		if err != nil {
 			return err
 		}
-		if out.BudgetId, err = s.defaultBudgetID(ctx, userID, user); err != nil {
+		budgetID, _, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
+		if err != nil {
 			return err
+		}
+		if found {
+			out.BudgetId = budgetID.String()
 		}
 		if !proceed {
 			out.User = *user
@@ -66,11 +71,8 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 	if err != nil {
 		return nil, err
 	}
-	if review && savingsBudget != nil {
-		budgetID := *savingsBudget
-		s.startJob(ctx, userID, reviewSavings, func(jobCtx context.Context, facts promptFacts) error {
-			return s.reviewSavings(jobCtx, userID, budgetID, facts)
-		})
+	if review {
+		s.startReview(ctx, userID, savingsBudget)
 	}
 	return out, nil
 }
@@ -86,6 +88,22 @@ var (
 func withPart(spec jobSpec, part string) jobSpec {
 	spec.part = part
 	return spec
+}
+
+// startReview starts finish-import's savings request, when this call created
+// the budget.
+func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget *vo.Id) {
+	if savingsBudget == nil {
+		return
+	}
+	if !s.reserveJob(ctx, userID, jobReview) {
+		return
+	}
+	facts := s.promptContext(ctx, userID)
+	budgetID := *savingsBudget
+	s.runJob(userID, reviewSavings, facts, func(jobCtx context.Context, facts promptFacts) error {
+		return s.reviewSavings(jobCtx, userID, budgetID, facts)
+	})
 }
 
 // pendingIcons collects what a user's CSV import chunks created until the

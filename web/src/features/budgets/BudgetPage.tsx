@@ -5,6 +5,7 @@ import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
+import { toastRefusal } from '@/lib/apiError'
 import { Check, ChevronLeft, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
@@ -19,7 +20,7 @@ import { useOnline } from '@/hooks/useOnline'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
-import type { BudgetElementDto } from '@/api/dto/budget'
+import type { BudgetElementDto, ElementDebtDto } from '@/api/dto/budget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
@@ -48,6 +49,7 @@ import { useBudgetLineMenus } from './useBudgetLineMenus'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetMode } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
+import { DebtExtraNote } from './debtRow'
 import type { FolderBucket } from './budgetMath'
 import { currentPeriod, periodStartDayOf } from './period'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
@@ -60,7 +62,7 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, sheetSetsPlan, sheetSpent, sheetUpcoming, type IncomeGroup, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetDebt as sheetDebtOf, sheetSetsPlan, sheetSpent, sheetUpcoming, type IncomeGroup, type SheetTarget } from './phoneMonth'
 import type { UpcomingQuery } from './UpcomingPaymentsPanel'
 import { planHintClass, wantsUpcomingPanel, type PlanHint } from './planHint'
 import { PhoneMonthView } from './PhoneMonthView'
@@ -113,6 +115,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { data: accounts = [] } = useAccounts()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   const [editMode, setEditMode] = useState(false)
   const phoneView = isPhone && !editMode
   // the monthly view's own one-month window (also the phone view's, on both
@@ -181,7 +184,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [configureOpen, setConfigureOpen] = useState(false)
-  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean; upcoming?: UpcomingQuery | null }) | null>(null)
+  const [limitTarget, setLimitTarget] = useState<
+    (CellTarget & { viaPlan?: boolean; setsPlan?: boolean; upcoming?: UpcomingQuery | null; debt?: { figures: ElementDebtDto; currencyId: Id } }) | null
+  >(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
   const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
   const menus = useBudgetLineMenus({ budget, plan: monthPlan.data, userId: user?.id, onOpenSettings: () => setUpdateBudgetOpen(true) })
@@ -467,7 +472,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     if (envelopeId !== null) {
       if (canEnterEnvelope(activeId, envelopeId)) {
         setPendingMemberId(activeId)
-        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: () => setPendingMemberId(null) })
+        moveIntoEnvelope.mutate(
+          { budgetId: budget.meta.id, id: activeId, envelopeId },
+          {
+            onError: (err) => {
+              setPendingMemberId(null)
+              toastRefusal(err)
+            },
+          },
+        )
       }
       return
     }
@@ -510,6 +523,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             hint={hint}
             upcoming={upcomingQueryOf({ kind: 'expense', element: cell })}
             currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))}
+            note={cell.debt ? <DebtExtraNote row={cell.debt} currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))} /> : undefined}
             onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
           />
         )
@@ -598,6 +612,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const cellActionsDisabled = isPhone || editMode
   // the hover-only corner that starts a thread on a cell with none yet
   const canAddComment = !cellActionsDisabled && !commentsReadOnly(budget.meta, selectedDate)
+  const threadReadOnly = () => commentsReadOnly(budget.meta, selectedDate)
   const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement) => (
     <CellShell
       comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
@@ -716,6 +731,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 commentsByCell={commentsByCell}
                 onOpenSheet={setSheetTarget}
                 onShowTransactions={setTransactionsTarget}
+                canPlanDebts={menus.debtEditAccess}
               />
             </div>
           )}
@@ -770,7 +786,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                         ? {
                             onMoveIncome: (item, onFailed) => moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: onFailed }),
                             onMoveIncomeIntoEnvelope: (id, envelopeId, onFailed) =>
-                              moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id, envelopeId }, { onError: onFailed }),
+                              moveIntoEnvelope.mutate(
+                                { budgetId: budget.meta.id, id, envelopeId },
+                                {
+                                  onError: (err) => {
+                                    onFailed()
+                                    toastRefusal(err)
+                                  },
+                                },
+                              ),
                             onMoveIncomeFolder: (id, afterId) => orderFolders.mutate({ budgetId: budget.meta.id, id, afterId }),
                             onMoveSavings: (id, afterId) =>
                               moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } }),
@@ -873,6 +897,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     folderMenu={hoverMenus ? expenseFolderMenu : undefined}
                     labelMenu={hoverMenus ? menus.labelMenu : undefined}
                     sectionMenu={hoverMenus ? menus.sectionMenu('expense') : undefined}
+                    canPlanDebts={menus.debtEditAccess}
                   />
                   </SortableContext>
                   {/* no drop animation: the moved row shows in its new place instead */}
@@ -905,6 +930,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
         plan={limitTarget?.setsPlan}
         upcoming={limitTarget?.upcoming}
+        note={limitTarget?.debt ? <DebtExtraNote row={limitTarget.debt.figures} currency={currencies.find((c) => c.id === limitTarget.debt?.currencyId)} /> : undefined}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => {
           // an income plan lives only in the plan window, so it patches that cache;
@@ -925,16 +951,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         currencies={currencies}
         exchange={makeBudgetExchange(budget, currencies)}
         comments={sheetTarget ? commentsByCell.get(commentCellKey(sheetCell(sheetTarget, budget.meta.currencyId).id, selectedDate)) ?? [] : []}
-        commentsReadOnly={commentsReadOnly(budget.meta, selectedDate)}
+        commentsReadOnly={sheetTarget ? threadReadOnly() : true}
         canSetAmount={sheetTarget ? sheetCanSetAmount(sheetTarget) : false}
         onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
           if (sheetTarget) {
+            const debt = sheetDebtOf(sheetTarget)
             setLimitTarget({
               ...sheetCellTarget(sheetTarget),
               viaPlan: sheetTarget.kind === 'plan',
               setsPlan: sheetSetsPlan(sheetTarget),
               upcoming: upcomingQueryOf(sheetTarget),
+              ...(debt ? { debt: { figures: debt, currencyId: sheetCell(sheetTarget, budget.meta.currencyId).currencyId } } : {}),
             })
             setSheetTarget(null)
           }
@@ -963,6 +991,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             : undefined
         }
         canEdit={sheetEdit === true}
+        onDebtDetails={(id, tab) => {
+          openDebtDetails(id, tab)
+          setSheetTarget(null)
+        }}
+        canPlanDebt={menus.debtEditAccess}
       />
 
       <CommentsPanel
@@ -976,7 +1009,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         comments={commentsTarget ? commentsByCell.get(commentCellKey(commentsTarget.el.id, selectedDate)) ?? [] : []}
         currentUserId={user?.id}
         canModerate={canConfigureBudget(budget.meta, user?.id)}
-        readOnly={commentsTarget ? commentsReadOnly(budget.meta, selectedDate) : true}
+        readOnly={commentsTarget ? threadReadOnly() : true}
         truncated={commentsTruncated}
       />
 

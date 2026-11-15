@@ -6,12 +6,12 @@ import (
 )
 
 func TestReplySchemasFitStructuredOutputs(t *testing.T) {
-	for _, s := range []string{string(categoryIconsSchema.JSON), string(accountIconsSchema.JSON)} {
-		if !strings.Contains(s, `"enum":["home",`) {
+	for _, s := range []string{string(categoryIconsSchema.JSON), string(accountIconsSchema.JSON), string(suggestIconSchema.JSON)} {
+		if !strings.Contains(s, `"enum":["home",`) && !strings.Contains(s, `"enum":["","home",`) {
 			t.Fatalf("icon schema has no catalogue enum: %.120s", s)
 		}
 	}
-	for _, s := range []interface{ Check() error }{*savingsSchema, *categoryIconsSchema, *accountIconsSchema} {
+	for _, s := range []interface{ Check() error }{*savingsSchema, *categoryIconsSchema, *accountIconsSchema, *suggestIconSchema} {
 		if err := s.Check(); err != nil {
 			t.Fatal(err)
 		}

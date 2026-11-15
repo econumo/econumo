@@ -100,3 +100,20 @@ it('budget transactions pass the element param and amounts through (own wire sha
   expect(items[0].spentAt).toBe('2026-07-02 09:30:00')
   expect(items[0].category?.name).toBe('Food')
 })
+
+it('get-budget passes the debt an element carries through unchanged', async () => {
+  const debt = {
+    id: 'd1', isSetUp: 1, paymentsLeft: 239, payoffDate: '2046-05-20', basePayoffDate: '2046-05-20', closingBalance: '298000',
+    scheduledTotal: '2000', upcoming: '2000', isPaidOff: 0, overpaymentLeft: '180000', baseOverpaymentLeft: '180000',
+  }
+  server.use(
+    http.get('*/api/v1/budget/get-budget', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { item: { ...wireBudget, structure: { ...wireBudget.structure, elements: wireBudget.structure.elements.map((el, i) => (i === 0 ? { ...el, debt } : el)) } } },
+      })),
+  )
+  const budget = await budgetApi.getBudget('b1', '2026-07-01')
+  expect(budget.structure.elements[0].debt).toEqual(debt)
+  expect(budget.structure.elements[1].debt).toBeUndefined()
+})

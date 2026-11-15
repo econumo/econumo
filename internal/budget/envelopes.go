@@ -2,6 +2,7 @@ package budget
 
 import (
 	"context"
+	"slices"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -69,6 +70,9 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 		return nil, kerr
 	}
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if derr := s.refuseDebtCarriers(txCtx, b, "categories", parseIDs(req.Categories)...); derr != nil {
+			return derr
+		}
 		if eerr := s.requireFreeEnvelopeID(txCtx, envelopeID); eerr != nil {
 			return eerr
 		}
@@ -140,6 +144,21 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	// so it is read from the existing element row (default expense if missing).
 	envType := model.ElementEnvelope
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The envelope's active debt follows its row's currency. The budget's
+		// row lock goes before any element row's.
+		if s.debts != nil {
+			if derr := s.debts.LockBudget(txCtx, budgetID); derr != nil {
+				return derr
+			}
+		}
+		// only a category joining the envelope can bring an active debt in
+		current, cerr := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
+		if cerr != nil {
+			return cerr
+		}
+		if derr := s.refuseDebtCarriers(txCtx, b, "categories", newIDs(parseIDs(req.Categories), current)...); derr != nil {
+			return derr
+		}
 		env, gerr := s.envelopes.GetEnvelope(txCtx, envelopeID)
 		if gerr != nil {
 			return gerr
@@ -159,6 +178,11 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 			elementKeyOfEnvelope = el.SortKey
 			folderID = el.FolderID
 			envType = el.Type
+			if s.debts != nil {
+				if derr := s.debts.SetElementCurrency(txCtx, budgetID, envelopeID, curID); derr != nil {
+					return derr
+				}
+			}
 		}
 		if verr := s.validateEnvelopeCategories(txCtx, b, envType.IsIncomeSide(), req.Categories); verr != nil {
 			return verr
@@ -226,6 +250,13 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The envelope's debts go with it. The debt hook takes the budget's
+		// row lock, which goes before the element row's.
+		if s.debts != nil {
+			if derr := s.debts.DeleteElementDebts(txCtx, budgetID, envelopeID); derr != nil {
+				return derr
+			}
+		}
 		el, eerr := s.elements.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
 			if serr := s.elements.DeleteElement(txCtx, el.ID); serr != nil {
@@ -241,6 +272,28 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 		return nil, err
 	}
 	return &model.DeleteEnvelopeResult{}, nil
+}
+
+// parseIDs keeps the ids that parse; the caller validates the rest.
+func parseIDs(raw []string) []vo.Id {
+	out := make([]vo.Id, 0, len(raw))
+	for _, r := range raw {
+		if id, err := vo.ParseId(r); err == nil {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// newIDs are the ids of want not in have.
+func newIDs(want, have []vo.Id) []vo.Id {
+	out := make([]vo.Id, 0, len(want))
+	for _, id := range want {
+		if !slices.ContainsFunc(have, id.Equal) {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // lastElementKey returns the greatest sort key among a budget's elements, so a
@@ -286,12 +339,7 @@ func (s *Service) validateEnvelopeCategories(ctx context.Context, b *budgetAggre
 	if len(categoryIDs) == 0 {
 		return nil
 	}
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return err
@@ -327,12 +375,7 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	if len(categoryIDs) == 0 {
 		return []model.ChildElementResult{}, nil
 	}
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return nil, err

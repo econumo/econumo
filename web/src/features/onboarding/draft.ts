@@ -2,7 +2,7 @@ import type { Id } from '@/api/types'
 
 // accountId: the row stands for an account the user already has, so it is never created
 // labelKey: a default the user has not renamed; its name follows the UI language
-// iconPicked: the icon was chosen by hand
+// iconPicked: the icon was chosen by hand, so no suggestion replaces it
 export type AccountRow = {
   key: string
   name: string
@@ -13,7 +13,16 @@ export type AccountRow = {
   labelKey?: string
   iconPicked?: boolean
 }
-export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; labelKey?: string; defaultKey?: string }
+// iconPicked: as on an account row
+export type CategoryRow = {
+  key: string
+  name: string
+  type: 'expense' | 'income'
+  icon: string
+  labelKey?: string
+  defaultKey?: string
+  iconPicked?: boolean
+}
 export type Day0Step = 'import' | 'categories' | 'accounts' | 'plan'
 export type Day0Draft = {
   // the operation id of a step's submit, minted on its first Continue and kept until the

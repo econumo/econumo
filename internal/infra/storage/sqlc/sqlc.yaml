@@ -122,3 +122,8 @@ sql:
             go_type:
               type: "time.Time"
               pointer: true
+          - db_type: "date"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true

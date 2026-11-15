@@ -9,11 +9,14 @@ import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TagDto } from '@/api/dto/tag'
+import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { suggestIconForCreatedCategory } from '@/features/iconSuggestion/inline'
 import { patchTransactions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
+import { getSessionUserId } from '@/lib/storage'
 
 const byPosition = <T extends { position: number }>(items: T[]) => [...items].sort((a, b) => a.position - b.position)
 
@@ -51,6 +54,10 @@ export function useCreateCategory({ handlesOwnErrors = false }: OwnErrorHandling
       const item = await categoryApi.createCategory({ id: uuidv7(), name: form.name, type: form.type, accountId: form.accountId, icon: form.icon })
       // in mutationFn, not onSuccess: the dedupe path above is not a create
       trackEvent(METRICS.CATEGORY_CREATE)
+      // no icon given: created inline from a picker, so nobody chose one. A category created on
+      // a partner's account belongs to that partner, and only its owner may change its icon.
+      const me = getSessionUserId() ?? queryClient.getQueryData<CurrentUserDto>(queryKeys.user)?.id
+      if (form.icon === undefined && item.ownerUserId === me) void suggestIconForCreatedCategory(queryClient, item)
       return item
     },
     onSuccess: (item) => {
@@ -90,22 +97,34 @@ type EntityDto = CategoryDto | PayeeDto | TagDto | LabelDto
 function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
   const queryClient = useQueryClient()
   const key = queryKeys[kind]
+  // debts are attached to categories (and envelopes): a category's delete,
+  // merge, rename or re-icon reaches them, and so does a tag's delete, since an
+  // untagged expense counts on its category and so for that category's debt
+  const invalidateDebts = (force = false) => {
+    if (force || kind === 'categories') {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+    }
+  }
   // A merge or delete drops a budget element (and re-points or cascades its
   // limits, transactions and comments). The Plan view reads its own queries,
   // separate from the Budget view's, so every one of them must refetch or the
   // Plan keeps the gone row until a manual sync.
   const invalidateBudgetViews = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    invalidateDebts()
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetComments })
   }
   return {
+    invalidateBudgetViews,
     replaceItem: (id: Id, patch: Partial<EntityDto>) => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).map((i) => (i.id === id ? { ...i, ...patch } : i)))
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        // a debt shows its element's name and icon
+        invalidateDebts()
       }
     },
     setArchived: (id: Id, isArchived: 0 | 1) => {
@@ -113,6 +132,8 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        // a debt shows its element's name and icon
+        invalidateDebts()
       }
     },
     remove: (id: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {
@@ -126,6 +147,9 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       )
       if (touchesBudget) {
         invalidateBudgetViews()
+      }
+      if (kind === 'tags') {
+        invalidateDebts(true)
       }
     },
     // A merge RE-POINTS rows at the target rather than nulling them, which is
@@ -276,6 +300,7 @@ export function useDeletePayee() {
     mutationFn: (id: Id) => payeeApi.deletePayee(id),
     onSuccess: (_r, id) => {
       ops.remove(id, 'payeeId')
+      ops.invalidateBudgetViews()
       trackEvent(METRICS.PAYEE_DELETE)
     },
   })
@@ -489,13 +514,14 @@ function withoutLabel<T extends { labelIds?: Id[] }>(rows: T[] | undefined, id: 
 
 export function useDeleteLabel() {
   const queryClient = useQueryClient()
+  const ops = useEntityCacheOps('labels', true)
   return useMutation({
     mutationFn: (id: Id) => labelApi.deleteLabel(id),
     onSuccess: (_r, id) => {
       queryClient.setQueryData<LabelDto[]>(queryKeys.labels, (prev) => (prev ?? []).filter((l) => l.id !== id))
       patchTransactions(queryClient, (rows) => withoutLabel(rows, id))
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => withoutLabel(prev, id))
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      ops.invalidateBudgetViews()
       trackEvent(METRICS.LABEL_DELETE)
     },
   })

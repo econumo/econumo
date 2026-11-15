@@ -63,14 +63,15 @@ func (fakeTimezones) StoredTimezone(context.Context, vo.Id) (string, error) {
 func (f fakeTimezones) AIOptedOut(context.Context, vo.Id) (bool, error) { return f.aiOff, nil }
 
 type fakeCompleter struct {
-	calls int
-	user  string
-	reply func(ctx context.Context) (string, error)
+	calls  int
+	system string
+	user   string
+	reply  func(ctx context.Context) (string, error)
 }
 
-func (f *fakeCompleter) Complete(ctx context.Context, _, _, user string, _ *ai.Schema) (string, error) {
+func (f *fakeCompleter) Complete(ctx context.Context, _, system, user string, _ *ai.Schema) (string, error) {
 	f.calls++
-	f.user = user
+	f.system, f.user = system, user
 	return f.reply(ctx)
 }
 
@@ -95,9 +96,18 @@ func replying(s string) *fakeCompleter {
 	return &fakeCompleter{reply: func(context.Context) (string, error) { return s, nil }}
 }
 
+// fakeCategorySteps owns an expense category (id cash) and an income one
+// (id deposit).
+type fakeCategorySteps struct{ onboarding.CategorySteps }
+
+func (fakeCategorySteps) OwnCategories(context.Context, vo.Id) ([]model.CategoryResult, error) {
+	return []model.CategoryResult{{Id: cash, Name: "Loan", Type: "expense"}, {Id: deposit, Name: "Salary", Type: "income"}}, nil
+}
+
 func newSvc(c onboarding.Completer, l onboarding.AttemptLimiter) (*onboarding.Service, *fakeBudgets) {
 	b := &fakeBudgets{}
 	svc := onboarding.NewService(b, fakeAccounts{}, fakeTimezones{})
+	svc.SetSteps(onboarding.Steps{Categories: fakeCategorySteps{}})
 	if c != nil {
 		svc.SetAdvisor(c, l)
 	}

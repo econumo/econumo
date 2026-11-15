@@ -112,7 +112,8 @@ function budgetCell(elementId: Id): Cell<BudgetDto, BudgetCell> {
 function planCell(elementId: Id, monthIndex: number): Cell<BudgetPlanDto, string> {
   return {
     read: (plan) => {
-      const row = plan.structure.elements.find((el) => el.id === elementId) ?? plan.structure.savings?.find((r) => r.id === elementId)
+      const row =
+        plan.structure.elements.find((el) => el.id === elementId) ?? plan.structure.savings?.find((r) => r.id === elementId)
       return row?.cells[monthIndex]?.planned
     },
     write: (plan, planned) => patchPlanCells(plan, elementId, (c, i) => (i === monthIndex ? { ...c, planned } : c)) ?? plan,

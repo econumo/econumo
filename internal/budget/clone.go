@@ -26,43 +26,28 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 		return nil, err
 	}
 
-	src, err := s.loadAggregate(ctx, sourceID)
-	if err != nil {
-		return nil, err
-	}
-	// Owner or admin ("full control") only: the copy carries the source's whole
-	// sharing set and membership, so only a fully-privileged participant may
-	// spawn one. An archived or ended source is still cloneable — continuing
-	// from a completed budget is the point of the feature.
-	role, err := s.budgetRole(src, userID)
-	if err != nil {
-		return nil, err
-	}
-	if role != model.BudgetRoleOwner && role != model.BudgetRoleAdmin {
-		return nil, accessDenied()
-	}
-
+	// Checked once before the lock, so a caller without full control never
+	// holds it, and again under it.
 	now := s.clock.Now()
-	startDate := model.FirstOfMonth(src.budget.StartedAt)
-	if req.StartDate != "" {
-		d, perr := time.Parse(datetime.DateLayout, req.StartDate)
-		if perr != nil {
-			return nil, model.ValidateBlank(map[string]string{"startDate": ""})
-		}
-		// The date names the copy's first period. It may be anywhere from the
-		// source's first period to the caller's current one (or the source's
-		// first, when that is later): earlier would invent history, later would
-		// skip periods.
-		key := model.FirstOfMonth(d)
-		first := src.budget.FirstPeriod()
-		last := openingPeriod(src.budget, currentPeriod(now, reqctx.Location(ctx), src.budget.PeriodStartDay))
-		if key.Before(first) || key.After(last) {
-			return nil, model.ValidateBlank(map[string]string{"startDate": ""})
-		}
-		startDate = key
+	if _, _, err := s.cloneSource(ctx, sourceID, userID, req.StartDate, now); err != nil {
+		return nil, err
 	}
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The source's debt lock comes before any category or element row is
+		// touched (the envelope memberships below key-share the categories), as
+		// in every budget write; CloneDebts re-takes it as a no-op.
+		if s.debts != nil {
+			if lerr := s.debts.LockBudget(txCtx, sourceID); lerr != nil {
+				return lerr
+			}
+		}
+		// Read under the lock, so the structure copied here and the debts
+		// CloneDebts copies describe the same state.
+		src, startDate, serr := s.cloneSource(txCtx, sourceID, userID, req.StartDate, now)
+		if serr != nil {
+			return serr
+		}
 		// newID is client-supplied and Save upserts, so an id that is already
 		// taken would overwrite that budget's settings and then layer the
 		// source's folders, envelopes, elements and limits under it. The insert
@@ -130,6 +115,13 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 				if serr := s.envelopes.AddEnvelopeCategory(txCtx, ne.ID, cid); serr != nil {
 					return serr
 				}
+			}
+		}
+		// The debts are the budget's own; one on an envelope follows the
+		// envelope's copy.
+		if s.debts != nil {
+			if _, cerr := s.debts.CloneDebts(txCtx, sourceID, newID, envMap); cerr != nil {
+				return cerr
 			}
 		}
 		elementMap := make(map[vo.Id]vo.Id, len(src.elements))
@@ -205,4 +197,44 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 		return nil, err
 	}
 	return &model.CloneBudgetResult{Item: result}, nil
+}
+
+// cloneSource reads the source budget, checks the caller's full control over
+// it and resolves the copy's first period.
+func (s *Service) cloneSource(ctx context.Context, sourceID, userID vo.Id, reqStart string, now time.Time) (*budgetAggregate, time.Time, error) {
+	src, err := s.loadAggregate(ctx, sourceID)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	// Owner or admin ("full control") only: the copy carries the source's whole
+	// sharing set and membership, so only a fully-privileged participant may
+	// spawn one. An archived or ended source is still cloneable — continuing
+	// from a completed budget is the point of the feature.
+	role, err := s.budgetRole(src, userID)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	if role != model.BudgetRoleOwner && role != model.BudgetRoleAdmin {
+		return nil, time.Time{}, accessDenied()
+	}
+
+	startDate := model.FirstOfMonth(src.budget.StartedAt)
+	if reqStart != "" {
+		d, perr := time.Parse(datetime.DateLayout, reqStart)
+		if perr != nil {
+			return nil, time.Time{}, model.ValidateBlank(map[string]string{"startDate": ""})
+		}
+		// The date names the copy's first period. It may be anywhere from the
+		// source's first period to the caller's current one (or the source's
+		// first, when that is later): earlier would invent history, later would
+		// skip periods.
+		key := model.FirstOfMonth(d)
+		first := src.budget.FirstPeriod()
+		last := openingPeriod(src.budget, currentPeriod(now, reqctx.Location(ctx), src.budget.PeriodStartDay))
+		if key.Before(first) || key.After(last) {
+			return nil, time.Time{}, model.ValidateBlank(map[string]string{"startDate": ""})
+		}
+		startDate = key
+	}
+	return src, startDate, nil
 }

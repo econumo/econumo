@@ -241,3 +241,4 @@ it('totals what earlier months left, in the budget currency, without Uncategoriz
   expect(Number(totals.carry)).toBeCloseTo(300, 6)
   expect(Number(totalsWithSavings(totals, mutated, ex).carry)).toBeCloseTo(300, 6)
 })
+

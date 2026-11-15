@@ -50,8 +50,16 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 		}
 	}
 
+	currencyChange := !curID.Equal(b.budget.CurrencyID) && s.debts != nil
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// the debts on rows with no currency of their own follow the budget's;
+		// the budget's row lock goes before any element row lock
+		if currencyChange {
+			if lerr := s.debts.LockBudget(txCtx, budgetID); lerr != nil {
+				return lerr
+			}
+		}
 		b.budget.UpdateName(req.Name, now)
 		b.budget.UpdateCurrency(curID, now)
 		if dayChange {
@@ -98,7 +106,13 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 		if serr := s.budgets.Save(txCtx, b.budget); serr != nil {
 			return serr
 		}
-		return s.applyMemberChange(txCtx, change, now)
+		if aerr := s.applyMemberChange(txCtx, change, now); aerr != nil {
+			return aerr
+		}
+		if currencyChange {
+			return s.debts.AlignElementCurrencies(txCtx, budgetID)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

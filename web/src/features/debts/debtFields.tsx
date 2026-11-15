@@ -1,0 +1,259 @@
+import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { Label } from '@/components/ui/label'
+import { OptionSelect } from '@/components/OptionSelect'
+import { formatDate } from '@/lib/datetime'
+import type { DebtSchedule } from '@/api/dto/debt'
+import { TransactionDatePicker } from '@/features/transactions/TransactionDatePicker'
+import { SCHEDULE_ORDER } from './useDebtForm'
+
+export type FieldErrors = Record<string, string | undefined>
+
+const amountInputClass = `${cardFieldControlClass} text-base`
+
+/** a plain amount: the decimal keyboard on phones, no calculator */
+function AmountInput({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+  return <Input id={id} className={amountInputClass} inputMode="decimal" autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)} />
+}
+
+export function AmountField({
+  id,
+  label,
+  hint,
+  value,
+  symbol,
+  error,
+  echo,
+  onChange,
+  cardClassName,
+}: {
+  id: string
+  label: string
+  /** a line under the card saying when to fill it */
+  hint?: string
+  value: string
+  symbol: string
+  error?: string | null
+  /** how the typed amount is read (`amountEcho`), shown while there is no error */
+  echo?: string | null
+  onChange: (value: string) => void
+  /** overrides the card's look, e.g. a raised surface when the field sits on a card */
+  cardClassName?: string
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <CardField label={label} htmlFor={id} error={error} className={cardClassName}>
+        <div className="flex items-baseline gap-2">
+          <div className="min-w-0 flex-1">
+            <AmountInput id={id} value={value} onChange={onChange} />
+          </div>
+          <span className="text-sm text-muted-foreground">{symbol}</span>
+        </div>
+      </CardField>
+      {!error ? <AmountEcho echo={echo} /> : null}
+      {hint ? <p className="px-1 text-xs text-muted-foreground">{hint}</p> : null}
+    </div>
+  )
+}
+
+function AmountEcho({ echo }: { echo?: string | null }) {
+  return echo ? <p className="px-1 text-xs text-muted-foreground">{echo}</p> : null
+}
+
+/** The payment and how often it repeats on one row, on every breakpoint: the
+    amount card and, beside it, the same-height "every month ▾" card. */
+export function PaymentField({
+  id,
+  label: amountLabel,
+  value,
+  symbol,
+  schedule,
+  error,
+  echo,
+  onChange,
+  onScheduleChange,
+}: {
+  id: string
+  /** the amount's label, "Payment" by default */
+  label?: string
+  value: string
+  symbol: string
+  schedule: DebtSchedule
+  error?: string | null
+  /** how the typed amount is read (`amountEcho`), shown while there is no error */
+  echo?: string | null
+  onChange: (value: string) => void
+  onScheduleChange: (value: DebtSchedule) => void
+}) {
+  const { t } = useTranslation()
+  const label = amountLabel ?? t('debts.form.payment.label')
+  const repeats = t('debts.form.schedule.label')
+  return (
+    <div className="flex flex-col gap-1">
+      <div role="group" aria-label={`${label}, ${repeats}`} className="grid grid-cols-2 items-stretch gap-2">
+        <div className="flex min-w-0 flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring">
+          <Label htmlFor={id} className="text-[11px] font-normal text-muted-foreground">
+            {label}
+          </Label>
+          <div className="flex items-baseline gap-2">
+            <div className="min-w-0 flex-1">
+              <AmountInput id={id} value={value} onChange={onChange} />
+            </div>
+            <span className="text-sm text-muted-foreground">{symbol}</span>
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring">
+          <Label htmlFor={`${id}-schedule`} className="text-[11px] font-normal text-muted-foreground">
+            {repeats}
+          </Label>
+          <OptionSelect
+            id={`${id}-schedule`}
+            className="h-auto w-full min-w-0 justify-between gap-1 border-0 bg-transparent p-0 text-left text-sm whitespace-normal text-econumo-link shadow-none focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent data-[size=default]:h-auto max-md:text-sm max-md:data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none"
+            aria-label={repeats}
+            title={repeats}
+            value={schedule}
+            onValueChange={(v) => onScheduleChange(v as DebtSchedule)}
+            options={SCHEDULE_ORDER.map((s) => ({ value: s, label: t(`debts.form.schedule.every.${s}`) }))}
+          />
+        </div>
+      </div>
+      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : <AmountEcho echo={echo} />}
+    </div>
+  )
+}
+
+export function StartDateField({ value, error, onChange }: { value: string; error?: string; onChange: (value: string) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col gap-1">
+      <DateField
+        label={t('debts.form.start_date.label')}
+        value={value}
+        placeholder={t('debts.form.start_date.none')}
+        error={error}
+        onChange={onChange}
+        onClear={() => onChange('')}
+        clearLabel={t('debts.form.start_date.clear')}
+      />
+      <p className="px-1 text-xs text-muted-foreground">{t('debts.form.start_date.hint')}</p>
+    </div>
+  )
+}
+
+/** One date as a card field, laid out like the amount fields: the label above,
+    the date under it in the same type as a typed value, the hint for screen
+    readers only (a 360 px phone has no room for it). The date's wrapper is
+    marked `data-date-chip`, for Finish setup's focus. */
+export function DateField({
+  label,
+  hint,
+  value,
+  placeholder,
+  error,
+  onChange,
+  onClear,
+  clearLabel,
+  min,
+  max,
+  cardClassName,
+}: {
+  label: string
+  hint?: string
+  value: string
+  placeholder?: string
+  error?: string | null
+  /** the first and last day the picker offers (Y-m-d) */
+  min?: string
+  max?: string
+  onChange: (value: string) => void
+  onClear?: () => void
+  clearLabel?: string
+  cardClassName?: string
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className={cn('flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring', cardClassName)}>
+        <span className="truncate text-[11px] text-muted-foreground" title={hint}>
+          {label}
+        </span>
+        {hint ? <span className="sr-only">{hint}</span> : null}
+        <span data-date-chip className={cn('relative flex min-w-0 items-center', onClear && value && 'pr-6')}>
+          <TransactionDatePicker variant="field" label={label} placeholder={placeholder} value={value} min={min} max={max} onChange={(day) => onChange(formatDate(day))} />
+          {onClear && value ? (
+            <button
+              type="button"
+              className="absolute top-1/2 right-0 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+              aria-label={clearLabel}
+              onClick={onClear}
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : null}
+        </span>
+      </div>
+      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
+    </div>
+  )
+}
+
+/** The start date and the last payment date on one row, on every breakpoint:
+    the start date first, as the loan's dates read. `clearable` offers to drop
+    the start date (a debt not set up, where it only bounds the payments). */
+export function DatesRow({
+  startDate,
+  lastPaymentDate,
+  startError,
+  lastPaymentError,
+  returnBy = false,
+  startLabel: startLabelProp,
+  clearable = false,
+  lastMin,
+  onStartDateChange,
+  onLastPaymentDateChange,
+}: {
+  startDate: string
+  lastPaymentDate: string
+  startError?: string
+  lastPaymentError?: string
+  /** no fixed payments: the second date is the day the loan is to be returned by */
+  returnBy?: boolean
+  /** the first date's label, "Start date" by default */
+  startLabel?: string
+  clearable?: boolean
+  /** the earliest day the second date offers */
+  lastMin?: string
+  onStartDateChange: (value: string) => void
+  onLastPaymentDateChange: (value: string) => void
+}) {
+  const { t } = useTranslation()
+  const startLabel = startLabelProp ?? t('debts.form.start_date.label')
+  const lastLabel = returnBy ? t('debts.form.return_by.label') : t('debts.form.last_payment_date.label')
+  const error = startError ?? lastPaymentError
+  return (
+    <div className="flex flex-col gap-1">
+      <div role="group" aria-label={`${startLabel}, ${lastLabel}`} className="grid grid-cols-2 items-stretch gap-2">
+        <DateField
+          label={startLabel}
+          hint={t('debts.form.start_date.hint')}
+          value={startDate}
+          placeholder={t('debts.form.last_payment_date.choose')}
+          onChange={onStartDateChange}
+          onClear={clearable ? () => onStartDateChange('') : undefined}
+          clearLabel={t('debts.form.start_date.clear')}
+        />
+        <DateField
+          label={lastLabel}
+          hint={returnBy ? t('debts.form.return_by.hint') : t('debts.form.last_payment_date.hint')}
+          value={lastPaymentDate}
+          placeholder={t('debts.form.last_payment_date.choose')}
+          min={lastMin}
+          onChange={onLastPaymentDateChange}
+        />
+      </div>
+      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
+    </div>
+  )
+}

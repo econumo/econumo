@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -19,7 +20,7 @@ import (
 // window size; only the rate lookups are per-month, and those read the small
 // rates table).
 func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAggregate, from time.Time, months int) (model.BudgetPlanResult, error) {
-	f, err := s.buildFilters(ctx, userID, b, from, months)
+	f, err := s.filtersWithDebts(ctx, userID, b, from, months)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
@@ -556,8 +557,63 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	}
 
 	result := s.emitPlanElements(elements, converted, nMonths)
+	if err := s.addPlanDebts(ctx, b, f, monthsList, result); err != nil {
+		return model.PlanStructureResult{}, err
+	}
 	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, convertedGetter(converted), nMonths)
 	return model.PlanStructureResult{Folders: folders, Elements: result, Savings: savings}, nil
+}
+
+// addPlanDebts puts on each row that can carry a debt its active debt, with
+// the figures of the caller's current period, and on each cell the debt in
+// force in that cell's period.
+func (s *Service) addPlanDebts(ctx context.Context, b *budgetAggregate, f filters, months []time.Time, rows []model.PlanElementResult) error {
+	if len(f.debtViews) == 0 {
+		return nil
+	}
+	current := model.PeriodOf(localToday(s.clock.Now(), reqctx.Location(ctx)), f.startDay)
+	active := activeDebts(f.debtViews)
+	cellDebts := make([]map[string]model.DebtView, len(months))
+	used := map[string]model.DebtView{}
+	for _, v := range active {
+		used[v.ID] = v
+	}
+	for i, m := range months {
+		cellDebts[i] = debtsInForce(f.debtViews, f.startDay, m)
+		for _, v := range cellDebts[i] {
+			used[v.ID] = v
+		}
+	}
+	if len(used) == 0 {
+		return nil
+	}
+	views := make([]model.DebtView, 0, len(used))
+	for _, v := range f.debtViews {
+		if _, ok := used[v.ID]; ok {
+			views = append(views, v)
+		}
+	}
+	projected := append(append([]time.Time(nil), months...), current)
+	timelines, err := s.debtTimelines(ctx, b, f, views, projected)
+	if err != nil {
+		return err
+	}
+	for r := range rows {
+		typ := model.ElementType(rows[r].Type)
+		if !carriesDebt(typ) {
+			continue
+		}
+		index := elementKey(rows[r].Id, typ)
+		if v, ok := active[index]; ok {
+			rows[r].Debt = elementDebt(v, timelines, f.startDay, current)
+		}
+		for i, m := range months {
+			if v, ok := cellDebts[i][index]; ok {
+				rows[r].Cells[i].Debt = elementDebt(v, timelines, f.startDay, m)
+			}
+		}
+	}
+	return nil
 }
 
 // emitPlanElements prunes, renders and positions the accumulated rows.

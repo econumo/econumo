@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { useApplyIconSuggestion } from '@/features/iconSuggestion/useIconSuggestion'
 import { defaultCategoryIcon } from '@/lib/icons'
 import { isNotEmpty, isValidCategoryName } from '@/lib/validation'
 import type { CategoryDto, CategoryType } from '@/api/dto/category'
@@ -28,13 +29,18 @@ export function CategoryDialog({ open, category, onClose, onSubmit, fixedType }:
   const [name, setName] = useState('')
   const [type, setType] = useState<CategoryType>('expense')
   const [icon, setIcon] = useState(defaultCategoryIcon)
+  // a picked icon is the user's: no suggestion replaces it
+  const [iconPicked, setIconPicked] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // an existing category's icon never changes on its own
+  useApplyIconSuggestion({ kind: 'category', name, type, enabled: open && isNew && !iconPicked }, icon, setIcon, 'dialog')
 
   useEffect(() => {
     if (open) {
       setName(category?.name ?? '')
       setType(category?.type ?? fixedType ?? 'expense')
       setIcon(category?.icon || defaultCategoryIcon)
+      setIconPicked(false)
       setError(null)
     }
   }, [open, category, fixedType])
@@ -109,7 +115,13 @@ export function CategoryDialog({ open, category, onClose, onSubmit, fixedType }:
 
         <div className="flex flex-col gap-2">
           <Label>{t('classifications.categories.forms.category.icon.label')}</Label>
-          <IconPicker value={icon} onChange={setIcon} aria-label={t('classifications.categories.forms.category.icon.label')} />
+          <IconPicker
+            value={icon}
+            onChange={(picked) => {
+              setIcon(picked)
+              setIconPicked(true)
+            }}
+            aria-label={t('classifications.categories.forms.category.icon.label')} />
         </div>
       </form>
     </ResponsiveDialog>

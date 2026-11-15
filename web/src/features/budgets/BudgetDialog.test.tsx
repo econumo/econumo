@@ -53,6 +53,11 @@ it('sends an empty savings set when no account is marked savings', async () => {
   expect(onSubmit.mock.calls[0][0].savingsAccountIds).toEqual([])
 })
 
+it('says in the dialog body, without opening a picker, who sees the debts', () => {
+  renderDialog()
+  expect(screen.getByText('Debts are shown by name, with their payments and balances, to everyone with access to this budget.')).toBeInTheDocument()
+})
+
 it('submits the default period start day 1', async () => {
   const user = userEvent.setup()
   const onSubmit = renderDialog()

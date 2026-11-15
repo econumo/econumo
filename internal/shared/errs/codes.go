@@ -43,6 +43,7 @@ const (
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
 	CodeBudgetEnvelopeMemberNotCategory = "budget.envelope_member_not_category"
 	CodeBudgetSavingsFolderNotAllowed   = "budget.savings_folder_not_allowed"
+	CodeBudgetElementHasDebt            = "budget.element_has_debt"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
 	CodeBudgetSavingsAccountNotMember   = "budget.savings_account_not_member"
 	CodeBudgetSavingsRemovalUnconfirmed = "budget.savings_removal_unconfirmed"
@@ -142,6 +143,20 @@ const (
 	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
 	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 
+	CodeDebtPaymentsDontCover           = "debt.payments_dont_cover"
+	CodeDebtElementNotEligible          = "debt.element_not_eligible"
+	CodeDebtElementHasDebt              = "debt.element_has_debt"
+	CodeDebtStartBeforePreviousEnd      = "debt.start_before_previous_end"
+	CodeDebtCannotReopen                = "debt.cannot_reopen"
+	CodeDebtPaidOff                     = "debt.paid_off"
+	CodeDebtLastPaymentBeforeStart      = "debt.last_payment_before_start"
+	CodeDebtStartInFuture               = "debt.start_in_future"
+	CodeDebtNotSetUp                    = "debt.not_set_up"
+	CodeDebtConflictsWithReconciliation = "debt.conflicts_with_reconciliation"
+	CodeDebtConflictsWithRateChange     = "debt.conflicts_with_rate_change"
+	CodeDebtNoFixedPayments             = "debt.no_fixed_payments"
+	CodeDebtElementCurrency             = "debt.element_currency"
+
 	CodeAuthServerDisabled         = "authserver.disabled"
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
 	CodeAuthServerRedirectMismatch = "authserver.redirect_uri_mismatch"
@@ -184,6 +199,7 @@ var AllCodes = []string{
 	CodeBudgetFolderSideMixed,
 	CodeBudgetEnvelopeMemberNotCategory,
 	CodeBudgetSavingsFolderNotAllowed,
+	CodeBudgetElementHasDebt,
 	CodeBudgetAccountNotRemovable,
 	CodeBudgetSavingsAccountNotMember,
 	CodeBudgetSavingsRemovalUnconfirmed,
@@ -288,4 +304,18 @@ var AllCodes = []string{
 	CodeAuthServerRedirectMismatch,
 	CodeAuthServerGrantNotFound,
 	CodeAuthServerAppNotYours,
+
+	CodeDebtPaymentsDontCover,
+	CodeDebtElementNotEligible,
+	CodeDebtElementHasDebt,
+	CodeDebtStartBeforePreviousEnd,
+	CodeDebtCannotReopen,
+	CodeDebtPaidOff,
+	CodeDebtLastPaymentBeforeStart,
+	CodeDebtStartInFuture,
+	CodeDebtNotSetUp,
+	CodeDebtConflictsWithReconciliation,
+	CodeDebtConflictsWithRateChange,
+	CodeDebtNoFixedPayments,
+	CodeDebtElementCurrency,
 }

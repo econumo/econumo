@@ -223,6 +223,7 @@ func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DB
 		CurrencyID:   id,
 		CurrencyID_2: id,
 		CurrencyID_3: &id,
+		CurrencyID_4: id,
 		Value:        &id,
 	})
 }

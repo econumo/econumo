@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/sortkey"
@@ -288,6 +289,16 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		return zero
 	}
 
+	inForce := debtsInForce(f.debtViews, f.startDay, f.periodKey)
+	shown := make([]model.DebtView, 0, len(inForce))
+	for _, v := range inForce {
+		shown = append(shown, v)
+	}
+	timelines, err := s.debtTimelines(ctx, b, f, shown, []time.Time{f.periodKey})
+	if err != nil {
+		return model.StructureResult{}, err
+	}
+
 	result := []model.ParentElementResult{}
 	for _, el := range elements {
 		index := elementKey(el.id, el.typ)
@@ -332,6 +343,9 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			Spent: spent.String(), BudgetSpent: spentBudget.String(),
 			Children: children, OwnerUserId: el.ownerID,
 		})
+		if v, ok := inForce[index]; ok && carriesDebt(el.typ) {
+			result[len(result)-1].Debt = elementDebt(v, timelines, f.startDay, f.periodKey)
+		}
 	}
 	assignElementPositions(kept, result)
 	sortByPositionThenID(result, func(p model.ParentElementResult) int { return p.Position }, func(p model.ParentElementResult) string { return p.Id })

@@ -10,9 +10,11 @@ import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/bud
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
+import type { DebtDetailsTab } from '@/app/uiStore'
+import { useDebtSummaryText } from './debtSummary'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
-import { sheetCell, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
+import { sheetCell, sheetDebt, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
 import { planHintClass } from './planHint'
 import { formatPlanMonth } from './planMath'
 import { currentPeriod } from './period'
@@ -41,6 +43,10 @@ export interface ElementSheetProps {
   onEdit?: () => void
   /** false keeps the edit button visible but inactive */
   canEdit?: boolean
+  /** the review of the debt the row carries, for every reader; absent: no Debt section */
+  onDebtDetails?: (debtId: Id, tab: DebtDetailsTab) => void
+  /** the caller plans in the unarchived budget, online: a debt not set up offers Finish setup */
+  canPlanDebt?: boolean
 }
 
 interface Figure {
@@ -68,8 +74,11 @@ export function ElementSheet({
   onShowTransactions,
   onEdit,
   canEdit = false,
+  onDebtDetails,
+  canPlanDebt = false,
 }: ElementSheetProps) {
   const { t, i18n } = useTranslation()
+  const debtSummary = useDebtSummaryText({ lines: true })
   if (!target) {
     return null
   }
@@ -88,7 +97,8 @@ export function ElementSheet({
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
   const actual = (amount: string) => (future ? EMPTY : fmt(amount))
-  const hint = sheetPlanHint(target)
+  const hint = sheetPlanHint(target, { month, startDay })
+  const debt = sheetDebt(target)
   const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
     key,
     label: figureLabel,
@@ -177,6 +187,23 @@ export function ElementSheet({
           <p className="text-sm" data-testid="sheet-state">
             {stateSentence}
           </p>
+        ) : null}
+        {debt && onDebtDetails ? (
+          // laid out like the comments line below: the text, then a link across from it
+          <div className="flex items-center gap-2 border-t pt-3" data-testid="sheet-debt">
+            <div className="min-w-0 flex-1 text-sm">
+              {debt.isSetUp === 1 ? debtSummary(debt) : <span className="text-muted-foreground">{t('budgets.page.debts.not_set_up')}</span>}
+            </div>
+            {debt.isSetUp === 0 && canPlanDebt ? (
+              <button type="button" className="shrink-0 text-sm font-medium text-econumo-link hover:underline" onClick={() => onDebtDetails(debt.id, 'settings')}>
+                {t('debts.terms.finish_setup')}
+              </button>
+            ) : (
+              <button type="button" className="shrink-0 text-sm font-medium text-econumo-link hover:underline" onClick={() => onDebtDetails(debt.id, 'overview')}>
+                {t('budgets.page.debts.debt_details')}
+              </button>
+            )}
+          </div>
         ) : null}
         {foreign && baseCurrency ? (
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">

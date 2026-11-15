@@ -32,13 +32,15 @@ interface EnvelopeDialogProps {
   envelope?: EnvelopeDialogTarget | null
   budgetCurrencyId: Id
   side: 'expense' | 'income'
+  /** the server's refusal of the last save, shown under the categories */
+  serverError?: string | null
   onClose: () => void
   onSubmit: (form: { name: string; icon: string; currencyId: Id; categories: Id[]; isArchived: 0 | 1 }) => void
 }
 
 const isValidEnvelopeName = (v: string) => v.length >= 3 && v.length <= 64
 
-export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose, onSubmit }: EnvelopeDialogProps) {
+export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, serverError = null, onClose, onSubmit }: EnvelopeDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
@@ -158,6 +160,11 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
           testId="envelope-categories-field"
           onOpen={() => setCategoriesOpen(true)}
         />
+        {serverError ? (
+          <p role="alert" className="-mt-2 text-sm text-destructive" data-testid="envelope-server-error">
+            {serverError}
+          </p>
+        ) : null}
         <ChecklistSheet
           open={categoriesOpen}
           title={t('budgets.form.budget_envelope.categories.label')}

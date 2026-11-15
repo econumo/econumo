@@ -1,8 +1,8 @@
-import type { BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto, ElementDebtDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { compareNames } from '@/lib/collate'
-import { add, cmp, div, isZero } from '@/lib/decimal'
+import { add, cmp, div, isZero, sub } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 import { withTagGroupsAdjacent } from './tagGroups'
 
@@ -156,6 +156,24 @@ export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchan
     }),
     totals,
   )
+}
+
+export type PayoffFigures = Pick<ElementDebtDto, 'payoffDate' | 'basePayoffDate' | 'overpaymentLeft' | 'baseOverpaymentLeft'>
+
+/** What the planned extra payments buy: how many months earlier the debt is paid off
+ *  and how much less overpayment it costs; null when the plans change nothing. */
+export function debtExtraEffect(row: PayoffFigures): { months: number; saved: string } | null {
+  if (row.payoffDate === '' || row.basePayoffDate === '' || row.payoffDate === row.basePayoffDate) {
+    return null
+  }
+  const [py, pm] = row.payoffDate.split('-').map(Number)
+  const [by, bm] = row.basePayoffDate.split('-').map(Number)
+  const months = (by - py) * 12 + (bm - pm)
+  if (months <= 0) {
+    return null
+  }
+  const saved = sub(row.baseOverpaymentLeft, row.overpaymentLeft)
+  return { months, saved: cmp(saved, '0') > 0 ? saved : '0' }
 }
 
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)

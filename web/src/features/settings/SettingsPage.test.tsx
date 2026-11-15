@@ -379,3 +379,11 @@ describe('Clear cache and reload', () => {
     await waitFor(() => expect(row).toBeEnabled())
   })
 })
+
+it('has no Debts entry: debts are reached from their budget row', async () => {
+  mockViewport(false)
+  renderPage()
+
+  expect(await screen.findByRole('link', { name: /^Budgets/ })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: /Debts/ })).toBeNull()
+})

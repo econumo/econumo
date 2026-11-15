@@ -6,6 +6,7 @@ import type { CollisionDetection, DragEndEvent, DragOverEvent, DragStartEvent } 
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
+import { toastRefusal } from '@/lib/apiError'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useUiStore } from '@/app/uiStore'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
@@ -98,6 +100,8 @@ import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
 import type { CellMove } from './PlanCellInput'
 import { wantsUpcomingPanel } from './planHint'
+import { DebtExtraNote } from './debtRow'
+import type { SheetTarget } from './phoneMonth'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -298,8 +302,8 @@ function FolderRows({
   )
 }
 
-// Same flattening the renderer walks (folders -> loose, income then savings then
-// neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
+// Same flattening the renderer walks (folders -> loose, income then savings
+// then neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
 // screen. Section and folder lines are no stops; a folder contributes its visible
 // members only. Only root element rows — the ones a limit can be set on — are in the order: an expanded envelope's
 // children are read-only breakdown lines and are stepped over.
@@ -395,6 +399,7 @@ function buildFlatRows(
 export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings, viewSwitch }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
+  const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
   const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
@@ -664,7 +669,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
     [visible, crosshairCol, visibleMonths, monthLabel],
   )
-  const sheetPlanTarget = sheetCellTarget ? { kind: 'plan' as const, cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null
+  const sheetPlanTarget: SheetTarget | null = sheetCellTarget
+    ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) }
+    : null
   const sheetEdit = sheetPlanTarget ? menus.editAccess(sheetPlanTarget) : null
   // With a mouse every line's ⋮ menu shows on hover; a touch screen has no hover, so
   // there they show on every line while edit mode is on, and not at all without it.
@@ -718,7 +725,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           targets.push({ period, monthIndex: idx })
         }
       }
-      fillCells.mutate({ budgetId: budget.meta.id, elementId: fillDrag.elementId, amount: fillDrag.amount, targets })
+      if (targets.length > 0) {
+        fillCells.mutate({ budgetId: budget.meta.id, elementId: fillDrag.elementId, amount: fillDrag.amount, targets })
+      }
     }
     setFillDrag(null)
     // the drag may have started from a merely hovered cell: the cell whose value was
@@ -1085,6 +1094,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
 
   const planCurrency = currencies.find((c) => c.id === plan.meta.currencyId)
   const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
+  // what the month's planned extra buys on the debt in force then
+  const dialogDebt = dialogCell?.debt
 
   const incomeFolded = folded('income')
   const expenseFolded = folded('expense')
@@ -1285,7 +1296,15 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (envelopeId !== null) {
       if (canEnterEnvelope(side)(activeId, envelopeId)) {
         holdMember(activeId)
-        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: releaseHold })
+        moveIntoEnvelope.mutate(
+          { budgetId: budget.meta.id, id: activeId, envelopeId },
+          {
+            onError: (err) => {
+              releaseHold()
+              toastRefusal(err)
+            },
+          },
+        )
       }
       return
     }
@@ -2086,8 +2105,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           }
         }}
         plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
+        note={dialogDebt && planLimitTarget ? <DebtExtraNote row={dialogDebt} currency={currencies.find((c) => c.id === planLimitTarget.el.currencyId)} /> : null}
         upcoming={
-          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS, startDay)
+          planLimitTarget &&
+          dialogCell &&
+          wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS, startDay)
             ? {
                 budget,
                 target: {
@@ -2115,7 +2137,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         currencies={currencies}
         exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
         comments={sheetCellTarget ? commentsByCell.get(commentCellKey(sheetCellTarget.el.id, sheetCellTarget.month)) ?? [] : []}
-        commentsReadOnly={sheetCellTarget ? commentsReadOnly(budget.meta, sheetCellTarget.month) : true}
+        commentsReadOnly={
+          sheetCellTarget ? commentsReadOnly(budget.meta, sheetCellTarget.month) : true
+        }
         canSetAmount={sheetCellTarget ? isEditableCell(sheetCellTarget.el, sheetCellTarget.month, sheetCellTarget.monthIndex, budget.meta, userId) : false}
         onClose={() => setSheetCellTarget(null)}
         onSetAmount={() => {
@@ -2148,6 +2172,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             : undefined
         }
         canEdit={sheetEdit === true}
+        onDebtDetails={(id, tab) => {
+          openDebtDetails(id, tab)
+          setSheetCellTarget(null)
+        }}
+        canPlanDebt={menus.debtEditAccess}
       />
 
       <CommentsPanel
@@ -2161,7 +2190,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         comments={commentsDialogTarget ? commentsByCell.get(commentCellKey(commentsDialogTarget.el.id, commentsDialogTarget.month)) ?? [] : []}
         currentUserId={userId}
         canModerate={canConfigureBudget(budget.meta, userId)}
-        readOnly={commentsDialogTarget ? commentsReadOnly(budget.meta, commentsDialogTarget.month) : true}
+        readOnly={
+          commentsDialogTarget
+            ? commentsReadOnly(budget.meta, commentsDialogTarget.month)
+            : true
+        }
         truncated={commentsTruncated}
       />
 

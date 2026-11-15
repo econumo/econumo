@@ -17,6 +17,12 @@ var (
 
 	categoryIconsSchema = iconsSchema("category_icons", "categories")
 	accountIconsSchema  = iconsSchema("account_icons", "accounts")
+
+	suggestIconSchema = func() *ai.Schema {
+		enum, _ := json.Marshal(append([]string{""}, icons.Names...))
+		return &ai.Schema{Name: "icon_suggestion", JSON: json.RawMessage(`{"type":"object","properties":{"icon":{"type":"string","enum":` + string(enum) + `}},` +
+			`"required":["icon"],"additionalProperties":false}`)}
+	}()
 )
 
 // iconsSchema is {list:[{key, icon}]}, icon limited to the catalogue.

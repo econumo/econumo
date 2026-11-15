@@ -11,8 +11,8 @@ func TestPromptFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 7 {
-		t.Fatalf("want 7 prompt files, got %d", len(entries))
+	if len(entries) != 8 {
+		t.Fatalf("want 8 prompt files, got %d", len(entries))
 	}
 	for _, e := range entries {
 		if strings.TrimSpace(load(e.Name())) == "" {
@@ -24,7 +24,7 @@ func TestPromptFiles(t *testing.T) {
 func TestPlaceholdersSubstituted(t *testing.T) {
 	for name, text := range map[string]string{
 		"Suggest": Suggest, "Payee": Payee, "MatchText": MatchText, "Savings": Savings,
-		"CategoryIcons": CategoryIcons, "AccountIcons": AccountIcons,
+		"CategoryIcons": CategoryIcons, "AccountIcons": AccountIcons, "SuggestIcon": SuggestIcon,
 	} {
 		if strings.TrimSpace(text) == "" {
 			t.Errorf("%s is empty", name)

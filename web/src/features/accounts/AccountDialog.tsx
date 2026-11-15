@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
+import { useCurrencies } from '@/features/currencies/queries'
+import { useApplyIconSuggestion } from '@/features/iconSuggestion/useIconSuggestion'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { formatDateTime } from '@/lib/datetime'
@@ -51,15 +53,24 @@ export function AccountDialog() {
   // the list's balance includes waiting changes; a correction is judged against what the server stores
   const storedBalance = useStoredBalance(account?.id)
   const isNew = !account
-
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
   const balanceTouched = useRef(false)
   const [currencyId, setCurrencyId] = useState<string | null>(null)
   const [icon, setIcon] = useState(defaultAccountIcon)
+  // a picked icon is the user's: no suggestion replaces it
+  const [iconPicked, setIconPicked] = useState(false)
+  const { data: currencies } = useCurrencies()
   const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; balance?: string }>()
   const [shareOpen, setShareOpen] = useState(false)
   const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
+  // an existing account's icon never changes on its own
+  useApplyIconSuggestion(
+    { kind: 'account', name, currency: currencies?.find((c) => c.id === currencyId)?.code, enabled: Boolean(params) && isNew && !iconPicked },
+    icon,
+    setIcon,
+    'dialog',
+  )
 
   useEffect(() => {
     if (!params) {
@@ -77,6 +88,7 @@ export function AccountDialog() {
       setIcon(defaultAccountIcon)
     }
     balanceTouched.current = false
+    setIconPicked(false)
     setShareOpen(false)
     setLevelEntry(null)
     resetErrors()
@@ -250,7 +262,14 @@ export function AccountDialog() {
 
         <div className="flex min-h-0 flex-1 flex-col gap-2">
           <Label>{t('accounts.modal.form.icon.label')}</Label>
-          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('accounts.modal.form.icon.label')} />
+          <IconPicker
+            fill
+            value={icon}
+            onChange={(picked) => {
+              setIcon(picked)
+              setIconPicked(true)
+            }}
+            aria-label={t('accounts.modal.form.icon.label')} />
         </div>
       </form>
 

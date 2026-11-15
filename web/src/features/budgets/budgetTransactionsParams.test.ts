@@ -25,3 +25,4 @@ it('selects a savings row by its account', () => {
 it('selects an income envelope as income', () => {
   expect(at({ ...base, id: 'e1', type: BudgetElementType.INCOME_ENVELOPE })).toEqual({ ...period, income: true, envelopeId: 'e1' })
 })
+

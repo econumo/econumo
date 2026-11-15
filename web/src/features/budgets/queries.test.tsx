@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureElementDebt, fixtureOwner, fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -15,17 +15,21 @@ import {
   useBudgetPlan,
   useBudgetTransactions,
   useBudgets,
+  useChangeElementCurrency,
   useCloneBudget,
   useCreateBudget,
   useDeclineBudgetAccess,
   useDefaultPeriodSettled,
   useDeleteBudget,
+  useDeleteEnvelope,
   useFillPlannedCells,
+  useMoveIntoEnvelope,
   planFetchWindow,
   usePlanSetLimit,
   useSetLimit,
   useUnarchiveBudget,
   useUpdateBudgetDetail,
+  useUpdateEnvelope,
 } from './queries'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -149,6 +153,8 @@ it('delete removes from the cache and invalidates budget + user', async () => {
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.budgets)!.map((b) => b.id)).toEqual(['b2'])
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.user })
+  // the budget's debts go with it
+  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
 })
 
 it('useSetLimit sends the explicit period and patches that period cache', async () => {
@@ -199,6 +205,27 @@ it('useSetLimit refreshes the budget\'s later months: a changed budget moves wha
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(queryClient.getQueryState(september)?.isInvalidated).toBe(true)
   expect(queryClient.getQueryState(otherBudget)?.isInvalidated).toBe(false)
+})
+
+describe('useSetLimit on an element carrying a debt', () => {
+  beforeEach(() => {
+    server.use(http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })))
+  })
+
+  it('patches the element\'s plan; the debt\'s figures wait for the server', async () => {
+    const { queryClient, wrapper } = makeWrapper()
+    const key = [...queryKeys.budget, 'b1', '2026-09-01']
+    const withDebt = {
+      ...fixtureWireBudget,
+      structure: { ...fixtureWireBudget.structure, elements: fixtureWireBudget.structure.elements.map((el) => (el.id === 'cat-food' ? { ...el, debt: fixtureElementDebt() } : el)) },
+    }
+    queryClient.setQueryData(key, withDebt)
+    const { result } = renderHook(() => useSetLimit(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '2000' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const row = queryClient.getQueryData<BudgetDto>(key)?.structure.elements.find((el) => el.id === 'cat-food')
+    expect(row).toMatchObject({ budgeted: '2000', isBudgeted: 1, debt: fixtureElementDebt() })
+  })
 })
 
 describe('useSetLimit on a savings row', () => {
@@ -409,12 +436,15 @@ it('useCloneBudget sends the full form and omits startDate when null', async () 
       return HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })
     }),
   )
-  const { wrapper } = makeWrapper()
+  const { queryClient, wrapper } = makeWrapper()
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
   const { result } = renderHook(() => useCloneBudget(), { wrapper })
 
   result.current.mutate({ id: 'b1', newId: 'b-new', name: 'Copy', startDate: null, withLimits: true })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(bodies[0]).toEqual({ id: 'b1', newId: 'b-new', name: 'Copy', withLimits: true })
+  // the copy has the debts of the budget it was cloned from
+  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
 
   result.current.mutate({ id: 'b1', newId: 'b-new2', name: 'Cont', startDate: '2026-08-01', withLimits: false })
   await waitFor(() => expect(bodies.length).toBe(2))
@@ -441,6 +471,89 @@ it('useUpdateBudgetDetail fires the end-date metric only when endDate is sent', 
 
   result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', endDate: '2026-09-01' })
   await waitFor(() => expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_SET_END_DATE))
+})
+
+it('useUpdateBudgetDetail refreshes the debts when the budget\'s accounts change, and only then', async () => {
+  server.use(
+    http.post('*/api/v1/budget/update-budget', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: fixtureBudgets[0] } }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(spy).not.toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+
+  // a debt counts only the payments on its budget's accounts
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', accountIds: ['a1'] })
+  await waitFor(() => expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts }))
+})
+
+it('useUpdateBudgetDetail refreshes the debts when the budget\'s currency changes', async () => {
+  server.use(
+    http.post('*/api/v1/budget/update-budget', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureBudgets[0], currencyId: 'cur-eur' } } }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+
+  // a debt on a row with no currency of its own follows the budget's
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-eur' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+})
+
+describe('budget writes that change what a debt counts refresh the debts', () => {
+  const ok = () => HttpResponse.json({ success: true, message: '', data: {} })
+
+  it('useChangeElementCurrency: the element\'s active debt follows its row\'s currency', async () => {
+    server.use(http.post('*/api/v1/budget/change-element-currency', ok))
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.debt('d1'), { item: {} })
+    queryClient.setQueryData(queryKeys.debtForecast('d1'), { items: [] })
+    const { result } = renderHook(() => useChangeElementCurrency(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'c1', currencyId: 'cur-eur' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(queryKeys.debt('d1'))?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(queryKeys.debtForecast('d1'))?.isInvalidated).toBe(true)
+  })
+
+  it('useDeleteEnvelope: the envelope\'s debts go with it', async () => {
+    server.use(http.post('*/api/v1/budget/delete-envelope', ok))
+    const { queryClient, wrapper } = makeWrapper()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useDeleteEnvelope(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', id: 'env1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+  })
+
+  it('useMoveIntoEnvelope: the envelope\'s debt counts the new member', async () => {
+    server.use(http.post('*/api/v1/budget/move-element', ok))
+    const { queryClient, wrapper } = makeWrapper()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useMoveIntoEnvelope(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', id: 'c1', envelopeId: 'env1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+  })
+
+  it('useUpdateEnvelope: its categories decide what its debt counts', async () => {
+    server.use(http.post('*/api/v1/budget/update-envelope', () => HttpResponse.json({ success: true, message: '', data: { item: {} } })))
+    const { queryClient, wrapper } = makeWrapper()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useUpdateEnvelope(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', id: 'env1', name: 'Housing', icon: 'home', currencyId: 'cur-usd', categories: ['c1'], isArchived: 0 })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+  })
 })
 
 describe('budget savings toggle metric', () => {
@@ -673,6 +786,43 @@ function currentMonthKey(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
+
+describe('a plan change refreshes the debts\' future payments', () => {
+  const forecastKey = queryKeys.debtForecast('debt-1')
+  const forecast = { items: [], budgetId: '', budgetName: '' }
+  const okEmpty = () => HttpResponse.json({ success: true, message: '', data: {} })
+
+  it('useSetLimit invalidates every cached forecast', async () => {
+    server.use(http.post('*/api/v1/budget/set-limit', okEmpty))
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(forecastKey, forecast)
+    queryClient.setQueryData(queryKeys.debt('debt-1'), { item: {} })
+    const { result } = renderHook(() => useSetLimit(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', period: '2026-09-01', amount: '250' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(forecastKey)?.isInvalidated).toBe(true)
+    // the debt itself is not planned: its details stay cached
+    expect(queryClient.getQueryState(queryKeys.debt('debt-1'))?.isInvalidated).toBe(false)
+  })
+
+  it('usePlanSetLimit invalidates every cached forecast', async () => {
+    server.use(http.post('*/api/v1/budget/set-limit', okEmpty))
+    const { result, queryClient } = renderPlanSetLimitHarness(fixtureWirePlan)
+    queryClient.setQueryData(forecastKey, forecast)
+    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', period: '2026-07-01', amount: '400', monthIndex: 2 })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(forecastKey)?.isInvalidated).toBe(true)
+  })
+
+  it('useFillPlannedCells (fill and copy) invalidates every cached forecast', async () => {
+    server.use(http.post('*/api/v1/budget/set-limit', okEmpty))
+    const { result, queryClient } = renderFillHarness(fixtureWirePlan)
+    queryClient.setQueryData(forecastKey, forecast)
+    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', amount: '250', targets: [{ period: '2026-07-01', monthIndex: 2 }] })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    await waitFor(() => expect(queryClient.getQueryState(forecastKey)?.isInvalidated).toBe(true))
+  })
+})
 
 describe('useBudgetTransactions with a waiting edit', () => {
   const wireRow = { id: 'x1', author: fixtureOwner, currencyId: 'c', amount: '5', description: '', category: { id: 'c1', name: 'Old', icon: 'a' }, payee: null, tag: null, labelIds: [], spentAt: '2026-11-08 09:00:00' }

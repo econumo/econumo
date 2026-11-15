@@ -8,6 +8,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { AccountDialog } from './AccountDialog'
 import type { AccountDto } from '@/api/dto/account'
+import * as metrics from '@/lib/metrics'
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
@@ -336,4 +337,72 @@ it('renaming an account with a waiting change sends the stored balance, not the 
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(Number(body!.balance)).toBe(100.5)
+})
+
+describe('icon suggestion', () => {
+  let asked: URLSearchParams[]
+  let posted: Record<string, unknown> | undefined
+
+  beforeEach(() => {
+    window.econumoConfig = { AI_ENABLED: true }
+    asked = []
+    posted = undefined
+    server.use(
+      http.get('*/api/v1/onboarding/suggest-icon', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        asked.push(params)
+        return HttpResponse.json({ success: true, message: '', data: { icon: 'savings' } })
+      }),
+      ...(['create', 'update'] as const).map((verb) =>
+        http.post(`*/api/v1/account/${verb}-account`, async ({ request }) => {
+          posted = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], transaction: null } })
+        }),
+      ),
+    )
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  it('a new account takes the icon suggested for its name and currency', async () => {
+    const track = vi.spyOn(metrics, 'trackEvent').mockImplementation(() => undefined)
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openAccountModal({})
+    await screen.findByText('New account')
+    await user.type(screen.getByLabelText('Name'), 'Tagesgeld')
+    await waitFor(() => expect(track).toHaveBeenCalledWith(metrics.METRICS.ICON_SUGGESTION_APPLIED, { kind: 'account', source: 'dialog' }), { timeout: 3000 })
+    expect(Object.fromEntries(asked[0])).toEqual({ kind: 'account', name: 'Tagesgeld', currency: 'USD' })
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(posted).toBeDefined())
+    expect(posted!.icon).toBe('savings')
+  })
+
+  it('an icon the user picked stays', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openAccountModal({})
+    await screen.findByText('New account')
+    await user.click(screen.getByRole('option', { name: 'wallet' }))
+    await user.type(screen.getByLabelText('Name'), 'Tagesgeld')
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(posted).toBeDefined())
+    expect(posted!.icon).toBe('wallet')
+    expect(asked).toHaveLength(0)
+  })
+
+  it('editing an account never asks', async () => {
+    const user = userEvent.setup()
+    renderDialog([fixtureAccounts[0]])
+    useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
+    await screen.findByText('Edit account')
+    await user.clear(screen.getByLabelText('Name'))
+    await user.type(screen.getByLabelText('Name'), 'Tagesgeld')
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(posted).toBeDefined())
+    expect(posted!.icon).toBe(fixtureAccounts[0].icon)
+    expect(asked).toHaveLength(0)
+  })
 })
