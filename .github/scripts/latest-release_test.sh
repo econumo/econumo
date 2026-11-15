@@ -11,10 +11,11 @@ cat > "$FAKE/gh" <<'GH'
 #!/bin/sh
 echo "$*" > "$FAKE_DIR/args"
 case "$FAKE_GH" in
-	ok) echo "v1.8.0" ;;
-	notfound) echo 'gh: Not Found (HTTP 404)' >&2; exit 1 ;;
+	newest) printf 'v1.6.2\nv1.7.0\nv1.6.1\nv1.10.0\nv1.9.3\n' ;;
+	oldpatch) printf 'v1.6.2\nv1.7.0\nv1.6.1\n' ;;
+	odd) printf 'v1.8.0-rc1\nfoo\nv1.7.0\n' ;;
+	none) ;;
 	error) echo 'gh: Server Error (HTTP 500)' >&2; exit 1 ;;
-	prerelease) echo "v1.8.0-rc1" ;;
 esac
 GH
 chmod +x "$FAKE/gh"
@@ -30,10 +31,11 @@ check() {
 	fi
 }
 
-check "$(run ok)" "v1.8.0" "latest release"
-check "$(cat "$FAKE/args")" "api repos/econumo/econumo/releases/latest --jq .tag_name" "gh call"
-check "$(run notfound)" "dev" "no release yet"
+check "$(run newest)" "v1.10.0" "highest version, not text order"
+check "$(cat "$FAKE/args")" "api repos/econumo/econumo/releases?per_page=100 --jq .[] | select(.draft or .prerelease | not) | .tag_name" "gh call"
+check "$(run oldpatch)" "v1.7.0" "an old patch published last never wins"
+check "$(run odd)" "v1.7.0" "non-release tags ignored"
+check "$(run none)" "dev" "no release yet"
 if run error >/dev/null; then echo "FAIL: an API error must fail" >&2; exit 1; fi
-if run prerelease >/dev/null; then echo "FAIL: a non-plain tag must fail" >&2; exit 1; fi
 
 echo ok

@@ -307,7 +307,7 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 #
 # Channels: `latest` (newest release), `dev` (manual, any branch) and `edge`
 # (main's head, published by .github/workflows/publish-edge.yml on every push
-# to main and on every release that moves `latest`). ship accepts any channel
+# to main and on every release of the newest version). ship accepts any channel
 # name.
 #
 # ship-dist runs release-binaries and stages the flat folder ship expects in

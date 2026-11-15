@@ -135,3 +135,15 @@ Wins over the sections above where they differ.
   client drop and re-download its cached data.
 - A hotfix migration on `release/*` must be numbered above every migration
   on `main` (CLAUDE.md, publish-release skill).
+
+## Revision 2 (owner: edge always follows the newest release)
+
+Wins over Revision 1 where they differ.
+
+- **Version = the highest published release** (a plain vX.Y.Z GitHub release,
+  no draft, no pre-release), not the Latest badge. A tag whose release failed
+  still never counts.
+- **Any release of the newest version rebuilds edge**, with or without
+  `push_latest`: forgetting the checkbox must not keep production on the
+  previous version. An old-line patch (v1.6.2 after v1.7.0) is for
+  self-hosters only and never touches edge.

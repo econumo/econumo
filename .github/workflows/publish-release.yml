@@ -11,9 +11,12 @@ name: Publish Release
 #   before dispatch (copied from the previous release branch of that line).
 # - Also pushes/moves "latest" only when push_latest is checked AND the source
 #   branch is main or release/* AND the version is the highest released so far
-#   (a hotfix to an old line can never move "latest"). Whenever "latest"
-#   moves, the last job dispatches Publish Edge on main, so production
-#   (the "edge" channel) rebuilds main's head stamped with this version.
+#   (a hotfix to an old line can never move "latest").
+# - When the version is above every existing release tag, with or without
+#   push_latest, the last job dispatches Publish Edge on main, so production
+#   (the "edge" channel) rebuilds main's head stamped with this version. An
+#   old-line patch (v1.6.2 after v1.7.0) is for self-hosters only and never
+#   touches edge.
 # - Also pushes/moves "dev" when push_dev is checked (any branch). Unlike
 #   `make publish-dev`, the UI version label is the release version, not "dev".
 # - The GitHub release's "Latest" badge follows push_latest, so an old-line
@@ -56,6 +59,7 @@ jobs:
     outputs:
       version: ${{ steps.set.outputs.version }}
       tags: ${{ steps.set.outputs.tags }}
+      newest: ${{ steps.set.outputs.newest }}
     steps:
       - name: Checkout source branch
         uses: actions/checkout@v7
@@ -101,8 +105,20 @@ jobs:
           if [ "$PUSH_DEV" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:dev"
           fi
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          # Newest = above every plain release tag. It decides whether this
+          # release rebuilds edge (production), independently of push_latest:
+          # forgetting the checkbox must not keep production on the previous
+          # version, and an old-line patch for self-hosters never touches it.
+          NEWEST_TAG="$(git tag -l 'v[0-9]*' | { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sort -V | tail -n 1)"
+          NEWEST=true
+          if [ -n "$NEWEST_TAG" ] && [ "$(printf '%s\n%s\n' "$NEWEST_TAG" "$VERSION" | sort -V | tail -n 1)" != "$VERSION" ]; then
+            NEWEST=false
+          fi
+          {
+            echo "version=${VERSION}"
+            echo "newest=${NEWEST}"
+            echo "tags=${TAGS}"
+          } >> "$GITHUB_OUTPUT"
           echo "Publishing ${VERSION} -> [${TAGS}]"
 
       - name: Configure git
@@ -398,12 +414,12 @@ jobs:
   # Production follows "edge", which is always main's head. Pointing it at this
   # release's build instead could take production back to older code (a hotfix
   # from a release/* branch, or a push to main that landed during the release)
-  # and below migrations it already applied. Last, after the Latest badge: the
-  # edge build stamps the release marked Latest.
+  # and below migrations it already applied. Last, once the GitHub release
+  # exists: the edge build stamps the highest published release.
   publish-edge:
     name: Rebuild Edge on Main
-    needs: create-github-release
-    if: github.event.inputs.push_latest == 'true'
+    needs: [create-tag, create-github-release]
+    if: needs.create-tag.outputs.newest == 'true'
     runs-on: ubuntu-latest
     permissions:
       actions: write

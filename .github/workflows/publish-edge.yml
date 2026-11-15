@@ -5,21 +5,22 @@ name: Publish Edge
 # plus the edge channel of the linux binaries in the private R2 bucket (ship).
 # No git tag, no immutable R2 version, no GitHub release.
 #
-# An edge build reports the GitHub release marked Latest as its version
+# An edge build reports the highest published release as its version
 # (v1.8.0 for every build between the v1.8.0 and v1.8.1 releases;
-# .github/scripts/latest-release.sh). That is a plain vX.Y.Z, so the "What's
+# .github/scripts/latest-release.sh). An old-line patch for self-hosters
+# (v1.6.2 published after v1.7.0) never changes it. That is a plain vX.Y.Z, so the "What's
 # new" card, the update notice and new-account version seeding behave exactly
 # as on that release: the card for a line appears once a release of it is
 # cut, never before, and stays until each user dismisses it. Builds stay
 # distinguishable by their commit (VERSION_REF), which also keys the client
 # caches.
 #
-# A release that moves "latest" dispatches this workflow on main as its last
-# step (publish-release.yml), so production gets the new version on main's
+# A release of the newest version (with or without push_latest) dispatches
+# this workflow on main as its last step (publish-release.yml), so production gets the new version on main's
 # head, never on the release commit, which may be older than what production
 # already runs (and older than the migrations it applied). That dispatch
 # cancels a build in flight (same concurrency group); a build that still
-# reaches its publish step with a stale version re-reads the latest release
+# reaches its publish step with a stale version re-reads the highest release
 # and stands down.
 
 on:
@@ -125,7 +126,7 @@ jobs:
         run: |
           NOW="$(sh .github/scripts/latest-release.sh)"
           if [ "$NOW" != "$VERSION" ]; then
-            echo "::notice::The latest release is now ${NOW}, not the ${VERSION} this build was stamped with; leaving edge to the build the release dispatched."
+            echo "::notice::The highest release is now ${NOW}, not the ${VERSION} this build was stamped with; leaving edge to the build the release dispatched."
             exit 0
           fi
           docker buildx imagetools create -t "${IMAGE}:edge" "${IMAGE}@${DIGEST}"
@@ -195,7 +196,7 @@ jobs:
         run: |
           NOW="$(sh .github/scripts/latest-release.sh)"
           if [ "$NOW" != "$EDGE_VERSION" ]; then
-            echo "::notice::The latest release is now ${NOW}, not the ${EDGE_VERSION} this build was stamped with; leaving edge to the build the release dispatched."
+            echo "::notice::The highest release is now ${NOW}, not the ${EDGE_VERSION} this build was stamped with; leaving edge to the build the release dispatched."
             exit 0
           fi
           make ship-dist SHIP_SKIP_BUILD=1 VERSION=dev
