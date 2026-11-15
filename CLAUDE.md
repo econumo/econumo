@@ -63,6 +63,20 @@ make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/
                    # AND publish the `dev` channel to the private R2 bucket with ship
 ```
 
+**Edge (production's early preview).** Every push to `main` runs
+`.github/workflows/publish-edge.yml`, which publishes the `edge` image tag and
+the `edge` R2 channel; production follows it (`ship update econumo --version
+edge`). No tag, no GitHub release, no immutable R2 version. An edge build
+reports the HIGHEST release tag as its `VERSION` (every tag, a hotfix tag on a
+`release/*` branch included, picked by `.github/scripts/highest-release-tag.sh`;
+`dev` when there is none), so What's new, the update notice and new-account
+seeding behave as on that release with no app code knowing about edge: the
+card for v1.8 appears once v1.8.0 is cut and moves `edge`, never before. Only
+`VERSION_REF` (the commit) tells edge builds apart; analytics, logs and the
+sidebar read the release number. A build that started before a release was cut
+re-reads the tags before moving `edge` and stands down. Manual runs publish
+only from `main`.
+
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 (`.github/workflows/publish-release.yml`), not locally; its "Publish Dev"
 checkbox can also move the `dev` tag. The workflow's `branch` input selects
@@ -2168,6 +2182,7 @@ data unreadable. Most are also asserted by the test suite.
 
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
   - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
+  - `:edge` — every push to `main` (Publish Edge), and every release that moves `latest`; production runs it.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Docker-free: each release attaches single-file linux binaries (SPA embedded)
   + `SHA256SUMS`; walkthrough in `docs/run-without-docker.md` (linked from the
