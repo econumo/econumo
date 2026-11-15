@@ -494,7 +494,9 @@
         "label": "Importo"
       },
       "payment": {
-        "label": "Pagamento"
+        "label": "Pagamento",
+        "label_start": "Rata all'inizio",
+        "now": "Ora {amount}, dopo una variazione del tasso (scheda Saldo)."
       },
       "schedule": {
         "label": "Si ripete",

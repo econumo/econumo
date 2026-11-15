@@ -494,7 +494,9 @@
         "label": "Amount"
       },
       "payment": {
-        "label": "Payment"
+        "label": "Payment",
+        "label_start": "Payment at the start",
+        "now": "Now {amount}, after a rate change (Balance tab)."
       },
       "schedule": {
         "label": "Repeats",

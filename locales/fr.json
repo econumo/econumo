@@ -494,7 +494,9 @@
         "label": "Montant"
       },
       "payment": {
-        "label": "Paiement"
+        "label": "Paiement",
+        "label_start": "Mensualité au départ",
+        "now": "Désormais {amount}, après un changement de taux (onglet Solde)."
       },
       "schedule": {
         "label": "Répétition",

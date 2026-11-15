@@ -494,7 +494,9 @@
         "label": "Importe"
       },
       "payment": {
-        "label": "Pago"
+        "label": "Pago",
+        "label_start": "Pago al inicio",
+        "now": "Ahora {amount}, tras un cambio de tipo (pestaña Saldo)."
       },
       "schedule": {
         "label": "Se repite",

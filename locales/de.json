@@ -494,7 +494,9 @@
         "label": "Betrag"
       },
       "payment": {
-        "label": "Rate"
+        "label": "Rate",
+        "label_start": "Rate zu Beginn",
+        "now": "Jetzt {amount}, nach einer Zinsänderung (Tab „Saldo“)."
       },
       "schedule": {
         "label": "Wiederholung",

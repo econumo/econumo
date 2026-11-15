@@ -494,7 +494,9 @@
         "label": "Montante"
       },
       "payment": {
-        "label": "Pagamento"
+        "label": "Pagamento",
+        "label_start": "Prestação no início",
+        "now": "Agora {amount}, após uma alteração de taxa (separador Saldo)."
       },
       "schedule": {
         "label": "Repetição",

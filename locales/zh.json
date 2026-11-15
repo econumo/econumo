@@ -494,7 +494,9 @@
         "label": "金额"
       },
       "payment": {
-        "label": "还款额"
+        "label": "还款额",
+        "label_start": "初始还款额",
+        "now": "现为 {amount}，因利率变更（见“余额”标签页）。"
       },
       "schedule": {
         "label": "重复周期",

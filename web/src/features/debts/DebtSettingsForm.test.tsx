@@ -22,13 +22,13 @@ function mockMatchMedia() {
 
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
-function renderForm(debt: DebtDto, { focusMissing = false }: { focusMissing?: boolean } = {}) {
+function renderForm(debt: DebtDto, { focusMissing = false, paymentNow }: { focusMissing?: boolean; paymentNow?: string } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onSaved = vi.fn()
   const onFocused = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
-      <DebtSettingsForm debt={debt} onSaved={onSaved} focusMissing={focusMissing} onFocused={onFocused} />
+      <DebtSettingsForm debt={debt} onSaved={onSaved} focusMissing={focusMissing} onFocused={onFocused} paymentNow={paymentNow} />
     </QueryClientProvider>,
   )
   return onSaved
@@ -315,4 +315,17 @@ it('with no fixed payments the last payment date reads Return by and a 0 payment
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
   expect(bodies[0]).toMatchObject({ amountBorrowed: '1500', payment: '0', schedule: 'none' })
+})
+
+it('after a rate change set a new payment, the field is the payment at the start and names the one in force', () => {
+  renderForm(wireDebt, { paymentNow: '150' })
+  expect(screen.getByLabelText('Payment at the start')).toHaveValue(wireDebt.payment)
+  expect(screen.getByTestId('debt-payment-now')).toHaveTextContent('Now 150.00')
+  expect(screen.getByTestId('debt-payment-now')).toHaveTextContent('after a rate change (Balance tab).')
+})
+
+it('without a different payment in force the field is just Payment', () => {
+  renderForm(wireDebt)
+  expect(screen.getByLabelText('Payment')).toBeInTheDocument()
+  expect(screen.queryByTestId('debt-payment-now')).toBeNull()
 })

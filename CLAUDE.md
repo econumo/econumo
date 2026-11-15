@@ -2529,7 +2529,7 @@ data unreadable. Most are also asserted by the test suite.
   other row's, while payments left wait for the next read. **Settings** is ONE form,
   `DebtSettingsForm`, asking for the loan contract's facts only (Amount borrowed, one `DatesRow` of
   two cards, Start date first and Last payment date second, hints screen-reader only, the clear X
-  only on a debt not set up, the payment row; no name, icon, rules or currency): Cancel resets it,
+  only on a debt not set up, the payment row, labelled "Payment at the start" with the payment in force named under it once a rate change has set another; no name, icon, rules or currency): Cancel resets it,
   Save sends one `update-debt`, built by `buildTermsPayload`: the facts (amount borrowed, last
   payment date, payment, schedule) only when one was touched and then all of them, a set-up debt's
   start date only when it changed (a debt not set up always sends it, null clearing it), so the

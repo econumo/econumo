@@ -494,7 +494,9 @@
         "label": "Bedrag"
       },
       "payment": {
-        "label": "Betaling"
+        "label": "Betaling",
+        "label_start": "Betaling bij de start",
+        "now": "Nu {amount}, na een rentewijziging (tabblad Saldo)."
       },
       "schedule": {
         "label": "Herhaling",

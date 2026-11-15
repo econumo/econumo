@@ -6,6 +6,7 @@ import { OfflineNotice } from '@/components/OfflineNotice'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
+import { moneyFormat } from '@/lib/money'
 import { isNotEmpty } from '@/lib/validation'
 import type { DebtDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -32,6 +33,8 @@ export interface DebtSettingsFormProps {
   /** Finish setup: focus the first term still missing, then report it with onFocused */
   focusMissing?: boolean
   onFocused?: () => void
+  /** the regular payment a rate change has put in force, when it differs from the contract's */
+  paymentNow?: string
 }
 
 /**
@@ -41,7 +44,7 @@ export interface DebtSettingsFormProps {
  * up with the loan's facts finishes its setup; without them the other fields
  * still save.
  */
-export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = false, onFocused }: DebtSettingsFormProps) {
+export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = false, onFocused, paymentNow }: DebtSettingsFormProps) {
   const { t } = useTranslation()
   const online = useOnline()
   const formId = useId()
@@ -161,8 +164,10 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             }}
           />
         </div>
+        <div className="flex flex-col gap-1">
         <PaymentField
           id={`${formId}-payment`}
+          label={paymentNow !== undefined ? t('debts.form.payment.label_start') : undefined}
           value={form.payment}
           symbol={symbol}
           schedule={form.schedule}
@@ -177,6 +182,12 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             patch({ schedule })
           }}
         />
+        {paymentNow !== undefined ? (
+          <p data-testid="debt-payment-now" className="px-1 text-xs text-muted-foreground">
+            {t('debts.form.payment.now', { amount: moneyFormat(paymentNow, currency) })}
+          </p>
+        ) : null}
+        </div>
         {serverError ? (
           <p role="alert" className="text-sm text-destructive">
             {serverError}

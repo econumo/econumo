@@ -118,6 +118,16 @@ const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean; editOnl
   { value: 'danger', label: 'debts.review.danger.title', editOnly: true },
 ]
 
+// a rate change sets a new regular payment from its date; Settings keeps the
+// contract's own, so it names the one in force when they differ
+function paymentChangedSince(details: DebtDetailsDto | undefined, debt: DebtDto): string | undefined {
+  if (!details || debt.isSetUp !== 1) {
+    return undefined
+  }
+  const now = paymentInForce(details.rateChanges, formatDate(new Date()), debt.payment)
+  return Number(now) === Number(debt.payment) ? undefined : now
+}
+
 function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
   const { t, i18n } = useTranslation()
   const { data, error: loadError } = useDebt(debtId)
@@ -249,6 +259,7 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
                       <DebtSettingsForm
                         key={formKey}
                         debt={editDebt}
+                        paymentNow={paymentChangedSince(data, editDebt)}
                         onDirtyChange={onDirtyChange}
                         focusMissing={focusMissing && tab === 'settings' && !reloading}
                         onFocused={() => setFocusMissing(false)}

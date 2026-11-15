@@ -2757,6 +2757,9 @@ a second budget member account in USD, before running these.
       (shown "contract: ...") and payments left grows; a lower rate or a
       higher payment moves it earlier. Changing only the payment in a new row
       moves payments left and the next payments in "Show future payments".
+      Settings then reads "Payment at the start" (the contract's, unchanged)
+      with "Now <payment>, after a rate change (Balance tab)." under it, at
+      once, no reload; with no change in force it reads just "Payment".
       Adding on a date that already has a change replaces it (one row per
       date). A date before the start is refused under the field; a payment
       the balance can never be repaid with shows "The payments do not

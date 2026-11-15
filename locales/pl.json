@@ -494,7 +494,9 @@
         "label": "Kwota"
       },
       "payment": {
-        "label": "Płatność"
+        "label": "Płatność",
+        "label_start": "Rata na początku",
+        "now": "Teraz {amount}, po zmianie oprocentowania (karta Saldo)."
       },
       "schedule": {
         "label": "Powtarzanie",
