@@ -88,6 +88,9 @@ const (
 	ImportSourceBank  = "0c000000-0000-0000-0000-000000000002" // owner's SimpleFIN source
 	ImportRunSeeded   = "0c000000-0000-0000-0000-000000000003" // completed run on ImportSourceBank
 	ImportLinkTxn2    = "0d000000-0000-0000-0000-000000000001"
+	// An open AI rule suggestion of the owner's: PayeeShop for the Employer
+	// tap on Txn2, which has no payee.
+	ImportSuggestionEmployer = "0f000000-0000-0000-0000-000000000001"
 
 	// A registered MCP client and one live grant of the owner's on it, for the
 	// authserver scenarios (non-v7 ids, so they survive normalization).
@@ -248,6 +251,8 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkTxn2, SourceID: ImportSourcePhone,
 		ExternalAccountID: "wallet", ExternalTransactionID: "tap-1", TransactionID: Txn2,
 		ExternalPayee: "Employer", ExternalAmount: "1000.00000000", ExternalPostedAt: ClockTime})
+	f.ImportSuggestion(fixture.ImportSuggestion{ID: ImportSuggestionEmployer, UserID: OwnerID, MatchText: "EMPLOYER", Type: "income",
+		PayeeID: PayeeShop, LinkIDs: []string{ImportLinkTxn2}})
 
 	// A queued tap on the same "wallet" card: 12.50 at "Shop" received at
 	// ClockTime. Txn1 has the same amount but is seeded at the fixture

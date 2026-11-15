@@ -142,6 +142,18 @@ jobs:
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
 
+  # Report-only: the release never waits on or fails because of a model.
+  ai-evals:
+    name: AI evals (report only)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ai-evals.yml
+    with:
+      ref: ${{ github.event.inputs.branch }}
+      report_only: true
+    secrets:
+      ECONUMO_AI_EVAL_DSN: ${{ secrets.ECONUMO_AI_EVAL_DSN }}
+
   publish:
     name: Build and Publish Go Image
     needs: create-tag

@@ -6,7 +6,8 @@ import { apiErrorMessage } from './apiError'
 
 declare module '@tanstack/react-query' {
   interface Register {
-    mutationMeta: { handlesOwnErrors?: boolean }
+    // skipInvalidate: a read that travels as a POST changes nothing.
+    mutationMeta: { handlesOwnErrors?: boolean; skipInvalidate?: boolean }
   }
 }
 
@@ -21,7 +22,7 @@ export const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 // An unreachable backend (network error — no HTTP response) retries forever
 // with capped backoff, so the boot loader recovers by itself once the backend
 // is back. HTTP errors keep the default three attempts.
-function retryPolicy(failureCount: number, error: unknown): boolean {
+export function retryPolicy(failureCount: number, error: unknown): boolean {
   if (axios.isAxiosError(error) && !error.response) {
     return true
   }
@@ -37,13 +38,22 @@ export function invalidateReports(client: QueryClient): void {
   void client.invalidateQueries({ queryKey: queryKeys.reportNetWorth })
 }
 
+// Everything any write may have changed without saying so: the reports, and
+// the import rule suggestions (editing a suggested transaction can clear one).
+export function invalidateAfterWrite(client: QueryClient): void {
+  invalidateReports(client)
+  void client.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+}
+
 export function createAppQueryClient() {
   // The manager assumes online until the first browser event, so an app opened
   // with no network would retry every read forever.
   onlineManager.setOnline(navigator.onLine !== false)
   const client: QueryClient = new QueryClient({
     mutationCache: new MutationCache({
-      onSuccess: () => invalidateReports(client),
+      onSuccess: (_data, _variables, _context, mutation) => {
+        if (!mutation.meta?.skipInvalidate) invalidateAfterWrite(client)
+      },
       // With networkMode 'always' an offline write fails at once, and a site
       // with no error handling of its own would otherwise fail silently. A
       // `mutate(v, { onError })` or a try around `mutateAsync` is invisible here,

@@ -77,6 +77,8 @@ type Querier interface {
 	DeleteImportRule(ctx context.Context, id string) error
 	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
 	DeleteImportSource(ctx context.Context, id string) error
+	DeleteImportSuggestion(ctx context.Context, id string) error
+	DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error
 	DeleteImportTransactionLink(ctx context.Context, id string) error
 	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
 	// unlike tags there is no SET NULL, because the link is a join table.
@@ -254,6 +256,7 @@ type Querier interface {
 	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
 	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
 	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
+	GetImportSuggestionByID(ctx context.Context, id string) (ImportSuggestion, error)
 	// Card identity is case-insensitive (Apple Wallet may report the same card
 	// with different casing between taps), so the account-id half of the key
 	// folds case; external_transaction_id stays exact.
@@ -417,6 +420,8 @@ type Querier interface {
 	// Transaction import: sources, the push-event inbox, runs, and the link
 	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
 	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
+	InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error
+	InsertImportSuggestionLink(ctx context.Context, arg InsertImportSuggestionLinkParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
 	// Same generation fence as InsertAccessTokenIfGeneration, for tokens minted
 	// by the MCP OAuth server; grant_id lets a grant revoke drop them all.
@@ -547,6 +552,7 @@ type Querier interface {
 	ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error)
 	ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error)
 	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
+	ListImportSuggestionLinks(ctx context.Context, suggestionID string) ([]ImportSuggestionLink, error)
 	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySourcePage(ctx context.Context, arg ListImportTransactionLinksBySourcePageParams) ([]ImportTransactionLink, error)
@@ -563,6 +569,8 @@ type Querier interface {
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error)
 	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
+	ListOpenImportSuggestionLinksByUser(ctx context.Context, userID string) ([]ImportSuggestionLink, error)
+	ListOpenImportSuggestionsByUser(ctx context.Context, userID string) ([]ImportSuggestion, error)
 	// The owner's payees ordered by sort key; used by move-payee (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
@@ -598,6 +606,7 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	LockImportSuggestion(ctx context.Context, id string) (int64, error)
 	// A no-op UPDATE so the operator transaction takes the write lock before it
 	// reads: a read first would leave it holding SHARED while a token exchange
 	// holds RESERVED, and neither could commit (database is locked).
@@ -692,6 +701,7 @@ type Querier interface {
 	// reclaim has revoked: a request that read the row before the revoke must not
 	// be able to write a stale NULL back.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
+	TouchOpenImportSuggestion(ctx context.Context, arg TouchOpenImportSuggestionParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateGlobalOAuthClient(ctx context.Context, arg UpdateGlobalOAuthClientParams) (int64, error)

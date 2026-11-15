@@ -9,5 +9,5 @@ import (
 // Schedule exposes the background savings classification to the external tests;
 // in production only SaveAccounts starts it, after its transaction commits.
 func (s *Service) Schedule(ctx context.Context, userID, budgetID vo.Id, accountIDs []vo.Id) {
-	s.schedule(ctx, userID, budgetID, accountIDs)
+	s.scheduleClassify(ctx, userID, budgetID, accountIDs)
 }

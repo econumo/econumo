@@ -54,8 +54,8 @@ func (p *fakeProvider) ClaimSetupToken(_ context.Context, tok string) (string, e
 }
 
 func extTx(account, id, amount string, posted int64, payee string) model.ExternalTransaction {
-	raw, _ := json.Marshal(map[string]any{"id": id, "posted": posted, "amount": amount, "payee": payee, "description": payee})
-	return model.ExternalTransaction{ExternalAccountID: account, ID: id, Amount: amount, Posted: posted, Payee: payee, Description: payee, Raw: raw}
+	raw, _ := json.Marshal(map[string]any{"id": id, "posted": posted, "amount": amount, "payee": payee, "description": "memo " + id})
+	return model.ExternalTransaction{ExternalAccountID: account, ID: id, Amount: amount, Posted: posted, Payee: payee, Description: "memo " + id, Raw: raw}
 }
 
 func bankHarness(t *testing.T) (*harness, *fakeProvider) {

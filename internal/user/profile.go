@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -89,6 +90,29 @@ func (s *Service) UpdateAnalytics(ctx context.Context, userID vo.Id, req model.U
 		return nil, err
 	}
 	return &model.UpdateAnalyticsResult{User: cur}, nil
+}
+
+// UpdateAI writes the caller's AI preference and returns the refreshed current
+// user. Turning it off also drops their open import suggestions, best effort:
+// the suggestion list hides them anyway while the option is off.
+func (s *Service) UpdateAI(ctx context.Context, userID vo.Id, req model.UpdateAIRequest) (*model.UpdateAIResult, error) {
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.SetAI(*req.Enabled, s.repo.NextIdentity(), now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !*req.Enabled && s.aiSuggestions != nil {
+		if err := s.aiSuggestions.ClearSuggestions(ctx, userID); err != nil {
+			slog.WarnContext(ctx, "ai suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		}
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateAIResult{User: cur}, nil
 }
 
 // UpdateOnboarding stores the step states of the caller's onboarding and

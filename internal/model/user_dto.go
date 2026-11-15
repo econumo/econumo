@@ -241,6 +241,27 @@ type UpdateAnalyticsResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-ai
+// ---------------------------------------------------------------------------
+
+// UpdateAIRequest is the update-ai request body; Enabled is required.
+type UpdateAIRequest struct {
+	Enabled *bool `json:"enabled"`
+}
+
+func (r UpdateAIRequest) Validate() error {
+	if r.Enabled == nil {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "enabled", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// UpdateAIResult is the update-ai response.
+type UpdateAIResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // update-onboarding
 // ---------------------------------------------------------------------------
 

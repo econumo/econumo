@@ -245,7 +245,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         const diff = link ? ruleDiff(payload, link, params.transaction ?? null) : null
         // the rule editor needs the server, and the server may yet refuse an edit that only queued
         if (!queued && link && diff && onlineManager.isOnline()) {
-          setRulePrompt({ link, diff })
+          setRulePrompt({ kind: 'edit', link, diff })
         }
       }
       onDone()

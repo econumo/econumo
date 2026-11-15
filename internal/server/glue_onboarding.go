@@ -67,21 +67,30 @@ func (r *OnboardingAccountReader) AccountsByIDs(ctx context.Context, ids []vo.Id
 	return out, nil
 }
 
-type onboardingTimezoneRepo interface {
+type onboardingUserFactsRepo interface {
 	GetTimezone(ctx context.Context, id vo.Id) (string, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
 }
 
-// OnboardingTimezones adapts the user repository to onboarding.TimezoneReader.
-type OnboardingTimezones struct {
-	users onboardingTimezoneRepo
+// OnboardingUserFacts adapts the user repository to onboarding.UserFacts.
+type OnboardingUserFacts struct {
+	users onboardingUserFactsRepo
 }
 
-func NewOnboardingTimezones(users onboardingTimezoneRepo) *OnboardingTimezones {
-	return &OnboardingTimezones{users: users}
+func NewOnboardingUserFacts(users onboardingUserFactsRepo) *OnboardingUserFacts {
+	return &OnboardingUserFacts{users: users}
 }
 
-func (t *OnboardingTimezones) StoredTimezone(ctx context.Context, userID vo.Id) (string, error) {
+func (t *OnboardingUserFacts) StoredTimezone(ctx context.Context, userID vo.Id) (string, error) {
 	return t.users.GetTimezone(ctx, userID)
+}
+
+func (t *OnboardingUserFacts) AIOptedOut(ctx context.Context, userID vo.Id) (bool, error) {
+	u, err := t.users.GetByID(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	return !u.AIEnabled(), nil
 }
 
 var (

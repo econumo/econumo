@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -24,15 +25,17 @@ type AccountReader interface {
 	AccountsByIDs(ctx context.Context, ids []vo.Id) ([]model.OnboardingAccount, error)
 }
 
-// TimezoneReader returns the user's stored IANA timezone ("" when never seen).
-type TimezoneReader interface {
+// UserFacts is what the AI jobs read about the user: the stored IANA timezone
+// ("" when never seen) and whether they opted out of AI (then no job starts).
+type UserFacts interface {
 	StoredTimezone(ctx context.Context, userID vo.Id) (string, error)
+	AIOptedOut(ctx context.Context, userID vo.Id) (bool, error)
 }
 
 // Completer is one chat completion with the configured AI provider. userID
 // names the requesting user (the econumo gateway scheme signs a token for it).
 type Completer interface {
-	Complete(ctx context.Context, userID, system, user string) (string, error)
+	Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error)
 }
 
 // AttemptLimiter caps the AI classification per user; every job counts.

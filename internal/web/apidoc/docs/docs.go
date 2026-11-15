@@ -5458,6 +5458,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/accept-suggestion": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "After a rule was created from the suggestion, fills that rule's category and payee into the empty fields of the suggestion's transactions the rule matches, and closes the suggestion.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Accept an import rule suggestion",
+                "parameters": [
+                    {
+                        "description": "Accept suggestion request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AcceptImportSuggestionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.AcceptImportSuggestionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/apply-rule": {
             "post": {
                 "security": [
@@ -5627,7 +5702,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a classify or skip rule for matching future/existing imports.",
+                "description": "Creates a classify or skip rule for matching future/existing imports. The id is the idempotency key: sending a stored id of your own again answers that rule as stored.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5950,6 +6025,81 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.GetImportQueueResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/dismiss-suggestion": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes the suggestion and returns the remaining list. A later import from the same merchant may bring a new one.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Dismiss an import rule suggestion",
+                "parameters": [
+                    {
+                        "description": "Dismiss suggestion request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DismissImportSuggestionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportSuggestionListResult"
                                         }
                                     }
                                 }
@@ -6361,6 +6511,55 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.GetImportSourceListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/get-suggestion-list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the caller's open AI rule suggestions, oldest first, each with the imported transactions it would still fill, newest first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "List import rule suggestions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportSuggestionListResult"
                                         }
                                     }
                                 }
@@ -7195,6 +7394,93 @@ const docTemplate = `{
                     },
                     "402": {
                         "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/suggest-match-text": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Asks the AI provider for the shortest part of the payee that identifies the merchant and returns it only when the transaction really contains it; empty fields when no AI is configured or it had nothing usable. Counts against the preview-rule limit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Suggest rule match text for an imported transaction",
+                "parameters": [
+                    {
+                        "description": "Suggest match text request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SuggestImportMatchTextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SuggestImportMatchTextResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
@@ -12755,6 +13041,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/update-ai": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Enables or disables AI features for the authenticated user (nothing of theirs is sent to the AI provider while off) and returns the refreshed user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update AI preference",
+                "parameters": [
+                    {
+                        "description": "Update AI request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateAIRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UpdateAIResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/update-analytics": {
             "post": {
                 "security": [
@@ -13607,6 +13962,25 @@ const docTemplate = `{
         },
         "model.AcceptAccountAccessResult": {
             "type": "object"
+        },
+        "model.AcceptImportSuggestionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "ruleId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.AcceptImportSuggestionResult": {
+            "type": "object",
+            "properties": {
+                "updated": {
+                    "type": "integer"
+                }
+            }
         },
         "model.AcceptInviteRequest": {
             "type": "object",
@@ -15433,6 +15807,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.DismissImportSuggestionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ExchangeHandoffRequest": {
             "type": "object",
             "properties": {
@@ -15740,6 +16122,18 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.ImportSourceResult"
+                    }
+                }
+            }
+        },
+        "model.GetImportSuggestionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "oldest first, so the Inbox order is stable",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportSuggestionResult"
                     }
                 }
             }
@@ -16249,6 +16643,61 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportSuggestionResult": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "matchField": {
+                    "type": "string"
+                },
+                "matchText": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "transactions": {
+                    "description": "newest first",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportSuggestionTransactionResult"
+                    }
+                },
+                "type": {
+                    "description": "\"income\" | \"expense\", of every listed transaction",
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportSuggestionTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "the account's currency code",
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "externalPayee": {
+                    "type": "string"
+                },
+                "transactionId": {
                     "type": "string"
                 }
             }
@@ -17494,6 +17943,10 @@ const docTemplate = `{
                 "alreadyEdited": {
                     "type": "integer"
                 },
+                "changes": {
+                    "description": "Changes is how many of the matched rows applying the rule would change;\nAlreadyEdited counts among them.",
+                    "type": "integer"
+                },
                 "matched": {
                     "type": "integer"
                 }
@@ -18058,6 +18511,26 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SuggestImportMatchTextRequest": {
+            "type": "object",
+            "properties": {
+                "linkId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SuggestImportMatchTextResult": {
+            "type": "object",
+            "properties": {
+                "matchField": {
+                    "description": "\"\" when no text could be picked",
+                    "type": "string"
+                },
+                "matchText": {
+                    "type": "string"
+                }
+            }
+        },
         "model.SyncImportSourceRequest": {
             "type": "object",
             "properties": {
@@ -18352,6 +18825,22 @@ const docTemplate = `{
         },
         "model.UnlinkIdentityResult": {
             "type": "object"
+        },
+        "model.UpdateAIRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.UpdateAIResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
         },
         "model.UpdateAccountRequest": {
             "type": "object",

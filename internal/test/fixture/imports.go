@@ -240,3 +240,41 @@ func (b *Builder) ImportCredentialKey(k ImportCredentialKey) {
 	b.insert(`INSERT INTO import_credential_keys (user_id, wrapped_data_key, kdf, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
 		k.UserID, k.WrappedDataKey, k.KDF, now, now)
 }
+
+// ImportSuggestion seeds one open AI rule suggestion with its link rows.
+type ImportSuggestion struct {
+	ID         string
+	UserID     string
+	MatchField string // default external_payee
+	MatchText  string // default "Rule"
+	CategoryID string // "" -> NULL
+	PayeeID    string
+	Type       string // default expense
+	Status     string // default open
+	LinkIDs    []string
+}
+
+func (b *Builder) ImportSuggestion(s ImportSuggestion) string {
+	b.t.Helper()
+	id := b.orNewID(s.ID)
+	if s.MatchField == "" {
+		s.MatchField = "external_payee"
+	}
+	if s.MatchText == "" {
+		s.MatchText = "Rule"
+	}
+	if s.Status == "" {
+		s.Status = "open"
+	}
+	if s.Type == "" {
+		s.Type = "expense"
+	}
+	now := b.now()
+	b.insert(`INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, s.UserID, s.MatchField, s.MatchText, nullable(s.CategoryID), nullable(s.PayeeID), s.Type, s.Status, now, now)
+	for _, l := range s.LinkIDs {
+		b.insert(`INSERT INTO import_suggestion_links (suggestion_id, link_id) VALUES (?, ?)`, id, l)
+	}
+	return id
+}

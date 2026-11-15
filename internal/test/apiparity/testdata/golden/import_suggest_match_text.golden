@@ -1,0 +1,9 @@
+== suggest-match-text-no-ai POST /api/v1/import/suggest-match-text [owner] -> 200
+{"success":true,"message":"","data":{"matchField":"","matchText":""}}
+
+== err:suggest-match-text-blank POST /api/v1/import/suggest-match-text [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"linkId":["This value should not be blank."]}}
+
+== err:suggest-match-text-foreign POST /api/v1/import/suggest-match-text [guest] -> 400
+{"success":false,"message":"Import link not found","code":0,"errors":{}}
+

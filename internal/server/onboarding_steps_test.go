@@ -6,12 +6,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -26,26 +28,99 @@ type recordingCompleter struct {
 	mu        sync.Mutex
 	prompts   []string
 	systems   []string
+	schemas   []string
 	deadlines []time.Time
 	// reply, when set, answers instead of the empty savings list; bySystem,
 	// when set, answers by the request's system prompt instead.
 	reply    func() (string, error)
 	bySystem func(system string) (string, error)
+	// names, when set, lets a reply name entities by id (keyedReply).
+	names func(id string) string
 }
 
-func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string) (string, error) {
+// dbNames resolves an id to the name of the category, account or payee it is.
+func dbNames(db *dbtest.DB) func(string) string {
+	return func(id string) string {
+		var name string
+		for _, table := range []string{"categories", "accounts", "payees"} {
+			if err := db.Raw.QueryRow(db.Rebind(`SELECT name FROM `+table+` WHERE id = ?`), strings.ToLower(id)).Scan(&name); err == nil {
+				return name
+			}
+		}
+		return ""
+	}
+}
+
+var replyIDRef = regexp.MustCompile(`(?i)"(?:(id|categoryId|payeeId)":")?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"`)
+
+// keyedReply lets a test reply name entities by id, as a model would mean
+// them: each id becomes the key the prompt gave the entity of that name, and
+// "id"/"categoryId"/"payeeId" become "key"/"categoryKey"/"payeeKey". An id the
+// prompt did not offer is passed on as the key, which the server ignores.
+func keyedReply(reply, prompt string, names func(string) string) string {
+	keys := map[string]string{}
+	var walk func(v any)
+	walk = func(v any) {
+		switch x := v.(type) {
+		case map[string]any:
+			if k, ok := x["key"].(string); ok {
+				if n, ok := x["name"].(string); ok {
+					keys[n] = k
+				}
+			}
+			for _, c := range x {
+				walk(c)
+			}
+		case []any:
+			for _, c := range x {
+				walk(c)
+			}
+		}
+	}
+	var doc any
+	_ = json.Unmarshal([]byte(prompt), &doc)
+	walk(doc)
+	return replyIDRef.ReplaceAllStringFunc(reply, func(m string) string {
+		sub := replyIDRef.FindStringSubmatch(m)
+		val := sub[2]
+		if k, ok := keys[names(val)]; ok {
+			val = k
+		}
+		switch sub[1] {
+		case "":
+			return `"` + val + `"`
+		case "id":
+			return `"key":"` + val + `"`
+		default:
+			return `"` + strings.TrimSuffix(sub[1], "Id") + `Key":"` + val + `"`
+		}
+	})
+}
+
+func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string, schema *ai.Schema) (string, error) {
 	c.mu.Lock()
 	deadline, _ := ctx.Deadline()
 	c.deadlines = append(c.deadlines, deadline)
 	c.prompts = append(c.prompts, user)
 	c.systems = append(c.systems, system)
-	reply, bySystem := c.reply, c.bySystem
+	if schema != nil {
+		c.schemas = append(c.schemas, schema.Name)
+	} else {
+		c.schemas = append(c.schemas, "")
+	}
+	reply, bySystem, names := c.reply, c.bySystem, c.names
 	c.mu.Unlock()
+	keyed := func(r string, err error) (string, error) {
+		if names != nil {
+			r = keyedReply(r, user, names)
+		}
+		return r, err
+	}
 	if bySystem != nil {
-		return bySystem(system)
+		return keyed(bySystem(system))
 	}
 	if reply != nil {
-		return reply()
+		return keyed(reply())
 	}
 	return `{"savings":[]}`, nil
 }
@@ -59,6 +134,43 @@ type onbEnv struct {
 	token string
 	ai    *recordingCompleter
 	eur   string
+	// beforeJob runs when a background job starts, after it was scheduled.
+	beforeJob func()
+	// timers hold the icon review's quiet period until flushIcons.
+	timersMu sync.Mutex
+	timers   []*envTimer
+}
+
+type envTimer struct {
+	f       func()
+	stopped bool
+}
+
+func (e *onbEnv) schedule(_ time.Duration, f func()) func() bool {
+	e.timersMu.Lock()
+	defer e.timersMu.Unlock()
+	t := &envTimer{f: f}
+	e.timers = append(e.timers, t)
+	return func() bool {
+		e.timersMu.Lock()
+		defer e.timersMu.Unlock()
+		was := !t.stopped
+		t.stopped = true
+		return was
+	}
+}
+
+// flushIcons ends the quiet period of every pending CSV icon review.
+func (e *onbEnv) flushIcons() {
+	e.timersMu.Lock()
+	run := e.timers
+	e.timers = nil
+	e.timersMu.Unlock()
+	for _, t := range run {
+		if !t.stopped {
+			t.f()
+		}
+	}
 }
 
 func newOnbEnv(t *testing.T, now time.Time) *onbEnv {
@@ -71,15 +183,23 @@ func newOnbEnv(t *testing.T, now time.Time) *onbEnv {
 	exp := now.Add(24 * time.Hour)
 	f.AccessToken(fixture.AccessToken{UserID: user, Kind: "personal", TokenHash: appuser.HashAccessToken(token), ExpiresAt: &exp})
 	eur := f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
-	ai := &recordingCompleter{}
+	ai := &recordingCompleter{names: dbNames(db)}
+	e := &onbEnv{t: t, db: db, f: f, user: user, token: token, ai: ai, eur: eur}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
 		Clock:               stepClock{t: now},
 		Avatars:             appuser.FixedAvatarPicker(appuser.DefaultAvatar),
 		OnboardingCompleter: ai,
-		OnboardingRunner:    func(job func()) { job() },
+		OnboardingRunner: func(job func()) {
+			if e.beforeJob != nil {
+				e.beforeJob()
+			}
+			job()
+		},
+		OnboardingScheduler: e.schedule,
 	}))
 	t.Cleanup(ts.Close)
-	return &onbEnv{t: t, db: db, f: f, url: ts.URL, user: user, token: token, ai: ai, eur: eur}
+	e.url = ts.URL
+	return e
 }
 
 func (e *onbEnv) post(path string, body any) (int, map[string]any) {
@@ -327,8 +447,12 @@ func TestSaveAccounts_AccountsFirstCreatesTheBudget(t *testing.T) {
 		t.Fatalf("currency %v, onboarding %q", user["currency"], e.onboarding())
 	}
 	// Only the new accounts reach the classifier, never the earlier one.
-	if len(e.ai.prompts) != 1 || strings.Contains(e.ai.prompts[0], earlier) || !strings.Contains(e.ai.prompts[0], ids["s"]) {
+	if len(e.ai.prompts) != 1 || strings.Contains(e.ai.prompts[0], earlier) || strings.Contains(e.ai.prompts[0], "Earlier") || strings.Contains(e.ai.prompts[0], ids["s"]) ||
+		!strings.Contains(e.ai.prompts[0], `"name":"Savings"`) {
 		t.Fatalf("prompts = %v", e.ai.prompts)
+	}
+	if e.ai.schemas[0] != "savings_accounts" {
+		t.Fatalf("schema = %q", e.ai.schemas[0])
 	}
 
 	status, again := e.post("/api/v1/onboarding/save-accounts", body)
@@ -379,7 +503,7 @@ func TestSaveAccounts_AddsToTheExistingBudget(t *testing.T) {
 	if n := e.count(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ?`, budget); n != 2 {
 		t.Fatalf("members = %d", n)
 	}
-	if len(e.ai.prompts) != 1 || strings.Contains(e.ai.prompts[0], old) || !strings.Contains(e.ai.prompts[0], newID) {
+	if len(e.ai.prompts) != 1 || strings.Contains(e.ai.prompts[0], `"name":"Old"`) || strings.Contains(e.ai.prompts[0], newID) || !strings.Contains(e.ai.prompts[0], `{"key":"a1","name":"New"`) {
 		t.Fatalf("prompts = %v", e.ai.prompts)
 	}
 }

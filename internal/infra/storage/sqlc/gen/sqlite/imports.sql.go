@@ -73,6 +73,29 @@ func (q *Queries) DeleteImportSource(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteImportSuggestion = `-- name: DeleteImportSuggestion :exec
+DELETE FROM import_suggestions WHERE id = ?
+`
+
+func (q *Queries) DeleteImportSuggestion(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportSuggestion, id)
+	return err
+}
+
+const deleteImportSuggestionLink = `-- name: DeleteImportSuggestionLink :exec
+DELETE FROM import_suggestion_links WHERE suggestion_id = ? AND link_id = ?
+`
+
+type DeleteImportSuggestionLinkParams struct {
+	SuggestionID string
+	LinkID       string
+}
+
+func (q *Queries) DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error {
+	_, err := q.db.ExecContext(ctx, deleteImportSuggestionLink, arg.SuggestionID, arg.LinkID)
+	return err
+}
+
 const deleteImportTransactionLink = `-- name: DeleteImportTransactionLink :exec
 DELETE FROM import_transaction_links WHERE id = ?
 `
@@ -284,6 +307,30 @@ func (q *Queries) GetImportSourceByUserProvider(ctx context.Context, arg GetImpo
 		&i.CredentialCiphertext,
 		&i.Status,
 		&i.LastSyncedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getImportSuggestionByID = `-- name: GetImportSuggestionByID :one
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+FROM import_suggestions
+WHERE id = ?
+`
+
+func (q *Queries) GetImportSuggestionByID(ctx context.Context, id string) (ImportSuggestion, error) {
+	row := q.db.QueryRowContext(ctx, getImportSuggestionByID, id)
+	var i ImportSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.MatchField,
+		&i.MatchText,
+		&i.CategoryID,
+		&i.PayeeID,
+		&i.TransactionType,
+		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -579,6 +626,54 @@ func (q *Queries) InsertImportSource(ctx context.Context, arg InsertImportSource
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
+	return err
+}
+
+const insertImportSuggestion = `-- name: InsertImportSuggestion :exec
+INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertImportSuggestionParams struct {
+	ID              string
+	UserID          string
+	MatchField      string
+	MatchText       string
+	CategoryID      *string
+	PayeeID         *string
+	TransactionType string
+	Status          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+func (q *Queries) InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error {
+	_, err := q.db.ExecContext(ctx, insertImportSuggestion,
+		arg.ID,
+		arg.UserID,
+		arg.MatchField,
+		arg.MatchText,
+		arg.CategoryID,
+		arg.PayeeID,
+		arg.TransactionType,
+		arg.Status,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const insertImportSuggestionLink = `-- name: InsertImportSuggestionLink :exec
+INSERT INTO import_suggestion_links (suggestion_id, link_id) VALUES (?, ?) ON CONFLICT (suggestion_id, link_id) DO NOTHING
+`
+
+type InsertImportSuggestionLinkParams struct {
+	SuggestionID string
+	LinkID       string
+}
+
+func (q *Queries) InsertImportSuggestionLink(ctx context.Context, arg InsertImportSuggestionLinkParams) error {
+	_, err := q.db.ExecContext(ctx, insertImportSuggestionLink, arg.SuggestionID, arg.LinkID)
 	return err
 }
 
@@ -1031,6 +1126,33 @@ func (q *Queries) ListImportSourcesByUser(ctx context.Context, userID string) ([
 	return items, nil
 }
 
+const listImportSuggestionLinks = `-- name: ListImportSuggestionLinks :many
+SELECT suggestion_id, link_id FROM import_suggestion_links WHERE suggestion_id = ? ORDER BY link_id
+`
+
+func (q *Queries) ListImportSuggestionLinks(ctx context.Context, suggestionID string) ([]ImportSuggestionLink, error) {
+	rows, err := q.db.QueryContext(ctx, listImportSuggestionLinks, suggestionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportSuggestionLink{}
+	for rows.Next() {
+		var i ImportSuggestionLink
+		if err := rows.Scan(&i.SuggestionID, &i.LinkID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listImportTransactionLinksByRun = `-- name: ListImportTransactionLinksByRun :many
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
 FROM import_transaction_links
@@ -1337,6 +1459,107 @@ func (q *Queries) ListImportTransactionLinksIntoUserAccounts(ctx context.Context
 		return nil, err
 	}
 	return items, nil
+}
+
+const listOpenImportSuggestionLinksByUser = `-- name: ListOpenImportSuggestionLinksByUser :many
+SELECT sl.suggestion_id, sl.link_id
+FROM import_suggestion_links sl
+JOIN import_suggestions s ON s.id = sl.suggestion_id
+WHERE s.user_id = ? AND s.status = 'open'
+ORDER BY sl.suggestion_id, sl.link_id
+`
+
+func (q *Queries) ListOpenImportSuggestionLinksByUser(ctx context.Context, userID string) ([]ImportSuggestionLink, error) {
+	rows, err := q.db.QueryContext(ctx, listOpenImportSuggestionLinksByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportSuggestionLink{}
+	for rows.Next() {
+		var i ImportSuggestionLink
+		if err := rows.Scan(&i.SuggestionID, &i.LinkID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenImportSuggestionsByUser = `-- name: ListOpenImportSuggestionsByUser :many
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+FROM import_suggestions
+WHERE user_id = ? AND status = 'open'
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListOpenImportSuggestionsByUser(ctx context.Context, userID string) ([]ImportSuggestion, error) {
+	rows, err := q.db.QueryContext(ctx, listOpenImportSuggestionsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportSuggestion{}
+	for rows.Next() {
+		var i ImportSuggestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.MatchField,
+			&i.MatchText,
+			&i.CategoryID,
+			&i.PayeeID,
+			&i.TransactionType,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockImportSuggestion = `-- name: LockImportSuggestion :execrows
+UPDATE import_suggestions SET status = status WHERE id = ?
+`
+
+func (q *Queries) LockImportSuggestion(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, lockImportSuggestion, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const touchOpenImportSuggestion = `-- name: TouchOpenImportSuggestion :execrows
+UPDATE import_suggestions SET updated_at = ? WHERE id = ? AND status = 'open'
+`
+
+type TouchOpenImportSuggestionParams struct {
+	UpdatedAt time.Time
+	ID        string
+}
+
+func (q *Queries) TouchOpenImportSuggestion(ctx context.Context, arg TouchOpenImportSuggestionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, touchOpenImportSuggestion, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateImportAccountLink = `-- name: UpdateImportAccountLink :exec

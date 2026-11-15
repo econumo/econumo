@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -40,21 +41,27 @@ func (c clock) Now() time.Time { return c.t }
 type fakeAccounts struct {
 	deleted, shared bool
 	db              *dbtest.DB
+	ownerCalls      int
 }
 
-// AccountListForUser reports acct1 with its revision as the caller's
+// AccountListForUser reports acct1 (acctB for userB) with its revision as the caller's
 // connection sees it: inside the pipeline's transaction that is the value
 // before the commit-time bump.
-func (f *fakeAccounts) AccountListForUser(ctx context.Context, _ vo.Id) ([]model.AccountResult, error) {
+func (f *fakeAccounts) AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error) {
+	id, name := acct1, "Card"
+	if userID.String() == userB {
+		id, name = acctB, "Other"
+	}
 	var rev int64
-	row := f.db.TX.Querier(ctx).QueryRowContext(ctx, f.db.Rebind(`SELECT transactions_revision FROM accounts WHERE id = ?`), acct1)
+	row := f.db.TX.Querier(ctx).QueryRowContext(ctx, f.db.Rebind(`SELECT transactions_revision FROM accounts WHERE id = ?`), id)
 	if err := row.Scan(&rev); err != nil {
 		return nil, err
 	}
-	return []model.AccountResult{{Id: acct1, TransactionsRevision: rev}}, nil
+	return []model.AccountResult{{Id: id, Name: name, TransactionsRevision: rev}}, nil
 }
 
 func (f *fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {
+	f.ownerCalls++
 	switch id.String() {
 	case acct1:
 		return vo.MustParseId(userA), nil
@@ -95,17 +102,24 @@ func (f *fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount str
 // on a pool capped at one — going through db.Raw here would deadlock against
 // the outer WithTx.
 type fakeTxns struct {
-	db         *dbtest.DB
-	builder    *fixture.Builder
-	created    []model.CreateTransactionRequest
-	updated    []model.UpdateTransactionRequest
-	replaced   []model.UpdateTransactionRequest
-	candidates []*model.Transaction
-	fail       error
+	// readDeadlines records the deadline of every GetByID context
+	readDeadlines []time.Time
+	db            *dbtest.DB
+	builder       *fixture.Builder
+	created       []model.CreateTransactionRequest
+	updated       []model.UpdateTransactionRequest
+	replaced      []model.UpdateTransactionRequest
+	candidates    []*model.Transaction
+	fail          error
 	// failOn, when non-empty, makes CreateTransaction fail for a request
 	// whose Description matches it — used to test that one bad account in a
 	// sync does not roll back the others.
 	failOn string
+	// failUpdateAt, when positive, makes the n-th UpdateTransaction call fail.
+	failUpdateAt int
+	// getFailOn, when non-empty, makes GetByID fail (not a not-found) for a
+	// transaction whose description matches it.
+	getFailOn string
 }
 
 func aliasToType(alias string) int {
@@ -168,6 +182,8 @@ func (f *fakeTxns) replaceLabels(ctx context.Context, transactionID string, labe
 }
 
 func (f *fakeTxns) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
+	deadline, _ := ctx.Deadline()
+	f.readDeadlines = append(f.readDeadlines, deadline)
 	q := f.db.TX.Querier(ctx)
 	var (
 		userID, accountID, amount, description string
@@ -182,6 +198,9 @@ func (f *fakeTxns) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, e
 			return nil, errs.NewNotFound("Transaction not found")
 		}
 		return nil, err
+	}
+	if f.getFailOn != "" && description == f.getFailOn {
+		return nil, errors.New("read failed")
 	}
 	t := &model.Transaction{
 		ID: id, UserID: vo.MustParseId(userID), Type: model.TransactionType(typ),
@@ -229,8 +248,21 @@ func (f *fakeTxns) UpdateTransactionReplacingLabels(ctx context.Context, _ vo.Id
 	return &model.UpdateTransactionResult{}, nil
 }
 
-func (f *fakeTxns) UpdateTransaction(_ context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+// UpdateTransaction is the labels-preserving update: it writes the
+// classification columns and leaves the label rows alone.
+func (f *fakeTxns) UpdateTransaction(ctx context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	f.updated = append(f.updated, req)
+	if f.failUpdateAt > 0 && len(f.updated) == f.failUpdateAt {
+		return nil, errors.New("update failed")
+	}
+	// the real update-transaction pins the request's Idempotency-Key
+	reqctx.PinIdempotency(ctx)
+	q := f.db.TX.Querier(ctx)
+	if _, err := q.ExecContext(ctx, f.db.Rebind(
+		`UPDATE transactions SET category_id = ?, payee_id = ?, tag_id = ? WHERE id = ?`),
+		optID(req.CategoryId), optID(req.PayeeId), optID(req.TagId), req.Id); err != nil {
+		return nil, err
+	}
 	return &model.UpdateTransactionResult{}, nil
 }
 func (f *fakeTxns) ListByAccount(_ context.Context, _ vo.Id, _, _ time.Time) ([]*model.Transaction, error) {
@@ -289,10 +321,10 @@ func (f *fakeEntities) CategoriesByOwner(_ context.Context, o vo.Id) ([]model.Im
 	if f.err != nil {
 		return nil, f.err
 	}
-	return f.categories[o], nil
+	return rememberNames(f.categories[o]), nil
 }
 func (f *fakeEntities) PayeesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
-	return f.payees[o], nil
+	return rememberNames(f.payees[o]), nil
 }
 func (f *fakeEntities) TagsByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
 	return f.tags[o], nil

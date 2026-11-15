@@ -128,6 +128,13 @@ type Seams struct {
 	// to observe the job inline without a network.
 	OnboardingCompleter apponboarding.Completer
 	OnboardingRunner    apponboarding.Runner
+	// OnboardingScheduler replaces the timer that waits for a CSV import's
+	// last chunk before its icon review; tests fire it themselves.
+	OnboardingScheduler apponboarding.Scheduler
+	// ImportsCompleter and ImportsJobRunner do the same for the import rule
+	// suggestion job.
+	ImportsCompleter appimports.Completer
+	ImportsJobRunner func(func())
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -212,8 +219,12 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
 		appimports.RateScopeSync:            cfg.RateLimitSync,
 		appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+		// A background AI round trip per import batch; the job is skipped over the cap.
+		appimports.RateScopeSuggest: 30,
 		// Each onboarding classification is a paid AI round trip; Day 0 needs a handful.
 		apponboarding.RateScopeClassify: 20,
+		// One icon review per CSV import, apart from the savings job's allowance.
+		apponboarding.RateScopeIcons: 20,
 		// No per-key cap: the caller of start-login/start-link is anonymous
 		// until the provider answers. The per-IP per-minute cap applies.
 		appoauth.RateScopeOAuthStart: 0,
@@ -226,7 +237,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		// their effects stay inside the caller's account.
 		appimports.RateScopeIngest:      true,
 		appimports.RateScopePreviewRule: true,
+		appimports.RateScopeSuggest:     true,
 		apponboarding.RateScopeClassify: true,
+		apponboarding.RateScopeIcons:    true,
 	}
 	// Ceilings per email address across all client IPs, above the per-address-and-IP
 	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays
@@ -388,7 +401,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// port; nil (no ECONUMO_AI_DSN) leaves those features without AI.
 	var aiClient *ai.Client
 	if cfg.AIEnabled {
-		aiCfg := ai.Config{Dialect: cfg.AIDialect, Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}
+		aiCfg := ai.Config{Dialect: cfg.AIDialect, Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, JSONSchema: cfg.AIJSON}
 		if cfg.AIDialect == config.AIDialectEconumo {
 			// An econumo AI gateway: each call carries a short-lived
 			// token naming the user, signed with the admin token both sides share.
@@ -418,7 +431,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	budgetSvc.SetShiftedPeriodRates(appcurrency.NewConvertor(shiftedRates), shiftedRates)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
 
-	onboardingSvc := apponboarding.NewService(budgetSvc, NewOnboardingAccountReader(accountRepo, accountCurrencyLookup), NewOnboardingTimezones(userRepo))
+	onboardingSvc := apponboarding.NewService(budgetSvc, NewOnboardingAccountReader(accountRepo, accountCurrencyLookup), NewOnboardingUserFacts(userRepo))
 	onboardingSvc.SetSteps(apponboarding.Steps{
 		Tx: txm, Ops: opGuard, Clock: clk,
 		Users:      userSvc,
@@ -434,6 +447,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	if seams.OnboardingRunner != nil {
 		onboardingSvc.SetRunner(seams.OnboardingRunner)
+	}
+	if seams.OnboardingScheduler != nil {
+		onboardingSvc.SetScheduler(seams.OnboardingScheduler)
 	}
 	onboardingHandlers := handleronboarding.NewHandlers(onboardingSvc)
 
@@ -470,6 +486,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup,
 		labelOwnership, NewTransactionAccountZeroer(accountSvc), txm, opGuard, clk,
 	)
+	transactionSvc.SetImportIconReviewer(onboardingSvc)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
 	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)
@@ -501,9 +518,15 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	// The completion client is injected here, never imported by the feature:
 	// internal/imports declares the Completer interface and nothing more.
-	if aiClient != nil {
-		importsSvc.SetCompleter(aiClient)
+	if seams.ImportsCompleter != nil {
+		importsSvc.SetSuggester(seams.ImportsCompleter, NewImportsOwnerFacts(userRepo, clk))
+	} else if aiClient != nil {
+		importsSvc.SetSuggester(aiClient, NewImportsOwnerFacts(userRepo, clk))
 	}
+	if seams.ImportsJobRunner != nil {
+		importsSvc.SetJobRunner(seams.ImportsJobRunner)
+	}
+	userSvc.SetAISuggestionClearer(importsSvc)
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)

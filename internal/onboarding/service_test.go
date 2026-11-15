@@ -1,13 +1,16 @@
 package onboarding_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/onboarding"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -51,11 +54,13 @@ func (fakeAccounts) AccountsByIDs(_ context.Context, ids []vo.Id) ([]model.Onboa
 	return out, nil
 }
 
-type fakeTimezones struct{}
+type fakeTimezones struct{ aiOff bool }
 
 func (fakeTimezones) StoredTimezone(context.Context, vo.Id) (string, error) {
 	return "Europe/Zurich", nil
 }
+
+func (f fakeTimezones) AIOptedOut(context.Context, vo.Id) (bool, error) { return f.aiOff, nil }
 
 type fakeCompleter struct {
 	calls int
@@ -63,7 +68,7 @@ type fakeCompleter struct {
 	reply func(ctx context.Context) (string, error)
 }
 
-func (f *fakeCompleter) Complete(ctx context.Context, _, _, user string) (string, error) {
+func (f *fakeCompleter) Complete(ctx context.Context, _, _, user string, _ *ai.Schema) (string, error) {
 	f.calls++
 	f.user = user
 	return f.reply(ctx)
@@ -75,6 +80,16 @@ func (denyLimiter) Allow(context.Context, string, string) error {
 	return errs.NewTooManyRequests("Too many attempts. Try again later.")
 }
 func (denyLimiter) Reserve(string, string) error { return nil }
+
+// captureLogs sends slog's default logger to a buffer for the test.
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(old) })
+	return &buf
+}
 
 func replying(s string) *fakeCompleter {
 	return &fakeCompleter{reply: func(context.Context) (string, error) { return s, nil }}
@@ -105,15 +120,20 @@ func schedule(ctx context.Context, svc *onboarding.Service, accountIDs ...string
 }
 
 func TestClassification_FlagsTheAIPicks(t *testing.T) {
-	c := replying("```json\n{\"savings\":[\"" + strings.ToUpper(deposit) + "\",\"" + theirs + "\",\"nope\"]}\n```")
+	c := replying("```json\n{\"savings\":[\" A2 \",\"" + deposit + "\",\"a3\",\"a2\"]}\n```")
 	svc, b := newSvc(c, nil)
+	logs := captureLogs(t)
 	schedule(reqctx.WithLanguage(context.Background(), "de"), svc, allIDs...)
 	if len(b.marked) != 1 || b.marked[0].String() != deposit {
 		t.Fatalf("marked = %v", b.marked)
 	}
+	if !strings.Contains(logs.String(), `msg="ai reply named unknown keys"`) || !strings.Contains(logs.String(), "part=savings count=2") ||
+		strings.Contains(logs.String(), deposit) {
+		t.Fatalf("logs = %s", logs.String())
+	}
 	var prompt struct {
 		Timezone, Language string
-		Accounts           []struct{ ID, Name, Currency string }
+		Accounts           []struct{ Key, Name, Currency string }
 	}
 	if err := json.Unmarshal([]byte(c.user), &prompt); err != nil {
 		t.Fatal(err)
@@ -121,10 +141,10 @@ func TestClassification_FlagsTheAIPicks(t *testing.T) {
 	if prompt.Timezone != "Europe/Zurich" || prompt.Language != "de" {
 		t.Fatalf("context = %+v", prompt)
 	}
-	if len(prompt.Accounts) != 2 || prompt.Accounts[0].Currency != "EUR" || prompt.Accounts[1].Name != "Tagesgeld" || prompt.Accounts[1].Currency != "CHF" {
+	if len(prompt.Accounts) != 2 || prompt.Accounts[0].Key != "a1" || prompt.Accounts[1].Key != "a2" || prompt.Accounts[0].Currency != "EUR" || prompt.Accounts[1].Name != "Tagesgeld" || prompt.Accounts[1].Currency != "CHF" {
 		t.Fatalf("accounts = %+v", prompt.Accounts)
 	}
-	for _, leak := range []string{theirs, gone, "Their savings", "Old savings", "profile", "USD"} {
+	for _, leak := range []string{cash, deposit, theirs, gone, "Their savings", "Old savings", "profile", "USD"} {
 		if strings.Contains(c.user, leak) {
 			t.Fatalf("prompt carries %q: %s", leak, c.user)
 		}
@@ -166,7 +186,7 @@ func TestClassification_FailuresChangeNothing(t *testing.T) {
 		// The job's deadline is at most 15 s away; one that runs out flags nothing.
 		"timeout": {reply: func(ctx context.Context) (string, error) {
 			if dl, ok := ctx.Deadline(); !ok || time.Until(dl) > 15*time.Second {
-				return `{"savings":["` + deposit + `"]}`, nil
+				return `{"savings":["a2"]}`, nil
 			}
 			return "", context.DeadlineExceeded
 		}},
@@ -192,8 +212,43 @@ func TestClassification_OnlyForeignOrDeletedAsksNothing(t *testing.T) {
 	}
 }
 
+func TestClassification_OptedOutUserStartsNoJob(t *testing.T) {
+	c := replying(`{"savings":["a2"]}`)
+	b := &fakeBudgets{}
+	svc := onboarding.NewService(b, fakeAccounts{}, fakeTimezones{aiOff: true})
+	svc.SetAdvisor(c, nil)
+	svc.SetRunner(func(job func()) { job() })
+	schedule(context.Background(), svc, allIDs...)
+	if len(b.marked) != 0 || c.calls != 0 {
+		t.Fatalf("marked = %v, calls = %d", b.marked, c.calls)
+	}
+}
+
+// optOutAfter reads "on" for the first n preference reads, then "off".
+type optOutAfter struct {
+	fakeTimezones
+	n, reads int
+}
+
+func (f *optOutAfter) AIOptedOut(context.Context, vo.Id) (bool, error) {
+	f.reads++
+	return f.reads > f.n, nil
+}
+
+func TestClassification_OptOutAfterSchedulingSendsNothing(t *testing.T) {
+	c := replying(`{"savings":["a2"]}`)
+	b := &fakeBudgets{}
+	svc := onboarding.NewService(b, fakeAccounts{}, &optOutAfter{n: 1})
+	svc.SetAdvisor(c, nil)
+	svc.SetRunner(func(job func()) { job() })
+	schedule(context.Background(), svc, allIDs...)
+	if len(b.marked) != 0 || c.calls != 0 {
+		t.Fatalf("marked = %v, calls = %d", b.marked, c.calls)
+	}
+}
+
 func TestClassification_OverTheCapSkipsTheJob(t *testing.T) {
-	c := replying(`{"savings":["` + deposit + `"]}`)
+	c := replying(`{"savings":["a2"]}`)
 	svc, b := newSvc(c, denyLimiter{})
 	schedule(context.Background(), svc, allIDs...)
 	if len(b.marked) != 0 || c.calls != 0 {

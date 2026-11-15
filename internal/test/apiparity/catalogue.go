@@ -420,6 +420,7 @@ func init() {
 			{Label: "err:update-onboarding-completed", Method: "POST", Path: "/api/v1/user/update-onboarding", Auth: "owner", Body: map[string]any{"value": "completed"}},
 			{Label: "update-last-seen-version", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "v1.6.0"}},
 			{Label: "err:update-last-seen-version-invalid", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "dev"}},
+			{Label: "update-ai", Method: "POST", Path: "/api/v1/user/update-ai", Auth: "owner", Body: map[string]any{"enabled": false}},
 		}
 	}})
 

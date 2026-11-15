@@ -218,3 +218,43 @@ func (sqliteQuerier) ListImportTransactionLinksByUser(ctx context.Context, db ba
 func (sqliteQuerier) ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
 	return sqlitegen.New(db).ListImportTransactionLinksIntoUserAccounts(ctx, userID)
 }
+
+func (sqliteQuerier) InsertImportSuggestion(ctx context.Context, db backend.DBTX, p insertSuggestionParams) error {
+	return sqlitegen.New(db).InsertImportSuggestion(ctx, p)
+}
+
+func (sqliteQuerier) InsertImportSuggestionLink(ctx context.Context, db backend.DBTX, p insertSuggestionLinkPs) error {
+	return sqlitegen.New(db).InsertImportSuggestionLink(ctx, p)
+}
+
+func (sqliteQuerier) TouchOpenImportSuggestion(ctx context.Context, db backend.DBTX, p touchSuggestionParams) (int64, error) {
+	return sqlitegen.New(db).TouchOpenImportSuggestion(ctx, p)
+}
+
+func (sqliteQuerier) LockImportSuggestion(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return sqlitegen.New(db).LockImportSuggestion(ctx, id)
+}
+
+func (sqliteQuerier) DeleteImportSuggestionLink(ctx context.Context, db backend.DBTX, p deleteSuggestionLinkPs) error {
+	return sqlitegen.New(db).DeleteImportSuggestionLink(ctx, p)
+}
+
+func (sqliteQuerier) GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error) {
+	return sqlitegen.New(db).GetImportSuggestionByID(ctx, id)
+}
+
+func (sqliteQuerier) ListOpenImportSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionRow, error) {
+	return sqlitegen.New(db).ListOpenImportSuggestionsByUser(ctx, userID)
+}
+
+func (sqliteQuerier) ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error) {
+	return sqlitegen.New(db).ListImportSuggestionLinks(ctx, suggestionID)
+}
+
+func (sqliteQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionLinkRow, error) {
+	return sqlitegen.New(db).ListOpenImportSuggestionLinksByUser(ctx, userID)
+}
+
+func (sqliteQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteImportSuggestion(ctx, id)
+}
