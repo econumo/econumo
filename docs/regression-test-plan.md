@@ -2707,17 +2707,17 @@ a second budget member account in USD, before running these.
 - [ ] 📱 **Balance tab** (set-up debts only; a debt not set up has no such
       tab): ONE card: "Balance today" with the amount, one short muted line ("Compare
       it with your bank statement."; a Return-by-a-date debt reads "Compare it
-      with what you agreed.") with a compact "Enter a statement" button on its
-      right (none for a guest, an archived budget or a paid-off debt), and below
-      a divider the table of the amount borrowed and every statement (date,
-      statement, Econumo, difference, e.g. -120.00; no separate heading). The
-      button opens the form inside the card between the hint row and the table:
+      with what you agreed.") (just the hint, no button) and below a divider the table of the amount
+      borrowed and every statement (date, statement, Econumo, difference, e.g.
+      -120.00; no separate heading), whose last line is a link-styled "+ Add a
+      statement" (none for a guest, an archived budget or a paid-off debt;
+      disabled offline). The link is replaced in the same spot by the form:
       a statement balance and a statement date (today by default); an empty
       balance is "Required field", a date on or before the start date shows
       "Pick a date after the start date and no later than today. To change what
       was borrowed, correct Amount borrowed in Settings." (the server also
       refuses a date after today); Cancel collapses it
-      unsaved; Reconcile writes it, the form collapses, and the table shows the
+      unsaved and brings the link back; Reconcile writes it, the form collapses, and the table shows the
       new statement and difference, Owed now following. Story: a loan started five years ago with monthly
       dues and no payments entered: reconcile today with the statement
       balance; the Balance tab shows that balance as today's and the

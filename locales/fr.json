@@ -561,7 +561,7 @@
       "econumo": "Solde aujourd'hui",
       "hint": "Comparez-le avec votre relevé bancaire.",
       "hint_none": "Comparez-le avec ce qui a été convenu.",
-      "enter": "Saisir un relevé",
+      "enter": "Ajouter un relevé",
       "form": {
         "balance": "Solde du relevé",
         "date": "Date du relevé",

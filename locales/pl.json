@@ -561,7 +561,7 @@
       "econumo": "Saldo na dziś",
       "hint": "Porównaj je z wyciągiem bankowym.",
       "hint_none": "Porównaj je z ustaleniami.",
-      "enter": "Wpisz wyciąg",
+      "enter": "Dodaj wyciąg",
       "form": {
         "balance": "Saldo z wyciągu",
         "date": "Data wyciągu",

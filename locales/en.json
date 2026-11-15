@@ -561,7 +561,7 @@
       "econumo": "Balance today",
       "hint": "Compare it with your bank statement.",
       "hint_none": "Compare it with what you agreed.",
-      "enter": "Enter a statement",
+      "enter": "Add a statement",
       "form": {
         "balance": "Statement balance",
         "date": "Statement date",

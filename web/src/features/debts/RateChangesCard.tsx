@@ -142,14 +142,14 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
               <th scope="col" className="py-1 text-left font-normal">
                 {t('debts.rates.column.date')}
               </th>
-              <th scope="col" className="py-1 text-right font-normal">
+              <th scope="col" className="py-1 pl-2 text-right font-normal">
                 {t('debts.rates.column.rate')}
               </th>
-              <th scope="col" className="py-1 text-right font-normal">
+              <th scope="col" className="py-1 pl-2 text-right font-normal">
                 {t('debts.rates.column.payment')}
               </th>
               {readOnly ? null : (
-                <th scope="col" className="w-9 py-1">
+                <th scope="col" className="w-10 py-1">
                   <span className="sr-only">{t('common.button.delete.label')}</span>
                 </th>
               )}
@@ -164,7 +164,7 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
                 </td>
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right">{percent(item.impliedAnnualRate, lang)}</td>
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(originPayment)}</td>
-                {readOnly ? null : <td />}
+                {readOnly ? null : <td className="w-10" />}
               </tr>
             ) : null}
             {rateChanges.map((r) => (
@@ -173,7 +173,7 @@ export function RateChangesCard({ details, amount, symbol, currency, lang, readO
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right">{percent(r.annualRate, lang)}</td>
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(r.payment)}</td>
                 {readOnly ? null : (
-                  <td className="py-1.5 text-right">
+                  <td className="w-10 py-1.5 text-right">
                     <Button
                       type="button"
                       variant="ghost"

@@ -561,7 +561,7 @@
       "econumo": "Saldo vandaag",
       "hint": "Vergelijk het met uw bankafschrift.",
       "hint_none": "Vergelijk het met wat u hebt afgesproken.",
-      "enter": "Afschrift invoeren",
+      "enter": "Een afschrift toevoegen",
       "form": {
         "balance": "Saldo volgens afschrift",
         "date": "Datum van het afschrift",

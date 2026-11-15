@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -31,7 +31,7 @@ function statementDifference(snapshot: DebtSnapshotDto): string {
 
 /**
  * The debt's Balance tab: reconciling it with a lender's statement. It shows
- * what Econumo works out for today, a button opening a form that states a new
+ * what Econumo works out for today, a link under the table opening a form that states a new
  * statement balance as of a date between the start date and today (a second
  * one on the same date replaces the first), and the table of the origin (the
  * amount borrowed, kept) and every statement with how far Econumo was off,
@@ -99,13 +99,62 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
           <p data-testid="debt-balance-hint" className="min-w-0 text-sm text-muted-foreground">
             {t(isNoFixed(item.schedule) ? 'debts.balance.hint_none' : 'debts.balance.hint')}
           </p>
-          {readOnly || formOpen ? null : (
-            <Button type="button" variant="outline" size="sm" className="shrink-0 bg-background" disabled={!online} onClick={() => setFormOpen(true)}>
-              {t('debts.balance.enter')}
-            </Button>
-          )}
         </div>
-        {readOnly || !formOpen ? null : (
+        <table className="w-full border-t border-border text-sm">
+        <thead>
+          <tr className="text-xs text-muted-foreground">
+            <th scope="col" className="py-1 text-left font-normal">
+              {t('debts.balance.column.date')}
+            </th>
+            <th scope="col" className="py-1 pl-2 text-right font-normal">
+              {t('debts.balance.column.statement')}
+            </th>
+            <th scope="col" className="hidden py-1 pl-2 text-right font-normal sm:table-cell">
+              {t('debts.balance.column.econumo')}
+            </th>
+            <th scope="col" className="py-1 pl-2 text-right font-normal">
+              {t('debts.balance.column.difference')}
+            </th>
+            {readOnly ? null : (
+              <th scope="col" className="w-10 py-1">
+                <span className="sr-only">{t('common.button.delete.label')}</span>
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {snapshots.map((s) => (
+            <tr key={s.id} data-testid="debt-reconciliation" className="border-t border-border">
+              <td className="py-1.5 text-left">
+                {debtDay(s.asOf, lang)}
+                {s.isOrigin === 1 ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.origin')}</span> : null}
+                {paidOffMark(s) ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.paid_off')}</span> : null}
+              </td>
+              <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(s.balance)}</td>
+              <td className="hidden whitespace-nowrap py-1.5 pl-2 text-right sm:table-cell">{s.isOrigin === 1 ? '—' : amount(s.computedBalance)}</td>
+              <td className="whitespace-nowrap py-1.5 pl-2 text-right">{s.isOrigin === 1 || paidOffMark(s) ? '—' : amount(statementDifference(s))}</td>
+              {readOnly ? null : (
+                <td className="w-10 py-1.5 text-right">
+                  {s.isOrigin === 1 ? null : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      disabled={!online || deleteReconciliation.isPending}
+                      aria-label={t('debts.balance.delete', { date: debtDay(s.asOf, lang) })}
+                      onClick={() => setDeleting(s)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+        </table>
+        {readOnly ? null : formOpen ? (
           <section aria-label={t('debts.balance.enter')} className="border-t border-border py-3">
             <form
               className="flex flex-col gap-3"
@@ -159,61 +208,19 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
               </div>
             </form>
           </section>
+        ) : (
+          <div className="border-t border-border py-1.5">
+            <button
+              type="button"
+              disabled={!online}
+              className="inline-flex items-center gap-1 text-sm text-econumo-link disabled:opacity-50"
+              onClick={() => setFormOpen(true)}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              {t('debts.balance.enter')}
+            </button>
+          </div>
         )}
-        <table className="w-full border-t border-border text-sm">
-        <thead>
-          <tr className="text-xs text-muted-foreground">
-            <th scope="col" className="py-1 text-left font-normal">
-              {t('debts.balance.column.date')}
-            </th>
-            <th scope="col" className="py-1 text-right font-normal">
-              {t('debts.balance.column.statement')}
-            </th>
-            <th scope="col" className="hidden py-1 text-right font-normal sm:table-cell">
-              {t('debts.balance.column.econumo')}
-            </th>
-            <th scope="col" className="py-1 text-right font-normal">
-              {t('debts.balance.column.difference')}
-            </th>
-            {readOnly ? null : (
-              <th scope="col" className="w-9 py-1">
-                <span className="sr-only">{t('common.button.delete.label')}</span>
-              </th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {snapshots.map((s) => (
-            <tr key={s.id} data-testid="debt-reconciliation" className="border-t border-border">
-              <td className="py-1.5 text-left">
-                {debtDay(s.asOf, lang)}
-                {s.isOrigin === 1 ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.origin')}</span> : null}
-                {paidOffMark(s) ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.paid_off')}</span> : null}
-              </td>
-              <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(s.balance)}</td>
-              <td className="hidden whitespace-nowrap py-1.5 pl-2 text-right sm:table-cell">{s.isOrigin === 1 ? '—' : amount(s.computedBalance)}</td>
-              <td className="whitespace-nowrap py-1.5 pl-2 text-right">{s.isOrigin === 1 || paidOffMark(s) ? '—' : amount(statementDifference(s))}</td>
-              {readOnly ? null : (
-                <td className="py-1.5 text-right">
-                  {s.isOrigin === 1 ? null : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      disabled={!online || deleteReconciliation.isPending}
-                      aria-label={t('debts.balance.delete', { date: debtDay(s.asOf, lang) })}
-                      onClick={() => setDeleting(s)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  )}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-        </table>
       </div>
 
       {isNoFixed(item.schedule) ? null : (

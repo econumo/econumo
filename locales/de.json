@@ -561,7 +561,7 @@
       "econumo": "Saldo heute",
       "hint": "Vergleichen Sie ihn mit Ihrem Kontoauszug.",
       "hint_none": "Vergleichen Sie ihn mit dem Vereinbarten.",
-      "enter": "Kontoauszug eingeben",
+      "enter": "Kontoauszug hinzufügen",
       "form": {
         "balance": "Saldo laut Kontoauszug",
         "date": "Datum des Kontoauszugs",

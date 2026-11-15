@@ -561,7 +561,7 @@
       "econumo": "Saldo di oggi",
       "hint": "Confrontalo con l'estratto conto.",
       "hint_none": "Confrontalo con quanto concordato.",
-      "enter": "Inserisci un estratto conto",
+      "enter": "Aggiungi un estratto conto",
       "form": {
         "balance": "Saldo dell'estratto conto",
         "date": "Data dell'estratto conto",

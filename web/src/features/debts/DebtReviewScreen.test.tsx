@@ -1058,13 +1058,30 @@ it('the Balance tab is one card: balance today, a hint with the button, and the 
   const card = within(panel).getByTestId('debt-balance-card')
   expect(within(card).getByTestId('debt-balance-summary')).toHaveTextContent('Balance today990.00 $')
   expect(within(card).getByTestId('debt-balance-hint')).toHaveTextContent('Compare it with your bank statement.')
-  expect(within(card).getByRole('button', { name: 'Enter a statement' })).toBeInTheDocument()
+  expect(within(card).getByRole('button', { name: 'Add a statement' })).toBeInTheDocument()
+  expect(within(card).getByTestId('debt-balance-hint')).not.toContainElement(within(card).getByRole('button', { name: 'Add a statement' }))
   expect(within(card).getAllByTestId('debt-reconciliation')).toHaveLength(2)
   const rows = within(panel).getAllByTestId('debt-reconciliation')
   expect(rows[0]).toHaveTextContent('Oct 1, 2026')
   expect(rows[0]).toHaveTextContent('Amount borrowed')
   expect(within(rows[0]).queryByRole('button')).toBeNull()
   expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Oct 31, 2026', '1,000.00 $', '1,120.00 $', '-120.00 $', ''])
+})
+
+it('the statements table values, dashes included, align like their headers', async () => {
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+  const headers = within(panel).getAllByRole('columnheader')
+  const rows = within(panel).getAllByTestId('debt-reconciliation')
+  const origin = within(rows[0]).getAllByRole('cell')
+  for (const i of [1, 2, 3]) {
+    expect(origin[i].className).toContain('text-right')
+    expect(headers[i].className).toContain('text-right')
+    expect(origin[i].className).toContain('pl-2')
+    expect(headers[i].className).toContain('pl-2')
+  }
 })
 
 it('a return-by-a-date debt has its own short hint', async () => {
@@ -1082,7 +1099,7 @@ it('the form opens inside the card and Cancel collapses it', async () => {
   await openScreen()
   const panel = await openBalance(user)
   expect(within(panel).queryByLabelText('Statement balance')).toBeNull()
-  await user.click(within(panel).getByRole('button', { name: 'Enter a statement' }))
+  await user.click(within(panel).getByRole('button', { name: 'Add a statement' }))
   expect(within(within(panel).getByTestId('debt-balance-card')).getByLabelText('Statement balance')).toBeInTheDocument()
   await user.click(within(panel).getByRole('button', { name: 'Cancel' }))
   expect(within(panel).queryByLabelText('Statement balance')).toBeNull()
@@ -1101,7 +1118,7 @@ it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', 
   await openScreen()
   const panel = await openBalance(user)
 
-  await user.click(within(panel).getByRole('button', { name: 'Enter a statement' }))
+  await user.click(within(panel).getByRole('button', { name: 'Add a statement' }))
   await user.type(within(panel).getByLabelText('Statement balance'), '1 050')
   await user.click(within(panel).getByRole('button', { name: 'Statement date' }))
   await user.click(await screen.findByRole('button', { name: /November 2nd, 2026/ }))
@@ -1111,7 +1128,7 @@ it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', 
   expect(bodies[0]).toEqual({ id: 'd1', balance: '1050', balanceDate: '2026-11-02' })
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RECONCILE)
   await waitFor(() => expect(within(panel).queryByLabelText('Statement balance')).toBeNull())
-  expect(within(panel).getByRole('button', { name: 'Enter a statement' })).toBeInTheDocument()
+  expect(within(panel).getByRole('button', { name: 'Add a statement' })).toBeInTheDocument()
 })
 
 it('the statement date defaults to today and the calendar offers nothing up to the start date or after today', async () => {
@@ -1125,7 +1142,7 @@ it('the statement date defaults to today and the calendar offers nothing up to t
   await openScreen()
   const panel = await openBalance(user)
 
-  await user.click(within(panel).getByRole('button', { name: 'Enter a statement' }))
+  await user.click(within(panel).getByRole('button', { name: 'Add a statement' }))
   expect(within(panel).getByRole('button', { name: 'Statement date' })).toHaveTextContent('Nov 8, 2026')
   await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
   expect(await within(panel).findByText('Required field')).toBeInTheDocument()
@@ -1423,7 +1440,7 @@ describe('a debt on an element', () => {
 
       expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
       await user.click(screen.getByRole('tab', { name: 'Balance' }))
-      expect(screen.queryByRole('button', { name: 'Enter a statement' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Add a statement' })).toBeNull()
       expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
     })
 

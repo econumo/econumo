@@ -561,7 +561,7 @@
       "econumo": "Saldo de hoje",
       "hint": "Compare-o com o seu extrato bancário.",
       "hint_none": "Compare-o com o que foi acordado.",
-      "enter": "Introduzir um extrato",
+      "enter": "Adicionar um extrato",
       "form": {
         "balance": "Saldo do extrato",
         "date": "Data do extrato",
