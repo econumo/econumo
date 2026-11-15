@@ -306,8 +306,9 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 #   make ship-dist && make ship-publish CHANNELS=dev  # the moving dev channel only
 #
 # Channels: `latest` (newest release), `dev` (manual, any branch) and `edge`
-# (every push to main, published by .github/workflows/publish-edge.yml and
-# moved by every release that moves `latest`). ship accepts any channel name.
+# (main's head, published by .github/workflows/publish-edge.yml on every push
+# to main and on every release that moves `latest`). ship accepts any channel
+# name.
 #
 # ship-dist runs release-binaries and stages the flat folder ship expects in
 # dist/ship/: econumo-linux-{amd64,arm64}, econumo.service and

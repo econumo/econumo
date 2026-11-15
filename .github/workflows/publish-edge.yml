@@ -5,23 +5,37 @@ name: Publish Edge
 # plus the edge channel of the linux binaries in the private R2 bucket (ship).
 # No git tag, no immutable R2 version, no GitHub release.
 #
-# An edge build reports the highest release tag as its version (v1.8.0 for
-# every build between the v1.8.0 and v1.8.1 releases). That is a plain vX.Y.Z,
-# so the "What's new" card, the update notice and new-account version seeding
-# behave exactly as on that release: the card for a line appears once a
-# release of it is cut, never before, and stays until each user dismisses it.
-# Builds stay distinguishable by their commit (VERSION_REF), which also keys
-# the client caches. A release that moves "latest" moves "edge" too
-# (publish-release.yml).
+# An edge build reports the GitHub release marked Latest as its version
+# (v1.8.0 for every build between the v1.8.0 and v1.8.1 releases;
+# .github/scripts/latest-release.sh). That is a plain vX.Y.Z, so the "What's
+# new" card, the update notice and new-account version seeding behave exactly
+# as on that release: the card for a line appears once a release of it is
+# cut, never before, and stays until each user dismisses it. Builds stay
+# distinguishable by their commit (VERSION_REF), which also keys the client
+# caches.
 #
-# A release cut while a build runs would leave that build stamped with the
-# previous version; it re-reads the tags before moving "edge" and stands down
-# when a newer release exists (the release has already moved "edge").
+# A release that moves "latest" dispatches this workflow on main as its last
+# step (publish-release.yml), so production gets the new version on main's
+# head, never on the release commit, which may be older than what production
+# already runs (and older than the migrations it applied). That dispatch
+# cancels a build in flight (same concurrency group); a build that still
+# reaches its publish step with a stale version re-reads the latest release
+# and stands down.
 
 on:
   push:
     branches:
       - main
+    # Pushes that change nothing in the binary or image publish nothing: each
+    # edge build has a new VERSION_REF, which makes every client drop its
+    # cached data and download it again. prompts/*.md are embedded, so they
+    # count.
+    paths:
+      - "**"
+      - "!docs/**"
+      - "!**.md"
+      - "prompts/**"
+      - "!.claude/**"
   workflow_dispatch:
 
 concurrency:
@@ -49,17 +63,16 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Test the release-tag helper
-        run: sh .github/scripts/highest-release-tag_test.sh
+      - name: Test the latest-release helper
+        run: sh .github/scripts/latest-release_test.sh
 
-      # All tags, not only ancestors of main: a hotfix released from a
-      # release/* branch counts. `dev` when the repository has no release.
       - name: Resolve
         id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           SHA="$(git rev-parse HEAD)"
-          VERSION="$(git ls-remote --tags --refs origin | sh .github/scripts/highest-release-tag.sh)"
-          VERSION="${VERSION:-dev}"
+          VERSION="$(sh .github/scripts/latest-release.sh)"
           echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Publishing edge from ${SHA} as ${VERSION}" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -106,12 +119,13 @@ jobs:
 
       - name: Move the edge tag
         env:
+          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.resolve.outputs.version }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          NOW="$(git ls-remote --tags --refs origin | sh .github/scripts/highest-release-tag.sh)"
-          if [ "${NOW:-dev}" != "$VERSION" ]; then
-            echo "::notice::Release ${NOW} was cut during this ${VERSION} build; it has moved edge, leaving it alone."
+          NOW="$(sh .github/scripts/latest-release.sh)"
+          if [ "$NOW" != "$VERSION" ]; then
+            echo "::notice::The latest release is now ${NOW}, not the ${VERSION} this build was stamped with; leaving edge to the build the release dispatched."
             exit 0
           fi
           docker buildx imagetools create -t "${IMAGE}:edge" "${IMAGE}@${DIGEST}"
@@ -176,11 +190,12 @@ jobs:
           SHIP_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          GH_TOKEN: ${{ github.token }}
           EDGE_VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          NOW="$(git ls-remote --tags --refs origin | sh .github/scripts/highest-release-tag.sh)"
-          if [ "${NOW:-dev}" != "$EDGE_VERSION" ]; then
-            echo "::notice::Release ${NOW} was cut during this ${EDGE_VERSION} build; it has moved edge, leaving it alone."
+          NOW="$(sh .github/scripts/latest-release.sh)"
+          if [ "$NOW" != "$EDGE_VERSION" ]; then
+            echo "::notice::The latest release is now ${NOW}, not the ${EDGE_VERSION} this build was stamped with; leaving edge to the build the release dispatched."
             exit 0
           fi
           make ship-dist SHIP_SKIP_BUILD=1 VERSION=dev

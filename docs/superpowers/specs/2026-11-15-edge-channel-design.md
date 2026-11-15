@@ -112,3 +112,26 @@ and that a release moves it.
 - Sharing the build steps between Publish Dev and Publish Edge (reusable
   workflow or duplication).
 - The exact ship channel-name rule and its error messages.
+
+## Revision 1 (after the branch review)
+
+Wins over the sections above where they differ.
+
+- **Version = the GitHub release marked Latest**, not the highest tag
+  (`.github/scripts/latest-release.sh`; `dev` when there is no release, any
+  other failure fails the build). A tag whose release failed, or a release
+  published without `push_latest`, never becomes the edge version, so no
+  user can dismiss a card for a release that does not exist.
+- **Releases dispatch Publish Edge on `main`** as their last job (only with
+  `push_latest`) instead of tagging the release build `edge`. Edge is always
+  main's head: pointing it at the release commit could take production back
+  to older code than it runs (a hotfix of the newest line from `release/*`,
+  or a push that landed during the release) and below migrations it applied.
+  The dispatch cancels an in-flight edge build; the stand-down re-check stays
+  as a guard.
+- **Docs-only pushes publish nothing** (`docs/`, `.claude/`, Markdown outside
+  the embedded `prompts/`): every edge build changes `VERSION_REF`, and the
+  client cache buster is `VERSION+VERSION_REF`, so each one makes every
+  client drop and re-download its cached data.
+- A hotfix migration on `release/*` must be numbered above every migration
+  on `main` (CLAUDE.md, publish-release skill).

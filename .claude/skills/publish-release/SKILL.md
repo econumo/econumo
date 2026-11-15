@@ -100,11 +100,13 @@ gh workflow run publish-release.yml --ref main -f version=vX.Y.Z -f branch=relea
   `latest` only moves when the source branch is `main` or `release/*` AND the version is
   higher than every existing tag. For a hotfix of an older line, leave it off — the guard
   would reject it anyway. Leave it off for pre-releases/betas too.
-- `push_latest=true` also moves `edge` (image tag and R2 channel), which production runs:
-  production gets the release as soon as the build lands, and its users get the What's new
-  card for a new minor line. Production already ran this code as edge builds before the
-  release (`publish-edge.yml` publishes every push to `main`), so the release is the
-  version moment, not the first deploy. A hotfix of an older line never moves `edge`.
+- `push_latest=true` also dispatches Publish Edge on `main` as the workflow's last job, so
+  production (the `edge` channel, always main's head) rebuilds stamped with this version and
+  its users get the What's new card for a new minor line. Production already runs `main`, so
+  the release is the version moment, not the first deploy. A hotfix of the newest line from a
+  `release/*` branch therefore puts main's head on production, not the release branch, and a
+  hotfix migration must be numbered above every migration on `main`, which production has
+  already applied. Without `push_latest` the edge version does not change.
 - The workflow fails fast if the tag already exists.
 - Grab the run id (`gh run list --workflow=publish-release.yml --limit 1`) and watch it in the
   background: `gh run watch <run-id> --exit-status --interval 30` via a background Bash call.
