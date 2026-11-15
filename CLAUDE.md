@@ -2101,7 +2101,7 @@ data unreadable. Most are also asserted by the test suite.
   rows, so a deleted savings account with a balance but no row in the window still
   moves its money out of the everyday Balance.
 - **Budget debts** (`internal/debt`; spec `docs/superpowers/specs/2026-11-13-debts-on-elements-design.md`,
-  which replaced the budget-row model of the three earlier debt specs; migration `20261114000000`):
+  which replaced the budget-row model of the three earlier debt specs; migration `20261115000100`, IF NOT EXISTS throughout because unreleased builds created the same tables under five lower versions whose files are gone):
   a loan tracked on an expense element of a budget, deliberately NOT an account (in no account
   list, total or report) and NOT a budget row: the element keeps its plans, comments, spending,
   folder and position, so every folder, envelope and total reads as without debts. **A debt belongs
@@ -2171,7 +2171,7 @@ data unreadable. Most are also asserted by the test suite.
   the start day's payments: a payment dated on the start date is split forward and pays no due;
   it pays the interest owed for the time before the start first (a mortgage's interest
   adjustment), at most a full period's interest on the amount borrowed, and only the rest comes
-  off the balance (migration `20261113000000` dropped the splits stored under the earlier rule). The FIRST period is prorated by days: the window
+  off the balance. The FIRST period is prorated by days: the window
   of the first due after the start accrues a regular period's interest x (days from the start to
   that due / days of the full period ending on it); a window whose due is on or before the start
   accrues nothing, later ones a full period; the implied rate solves that same accrual
@@ -2304,9 +2304,7 @@ data unreadable. Most are also asserted by the test suite.
   `delete-debt` removes a debt, active or paid off, with its snapshots, splits and rate changes;
   plans and transactions are untouched.
   **The `debt` object on elements**: no debt rows exist (the `ElementDebt = 6` type is gone from the
-  wire, and migration `20261114000000` deleted every debt, its snapshots, splits and rate changes,
-  every type-6 element row with its plans and comments, and `debts_rules`: the feature was
-  unreleased). In a period an element shows **the debt in force in that period**: the active one,
+  wire; the debt-row shape never shipped). In a period an element shows **the debt in force in that period**: the active one,
   or a paid-off one whose first period (`PlanningBounds`) is not after it and whose end period is
   not before it (last year's budget shows the loan being paid then; an old debt that ended and a
   new one that started in the same period are both in force there, the newer is shown).
@@ -2381,9 +2379,7 @@ data unreadable. Most are also asserted by the test suite.
   details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
   start day (`planHint` `startDay`).
   **Rate changes** (`debts_rate_changes`: `debt_id` cascade, `effective_date`, `annual_rate` percent at
-  8 decimals, `payment`; unique `(debt_id, effective_date)`; migration `20261113000100`, and
-  `20261113000000` drops every stored split because a start-day payment now pays the interest before
-  the start first): a lender's new yearly rate and regular payment from a date. The rate in force on a
+  8 decimals, `payment`; unique `(debt_id, effective_date)`): a lender's new yearly rate and regular payment from a date. The rate in force on a
   day is the latest change on or before it, else the loan's implied rate (`model.WithRates`); the
   period rate is `annual/100/periods per year` (weekly 52, biweekly 26, monthly 12, quarterly 4,
   yearly 1), nominal per payment period (no semi-annual compounding). A window's interest is the
