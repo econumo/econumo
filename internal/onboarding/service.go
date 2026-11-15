@@ -1,9 +1,8 @@
 // Package onboarding holds the Day 0 setup writes the SPA's first-run flow
 // makes. Each write answers at once; when an AI provider is configured, a
 // background job then asks it which of the new accounts are savings accounts
-// (and, after an import, which icons fit the categories and accounts) and
-// which categories repay a loan (creating a debt for each), and applies the
-// answer.
+// (and, after an import, which icons fit the categories and accounts), and
+// applies the answer.
 package onboarding
 
 import (
@@ -120,12 +119,6 @@ var (
 		skipped:  "onboarding import review skipped",
 		panicked: "onboarding import review panicked",
 		failed:   "onboarding import review failed",
-	}
-	jobDebts = jobSpec{
-		timeout:  reviewTimeout,
-		skipped:  "onboarding debt detection skipped",
-		panicked: "onboarding debt detection panicked",
-		failed:   "onboarding debt detection failed",
 	}
 	jobIcons = jobSpec{
 		timeout:  reviewTimeout,

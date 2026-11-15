@@ -169,7 +169,14 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
           setFormKey((k) => k + 1)
         }
       })
-      .catch((err: unknown) => setError(apiErrorMessage(err)))
+      .catch((err: unknown) => {
+        setError(apiErrorMessage(err))
+        // the form built from the last load may predate another device's edit:
+        // saving it would send those facts back
+        if (!dirty.current) {
+          setEditDebt(null)
+        }
+      })
       .finally(() => setReloading(false))
   }, [debtId, fetchDebtForEdit])
 

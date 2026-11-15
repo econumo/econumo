@@ -770,6 +770,25 @@ it('a second visit to Settings shows the loader, not the previous form, while th
   expect(await within(panel).findByLabelText('Amount borrowed')).toHaveValue('1500')
 })
 
+it('a reload of Settings that fails hides the form it would replace, so stale facts cannot be saved', async () => {
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  await openSettings(user)
+  await user.click(screen.getByRole('tab', { name: 'Overview' }))
+  server.use(
+    http.get('*/api/v1/debt/get-debt', () =>
+      HttpResponse.json({ success: false, message: 'Something went wrong', code: 0, errors: {} }, { status: 400 }),
+    ),
+  )
+
+  await user.click(screen.getByRole('tab', { name: 'Settings' }))
+
+  expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
+  const panel = screen.getByRole('tabpanel', { name: 'Settings' })
+  expect(within(panel).queryByLabelText('Amount borrowed')).toBeNull()
+})
+
 it('a delete the server accepts closes the screen without a second question', async () => {
   const bodies: Record<string, unknown>[] = []
   server.use(

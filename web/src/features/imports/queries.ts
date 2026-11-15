@@ -323,7 +323,7 @@ export function useReimportImportLink() {
     meta: { handlesOwnErrors: true },
     mutationFn: importsApi.reimportLink,
     onSuccess: (res) => {
-      for (const key of [['importRun'], ['importSourceHistory'], queryKeys.importQueue, queryKeys.importSources, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetTransactions]) {
+      for (const key of [['importRun'], ['importSourceHistory'], queryKeys.importQueue, queryKeys.importSources, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetTransactions, queryKeys.debts]) {
         void queryClient.invalidateQueries({ queryKey: key })
       }
       trackEvent(METRICS.IMPORT_REIMPORT, { status: res.status })
