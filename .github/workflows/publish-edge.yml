@@ -166,20 +166,22 @@ jobs:
       - name: Set up ship
         uses: dmtrkzntsv/ship@v0
 
-      # The channel only (the Makefile's default VERSION=dev publishes no
-      # immutable version), so edge builds never count against the versions
-      # ship keeps.
+      # The channel only: VERSION=dev publishes no immutable version, so edge
+      # builds never count against the versions ship keeps. It is passed on the
+      # command line, and the stamped version is not named VERSION, because the
+      # Makefile's `VERSION ?= dev` would take an environment VERSION and
+      # publish an immutable v1.8.0 holding an edge build.
       - name: Publish edge channel to R2
         env:
           SHIP_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          VERSION: ${{ needs.resolve.outputs.version }}
+          EDGE_VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           NOW="$(git ls-remote --tags --refs origin | sh .github/scripts/highest-release-tag.sh)"
-          if [ "${NOW:-dev}" != "$VERSION" ]; then
-            echo "::notice::Release ${NOW} was cut during this ${VERSION} build; it has moved edge, leaving it alone."
+          if [ "${NOW:-dev}" != "$EDGE_VERSION" ]; then
+            echo "::notice::Release ${NOW} was cut during this ${EDGE_VERSION} build; it has moved edge, leaving it alone."
             exit 0
           fi
-          make ship-dist SHIP_SKIP_BUILD=1
-          make ship-publish CHANNELS=edge
+          make ship-dist SHIP_SKIP_BUILD=1 VERSION=dev
+          make ship-publish VERSION=dev CHANNELS=edge
