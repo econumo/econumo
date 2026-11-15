@@ -849,10 +849,7 @@
     },
     "suggestions": {
       "dismiss": "Verwerfen",
-      "hint": "KI-vorgeschlagene Regeln für Ihre letzten Importe. Tippen Sie auf eine, um sie zu prüfen und zu speichern.",
-      "set_both": "Kategorie {category}, Empfänger {payee} setzen",
-      "set_category": "Kategorie {category} setzen",
-      "set_payee": "Empfänger {payee} setzen",
+      "hint": "KI-vorgeschlagene Regeln für automatisch importierte Transaktionen. Tippen Sie auf eine, um sie zu prüfen und zu speichern.",
       "prompt_summary": "Vorgeschlagen für {count} Transaktion | Vorgeschlagen für {count} Transaktionen",
       "transactions": "{count} Transaktion | {count} Transaktionen"
     }

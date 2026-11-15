@@ -849,10 +849,7 @@
     },
     "suggestions": {
       "dismiss": "忽略",
-      "hint": "AI 为你最近的导入建议的规则。点按某条规则即可查看并保存。",
-      "set_both": "设置分类 {category}，收款方 {payee}",
-      "set_category": "设置分类 {category}",
-      "set_payee": "设置收款方 {payee}",
+      "hint": "AI 为自动导入的交易建议的规则。点按某条规则即可查看并保存。",
       "prompt_summary": "建议用于 {count} 笔交易 | 建议用于 {count} 笔交易",
       "transactions": "{count} 笔交易 | {count} 笔交易"
     }

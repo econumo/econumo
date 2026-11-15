@@ -849,10 +849,7 @@
     },
     "suggestions": {
       "dismiss": "Ignorer",
-      "hint": "Règles suggérées par l'IA pour vos imports récents. Touchez-en une pour la vérifier et l'enregistrer.",
-      "set_both": "Définir la catégorie {category}, le bénéficiaire {payee}",
-      "set_category": "Définir la catégorie {category}",
-      "set_payee": "Définir le bénéficiaire {payee}",
+      "hint": "Règles suggérées par l'IA pour les transactions importées automatiquement. Touchez-en une pour la vérifier et l'enregistrer.",
       "prompt_summary": "Suggérée pour {count} transaction | Suggérée pour {count} transactions",
       "transactions": "{count} transaction | {count} transactions"
     }

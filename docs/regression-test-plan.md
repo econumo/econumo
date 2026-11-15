@@ -978,9 +978,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       a row to the Inbox's collapsed Skipped section, Restore brings it back.
 - [ ] Inbox's Suggested rules section 📱 (server with `ECONUMO_AI_DSN`, after new
       imported transactions): under the section title a muted hint reads "AI-suggested rules for
-      your recent imports. Tap one to review and save it."; each row reads as a rule: `Payee contains "<text>"`
-      (`Description contains` for a description match), "Set category <c>, payee <p>" (or only
-      "Set category <c>" / "Set payee <p>") and "<n> transactions" (no amount or date).
+      automatically imported transactions. Tap one to review and save it."; each row shows the
+      match text, "→ <category> · <payee>" (whichever is set) and "<n> transactions" (no amount or date).
       Dismiss removes the row and lowers the badge without a reload, and is disabled
       offline. Tapping a row opens "Create an import rule" reading "Suggested for <n>
       transactions" with the payee/description match, category and payee prefilled and
