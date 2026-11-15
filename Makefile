@@ -305,6 +305,11 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 #   make ship-publish VERSION=v1.2.3 CHANNELS=latest  # immutable version (+ channels)
 #   make ship-dist && make ship-publish CHANNELS=dev  # the moving dev channel only
 #
+# Channels: `latest` (newest release), `dev` (manual, any branch) and `edge`
+# (main's head, published by .github/workflows/publish-edge.yml on every push
+# to main and on every release of the newest version). ship accepts any channel
+# name.
+#
 # ship-dist runs release-binaries and stages the flat folder ship expects in
 # dist/ship/: econumo-linux-{amd64,arm64}, econumo.service and
 # econumo.env.example, nothing else (release-out/ also carries the GitHub
@@ -315,7 +320,7 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 # ship-publish does not build. VERSION=dev (the default) publishes no
 # immutable version, only the channels; any other VERSION is published as an
 # immutable version, refused if it already exists with different files.
-# CHANNELS is a comma-separated subset of latest,dev. Credentials come from
+# CHANNELS is a comma-separated list of channel names. Credentials come from
 # ship's config file or SHIP_R2_ENDPOINT, SHIP_R2_ACCESS_KEY_ID and
 # SHIP_R2_SECRET_ACCESS_KEY (Read & Write token); the bucket defaults to `ship`.
 #
