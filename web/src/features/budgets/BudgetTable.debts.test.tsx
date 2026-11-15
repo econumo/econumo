@@ -40,6 +40,16 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
+it('the debt line sits inside the highlighted row container, with the name line', () => {
+  renderTable((b) => {
+    food(b).debt = fixtureElementDebt()
+  })
+  const container = screen.getByTestId('element-row-cat-food')
+  expect(container).toHaveClass('hover:bg-accent/50')
+  expect(container).toContainElement(screen.getByTestId('element-debt-line'))
+  expect(container).toContainElement(within(container).getAllByTestId('cell-budgeted')[0])
+})
+
 it('a category carrying a debt keeps its own columns and adds a quiet debt line', async () => {
   renderTable((b) => {
     food(b).debt = fixtureElementDebt()

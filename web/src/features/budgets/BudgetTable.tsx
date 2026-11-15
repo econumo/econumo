@@ -328,40 +328,42 @@ function ElementRow({
 
   const row = (
     <div className="flex flex-col" data-testid={`element-${element.id}`}>
-      <div
-        className={`${LINE} relative rounded-md hover:bg-accent/50 ${isUncategorized ? `${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground` : `${ROW_INDENT[level]} min-h-10 py-1.5`}`}
-      >
-        {expandable ? (
-          <button
-            type="button"
-            className={`${NAME_COL} text-left`}
-            aria-expanded={unfolded}
-            title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
-            onClick={() => toggleElement(element.id)}
-          >
-            {name}
-          </button>
-        ) : (
-          // a folder line's chevron-to-name gap, so the name lines up with the folders'
-          <span className={`${NAME_COL} ${isUncategorized ? 'gap-1.5!' : ''}`}>{name}</span>
-        )}
-        <RowMenu name={displayName} actions={extras.rowMenu?.(element)} />
-        {budgetCell}
-        <span data-testid="cell-spent" className={`${SECOND_COL} ${size}`}>
-          {spentCell({ id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId }, element.spent, overspent)}
-        </span>
-        <span data-testid="cell-available" className={`${THIRD_COL} ${size} ${blank ? 'text-muted-foreground' : ''}`}>
-          {blank ? <Dash /> : <AvailablePill available={available} currency={currency} />}
-        </span>
-        {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
-        {extras.envelopeHeadDrop && isEnvelopeType(element.type) && !unfolded ? extras.envelopeHeadDrop(element) : null}
-      </div>
-      {/* under the name, past the chevron and icon, so it reads as part of the row */}
-      {showsDebtLine(element.debt, canPlanDebts) ? (
-        <div className={ROW_INDENT[level]}>
-          <ElementDebtLine debt={element.debt} canPlan={canPlanDebts} className="-mt-1.5 pr-2.5 pb-1.5 pl-14" />
+      <div data-testid={`element-row-${element.id}`} className="relative rounded-md hover:bg-accent/50">
+        <div
+          className={`${LINE} relative ${isUncategorized ? `${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground` : `${ROW_INDENT[level]} min-h-10 py-1.5`}`}
+        >
+          {expandable ? (
+            <button
+              type="button"
+              className={`${NAME_COL} text-left`}
+              aria-expanded={unfolded}
+              title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
+              onClick={() => toggleElement(element.id)}
+            >
+              {name}
+            </button>
+          ) : (
+            // a folder line's chevron-to-name gap, so the name lines up with the folders'
+            <span className={`${NAME_COL} ${isUncategorized ? 'gap-1.5!' : ''}`}>{name}</span>
+          )}
+          <RowMenu name={displayName} actions={extras.rowMenu?.(element)} />
+          {budgetCell}
+          <span data-testid="cell-spent" className={`${SECOND_COL} ${size}`}>
+            {spentCell({ id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId }, element.spent, overspent)}
+          </span>
+          <span data-testid="cell-available" className={`${THIRD_COL} ${size} ${blank ? 'text-muted-foreground' : ''}`}>
+            {blank ? <Dash /> : <AvailablePill available={available} currency={currency} />}
+          </span>
+          {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
+          {extras.envelopeHeadDrop && isEnvelopeType(element.type) && !unfolded ? extras.envelopeHeadDrop(element) : null}
         </div>
-      ) : null}
+        {/* under the name, past the chevron and icon, so it reads as part of the row */}
+        {showsDebtLine(element.debt, canPlanDebts) ? (
+          <div className={ROW_INDENT[level]}>
+            <ElementDebtLine debt={element.debt} canPlan={canPlanDebts} className="-mt-1.5 pr-2.5 pb-1.5 pl-14" />
+          </div>
+        ) : null}
+      </div>
       {expandable && unfolded ? (extras.wrapChildren ? extras.wrapChildren(element, childList) : childList) : null}
     </div>
   )
