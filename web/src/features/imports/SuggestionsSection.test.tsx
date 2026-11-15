@@ -44,15 +44,24 @@ beforeEach(() => {
   vi.mocked(trackEvent).mockClear()
 })
 
-it('renders one row per suggestion with names and count', async () => {
-  renderSection([suggestion(), suggestion({ id: 'sg2', matchText: 'WHOLE FOODS', payeeId: '', transactions: suggestion().transactions.slice(0, 1) })])
-  expect(await screen.findByText('BLUE BOTTLE')).toBeInTheDocument()
-  expect(screen.getByText('WHOLE FOODS')).toBeInTheDocument()
-  expect(await screen.findByText(`→ ${category.name} · ${payee.name}`)).toBeInTheDocument()
-  expect(screen.getByText(`→ ${category.name}`)).toBeInTheDocument()
-  expect(screen.getByText(/3 transactions/)).toBeInTheDocument()
-  expect(screen.getByText(/1 transaction ·/)).toBeInTheDocument()
-  expect(screen.getAllByText(/4\.75 USD/)).toHaveLength(2)
+it('renders each suggestion as a rule with what it sets and the count only', async () => {
+  renderSection([
+    suggestion(),
+    suggestion({ id: 'sg2', matchField: 'description', matchText: 'WHOLE FOODS', payeeId: '', transactions: suggestion().transactions.slice(0, 1) }),
+    suggestion({ id: 'sg3', matchText: 'AMAZON', categoryId: '', transactions: suggestion().transactions.slice(0, 2) }),
+  ])
+  expect(await screen.findByText('Payee contains "BLUE BOTTLE"')).toBeInTheDocument()
+  expect(screen.getByText('Description contains "WHOLE FOODS"')).toBeInTheDocument()
+  expect(screen.getByText('Payee contains "AMAZON"')).toBeInTheDocument()
+  expect(await screen.findByText(`Set category ${category.name}, payee ${payee.name}`)).toBeInTheDocument()
+  expect(screen.getByText(`Set category ${category.name}`)).toBeInTheDocument()
+  expect(screen.getByText(`Set payee ${payee.name}`)).toBeInTheDocument()
+  expect(screen.getByText('3 transactions')).toBeInTheDocument()
+  expect(screen.getByText('2 transactions')).toBeInTheDocument()
+  expect(screen.getByText('1 transaction')).toBeInTheDocument()
+  expect(screen.queryByText(/USD/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/2026/)).not.toBeInTheDocument()
+  expect(screen.getByText('AI-suggested rules for your recent imports. Tap one to review and save it.')).toBeInTheDocument()
 })
 
 it('dismiss removes the row and fires the metric', async () => {
@@ -68,15 +77,15 @@ it('dismiss removes the row and fires the metric', async () => {
   )
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Dismiss BLUE BOTTLE' }))
-  await waitFor(() => expect(screen.queryByText('BLUE BOTTLE')).not.toBeInTheDocument())
-  expect(screen.getByText('WHOLE FOODS')).toBeInTheDocument()
+  await waitFor(() => expect(screen.queryByText('Payee contains "BLUE BOTTLE"')).not.toBeInTheDocument())
+  expect(screen.getByText('Payee contains "WHOLE FOODS"')).toBeInTheDocument()
   expect(dismissed).toEqual([{ id: 'sg1' }])
   expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_DISMISS)
 })
 
 it('dismiss is disabled offline', async () => {
   renderSection([suggestion()])
-  await screen.findByText('BLUE BOTTLE')
+  await screen.findByText('Payee contains "BLUE BOTTLE"')
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   await waitFor(() => expect(screen.getByRole('button', { name: 'Dismiss BLUE BOTTLE' })).toBeDisabled())
@@ -85,6 +94,6 @@ it('dismiss is disabled offline', async () => {
 it('tapping a row opens the rule prompt in suggestion mode', async () => {
   renderSection([suggestion()])
   const user = userEvent.setup()
-  await user.click(await screen.findByText('BLUE BOTTLE'))
+  await user.click(await screen.findByText('Payee contains "BLUE BOTTLE"'))
   expect(useUiStore.getState().rulePrompt).toEqual({ kind: 'suggestion', suggestion: suggestion() })
 })

@@ -849,6 +849,10 @@
     },
     "suggestions": {
       "dismiss": "Dismiss",
+      "hint": "AI-suggested rules for your recent imports. Tap one to review and save it.",
+      "set_both": "Set category {category}, payee {payee}",
+      "set_category": "Set category {category}",
+      "set_payee": "Set payee {payee}",
       "prompt_summary": "Suggested for {count} transaction | Suggested for {count} transactions",
       "transactions": "{count} transaction | {count} transactions"
     }

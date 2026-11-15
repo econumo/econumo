@@ -849,6 +849,10 @@
     },
     "suggestions": {
       "dismiss": "Descartar",
+      "hint": "Reglas sugeridas por la IA para tus importaciones recientes. Toca una para revisarla y guardarla.",
+      "set_both": "Asignar categoría {category}, beneficiario {payee}",
+      "set_category": "Asignar categoría {category}",
+      "set_payee": "Asignar beneficiario {payee}",
       "prompt_summary": "Sugerida para {count} transacción | Sugerida para {count} transacciones",
       "transactions": "{count} transacción | {count} transacciones"
     }

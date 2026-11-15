@@ -849,6 +849,10 @@
     },
     "suggestions": {
       "dismiss": "Ignora",
+      "hint": "Regole suggerite dall'IA per le tue importazioni recenti. Tocca una regola per rivederla e salvarla.",
+      "set_both": "Imposta categoria {category}, beneficiario {payee}",
+      "set_category": "Imposta categoria {category}",
+      "set_payee": "Imposta beneficiario {payee}",
       "prompt_summary": "Suggerita per {count} transazione | Suggerita per {count} transazioni",
       "transactions": "{count} transazione | {count} transazioni"
     }

@@ -849,6 +849,10 @@
     },
     "suggestions": {
       "dismiss": "Odrzuć",
+      "hint": "Reguły zasugerowane przez AI dla Twoich ostatnich importów. Dotknij reguły, aby ją przejrzeć i zapisać.",
+      "set_both": "Ustaw kategorię {category}, odbiorcę {payee}",
+      "set_category": "Ustaw kategorię {category}",
+      "set_payee": "Ustaw odbiorcę {payee}",
       "prompt_summary": "Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji",
       "transactions": "{count} transakcja | {count} transakcje | {count} transakcji"
     }
