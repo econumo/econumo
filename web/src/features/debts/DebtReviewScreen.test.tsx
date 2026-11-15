@@ -1084,6 +1084,32 @@ it('the Balance tab explains Econumo\'s balance, in the short form for a return-
   expect(within(none).getByTestId('debt-balance-hint')).toHaveTextContent('What you still owe as Econumo counts it: the amount borrowed less the payments you recorded.')
 })
 
+it('without a statement the card says so, and Cancel collapses the form', async () => {
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+  expect(within(panel).getByTestId('debt-balance-no-statement')).toHaveTextContent("No statement yet. Compare with your lender's statement every few months.")
+  expect(within(panel).queryByLabelText('Statement balance')).toBeNull()
+  await user.click(within(panel).getByRole('button', { name: 'Enter a statement' }))
+  expect(within(panel).getByLabelText('Statement balance')).toBeInTheDocument()
+  await user.click(within(panel).getByRole('button', { name: 'Cancel' }))
+  expect(within(panel).queryByLabelText('Statement balance')).toBeNull()
+})
+
+it('with a statement the card holds the last statement and no no-statement line', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(withStatement)))
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+  const card = within(panel).getByTestId('debt-balance-card')
+  expect(card).toHaveTextContent('Last statement')
+  expect(card).toHaveTextContent('-120.00 $')
+  expect(within(card).queryByTestId('debt-balance-no-statement')).toBeNull()
+  expect(within(card).getByRole('button', { name: 'Enter a statement' })).toBeInTheDocument()
+})
+
 it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', async () => {
   const bodies: Record<string, unknown>[] = []
   server.use(
@@ -1097,6 +1123,7 @@ it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', 
   await openScreen()
   const panel = await openBalance(user)
 
+  await user.click(within(panel).getByRole('button', { name: 'Enter a statement' }))
   await user.type(within(panel).getByLabelText('Statement balance'), '1 050')
   await user.click(within(panel).getByRole('button', { name: 'Statement date' }))
   await user.click(await screen.findByRole('button', { name: /November 2nd, 2026/ }))
@@ -1105,7 +1132,8 @@ it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', 
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toEqual({ id: 'd1', balance: '1050', balanceDate: '2026-11-02' })
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RECONCILE)
-  await waitFor(() => expect(within(panel).getByLabelText('Statement balance')).toHaveValue(''))
+  await waitFor(() => expect(within(panel).queryByLabelText('Statement balance')).toBeNull())
+  expect(within(panel).getByRole('button', { name: 'Enter a statement' })).toBeInTheDocument()
 })
 
 it('the statement date defaults to today and the calendar offers nothing up to the start date or after today', async () => {
@@ -1119,6 +1147,7 @@ it('the statement date defaults to today and the calendar offers nothing up to t
   await openScreen()
   const panel = await openBalance(user)
 
+  await user.click(within(panel).getByRole('button', { name: 'Enter a statement' }))
   expect(within(panel).getByRole('button', { name: 'Statement date' })).toHaveTextContent('Nov 8, 2026')
   await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
   expect(await within(panel).findByText('Required field')).toBeInTheDocument()
@@ -1417,7 +1446,7 @@ describe('a debt on an element', () => {
 
       expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
       await user.click(screen.getByRole('tab', { name: 'Balance' }))
-      expect(screen.queryByRole('button', { name: 'Reconcile' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Enter a statement' })).toBeNull()
       expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
     })
 

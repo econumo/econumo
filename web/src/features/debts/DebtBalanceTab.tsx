@@ -54,6 +54,7 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
   const reconcile = useReconcileDebt()
   const deleteReconciliation = useDeleteDebtReconciliation()
   const today = formatDate(new Date())
+  const [formOpen, setFormOpen] = useState(false)
   const [balance, setBalance] = useState('')
   const [date, setDate] = useState(today)
   const [errors, setErrors] = useState<{ balance?: string; date?: string }>({})
@@ -62,6 +63,14 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
 
   const statements = snapshots.filter((s) => s.isOrigin !== 1)
   const latest = statements.length > 0 ? statements.reduce((a, b) => (b.asOf >= a.asOf ? b : a)) : null
+
+  const closeForm = () => {
+    setFormOpen(false)
+    setBalance('')
+    setDate(today)
+    setErrors({})
+    setServerError(null)
+  }
 
   const submit = async () => {
     setServerError(null)
@@ -76,8 +85,7 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
     }
     try {
       await reconcile.mutateAsync({ id: item.id, balance: plainAmount(balance) ?? balance.trim(), balanceDate: date })
-      setBalance('')
-      setDate(today)
+      closeForm()
     } catch (err) {
       const named = { balance: apiFieldErrors(err, 'balance')?.[0], date: apiFieldErrors(err, 'balanceDate')?.[0] }
       setErrors(named)
@@ -90,75 +98,87 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
   return (
     <div className="flex flex-col gap-5">
       {readOnly ? null : <OfflineNotice />}
-      <div className="rounded-lg bg-econumo-card px-4 py-1.5">
-      <dl data-testid="debt-balance-summary" className="divide-y divide-border">
-        <Row label={t('debts.balance.econumo')}>{amount(item.currentBalance)}</Row>
-        {latest ? (
-          <>
-            <Row label={t('debts.balance.last_statement')}>{t('debts.balance.statement_on', { amount: amount(latest.balance), date: debtDay(latest.asOf, lang) })}</Row>
-            {paidOffMark(latest) ? null : <Row label={t('debts.balance.difference')}>{amount(statementDifference(latest))}</Row>}
-          </>
-        ) : null}
-      </dl>
-      <p data-testid="debt-balance-hint" className="pb-1.5 pt-1 text-sm text-muted-foreground">
-        {t(isNoFixed(item.schedule) ? 'debts.balance.econumo_hint_none' : 'debts.balance.econumo_hint')}
-      </p>
-      </div>
-
-      {readOnly ? null : (
-        <section aria-labelledby={`${formId}-title`} className="flex flex-col gap-3">
-          <h3 id={`${formId}-title`} className="text-sm uppercase tracking-wide text-muted-foreground">
-            {t('debts.balance.form.title')}
-          </h3>
-          <p className="text-sm text-muted-foreground">{t('debts.balance.form.hint')}</p>
-          <form
-            className="flex flex-col gap-3"
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault()
-              void submit()
-            }}
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-              <div className="min-w-0 flex-1">
-                <AmountField
-                  id={`${formId}-balance`}
-                  label={t('debts.balance.form.balance')}
-                  value={balance}
-                  symbol={currency?.symbol ?? ''}
-                  error={errors.balance}
-                  echo={amountEcho(balance, currency)}
-                  onChange={(value) => {
-                    setErrors((prev) => ({ ...prev, balance: undefined }))
-                    setBalance(value)
-                  }}
-                />
-              </div>
-              <DateField
-                label={t('debts.balance.form.date')}
-                value={date}
-                min={item.startDate ? shiftDay(item.startDate, 1) : undefined}
-                max={today}
-                error={errors.date}
-                onChange={(day) => {
-                  setErrors((prev) => ({ ...prev, date: undefined }))
-                  setDate(day)
+      <div data-testid="debt-balance-card" className="rounded-lg bg-econumo-card px-4 py-1.5">
+        <dl data-testid="debt-balance-summary" className="divide-y divide-border">
+          <div>
+            <Row label={t('debts.balance.econumo')}>{amount(item.currentBalance)}</Row>
+            <p data-testid="debt-balance-hint" className="pb-1.5 text-sm text-muted-foreground">
+              {t(isNoFixed(item.schedule) ? 'debts.balance.econumo_hint_none' : 'debts.balance.econumo_hint')}
+            </p>
+          </div>
+          {latest ? (
+            <>
+              <Row label={t('debts.balance.last_statement')}>{t('debts.balance.statement_on', { amount: amount(latest.balance), date: debtDay(latest.asOf, lang) })}</Row>
+              {paidOffMark(latest) ? null : <Row label={t('debts.balance.difference')}>{amount(statementDifference(latest))}</Row>}
+            </>
+          ) : null}
+        </dl>
+        {latest ? null : (
+          <p data-testid="debt-balance-no-statement" className="pb-1.5 pt-1 text-sm text-muted-foreground">
+            {t('debts.balance.no_statement')}
+          </p>
+        )}
+        {readOnly ? null : formOpen ? (
+          <section aria-label={t('debts.balance.enter')} className="flex flex-col gap-3 border-t border-border py-3">
+            <p className="text-sm text-muted-foreground">{t('debts.balance.form.hint')}</p>
+            <form
+          className="flex flex-col gap-3"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            void submit()
+          }}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="min-w-0 flex-1">
+              <AmountField
+                id={`${formId}-balance`}
+                label={t('debts.balance.form.balance')}
+                value={balance}
+                symbol={currency?.symbol ?? ''}
+                error={errors.balance}
+                echo={amountEcho(balance, currency)}
+                onChange={(value) => {
+                  setErrors((prev) => ({ ...prev, balance: undefined }))
+                  setBalance(value)
                 }}
               />
             </div>
-            {serverError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {serverError}
-              </p>
-            ) : null}
-            <div className="flex justify-end">
-              <Button type="submit" disabled={reconcile.isPending || !online}>
-                {t('debts.balance.form.save')}
-              </Button>
-            </div>
-          </form>
-        </section>
-      )}
+            <DateField
+              label={t('debts.balance.form.date')}
+              value={date}
+              min={item.startDate ? shiftDay(item.startDate, 1) : undefined}
+              max={today}
+              error={errors.date}
+              onChange={(day) => {
+                setErrors((prev) => ({ ...prev, date: undefined }))
+                setDate(day)
+              }}
+            />
+          </div>
+          {serverError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {serverError}
+            </p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={closeForm}>
+              {t('common.button.cancel.label')}
+            </Button>
+            <Button type="submit" disabled={reconcile.isPending || !online}>
+              {t('debts.balance.form.save')}
+            </Button>
+          </div>
+        </form>
+          </section>
+        ) : (
+          <div className="border-t border-border py-3">
+            <Button type="button" variant="secondary" disabled={!online} onClick={() => setFormOpen(true)}>
+              {t('debts.balance.enter')}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <section aria-labelledby={`${formId}-history`}>
         <h3 id={`${formId}-history`} className="mb-2 text-sm uppercase tracking-wide text-muted-foreground">

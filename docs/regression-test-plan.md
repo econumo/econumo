@@ -2705,21 +2705,23 @@ a second budget member account in USD, before running these.
       start date, or a start date after today shows the error next to its field. A partner who may plan
       edits the shared debt the same way.
 - [ ] 📱 **Balance tab** (set-up debts only; a debt not set up has no such
-      tab): Econumo's balance today, and once there is a statement "Last
-      statement X on date" with the difference (statement less Econumo's
-      figure for that date, e.g. -120.00). A muted hint under those figures
-      explains Econumo's balance (the amount borrowed less the recorded
-      payments, counted from the latest statement, to compare with the
-      lender's statement); a Return-by-a-date debt shows the shorter one
-      (the amount borrowed less the recorded payments). "Reconcile with a statement": a
-      statement balance and a statement date (today by default); an empty
-      balance is "Required field", a date on or before the start date shows
-      "Pick a date after the start date and no later than today. To change
-      what was borrowed, correct Amount borrowed in Settings." (the server
-      also refuses a date after today); the hint says the balance is the
-      principal still owed, interest since the last payment coming with the
-      next one; Reconcile writes it, the form empties, Owed now and
-      the history follow. Story: a loan started five years ago with monthly
+      tab): ONE card at the top: "Econumo's balance today" with a muted line
+      explaining it (the amount borrowed less the recorded payments, counted
+      from the latest statement, to compare with the lender's statement; a
+      Return-by-a-date debt shows the shorter line), then "Last statement X on
+      date" with the difference (statement less Econumo's figure for that
+      date, e.g. -120.00), or, with no statement yet, "No statement yet.
+      Compare with your lender's statement every few months." The card's
+      "Enter a statement" button (none for a guest, an archived budget or a
+      paid-off debt) expands the form inline: a statement balance and a
+      statement date (today by default); an empty balance is "Required field",
+      a date on or before the start date shows "Pick a date after the start
+      date and no later than today. To change what was borrowed, correct
+      Amount borrowed in Settings." (the server also refuses a date after
+      today); the hint says the balance is the principal still owed, interest
+      since the last payment coming with the next one; Cancel collapses it
+      unsaved; Reconcile writes it, the form collapses, and the card shows the
+      new statement and difference, Owed now and the history following. Story: a loan started five years ago with monthly
       dues and no payments entered: reconcile today with the statement
       balance; the Balance tab shows that balance as today's and the
       Overview "60 of N paid" with the amount borrowed less it as repaid.

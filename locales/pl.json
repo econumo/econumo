@@ -561,11 +561,12 @@
       "econumo": "Saldo w Econumo dziś",
       "econumo_hint": "Ile jeszcze jesteś winien według Econumo: pożyczona kwota minus to, co spłaciły zapisane płatności, liczone od ostatniego wyciągu, jeśli go wpisano. Porównaj to z wyciągiem od pożyczkodawcy.",
       "econumo_hint_none": "Ile jeszcze jesteś winien według Econumo: pożyczona kwota minus zapisane przez ciebie płatności.",
+      "enter": "Wpisz wyciąg",
+      "no_statement": "Brak wyciągu. Co kilka miesięcy porównuj z wyciągiem od pożyczkodawcy.",
       "last_statement": "Ostatni wyciąg",
       "statement_on": "{amount} z dnia {date}",
       "difference": "Różnica",
       "form": {
-        "title": "Uzgodnij z wyciągiem",
         "hint": "Wpisz kapitał pozostały do spłaty z wyciągu od pożyczkodawcy. Od jego daty Econumo liczy od niego, a raty należne do tego dnia liczą się jako zapłacone; odsetki od ostatniej płatności są naliczane przy następnej płatności, za pełny okres.",
         "balance": "Saldo z wyciągu",
         "date": "Data wyciągu",

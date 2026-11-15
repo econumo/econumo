@@ -561,11 +561,12 @@
       "econumo": "Saldo in Econumo heute",
       "econumo_hint": "Was Sie laut Econumo noch schulden: der geliehene Betrag abzüglich dessen, was Ihre erfassten Zahlungen getilgt haben, ab Ihrem letzten Kontoauszug gerechnet, falls Sie einen eingegeben haben. Vergleichen Sie ihn mit dem Kontoauszug Ihres Kreditgebers.",
       "econumo_hint_none": "Was Sie laut Econumo noch schulden: der geliehene Betrag abzüglich der von Ihnen erfassten Zahlungen.",
+      "enter": "Kontoauszug eingeben",
+      "no_statement": "Noch kein Kontoauszug. Vergleichen Sie alle paar Monate mit dem Kontoauszug Ihres Kreditgebers.",
       "last_statement": "Letzter Kontoauszug",
       "statement_on": "{amount} am {date}",
       "difference": "Differenz",
       "form": {
-        "title": "Mit einem Kontoauszug abgleichen",
         "hint": "Geben Sie die noch offene Restschuld laut Kontoauszug Ihres Kreditgebers ein. Ab seinem Datum rechnet Econumo damit, und die bis dahin fälligen Raten gelten als bezahlt; Zinsen seit der letzten Zahlung werden mit der nächsten Rate für eine volle Periode berechnet.",
         "balance": "Saldo laut Kontoauszug",
         "date": "Datum des Kontoauszugs",

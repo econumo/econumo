@@ -561,11 +561,12 @@
       "econumo": "Solde d'Econumo aujourd'hui",
       "econumo_hint": "Ce que vous devez encore selon Econumo : le montant emprunté moins ce que vos paiements enregistrés ont remboursé, compté à partir de votre dernier relevé si vous en avez saisi un. Comparez-le au relevé de votre prêteur.",
       "econumo_hint_none": "Ce que vous devez encore selon Econumo : le montant emprunté moins les paiements que vous avez enregistrés.",
+      "enter": "Saisir un relevé",
+      "no_statement": "Pas encore de relevé. Comparez avec le relevé de votre prêteur tous les quelques mois.",
       "last_statement": "Dernier relevé",
       "statement_on": "{amount} le {date}",
       "difference": "Écart",
       "form": {
-        "title": "Rapprocher avec un relevé",
         "hint": "Saisissez le capital restant dû indiqué sur le relevé de votre prêteur. À partir de sa date, Econumo compte à partir de lui, et les échéances jusqu'à cette date sont considérées comme payées ; les intérêts depuis le dernier paiement sont facturés à l'échéance suivante, pour une période complète.",
         "balance": "Solde du relevé",
         "date": "Date du relevé",
