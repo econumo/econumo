@@ -85,7 +85,8 @@ versions). A release from `main` auto-creates `release/vX.Y.Z` at the released
 commit as the base for future hotfixes; a hotfix dispatches from a new
 `release/*` branch copied by hand from the fixed version's branch, and the
 workflow then creates no branch. `latest` only moves for the highest version
-released so far. See `.claude/skills/publish-release` for the full process.
+released so far, and `edge` moves exactly when `latest` does. See
+`.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
 
 **R2 release (ship).** Both `make publish-dev` and the release workflow also

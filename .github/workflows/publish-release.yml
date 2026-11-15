@@ -11,7 +11,8 @@ name: Publish Release
 #   before dispatch (copied from the previous release branch of that line).
 # - Also pushes/moves "latest" only when push_latest is checked AND the source
 #   branch is main or release/* AND the version is the highest released so far
-#   (a hotfix to an old line can never move "latest").
+#   (a hotfix to an old line can never move "latest"). Whenever "latest"
+#   moves, "edge" (production's channel, see publish-edge.yml) moves with it.
 # - Also pushes/moves "dev" when push_dev is checked (any branch). Unlike
 #   `make publish-dev`, the UI version label is the release version, not "dev".
 # - The GitHub release's "Latest" badge follows push_latest, so an old-line
@@ -93,8 +94,10 @@ jobs:
             fi
           fi
           TAGS="${IMAGE}:${VERSION}"
+          # "edge" (production, publish-edge.yml) follows every release that
+          # moves "latest", so production gets it without waiting for a push.
           if [ "$PUSH_LATEST" = "true" ]; then
-            TAGS="${TAGS},${IMAGE}:latest"
+            TAGS="${TAGS},${IMAGE}:latest,${IMAGE}:edge"
           fi
           if [ "$PUSH_DEV" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:dev"
@@ -288,7 +291,7 @@ jobs:
           PUSH_DEV: ${{ github.event.inputs.push_dev }}
         run: |
           CHANNELS=""
-          if [ "$PUSH_LATEST" = "true" ]; then CHANNELS="latest"; fi
+          if [ "$PUSH_LATEST" = "true" ]; then CHANNELS="latest,edge"; fi
           if [ "$PUSH_DEV" = "true" ]; then CHANNELS="${CHANNELS:+$CHANNELS,}dev"; fi
           make -f .ship-tools/Makefile ship-dist SHIP_SKIP_BUILD=1 SHIP_TEMPLATES=.ship-tools/deploy/ship
           make -f .ship-tools/Makefile ship-publish VERSION="$VERSION" CHANNELS="$CHANNELS"
