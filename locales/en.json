@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Econumo's balance today",
+      "econumo_hint": "What you still owe as Econumo counts it: the amount borrowed less what your recorded payments paid off, counted from your latest statement if you entered one. Compare it with your lender's statement.",
+      "econumo_hint_none": "What you still owe as Econumo counts it: the amount borrowed less the payments you recorded.",
       "last_statement": "Last statement",
       "statement_on": "{amount} on {date}",
       "difference": "Difference",

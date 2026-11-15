@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Saldo in Econumo heute",
+      "econumo_hint": "Was Sie laut Econumo noch schulden: der geliehene Betrag abzüglich dessen, was Ihre erfassten Zahlungen getilgt haben, ab Ihrem letzten Kontoauszug gerechnet, falls Sie einen eingegeben haben. Vergleichen Sie ihn mit dem Kontoauszug Ihres Kreditgebers.",
+      "econumo_hint_none": "Was Sie laut Econumo noch schulden: der geliehene Betrag abzüglich der von Ihnen erfassten Zahlungen.",
       "last_statement": "Letzter Kontoauszug",
       "statement_on": "{amount} am {date}",
       "difference": "Differenz",

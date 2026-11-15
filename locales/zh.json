@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Econumo 今日余额",
+      "econumo_hint": "按 Econumo 计算你仍欠的金额：借款金额减去已记录还款所偿还的部分；若你输入过对账单，则从最近一份对账单起算。可与贷款方的对账单对照。",
+      "econumo_hint_none": "按 Econumo 计算你仍欠的金额：借款金额减去你已记录的还款。",
       "last_statement": "最近对账单",
       "statement_on": "{date} 为 {amount}",
       "difference": "差额",

@@ -1068,6 +1068,22 @@ it('the Balance tab shows Econumo today, the last statement and the difference, 
   expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Oct 31, 2026', '1,000.00 $', '1,120.00 $', '-120.00 $', ''])
 })
 
+it('the Balance tab explains Econumo\'s balance, in the short form for a return-by-a-date debt', async () => {
+  const user = userEvent.setup()
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(withStatement)))
+  const first = renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+  expect(within(panel).getByTestId('debt-balance-hint')).toHaveTextContent(/counted from your latest statement.*Compare it with your lender's statement\./)
+  first.unmount()
+
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...withStatement, item: { ...withStatement.item, schedule: 'none' } })))
+  renderScreen()
+  await openScreen()
+  const none = await openBalance(user)
+  expect(within(none).getByTestId('debt-balance-hint')).toHaveTextContent('What you still owe as Econumo counts it: the amount borrowed less the payments you recorded.')
+})
+
 it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', async () => {
   const bodies: Record<string, unknown>[] = []
   server.use(

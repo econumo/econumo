@@ -90,7 +90,8 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
   return (
     <div className="flex flex-col gap-5">
       {readOnly ? null : <OfflineNotice />}
-      <dl data-testid="debt-balance-summary" className="divide-y divide-border rounded-lg bg-econumo-card px-4 py-1.5">
+      <div className="rounded-lg bg-econumo-card px-4 py-1.5">
+      <dl data-testid="debt-balance-summary" className="divide-y divide-border">
         <Row label={t('debts.balance.econumo')}>{amount(item.currentBalance)}</Row>
         {latest ? (
           <>
@@ -99,6 +100,10 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
           </>
         ) : null}
       </dl>
+      <p data-testid="debt-balance-hint" className="pb-1.5 pt-1 text-sm text-muted-foreground">
+        {t(isNoFixed(item.schedule) ? 'debts.balance.econumo_hint_none' : 'debts.balance.econumo_hint')}
+      </p>
+      </div>
 
       {readOnly ? null : (
         <section aria-labelledby={`${formId}-title`} className="flex flex-col gap-3">

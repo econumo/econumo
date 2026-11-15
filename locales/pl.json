@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Saldo w Econumo dziś",
+      "econumo_hint": "Ile jeszcze jesteś winien według Econumo: pożyczona kwota minus to, co spłaciły zapisane płatności, liczone od ostatniego wyciągu, jeśli go wpisano. Porównaj to z wyciągiem od pożyczkodawcy.",
+      "econumo_hint_none": "Ile jeszcze jesteś winien według Econumo: pożyczona kwota minus zapisane przez ciebie płatności.",
       "last_statement": "Ostatni wyciąg",
       "statement_on": "{amount} z dnia {date}",
       "difference": "Różnica",

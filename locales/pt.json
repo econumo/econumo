@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Saldo no Econumo hoje",
+      "econumo_hint": "O que ainda deve segundo o Econumo: o montante do empréstimo menos o que os seus pagamentos registados amortizaram, contado a partir do último extrato, se introduziu algum. Compare-o com o extrato do seu credor.",
+      "econumo_hint_none": "O que ainda deve segundo o Econumo: o montante do empréstimo menos os pagamentos que registou.",
       "last_statement": "Último extrato",
       "statement_on": "{amount} a {date}",
       "difference": "Diferença",

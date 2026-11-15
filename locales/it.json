@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Saldo di Econumo oggi",
+      "econumo_hint": "Quanto devi ancora secondo Econumo: l'importo preso in prestito meno ciò che i tuoi pagamenti registrati hanno estinto, contato dall'ultimo estratto conto se ne hai inserito uno. Confrontalo con l'estratto conto del tuo finanziatore.",
+      "econumo_hint_none": "Quanto devi ancora secondo Econumo: l'importo preso in prestito meno i pagamenti che hai registrato.",
       "last_statement": "Ultimo estratto conto",
       "statement_on": "{amount} il {date}",
       "difference": "Differenza",

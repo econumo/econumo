@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Solde d'Econumo aujourd'hui",
+      "econumo_hint": "Ce que vous devez encore selon Econumo : le montant emprunté moins ce que vos paiements enregistrés ont remboursé, compté à partir de votre dernier relevé si vous en avez saisi un. Comparez-le au relevé de votre prêteur.",
+      "econumo_hint_none": "Ce que vous devez encore selon Econumo : le montant emprunté moins les paiements que vous avez enregistrés.",
       "last_statement": "Dernier relevé",
       "statement_on": "{amount} le {date}",
       "difference": "Écart",

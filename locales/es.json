@@ -559,6 +559,8 @@
     },
     "balance": {
       "econumo": "Saldo de Econumo hoy",
+      "econumo_hint": "Lo que aún debes según Econumo: el importe del préstamo menos lo que han amortizado tus pagos registrados, contado desde tu último extracto si introdujiste uno. Compáralo con el extracto de tu prestamista.",
+      "econumo_hint_none": "Lo que aún debes según Econumo: el importe del préstamo menos los pagos que registraste.",
       "last_statement": "Último extracto",
       "statement_on": "{amount} el {date}",
       "difference": "Diferencia",
