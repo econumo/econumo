@@ -414,6 +414,50 @@ func TestExchange_GlobalAppKeepsEarlierGrant(t *testing.T) {
 	}
 }
 
+func TestExchange_GlobalAppCapsGrantsPerUser(t *testing.T) {
+	s, creds, clock, user := newTestService(t)
+	cid := insertGlobalClient(t, s, clock.Now(), "https://claude.ai/api/mcp/auth_callback").String()
+	connect := func() model.TokenResponse {
+		t.Helper()
+		res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(cid))
+		if err != nil {
+			t.Fatal(err)
+		}
+		u, _ := url.Parse(res.RedirectURL)
+		tr, err := exchange(s, cid, u.Query().Get("code"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		clock.Advance(time.Minute)
+		return tr
+	}
+	first := connect()
+	second := connect()
+	for range MaxGlobalGrantsPerUser - 2 {
+		connect()
+	}
+	// The first connection is used again, so the second is now the stalest.
+	first, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: first.RefreshToken})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock.Advance(time.Minute)
+	connect()
+
+	grants, _ := s.repo.ListUnrevokedGrants(ctx, user)
+	if len(grants) != MaxGlobalGrantsPerUser {
+		t.Fatalf("grants = %d, want the cap %d", len(grants), MaxGlobalGrantsPerUser)
+	}
+	if len(creds.revoked) != 1 {
+		t.Fatalf("exactly the retired grant's tokens are revoked: %v", creds.revoked)
+	}
+	_, err = s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: second.RefreshToken})
+	wantOAuth(t, err, "invalid_grant")
+	if _, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: first.RefreshToken}); err != nil {
+		t.Fatalf("the recently used connection must survive: %v", err)
+	}
+}
+
 func TestExchange_HousekeepingPurgesDeadOAuthTokens(t *testing.T) {
 	s, creds, clock, user := newTestService(t)
 	cid, code := approve(t, s, user)

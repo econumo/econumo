@@ -20,9 +20,12 @@ const (
 	// MaxUnusedClients bounds what anonymous registration can store, about 20 MB at
 	// the metadata limits. The oldest make room rather than the endpoint refusing, so
 	// a flood cannot lock out a client that is about to be approved.
-	MaxUnusedClients     = 1000
-	DeadRetention        = 30 * 24 * time.Hour
-	HousekeepingInterval = 10 * time.Minute
+	MaxUnusedClients = 1000
+	// MaxGlobalGrantsPerUser bounds one user's live connections to one global
+	// app, which approve and exchange could otherwise add without limit.
+	MaxGlobalGrantsPerUser = 10
+	DeadRetention          = 30 * 24 * time.Hour
+	HousekeepingInterval   = 10 * time.Minute
 )
 
 type Service struct {

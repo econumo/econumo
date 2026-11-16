@@ -173,7 +173,8 @@ is `internal/test/mcpparity/`.
 - Access tokens are `eco_oat_` rows, fixed 1 h; refresh tokens rotate, a replay of an old one
   revokes the grant (the most recent one within 60 s is only refused). A new code exchange
   replaces the user's other grants for that client, except for a global app, whose grants
-  for one user coexist (two Claude accounts on one Econumo account).
+  for one user coexist (two Claude accounts on one Econumo account) up to
+  `MaxGlobalGrantsPerUser`, beyond which the least recently used one is revoked.
 - A self-registered app belongs to its first approver (`authserver.app_not_yours` for anyone
   else, checked before the redirect URI); global apps come from the CLI's `app:register`.
 - The reclaim (`reset-password`, `user:change-password`) and `user:deactivate` revoke every
