@@ -348,7 +348,7 @@ describe('icon suggestions', () => {
     await user.type(input, 'Salary')
     await waitFor(() => expect(asked).toEqual(['Mortgage', 'Salary']), { timeout: 3000 })
     await user.click(screen.getByRole('button', { name: 'Save and continue' }))
-    expect(submitted(onContinue).find((r) => r.name === 'Salary')).toMatchObject({ icon: 'home' })
+    expect(submitted(onContinue).find((r) => r.name === 'Salary')).toMatchObject({ icon: 'star' })
   })
 
   it('a renamed default asks for its new name', async () => {
