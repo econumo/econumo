@@ -12,8 +12,11 @@ const unique = Array.from(new Set(icons))
 // carousel picker shows the whole catalogue.
 export const availableIcons = unique
 
-export const defaultAccountIcon = availableIcons[0]
+// Neutral on purpose: a new item shows it until the user or an icon suggestion
+// picks a real one, so it must not read as a wrong guess (the catalogue's
+// first entry, a house, did).
+export const defaultAccountIcon = 'credit_card'
 
-export const defaultCategoryIcon = availableIcons[0]
+export const defaultCategoryIcon = 'star'
 
-export const defaultEnvelopeIcon = availableIcons[0]
+export const defaultEnvelopeIcon = 'star'

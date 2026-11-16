@@ -312,7 +312,7 @@ type categoryIconFacts struct {
 // create-time default and the icons the CSV import gives what it creates. Only
 // such items get an AI icon; an icon the user picked is never replaced.
 var (
-	repaintableCategory = map[string]bool{model.DefaultIcon: true, model.ImportCategoryIcon: true}
+	repaintableCategory = map[string]bool{model.DefaultIcon: true, model.LegacyDefaultIcon: true, model.ImportCategoryIcon: true}
 	repaintableAccount  = map[string]bool{model.ImportAccountIcon: true}
 )
 

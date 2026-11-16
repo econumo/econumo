@@ -30,7 +30,11 @@ const (
 )
 
 // DefaultIcon is the create-time fallback icon used when none is provided.
-const DefaultIcon = "local_offer"
+const DefaultIcon = "star"
+
+// LegacyDefaultIcon was DefaultIcon before it became a neutral star; categories
+// created with it still count as having no chosen icon.
+const LegacyDefaultIcon = "local_offer"
 
 // ImportCategoryIcon is the icon the CSV import gives the categories it creates.
 const ImportCategoryIcon = "category"

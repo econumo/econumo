@@ -346,7 +346,9 @@ navigation (single-pane vs sidebar).
       every account is archived and no new row has a name. A user with no accounts starts with one row named "Cash" (cash
       icon, blank balance saved as 0, the default currency) that
       can be renamed or removed like any row; a user who already has accounts,
-      or resumes a draft with rows, gets no Cash row. Under the Currencies
+      or resumes a draft with rows, gets no Cash row. Each row's currency chip
+      changes that row only: with several rows, picking a currency on the
+      first one leaves the other rows and the "· Main" chip unchanged. Under the Currencies
       label a hint reads "Select the currencies you use most often. You can
       add more later in Settings." above the currency chips. No note about missing exchange rates appears.
 - [ ] 📱 Accounts after a CSV import (accounts arrive in the instance base
@@ -354,10 +356,11 @@ navigation (single-pane vs sidebar).
       opens the currency list, and its balance is an input prefilled with the
       current balance (to the currency's decimals, in the UI language's
       number format); its name stays read-only and an archived one shows
-      "Archived" with no chip or input. Changing the FIRST row's currency also
-      moves every row whose currency was not changed by hand (other imported
-      accounts and new rows) and the main currency; changing another row moves
-      only that row. Save and continue sends the changed existing accounts as
+      "Archived" with no chip or input. Changing any row's currency, the first
+      included, moves only that row: other accounts, new rows and the main
+      currency stay as they were (a currency no longer used by any account
+      stays in the chips; "+ Add account" starts a row in the main currency).
+      Save and continue sends the changed existing accounts as
       `currencies` and edited balances as `balances` in `save-accounts`:
       afterwards they show the new currency on Accounts, an untouched balance
       unchanged with no correction, an edited one at the typed amount with one
@@ -452,6 +455,11 @@ navigation (single-pane vs sidebar).
       New account dialogs keep the default icon while a name is typed, and Settings > Profile
       still shows their AI switch as they left it. After access is restored (`user:set-access`),
       icons are suggested again and any Suggested rules they had come back in the Inbox.
+- [ ] 📱 A new category or envelope starts with a star icon and a new
+      account with a credit card, never a house: the New category, New
+      envelope and New account dialogs, a new row on onboarding's Categories
+      and Accounts steps, and a category created inline from a picker. With
+      AI the star or card then changes to a suggested icon.
 - [ ] Onboarding never creates debts, with or without AI: after an import or
       after planning a loan category (e.g. "Mortgage") on Budget & plan, the
       budget shows no debt line and the Debts list stays empty.

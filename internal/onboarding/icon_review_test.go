@@ -501,3 +501,22 @@ func TestIconReview_KeysMapBackToIDs(t *testing.T) {
 		t.Fatalf("logs = %s", out)
 	}
 }
+
+func TestIconReview_RepaintsTheOldDefaultIconButNotAChosenOne(t *testing.T) {
+	svc, _, _, timers := newIconSvc(false)
+	cats := &recordingReplacer{}
+	rows := []model.CategoryResult{
+		{Id: cat1, Name: "Food", Type: "expense", Icon: model.LegacyDefaultIcon},
+		{Id: cat2, Name: "Rent", Type: "expense", Icon: "pets"},
+	}
+	svc.SetSteps(onboarding.Steps{
+		Categories: replacingCategories{iconCategories{rows: rows}, cats},
+		Accounts:   replacingAccounts{iconAccounts{}, &recordingReplacer{}},
+	})
+	svc.SetAdvisor(routedAI{categories: `{"categories":[{"key":"c1","icon":"restaurant"},{"key":"c2","icon":"home"}]}`}, &countingLimiter{})
+	svc.ReviewImportedIcons(context.Background(), vo.MustParseId(me), ids(cat1, cat2), nil)
+	timers.fire()
+	if len(cats.done) != 1 || cats.done[0] != (replacement{cat1, model.LegacyDefaultIcon, "restaurant"}) {
+		t.Fatalf("category icons = %+v", cats.done)
+	}
+}
