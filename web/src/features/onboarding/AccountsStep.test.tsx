@@ -212,7 +212,7 @@ it('needs one named row to continue', async () => {
   expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled()
 })
 
-it("uses the first row's currency for the other untouched rows, new rows and Main, and keeps a hand-picked row", async () => {
+it("a row's currency is its own: picking one never changes the other rows or Main", async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
   await ready()
@@ -221,33 +221,52 @@ it("uses the first row's currency for the other untouched rows, new rows and Mai
   await user.type(nameInputs()[1], 'Bbb')
   await addAccount(user)
   await user.type(nameInputs()[2], 'Ccc')
-  await pickCurrency(user, 1, 'USD')
+  await pickCurrency(user, 1, 'EUR')
   await pickCurrency(user, 0, 'EUR')
   const codes = () => screen.getAllByLabelText('Currency').map((el) => el.textContent)
-  expect(codes()).toEqual(['EUR', 'USD', 'EUR'])
+  expect(codes()).toEqual(['EUR', 'EUR', 'USD'])
+  expect(mainChip()).toHaveAccessibleName('Main currency: USD')
+  await pickCurrency(user, 0, 'USD')
+  expect(codes()).toEqual(['USD', 'EUR', 'USD'])
+  // a new row starts in the main currency
   await addAccount(user)
   await user.type(nameInputs()[3], 'Ddd')
-  expect(codes()).toEqual(['EUR', 'USD', 'EUR', 'EUR'])
-  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
+  expect(codes()).toEqual(['USD', 'EUR', 'USD', 'USD'])
+  await pickCurrency(user, 0, 'EUR')
+  expect(codes()).toEqual(['EUR', 'EUR', 'USD', 'USD'])
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
-  const [rows, , main] = onContinue.mock.calls[0]
-  expect(rows.map((r: AccountRow) => r.currencyId)).toEqual(['cur-eur', 'cur-usd', 'cur-eur', 'cur-eur'])
-  expect(main).toBe('cur-eur')
+  const [rows, extras, main] = onContinue.mock.calls[0]
+  expect(rows.map((r: AccountRow) => r.currencyId)).toEqual(['cur-eur', 'cur-eur', 'cur-usd', 'cur-usd'])
+  expect(extras).toEqual([])
+  expect(main).toBe('cur-usd')
 })
 
-it('lets an explicit Main pick win over the first row', async () => {
+it('keeps Main and lists it when no account uses it any more', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await ready()
+  await pickCurrency(user, 0, 'EUR')
+  expect(mainChip()).toHaveAccessibleName('Main currency: USD')
+  expect(screen.getByRole('button', { name: 'EUR' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+  const [rows, extras, main] = onContinue.mock.calls[0]
+  expect(rows[0].currencyId).toBe('cur-eur')
+  expect(extras).toEqual(['cur-usd'])
+  expect(main).toBe('cur-usd')
+})
+
+it('an explicit Main pick moves no account', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
   await ready()
   await user.type(nameInputs()[0], 'Aaa')
-  await addAccount(user)
-  await user.type(nameInputs()[1], 'Bbb')
-  await pickCurrency(user, 0, 'EUR')
   await user.click(mainChip())
   await user.click(await screen.findByRole('option', { name: /^EUR/ }))
-  await pickCurrency(user, 0, 'USD')
-  await pickCurrency(user, 1, 'EUR')
+  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['USD'])
+  await addAccount(user)
+  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['USD', 'EUR'])
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+  expect(onContinue.mock.calls[0][0].map((r: AccountRow) => r.currencyId)).toEqual(['cur-usd'])
   expect(onContinue.mock.calls[0][2]).toBe('cur-eur')
 })
 
@@ -261,7 +280,7 @@ it('with only EUR accounts and a blank row, Main is the existing currency, not t
   expect(onContinue.mock.calls[0][2]).toBe('cur-eur')
 })
 
-it('resumes with the first draft row currency as the default for rows added later', async () => {
+it('resumes draft rows with their own currencies; Main is the first row\'s and new rows take it', async () => {
   const user = userEvent.setup()
   const initialRows: AccountRow[] = [
     { key: 'k1', name: 'Aaa', balance: '1', currencyId: 'cur-eur', icon: 'credit_card' },
@@ -269,11 +288,12 @@ it('resumes with the first draft row currency as the default for rows added late
   ]
   renderStep({ initialRows })
   await ready()
+  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
   await addAccount(user)
   expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'USD', 'EUR'])
 })
 
-it('removing the first row makes the new first row currency the default', async () => {
+it('removing the first row changes no other row and not Main', async () => {
   const user = userEvent.setup()
   renderStep()
   await ready()
@@ -283,24 +303,8 @@ it('removing the first row makes the new first row currency the default', async 
   await pickCurrency(user, 1, 'EUR')
   await removeRow(user, 0)
   await addAccount(user)
-  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'EUR'])
-})
-
-it("Main follows the first row's pick even while that row is blank, and clears when the only row goes", async () => {
-  const user = userEvent.setup()
-  renderStep()
-  await ready()
-  await addAccount(user)
-  await user.type(nameInputs()[1], 'Bbb')
-  await pickCurrency(user, 1, 'USD')
-  await pickCurrency(user, 0, 'EUR')
-  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
-  await user.type(nameInputs()[0], 'Aaa')
-  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
-  await removeRow(user, 1)
-  await removeRow(user, 0)
-  await addAccount(user)
-  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['USD'])
+  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'USD'])
+  expect(mainChip()).toHaveAccessibleName('Main currency: USD')
 })
 
 it('adds an extra currency and passes it on', async () => {
@@ -491,29 +495,29 @@ it('an existing account takes a currency from its chip; Continue sends it as a c
   expect(main).toBe('cur-usd')
 })
 
-it('the first existing account leads: untouched rows, existing or new, follow its pick and so does the main currency', async () => {
+it('existing accounts take currencies independently: the first one\'s pick moves no other account, no new row and not Main', async () => {
   const user = userEvent.setup()
   const lead: ExistingAccount = { id: 'acc-lead', name: 'Main card', icon: 'credit_card', balance: '5', currencyId: 'cur-usd' }
-  const follower: ExistingAccount = { id: 'acc-follow', name: 'Second card', icon: 'credit_card', balance: '7', currencyId: 'cur-usd' }
-  const byHand: ExistingAccount = { id: 'acc-hand', name: 'Third card', icon: 'credit_card', balance: '9', currencyId: 'cur-eur' }
-  const { onContinue } = renderStep({ existing: [lead, follower, byHand] })
+  const second: ExistingAccount = { id: 'acc-second', name: 'Second card', icon: 'credit_card', balance: '7', currencyId: 'cur-usd' }
+  const third: ExistingAccount = { id: 'acc-third', name: 'Third card', icon: 'credit_card', balance: '9', currencyId: 'cur-eur' }
+  const { onContinue } = renderStep({ existing: [lead, second, third] })
   await ready()
   await pickCurrency(user, 2, 'USD')
   await addAccount(user)
   await user.type(nameInputs()[0], 'Travel fund')
   await pickCurrency(user, 0, 'EUR')
-  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('USD')
   expect(within(rowsEls()[2]).getByRole('button', { name: 'Currency' })).toHaveTextContent('USD')
+  expect(within(rowsEls()[3]).getByRole('button', { name: 'Currency' })).toHaveTextContent('USD')
+  expect(mainChip()).toHaveAccessibleName('Main currency: USD')
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   const [rows, , main, review] = onContinue.mock.calls[0]
   expect(review.currencies).toEqual([
     { accountId: 'acc-lead', currencyId: 'cur-eur' },
-    { accountId: 'acc-follow', currencyId: 'cur-eur' },
-    { accountId: 'acc-hand', currencyId: 'cur-usd' },
+    { accountId: 'acc-third', currencyId: 'cur-usd' },
   ])
-  expect(rows[3]).toMatchObject({ name: 'Travel fund', currencyId: 'cur-eur' })
-  expect(main).toBe('cur-eur')
-  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
+  expect(rows[3]).toMatchObject({ name: 'Travel fund', currencyId: 'cur-usd' })
+  expect(main).toBe('cur-usd')
 })
 
 it('an existing account\'s balance is editable: a changed one goes out in balances, an unreadable one blocks Continue', async () => {
@@ -671,7 +675,7 @@ it('reseeds from a stored draft: rows standing for existing accounts stay locked
   expect(out.map((r: AccountRow) => [r.key, r.accountId])).toEqual([['account:acc-imp', 'acc-imp'], ['k2', undefined]])
 })
 
-it('a draft restored after a failed submit keeps the untouched accounts following the first row', async () => {
+it('a draft restored after a failed submit keeps each account\'s pick and nothing else', async () => {
   const gbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 0, isDeleted: 0 }
   const card: ExistingAccount = { id: 'acc-card', name: 'Card', icon: 'credit_card', balance: '5', currencyId: 'cur-usd' }
   const cash: ExistingAccount = { id: 'acc-cash', name: 'Cash', icon: 'payments', balance: '7', currencyId: 'cur-usd' }
@@ -679,19 +683,21 @@ it('a draft restored after a failed submit keeps the untouched accounts followin
   const first = renderStep({ existing: [card, cash] }, { currencies: [fixtureUsd, fixtureEur, gbp] })
   await ready()
   await pickCurrency(user, 0, 'EUR')
-  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('USD')
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   // the submit failed: the form comes back from the rows it sent
   const [sent] = first.onContinue.mock.calls[0]
   cleanup()
   const second = renderStep({ existing: [card, cash], initialRows: sent }, { currencies: [fixtureUsd, fixtureEur, gbp] })
   await ready()
-  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
-  await pickCurrency(user, 0, 'GBP')
-  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('GBP')
+  expect(within(rowsEls()[0]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('USD')
+  expect(mainChip()).toHaveAccessibleName('Main currency: USD')
+  await pickCurrency(user, 1, 'GBP')
+  expect(within(rowsEls()[0]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(second.onContinue.mock.calls[0][3].currencies).toEqual([
-    { accountId: 'acc-card', currencyId: 'cur-gbp' },
+    { accountId: 'acc-card', currencyId: 'cur-eur' },
     { accountId: 'acc-cash', currencyId: 'cur-gbp' },
   ])
 })
@@ -798,25 +804,21 @@ describe('AccountsStepBody', () => {
     track.mockRestore()
   })
 
-  it('changing the first imported account\'s currency posts it and the untouched accounts that follow as currencies, with the main currency', async () => {
+  it('changing the first imported account\'s currency posts only that account and keeps the main currency', async () => {
     localStorage.clear()
     const routes = stepRoutes({ option: 'import,categories' })
     server.use(...coreHandlers({ accounts: fixtureAccounts, user: userWith('import,categories') }), ...routes.handlers)
     const user = userEvent.setup()
     const { onDone } = renderBody()
     await ready()
-    // Cash (USD) leads; Bank (USD) follows; Euro Stash is EUR already; the hidden account keeps its currency
     await pickCurrency(user, 0, 'EUR')
     await user.click(screen.getByRole('button', { name: 'Save and continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     const body = routes.srv.calls[0].body
-    expect(body.currencies).toEqual([
-      { accountId: 'a1', currencyId: 'cur-eur' },
-      { accountId: 'a2', currencyId: 'cur-eur' },
-    ])
-    expect(body.mainCurrencyId).toBe('cur-eur')
+    expect(body.currencies).toEqual([{ accountId: 'a1', currencyId: 'cur-eur' }])
+    expect(body.mainCurrencyId).toBe('cur-usd')
     expect(body.accounts).toEqual([])
-    expect(body.currencyIds).toContain('cur-eur')
+    expect(body.currencyIds).toEqual(expect.arrayContaining(['cur-eur', 'cur-usd']))
   })
 
   it('an edited imported balance goes out in balances with the locale\'s decimal mark', async () => {
