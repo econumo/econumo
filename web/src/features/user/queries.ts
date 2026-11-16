@@ -167,6 +167,12 @@ export function userAiOn(user: CurrentUserDto | undefined): boolean {
   return userOption(user, UserOptions.AI) !== '0'
 }
 
+// Whether AI runs for the user now: their option on and full access. A readonly user is treated
+// as AI off without changing the stored option, which the Profile switch keeps showing.
+export function userAiActive(user: CurrentUserDto | undefined): boolean {
+  return user?.accessLevel !== 'readonly' && userAiOn(user)
+}
+
 export function useUpdateAi() {
   const queryClient = useQueryClient()
   return useMutation({

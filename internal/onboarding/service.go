@@ -154,7 +154,7 @@ func (s *Service) reserve(ctx context.Context, userID vo.Id, logs jobSpec) (bool
 		return false, nil
 	}
 	if s.users != nil {
-		off, err := s.users.AIOptedOut(ctx, userID)
+		off, err := s.users.AIInactive(ctx, userID)
 		if err != nil || off {
 			return false, err
 		}
@@ -187,7 +187,7 @@ func (s *Service) mayAsk(ctx context.Context, userID vo.Id) bool {
 	if s.users == nil {
 		return true
 	}
-	off, err := s.users.AIOptedOut(ctx, userID)
+	off, err := s.users.AIInactive(ctx, userID)
 	return err == nil && !off
 }
 

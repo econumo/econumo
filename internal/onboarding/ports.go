@@ -26,10 +26,11 @@ type AccountReader interface {
 }
 
 // UserFacts is what the AI jobs read about the user: the stored IANA timezone
-// ("" when never seen) and whether they opted out of AI (then no job starts).
+// ("" when never seen) and whether AI is inactive for them, opted out or
+// read-only (then no job starts).
 type UserFacts interface {
 	StoredTimezone(ctx context.Context, userID vo.Id) (string, error)
-	AIOptedOut(ctx context.Context, userID vo.Id) (bool, error)
+	AIInactive(ctx context.Context, userID vo.Id) (bool, error)
 }
 
 // Completer is one chat completion with the configured AI provider. userID

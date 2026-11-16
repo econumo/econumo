@@ -38,6 +38,10 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 			s.dropSuggestions(ctx, userID, open)
 			return out, nil
 		}
+		// hidden, not dropped: restoring access brings them back
+		if facts.Readonly {
+			return out, nil
+		}
 	}
 	categories, err := s.entities.CategoriesByOwner(ctx, userID)
 	if err != nil {
@@ -414,7 +418,7 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 		slog.Warn("import match text failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 		return empty, nil
 	}
-	if facts.AIOff {
+	if facts.AIOff || facts.Readonly {
 		return empty, nil
 	}
 	if err := s.countAttempt(ctx, RateScopePreviewRule, userID); err != nil {

@@ -210,6 +210,13 @@ func (u *User) AIEnabled() bool {
 	return *o.Value != "0"
 }
 
+// AIActive is whether AI may run on the user's data right now: consent given
+// and full access. A read-only account is treated as AI off without touching
+// the stored preference, so restoring access brings AI back.
+func (u *User) AIActive(now time.Time) bool {
+	return u.AIEnabled() && u.EffectiveAccessLevel(now) == AccessLevelFull
+}
+
 func (u *User) UpdateName(name string, now time.Time) {
 	u.Name = name
 	u.UpdatedAt = now

@@ -22,7 +22,7 @@ function serve(icon: (name: string) => string = () => 'house') {
   )
 }
 
-function renderSuggestion(initial: IconSuggestionOptions, user?: typeof fixtureUser) {
+function renderSuggestion(initial: IconSuggestionOptions, user?: Omit<typeof fixtureUser, 'accessLevel'> & { accessLevel: 'full' | 'readonly' }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   if (user) queryClient.setQueryData(queryKeys.user, user)
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -86,6 +86,15 @@ it('asks nothing while the user has turned AI off', async () => {
   serve()
   const optedOut = { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] }
   const { result } = renderSuggestion({ kind: 'category', name: 'Mortgage', enabled: true }, optedOut)
+  await settle()
+  expect(asked).toHaveLength(0)
+  expect(result.current).toBeNull()
+})
+
+it('asks nothing for a readonly user, whose AI option is still on', async () => {
+  serve()
+  const readonly = { ...fixtureUser, accessLevel: 'readonly' as const }
+  const { result } = renderSuggestion({ kind: 'category', name: 'Mortgage', enabled: true }, readonly)
   await settle()
   expect(asked).toHaveLength(0)
   expect(result.current).toBeNull()

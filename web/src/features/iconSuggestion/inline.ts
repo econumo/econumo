@@ -4,7 +4,7 @@ import type { CurrentUserDto } from '@/api/dto/user'
 import { applySuggestedIcon, suggestIcon } from '@/api/onboarding'
 import { queryKeys } from '@/app/queryKeys'
 import { isAiEnabled } from '@/lib/config'
-import { userAiOn } from '@/features/user/queries'
+import { userAiActive } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 // A category created inline from a picker ("Create <name>") is saved at once on the default
@@ -12,7 +12,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 // while it still shows the icon it was created with (a change made meanwhile wins; the server
 // checks). Nothing is shown either way, a failure included.
 export async function suggestIconForCreatedCategory(queryClient: QueryClient, item: CategoryDto): Promise<void> {
-  if (!isAiEnabled() || !onlineManager.isOnline() || !userAiOn(queryClient.getQueryData<CurrentUserDto>(queryKeys.user))) return
+  if (!isAiEnabled() || !onlineManager.isOnline() || !userAiActive(queryClient.getQueryData<CurrentUserDto>(queryKeys.user))) return
   try {
     const icon = await suggestIcon({ kind: 'category', name: item.name, type: item.type })
     if (!icon || icon === item.icon) return

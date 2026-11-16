@@ -12,7 +12,7 @@ import { useRecurring } from '@/features/recurring/queries'
 import { useFailedWrites, useStoredQueueSettled } from '@/features/pendingWrites/hooks'
 import type { PendingOp } from '@/features/pendingWrites/types'
 import { hiddenFolderAccountIds } from '@/features/transactions/useTransactionForm'
-import { userAiOn, useUserData } from '@/features/user/queries'
+import { userAiActive, useUserData } from '@/features/user/queries'
 import { isFuture } from '@/lib/datetime'
 
 export interface Inbox {
@@ -71,7 +71,7 @@ export function useInbox(): Inbox {
   const { data: user } = useUserData()
   // a readonly user cannot act on suggestions and one who opted out of AI gets none; either
   // way they are shown none, so their list never decides the offline notice
-  const noSuggestions = user?.accessLevel === 'readonly' || !userAiOn(user)
+  const noSuggestions = !userAiActive(user)
   const importsOffline = useUnavailableOffline(queue, sources, ...(noSuggestions ? [] : [suggestionList]))
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()

@@ -5,7 +5,7 @@ import { finishOnboardingImport } from '@/api/onboarding'
 import type { CurrentUserDto } from '@/api/dto/user'
 import { queryKeys } from '@/app/queryKeys'
 import { isAiEnabled } from '@/lib/config'
-import { userAiOn } from '@/features/user/queries'
+import { userAiActive } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft } from './draft'
 import { onboardingProgress, storedStepState } from './onboardingProgress'
@@ -30,12 +30,12 @@ export function cancelAiRefresh(): void {
 
 // Module-level, not tied to a component: the import may come from the Settings data page, and
 // finishing onboarding meanwhile must not stop the icons from showing up. Without AI (or with
-// the user's AI option off) there is nothing to wait for; a logout or another user signing in (a
+// the user's AI option off or readonly access) there is nothing to wait for; a logout or another user signing in (a
 // different cached user) ends it.
 export function scheduleAiRefresh(queryClient: QueryClient): void {
   cancelAiRefresh()
   const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
-  if (!isAiEnabled() || !user || !userAiOn(user)) return
+  if (!isAiEnabled() || !user || !userAiActive(user)) return
   const userId = user.id
   aiRefresh = AI_REFRESH_DELAYS_MS.map((delay) =>
     setTimeout(() => {

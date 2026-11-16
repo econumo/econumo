@@ -19,7 +19,7 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { SelectCard } from '@/features/transactions/SelectCard'
-import { userAiOn, useUserData } from '@/features/user/queries'
+import { userAiActive, useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { pluralPick } from '@/lib/plural'
 import { suggestMatchValue } from '@/lib/importMatch'
@@ -163,7 +163,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   // link a rule classified updates that rule and keeps its match, so the paid call is never made
   // for it, nor while the rules (and so `existing`) are still loading, nor for a user who opted out.
   const aiOn =
-    !link.appliedRuleId && rulesQuery.isSuccess && isAiEnabled() && online && user !== undefined && user.accessLevel !== 'readonly' && userAiOn(user)
+    !link.appliedRuleId && rulesQuery.isSuccess && isAiEnabled() && online && user !== undefined && userAiActive(user)
   const aiMatch = useSuggestMatchText(link.id, aiOn)
   const aiAnswer = aiOn ? aiMatch.data : undefined
   useEffect(() => {
