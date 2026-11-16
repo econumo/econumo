@@ -43,11 +43,12 @@ make web-install | web-run | web-test | web-lint | web-bundle   # pnpm install |
 
 ### Publishing
 
-- `make publish-dev`: multi-arch `dev` image + the `dev` channel on the private R2 bucket.
-- **Edge**: every push to `main` that changes the binary or image runs
+- `make publish-dev`: the `dev` channel on the private R2 bucket. `dev` and `edge` are R2
+  channels only; neither has a docker image.
+- **Edge**: every push to `main` that changes the binary runs
   `.github/workflows/publish-edge.yml` (pushes touching only `docs/`, `.claude/` or Markdown
-  outside the embedded `prompts/` publish nothing) and moves the `edge` image tag and R2
-  channel; production follows `edge`. No tag, no GitHub release. An edge build reports the
+  outside the embedded `prompts/` publish nothing) and moves the `edge` R2 channel;
+  production follows `edge`. No tag, no GitHub release. An edge build reports the
   highest published GitHub release as its `VERSION` (`.github/scripts/latest-release.sh`), so
   What's new, the update notice and new-account seeding behave as on that release; only
   `VERSION_REF` (the commit) tells edge builds apart. A release of the newest version
@@ -549,7 +550,8 @@ files in the top-level `prompts/`; reply schemas live in `internal/{imports,onbo
 
 ## Deployment
 
-- Image `ghcr.io/econumo/econumo`: `:dev`, `:edge` (main's head, production), `:latest` +
-  `:vX.Y.Z`. Dockerfile: `deployment/docker/Dockerfile`.
+- Image `ghcr.io/econumo/econumo`: `:latest` + `:vX.Y.Z`, releases only. `dev` and `edge`
+  (main's head, production) exist only as R2 channels. Dockerfile:
+  `deployment/docker/Dockerfile`.
 - Self-hosting: root `docker-compose.yml` + `.env.example`; Docker-free:
   `docs/run-without-docker.md` (`make release-binaries` builds the same artifacts).
