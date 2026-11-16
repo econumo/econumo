@@ -4,7 +4,7 @@ import type { CurrentUserDto } from '@/api/dto/user'
 import { suggestIcon, type SuggestIconParams } from '@/api/onboarding'
 import { useOnline } from '@/hooks/useOnline'
 import { queryKeys } from '@/app/queryKeys'
-import { userAiOn } from '@/features/user/queries'
+import { userAiActive } from '@/features/user/queries'
 import { isAiEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId } from '@/lib/storage'
@@ -20,13 +20,13 @@ const NAME_MIN = 2
 const NAME_MAX = 64
 
 // The icon the server's AI suggests for a name being typed, once the typing has paused; null
-// while there is none. Without an AI provider, with the user's AI option off, or offline it asks
+// while there is none. Without an AI provider, with the user's AI option off or readonly access, or offline it asks
 // nothing at all.
 export function useIconSuggestion({ kind, name, type, currency, enabled }: IconSuggestionOptions): string | null {
   const online = useOnline()
   // read from the cache on every render (no fetch, and no provider needed): an opt-out applies
   // from the next keystroke
-  const aiOn = userAiOn(useContext(QueryClientContext)?.getQueryData<CurrentUserDto>(queryKeys.user))
+  const aiOn = userAiActive(useContext(QueryClientContext)?.getQueryData<CurrentUserDto>(queryKeys.user))
   const trimmed = name.trim()
   const length = [...trimmed].length
   const key =

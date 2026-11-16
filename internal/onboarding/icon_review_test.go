@@ -332,7 +332,7 @@ type flakyOptOut struct {
 }
 
 func (*flakyOptOut) StoredTimezone(context.Context, vo.Id) (string, error) { return "UTC", nil }
-func (f *flakyOptOut) AIOptedOut(context.Context, vo.Id) (bool, error) {
+func (f *flakyOptOut) AIInactive(context.Context, vo.Id) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.fails > 0 {

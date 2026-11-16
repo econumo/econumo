@@ -75,22 +75,23 @@ type onboardingUserFactsRepo interface {
 // OnboardingUserFacts adapts the user repository to onboarding.UserFacts.
 type OnboardingUserFacts struct {
 	users onboardingUserFactsRepo
+	clk   port.Clock
 }
 
-func NewOnboardingUserFacts(users onboardingUserFactsRepo) *OnboardingUserFacts {
-	return &OnboardingUserFacts{users: users}
+func NewOnboardingUserFacts(users onboardingUserFactsRepo, clk port.Clock) *OnboardingUserFacts {
+	return &OnboardingUserFacts{users: users, clk: clk}
 }
 
 func (t *OnboardingUserFacts) StoredTimezone(ctx context.Context, userID vo.Id) (string, error) {
 	return t.users.GetTimezone(ctx, userID)
 }
 
-func (t *OnboardingUserFacts) AIOptedOut(ctx context.Context, userID vo.Id) (bool, error) {
+func (t *OnboardingUserFacts) AIInactive(ctx context.Context, userID vo.Id) (bool, error) {
 	u, err := t.users.GetByID(ctx, userID)
 	if err != nil {
 		return false, err
 	}
-	return !u.AIEnabled(), nil
+	return !u.AIActive(t.clk.Now()), nil
 }
 
 var (

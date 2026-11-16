@@ -448,6 +448,10 @@ navigation (single-pane vs sidebar).
 - [ ] With AI, a name that got a suggested icon and is then renamed to
       something with no match (e.g. "Rent" -> "Xyz") goes back to the
       default icon instead of keeping the old suggestion.
+- [ ] 📱 A readonly (lapsed trial) user gets no AI on a server with AI: the New category and
+      New account dialogs keep the default icon while a name is typed, and Settings > Profile
+      still shows their AI switch as they left it. After access is restored (`user:set-access`),
+      icons are suggested again and any Suggested rules they had come back in the Inbox.
 - [ ] Onboarding never creates debts, with or without AI: after an import or
       after planning a loan category (e.g. "Mortgage") on Budget & plan, the
       budget shows no debt line and the Debts list stays empty.

@@ -60,7 +60,7 @@ func (fakeTimezones) StoredTimezone(context.Context, vo.Id) (string, error) {
 	return "Europe/Zurich", nil
 }
 
-func (f fakeTimezones) AIOptedOut(context.Context, vo.Id) (bool, error) { return f.aiOff, nil }
+func (f fakeTimezones) AIInactive(context.Context, vo.Id) (bool, error) { return f.aiOff, nil }
 
 type fakeCompleter struct {
 	calls  int
@@ -240,7 +240,7 @@ type optOutAfter struct {
 	n, reads int
 }
 
-func (f *optOutAfter) AIOptedOut(context.Context, vo.Id) (bool, error) {
+func (f *optOutAfter) AIInactive(context.Context, vo.Id) (bool, error) {
 	f.reads++
 	return f.reads > f.n, nil
 }

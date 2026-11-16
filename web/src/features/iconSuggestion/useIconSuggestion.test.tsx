@@ -91,6 +91,15 @@ it('asks nothing while the user has turned AI off', async () => {
   expect(result.current).toBeNull()
 })
 
+it('asks nothing for a readonly user, whose AI option is still on', async () => {
+  serve()
+  const readonly = { ...fixtureUser, accessLevel: 'readonly' as const }
+  const { result } = renderSuggestion({ kind: 'category', name: 'Mortgage', enabled: true }, readonly)
+  await settle()
+  expect(asked).toHaveLength(0)
+  expect(result.current).toBeNull()
+})
+
 it('an empty answer is no suggestion and is asked again later (it may have been a passing failure)', async () => {
   serve(() => '')
   const { result, rerender } = renderSuggestion({ kind: 'category', name: 'Misc', enabled: true })
