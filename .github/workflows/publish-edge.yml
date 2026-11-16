@@ -1,9 +1,9 @@
 name: Publish Edge
 
 # Publishes every push to main as the "edge" channel, the early preview that
-# production runs before a release: the ghcr.io/econumo/econumo:edge image
-# plus the edge channel of the linux binaries in the private R2 bucket (ship).
-# No git tag, no immutable R2 version, no GitHub release.
+# production runs before a release: the edge channel of the linux binaries in
+# the private R2 bucket (ship). No docker image, no git tag, no immutable R2
+# version, no GitHub release.
 #
 # An edge build reports the highest published release as its version
 # (v1.8.0 for every build between the v1.8.0 and v1.8.1 releases;
@@ -27,7 +27,7 @@ on:
   push:
     branches:
       - main
-    # Pushes that change nothing in the binary or image publish nothing: each
+    # Pushes that change nothing in the binary publish nothing: each
     # edge build has a new VERSION_REF, which makes every client drop its
     # cached data and download it again. prompts/*.md are embedded, so they
     # count.
@@ -42,9 +42,6 @@ on:
 concurrency:
   group: "publish-edge"
   cancel-in-progress: true
-
-env:
-  IMAGE: ghcr.io/econumo/econumo
 
 jobs:
   resolve:
@@ -77,59 +74,6 @@ jobs:
           echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Publishing edge from ${SHA} as ${VERSION}" | tee -a "$GITHUB_STEP_SUMMARY"
-
-  publish-image:
-    name: Build and Publish Edge Image
-    needs: resolve
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout source commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.resolve.outputs.sha }}
-
-      # No QEMU: both build stages run on $BUILDPLATFORM (Go cross-compiles,
-      # the SPA is platform-independent) and the distroless stage only COPYs.
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Pushed by digest only: the edge tag moves in the next step, after the
-      # release re-check.
-      - name: Build and push
-        id: build
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: deployment/docker/Dockerfile
-          target: prod
-          platforms: linux/amd64,linux/arm64
-          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          build-args: |
-            ECONUMO_VERSION=${{ needs.resolve.outputs.version }}
-            ECONUMO_COMMIT=${{ needs.resolve.outputs.sha }}
-
-      - name: Move the edge tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.resolve.outputs.version }}
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          NOW="$(sh .github/scripts/latest-release.sh)"
-          if [ "$NOW" != "$VERSION" ]; then
-            echo "::notice::The highest release is now ${NOW}, not the ${VERSION} this build was stamped with; leaving edge to the build the release dispatched."
-            exit 0
-          fi
-          docker buildx imagetools create -t "${IMAGE}:edge" "${IMAGE}@${DIGEST}"
 
   publish-binaries:
     name: Build and Publish Edge Binaries

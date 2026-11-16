@@ -1,11 +1,10 @@
 name: Publish Dev
 
 # Publishes the "dev" channel from any branch without cutting a release: the
-# ghcr.io/econumo/econumo:dev image plus the dev channel of the linux binaries
-# in the private R2 bucket (published with ship). The CI counterpart of
-# `make publish-dev` — no git tag, no release branch, no GitHub release. Both
-# the image and the binaries report version "dev", exactly like the local
-# target.
+# dev channel of the linux binaries in the private R2 bucket (published with
+# ship). No docker image. The CI counterpart of `make publish-dev` — no git
+# tag, no release branch, no GitHub release. The binaries report version
+# "dev", exactly like the local target.
 # The code that gets built comes from the "branch" input; left empty, it is the
 # branch the workflow was dispatched from.
 
@@ -24,7 +23,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE: ghcr.io/econumo/econumo
   VERSION: dev
 
 jobs:
@@ -41,8 +39,8 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
-      # Pin one commit so the image and the binaries are built from the same
-      # code even if the branch moves while the jobs run.
+      # Pin one commit so the build and its stamped revision agree even if the
+      # branch moves while the jobs run.
       - name: Record commit
         id: sha
         env:
@@ -52,46 +50,8 @@ jobs:
           echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
           echo "Publishing dev from ${BRANCH} @ ${SHA}" | tee -a "$GITHUB_STEP_SUMMARY"
 
-  publish-image:
-    name: Build and Publish Dev Image
-    needs: resolve
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout source commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.resolve.outputs.sha }}
-
-      # No QEMU: both build stages run on $BUILDPLATFORM (Go cross-compiles,
-      # the SPA is platform-independent) and the distroless stage only COPYs.
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: deployment/docker/Dockerfile
-          target: prod
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.IMAGE }}:dev
-          build-args: |
-            ECONUMO_VERSION=${{ env.VERSION }}
-            ECONUMO_COMMIT=${{ needs.resolve.outputs.sha }}
-
   publish-binaries:
-    name: Build and Mirror Dev Binaries
+    name: Build and Publish Dev Binaries
     needs: resolve
     runs-on: ubuntu-latest
     permissions:

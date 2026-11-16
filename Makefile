@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql test-upgrade pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check ai-eval release-binaries ship-dist ship-publish
+.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql test-upgrade pg-ensure docker-up docker-down publish-dev swagger swagger-check ai-eval release-binaries ship-dist ship-publish
 
 # Default target
 .DEFAULT_GOAL := help
@@ -29,7 +29,7 @@ help:
 	@echo "  make test-upgrade - upgrade databases written by published releases (linux, network, git tags)"
 	@echo "  make docker-up    - Start the stack (compose, builds from source)"
 	@echo "  make docker-down  - Stop the stack"
-	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE) + publish the dev channel to R2 (ship)"
+	@echo "  make publish-dev  - Build the linux binaries and publish the dev channel to R2 (ship)"
 
 # --- Frontend (web/) ---
 
@@ -261,38 +261,12 @@ docker-up: swagger
 docker-down:
 	docker compose down --remove-orphans
 
-# `make publish-dev` builds the multi-arch image locally and pushes the "dev" tag to
-# ghcr.io/econumo/econumo (GitHub Container Registry only). Releases ("latest" +
-# vX.Y.Z) are published by the GitHub release workflow, NOT here. Requires
-# `docker login ghcr.io` first.
-# Override any of these on the command line, e.g. `make publish-dev PUBLISH_TAG=foo`.
-GHCR_IMAGE        ?= ghcr.io/econumo/econumo
-PUBLISH_TAG       ?= dev
-PUBLISH_PLATFORMS ?= linux/amd64,linux/arm64
-BUILDX_BUILDER    ?= econumo-mb
-ECONUMO_VERSION   ?= dev
-
-# Ensure a docker-container buildx builder exists (multi-arch push needs it).
-publish-buildx-ensure:
-	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || \
-		docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --bootstrap
-
-# Regenerates the OpenAPI docs (swagger) first so the image built from source
-# embeds the current spec. Also cross-compiles the release binaries and
-# publishes them as the "dev" channel to the private R2 bucket (see ship-publish).
-publish-dev: swagger publish-buildx-ensure release-binaries
-	@echo "Publishing $(GHCR_IMAGE):$(PUBLISH_TAG) ($(PUBLISH_PLATFORMS))..."
-	docker buildx build \
-		--builder $(BUILDX_BUILDER) \
-		--platform $(PUBLISH_PLATFORMS) \
-		--file deployment/docker/Dockerfile \
-		--target prod \
-		--build-arg ECONUMO_VERSION=$(ECONUMO_VERSION) \
-		--build-arg ECONUMO_COMMIT=$(COMMIT) \
-		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
-		--push \
-		.
-	@$(MAKE) ship-dist SHIP_SKIP_BUILD=1
+# `make publish-dev` cross-compiles the release binaries and publishes them as
+# the "dev" channel to the private R2 bucket (see ship-publish). No docker
+# image: images ("latest" + vX.Y.Z) are published by the GitHub release
+# workflow only.
+publish-dev:
+	@$(MAKE) ship-dist
 	@$(MAKE) ship-publish VERSION=dev CHANNELS=dev
 
 # --- ship (https://github.com/dmtrkzntsv/ship) -------------------------------

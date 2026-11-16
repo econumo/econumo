@@ -17,8 +17,9 @@ name: Publish Release
 #   (the "edge" channel) rebuilds main's head stamped with this version. An
 #   old-line patch (v1.6.2 after v1.7.0) is for self-hosters only and never
 #   touches edge.
-# - Also pushes/moves "dev" when push_dev is checked (any branch). Unlike
-#   `make publish-dev`, the UI version label is the release version, not "dev".
+# - Also moves the R2 "dev" channel when push_dev is checked (any branch);
+#   there is no "dev" image. Unlike `make publish-dev`, the UI version label
+#   is the release version, not "dev".
 # - The GitHub release's "Latest" badge follows push_latest, so an old-line
 #   hotfix published after a newer version is never badged as latest.
 
@@ -73,7 +74,6 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
           BRANCH: ${{ github.event.inputs.branch }}
           PUSH_LATEST: ${{ github.event.inputs.push_latest }}
-          PUSH_DEV: ${{ github.event.inputs.push_dev }}
         run: |
           # The version is a dispatch input: reject anything that is not a plain
           # vX.Y.Z tag before it reaches git or a docker tag.
@@ -101,9 +101,6 @@ jobs:
           TAGS="${IMAGE}:${VERSION}"
           if [ "$PUSH_LATEST" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:latest"
-          fi
-          if [ "$PUSH_DEV" = "true" ]; then
-            TAGS="${TAGS},${IMAGE}:dev"
           fi
           # Newest = above every plain release tag. It decides whether this
           # release rebuilds edge (production), independently of push_latest:
