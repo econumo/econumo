@@ -65,6 +65,7 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
 
   useEffect(() => {
     if (open) {
+      trackEvent(METRICS.TRANSACTION_IMPORT_OPEN, { withFile: initialFile !== undefined })
       reset()
       if (initialFile) void handleFile(initialFile)
     }
@@ -254,6 +255,11 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
     </div>
   )
 
+  const dismiss = () => {
+    trackEvent(METRICS.TRANSACTION_IMPORT_CLOSE, { stage: file ? 'mapping' : 'file' })
+    onClose()
+  }
+
   const chunkCount = analysis ? Math.max(1, Math.ceil(analysis.rows.length / CHUNK_SIZE)) : 0
 
   const handleSubmit = async () => {
@@ -261,7 +267,8 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
     setSubmitting(true)
     try {
       const result = await runImport(analysis, selection, importTransactionList, (done, total) => setProgress({ done, total }))
-      trackEvent(METRICS.TRANSACTION_IMPORT)
+      if (result.imported > 0) trackEvent(METRICS.TRANSACTION_IMPORT, { imported: result.imported, failed: result.failed })
+      else trackEvent(METRICS.TRANSACTION_IMPORT_FAIL, { failed: result.failed })
       // the server asks the AI for icons for what the import created; show them once they land
       scheduleAiRefresh(queryClient)
       // during onboarding the import settles the import step through finish-import (budget + AI savings);
@@ -276,7 +283,7 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && !submitting && onClose()} title={t('transactions.import_csv.header')} size={file ? 'wide' : 'default'}>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && !submitting && dismiss()} title={t('transactions.import_csv.header')} size={file ? 'wide' : 'default'}>
       <div className="flex flex-col gap-3">
         {!file ? (
           <div className="flex flex-col gap-1.5">
@@ -444,7 +451,7 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
         ) : null}
 
         <div className={dialogActionsClass}>
-          <Button type="button" variant="secondary" disabled={submitting} onClick={onClose}>
+          <Button type="button" variant="secondary" disabled={submitting} onClick={dismiss}>
             {t('common.button.cancel.label')}
           </Button>
           <Button type="button" disabled={!online || !analysis || !selectionValid(selection) || submitting} onClick={() => void handleSubmit()}>
