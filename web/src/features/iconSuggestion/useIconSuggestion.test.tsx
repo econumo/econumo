@@ -22,7 +22,7 @@ function serve(icon: (name: string) => string = () => 'house') {
   )
 }
 
-function renderSuggestion(initial: IconSuggestionOptions, user?: typeof fixtureUser) {
+function renderSuggestion(initial: IconSuggestionOptions, user?: Omit<typeof fixtureUser, 'accessLevel'> & { accessLevel: 'full' | 'readonly' }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   if (user) queryClient.setQueryData(queryKeys.user, user)
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
