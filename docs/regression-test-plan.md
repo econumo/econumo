@@ -3486,6 +3486,11 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       registered.
 - [ ] User A disconnects the app in Connected apps and connects again from the
       same client: it works.
+- [ ] One account approves an app registered with `app:register` twice (for
+      example from two Claude accounts): Connected apps lists two rows for it,
+      both keep working, and revoking one leaves the other connected. Approving
+      a self-registered app a second time still leaves one row. An eleventh
+      approval of the same official app removes the row used longest ago.
 - [ ] Read-only account: pressing Allow shows "Your account is read-only, so apps
       can't be connected." and "Return to the app" sends the client back with an
       `access_denied` result; Deny works on a read-only account too.

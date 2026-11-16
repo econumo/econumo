@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -137,8 +138,16 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		if !ok {
 			return errInvalidGrant
 		}
-		// Re-authorizing a client replaces the user's earlier connection to it.
-		replaced, err := s.repo.RevokeOtherGrants(ctx, code.UserID, c.ID, g.ID, now)
+		// Re-authorizing a user app replaces the user's earlier connection to
+		// it. A global app's client id is shared by every installation, so
+		// one user's connections from two of them (two Claude accounts) are
+		// separate and stay, up to MaxGlobalGrantsPerUser.
+		var replaced []vo.Id
+		if c.IsGlobal {
+			replaced, err = s.retireExcessGrants(ctx, code.UserID, c.ID, g.ID, now)
+		} else {
+			replaced, err = s.repo.RevokeOtherGrants(ctx, code.UserID, c.ID, g.ID, now)
+		}
 		if err != nil {
 			return err
 		}
@@ -164,6 +173,36 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 	reqctx.AddLogAttr(ctx, "client_id", c.ID.String())
 	s.housekeeping(ctx, now)
 	return resp, nil
+}
+
+// retireExcessGrants keeps the user's connections to a global app within
+// MaxGlobalGrantsPerUser by revoking the least recently used ones, never
+// keepID. It runs under the user row lock, so two exchanges of one user cannot
+// both count below the cap.
+func (s *Service) retireExcessGrants(ctx context.Context, userID, clientID, keepID vo.Id, now time.Time) ([]vo.Id, error) {
+	all, err := s.repo.ListUnrevokedGrants(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	var others []model.OAuthGrant
+	for _, r := range all {
+		if r.Grant.ClientID.Equal(clientID) && !r.Grant.ID.Equal(keepID) {
+			others = append(others, r.Grant)
+		}
+	}
+	excess := len(others) - (MaxGlobalGrantsPerUser - 1)
+	if excess <= 0 {
+		return nil, nil
+	}
+	slices.SortStableFunc(others, func(a, b model.OAuthGrant) int { return a.LastUsedAt.Compare(b.LastUsedAt) })
+	var retired []vo.Id
+	for _, g := range others[:excess] {
+		if _, err := s.repo.RevokeGrant(ctx, g.ID, now); err != nil {
+			return nil, err
+		}
+		retired = append(retired, g.ID)
+	}
+	return retired, nil
 }
 
 func tokenResponse(access, refresh, scope string) model.TokenResponse {
