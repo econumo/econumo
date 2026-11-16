@@ -137,10 +137,15 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		if !ok {
 			return errInvalidGrant
 		}
-		// Re-authorizing a client replaces the user's earlier connection to it.
-		replaced, err := s.repo.RevokeOtherGrants(ctx, code.UserID, c.ID, g.ID, now)
-		if err != nil {
-			return err
+		// Re-authorizing a user app replaces the user's earlier connection to
+		// it. A global app's client id is shared by every installation, so
+		// one user's connections from two of them (two Claude accounts) are
+		// separate and both stay.
+		var replaced []vo.Id
+		if !c.IsGlobal {
+			if replaced, err = s.repo.RevokeOtherGrants(ctx, code.UserID, c.ID, g.ID, now); err != nil {
+				return err
+			}
 		}
 		for _, id := range replaced {
 			if err := s.creds.RevokeOAuthGrantTokens(ctx, id); err != nil {

@@ -172,7 +172,8 @@ is `internal/test/mcpparity/`.
   paths in `middleware.ReadScopePaths`. Everything else gets the frozen 401.
 - Access tokens are `eco_oat_` rows, fixed 1 h; refresh tokens rotate, a replay of an old one
   revokes the grant (the most recent one within 60 s is only refused). A new code exchange
-  replaces the user's other grants for that client.
+  replaces the user's other grants for that client, except for a global app, whose grants
+  for one user coexist (two Claude accounts on one Econumo account).
 - A self-registered app belongs to its first approver (`authserver.app_not_yours` for anyone
   else, checked before the redirect URI); global apps come from the CLI's `app:register`.
 - The reclaim (`reset-password`, `user:change-password`) and `user:deactivate` revoke every

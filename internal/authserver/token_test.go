@@ -380,6 +380,40 @@ func TestExchange_ReplacesEarlierGrantForSameClient(t *testing.T) {
 	wantOAuth(t, err, "invalid_grant")
 }
 
+func TestExchange_GlobalAppKeepsEarlierGrant(t *testing.T) {
+	s, creds, clock, user := newTestService(t)
+	cid := insertGlobalClient(t, s, clock.Now(), "https://claude.ai/api/mcp/auth_callback").String()
+	var tokens []model.TokenResponse
+	for range 2 {
+		res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(cid))
+		if err != nil {
+			t.Fatal(err)
+		}
+		u, _ := url.Parse(res.RedirectURL)
+		tr, err := exchange(s, cid, u.Query().Get("code"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tokens = append(tokens, tr)
+	}
+	grants, _ := s.repo.ListUnrevokedGrants(ctx, user)
+	if len(grants) != 2 {
+		t.Fatalf("a global app keeps both connections: %d grants", len(grants))
+	}
+	if len(creds.revoked) != 0 {
+		t.Fatalf("no access tokens may be revoked: %v", creds.revoked)
+	}
+	for _, tr := range tokens {
+		if _, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken}); err != nil {
+			t.Fatalf("both connections must keep refreshing: %v", err)
+		}
+	}
+	apps, err := s.ListConnectedApps(ctx, user)
+	if err != nil || len(apps) != 2 {
+		t.Fatalf("Connected apps lists each connection: %d %v", len(apps), err)
+	}
+}
+
 func TestExchange_HousekeepingPurgesDeadOAuthTokens(t *testing.T) {
 	s, creds, clock, user := newTestService(t)
 	cid, code := approve(t, s, user)

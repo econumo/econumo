@@ -112,7 +112,10 @@ and is revoked there like any other.
 Settings → Profile → Connected apps lists every app you approved with when it
 was connected and last used. Revoke signs it out immediately; its next tool
 call is rejected and it has to be approved again. Approving the same app again
-replaces its earlier connection instead of adding a second one.
+replaces its earlier connection instead of adding a second one. An official app
+(one the operator registered with `app:register`) is the exception: each
+approval is its own connection, so you can connect two Claude accounts to one
+Econumo account, and each has its own row to revoke.
 
 Resetting your password through the emailed link (or an operator changing it
 with `user:change-password`) disconnects every app, as does deactivating the
