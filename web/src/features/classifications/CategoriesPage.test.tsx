@@ -137,7 +137,7 @@ it('creates a category with type and icon (no accountId)', async () => {
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.id).toMatch(UUID_V7)
   expect(body!.type).toBe('income')
-  expect(body!.icon).toBe('home')
+  expect(body!.icon).toBe('star')
   expect(body!.accountId).toBeUndefined()
   expect(await screen.findByText('Books')).toBeInTheDocument()
 })

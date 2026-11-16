@@ -10,6 +10,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { IconSuggestion } from '@/features/iconSuggestion/useIconSuggestion'
+import { defaultAccountIcon } from '@/lib/icons'
 import { usableCurrencies } from '@/features/currencies/selectable'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -58,7 +59,7 @@ function padFraction(value: string, digits: number): string {
 }
 
 // currencyId '' = the row follows the default currency until the user picks one
-const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', icon: 'credit_card' })
+const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', icon: defaultAccountIcon })
 
 export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, onContinue, onSkip, pending, error }: AccountsStepProps) {
   const { t, i18n } = useTranslation()

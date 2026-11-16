@@ -448,6 +448,11 @@ navigation (single-pane vs sidebar).
 - [ ] With AI, a name that got a suggested icon and is then renamed to
       something with no match (e.g. "Rent" -> "Xyz") goes back to the
       default icon instead of keeping the old suggestion.
+- [ ] 📱 A new category or envelope starts with a star icon and a new
+      account with a credit card, never a house: the New category, New
+      envelope and New account dialogs, a new row on onboarding's Categories
+      and Accounts steps, and a category created inline from a picker. With
+      AI the star or card then changes to a suggested icon.
 - [ ] Onboarding never creates debts, with or without AI: after an import or
       after planning a loan category (e.g. "Mortgage") on Budget & plan, the
       budget shows no debt line and the Debts list stays empty.

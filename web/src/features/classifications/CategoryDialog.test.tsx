@@ -68,13 +68,13 @@ it('renamed to a name with no suggestion, the icon goes back to the default', as
   const user = userEvent.setup()
   const onSubmit = renderDialog()
   await user.type(screen.getByLabelText('Name'), 'Mortgage')
-  await waitFor(() => expect(screen.getByRole('option', { name: 'home' })).toHaveAttribute('aria-selected', 'false'), { timeout: 3000 })
+  await waitFor(() => expect(screen.getByRole('option', { name: 'star' })).toHaveAttribute('aria-selected', 'false'), { timeout: 3000 })
   await user.clear(screen.getByLabelText('Name'))
   await user.type(screen.getByLabelText('Name'), 'Salary')
   await waitFor(() => expect(asked).toHaveLength(2), { timeout: 3000 })
   await new Promise((resolve) => setTimeout(resolve, 100))
   await user.click(screen.getByRole('button', { name: 'Create' }))
-  expect(onSubmit).toHaveBeenCalledWith({ name: 'Salary', type: 'expense', icon: 'home' })
+  expect(onSubmit).toHaveBeenCalledWith({ name: 'Salary', type: 'expense', icon: 'star' })
 })
 
 it('an icon the user picked is never replaced', async () => {
@@ -106,6 +106,6 @@ it('without AI nothing is asked and the default icon stays', async () => {
   await user.type(screen.getByLabelText('Name'), 'Mortgage')
   await new Promise((resolve) => setTimeout(resolve, 900))
   await user.click(screen.getByRole('button', { name: 'Create' }))
-  expect(onSubmit).toHaveBeenCalledWith({ name: 'Mortgage', type: 'expense', icon: 'home' })
+  expect(onSubmit).toHaveBeenCalledWith({ name: 'Mortgage', type: 'expense', icon: 'star' })
   expect(asked).toHaveLength(0)
 })

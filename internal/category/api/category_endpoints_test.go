@@ -82,8 +82,8 @@ func TestCreateCategory_Success(t *testing.T) {
 	if it.Position != 0 {
 		t.Fatalf("first category position = %d, want 0", it.Position)
 	}
-	if it.Icon != "local_offer" {
-		t.Fatalf("item.icon = %q, want local_offer (default)", it.Icon)
+	if it.Icon != "star" {
+		t.Fatalf("item.icon = %q, want star (default)", it.Icon)
 	}
 	if it.IsArchived != 0 {
 		t.Fatalf("item.isArchived = %d, want 0", it.IsArchived)
