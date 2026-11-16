@@ -57,7 +57,7 @@ function padFraction(value: string, digits: number): string {
   return padded === '' ? int : `${int}.${padded}`
 }
 
-// currencyId '' = the row follows the default currency until the user picks one
+// currencyId '' = the row shows the default currency until the user picks one
 const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', icon: 'credit_card' })
 
 export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, onContinue, onSkip, pending, error }: AccountsStepProps) {
@@ -84,22 +84,13 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
     .map((r) => labelled(r, t))
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
-  // a failed submit's draft stores each existing account with the currency it was sent with
-  const restoredCurrency = (a: ExistingAccount) => (initialRows ?? []).find((r) => r.accountId === a.id)?.currencyId || a.currencyId
-  const restoredLead = existing.find((a) => !a.hidden)
-  const restoredShared = restoredLead && restoredCurrency(restoredLead) !== restoredLead.currencyId ? restoredCurrency(restoredLead) : null
-  // the first row's pick (the first shown existing account, else the first new row): rows the
-  // user has not changed by hand follow it
-  const [sharedId, setSharedId] = useState<Id | null>(existing.length === 0 ? leftover[0]?.currencyId || null : restoredShared)
-  // existing accounts whose currency the user picked by hand. From a draft only a currency that
-  // is neither the account's own nor the lead's counts as a pick: one equal to the lead's was
-  // following it, and must keep following
+  // existing accounts whose currency the user picked; a failed submit's draft stores each with the
+  // currency it was sent with
   const [picked, setPicked] = useState<Readonly<Record<Id, Id>>>(() => {
     const out: Record<Id, Id> = {}
     for (const a of existing) {
-      if (a.id === restoredLead?.id) continue
-      const c = restoredCurrency(a)
-      if (c !== a.currencyId && c !== (restoredShared ?? restoredLead?.currencyId)) out[a.id] = c
+      const c = (initialRows ?? []).find((r) => r.accountId === a.id)?.currencyId
+      if (c && c !== a.currencyId) out[a.id] = c
     }
     return out
   })
@@ -135,10 +126,14 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
     return byGuess?.id ?? userCurrencyId(user) ?? list[0]?.id ?? ''
   }, [currencies, user])
 
-  const currencyOf = (row: AccountRow) => row.currencyId || sharedId || defaultId
-  // a hidden account keeps its currency; a shown one takes its own pick, else the first row's
-  const lead = existing.find((a) => !isArchived(a))
-  const currencyOfExisting = (a: ExistingAccount) => (isArchived(a) ? a.currencyId : picked[a.id] || (lead ? sharedId : null) || a.currencyId)
+  // every account's currency is its own: a pick on one row never moves another row or Main
+  const currencyOf = (row: AccountRow) => row.currencyId || defaultId
+  // a hidden account keeps its currency
+  const currencyOfExisting = (a: ExistingAccount) => (isArchived(a) ? a.currencyId : picked[a.id] || a.currencyId)
+  // Main changes only through the Currencies chips; until then it is the user's first account's
+  // currency as it stands on the server, else the first draft row's, else the default
+  const initialMain = existing.find((a) => !a.hidden)?.currencyId || existing[0]?.currencyId || leftover[0]?.currencyId || defaultId
+  const mainId: Id | null = mainOverride || initialMain || null
   const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const rename = (row: AccountRow, name: string) => {
@@ -146,12 +141,11 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   }
 
   const addRow = () => {
-    const row = emptyRow()
+    const row = { ...emptyRow(), currencyId: mainId ?? '' }
     setRows((prev) => [...prev, row])
     setFocusKey(row.key)
   }
   const remove = (key: string) => {
-    if (!lead && key === rows[0]?.key) setSharedId(rows[1] ? currencyOf(rows[1]) : null)
     setRows((prev) => prev.filter((r) => r.key !== key))
   }
 
@@ -159,18 +153,10 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const counted = [
     ...existing.map(currencyOfExisting),
     ...(active.length > 0 || existing.length > 0 ? active : rows).map(currencyOf),
-    ...(sharedId && (lead || rows.length > 0) ? [sharedId] : []),
   ].filter(Boolean)
   const usedIds = [...new Set(counted)]
-  const computedMain: Id | null =
-    (sharedId && (lead || rows.length > 0)
-      ? sharedId
-      : active[0]
-        ? currencyOf(active[0])
-        : (lead ? currencyOfExisting(lead) : existing[0]?.currencyId) || (rows[0] ? currencyOf(rows[0]) : '')) || null
-  const extras = extraIds.filter((id) => !usedIds.includes(id))
-  const selectedIds = [...usedIds, ...extras]
-  const mainId = mainOverride && selectedIds.includes(mainOverride) ? mainOverride : computedMain
+  // Main stays selected even when no account uses it
+  const extras = [...new Set([...extraIds, ...(mainId ? [mainId] : [])])].filter((id) => !usedIds.includes(id))
 
   const parse = (raw: string) => parseBalance(raw, i18n.language)
   const invalid = new Set(active.filter((r) => parse(r.balance) === null).map((r) => r.key))
@@ -416,18 +402,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
           setPickingAccount(null)
         }}
         onPick={(id) => {
-          if (editingAccount) {
-            if (editingAccount.id === lead?.id) {
-              setSharedId(id)
-              setPicked((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== editingAccount.id)))
-            } else setPicked((prev) => ({ ...prev, [editingAccount.id]: id }))
-            return
-          }
-          if (!pickingRow) return
-          if (!lead && pickingRow === rows[0]?.key) {
-            setSharedId(id)
-            update(pickingRow, { currencyId: '' })
-          } else update(pickingRow, { currencyId: id })
+          if (editingAccount) setPicked((prev) => ({ ...prev, [editingAccount.id]: id }))
+          else if (pickingRow) update(pickingRow, { currencyId: id })
         }}
       />
     </section>
