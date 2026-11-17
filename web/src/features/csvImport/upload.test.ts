@@ -4,7 +4,7 @@ import { ensureAccounts, mergeRetry, runChunks, type ImportPoster } from './uplo
 import type { ImportResultDto } from '@/api/transaction'
 import type { PreparedRow, WizardAnswers } from './prepare'
 
-vi.mock('@/api/account', () => ({ createAccount: vi.fn(async () => ({})) }))
+vi.mock('@/api/account', () => ({ createAccount: vi.fn(async () => ({ item: { id: 'server-id', folderId: 'general' }, transaction: null })) }))
 
 function makeUpload(count: number) {
   return {
@@ -108,12 +108,31 @@ describe('ensureAccounts', () => {
     expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'Cash', balance: '0', folderId: null })
   })
 
+  // the request id only guards the operation: the server mints the account's own id
+  it('imports into the id the server gave the new account', async () => {
+    const result = await ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), new Map(), new Set())
+    expect(result.accountId).toBe('server-id')
+    expect(vi.mocked(createAccount).mock.calls[0][0].id).not.toBe('server-id')
+  })
+
   it('creates column accounts missing from existing names and created', async () => {
     const created = new Map<string, string>([['b', 'id-b']])
     const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1', c: 'c2' } })
     await ensureAccounts(a, created, new Set(['c']))
     expect(createAccount).toHaveBeenCalledTimes(1)
     expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'a', currencyId: 'c1' })
+  })
+
+  // the server only invents a folder for a user who has none and refuses a blank one otherwise
+  it('puts a new account in the folder it is given', async () => {
+    await ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), new Map(), new Set(), undefined, 'f1')
+    expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ folderId: 'f1' })
+  })
+
+  it('puts later accounts in the folder the first one landed in', async () => {
+    const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1' } })
+    await ensureAccounts(a, new Map(), new Set(), undefined, null)
+    expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'general'])
   })
 
   it('names a column account as the file writes it', async () => {

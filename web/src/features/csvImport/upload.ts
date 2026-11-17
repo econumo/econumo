@@ -110,18 +110,27 @@ export function mergeRetry(previous: ImportResult, retry: ImportResult, upload: 
 
 // `created` survives retries so a second attempt never creates an account twice.
 // `names` gives a per-row account its name as the file writes it; the answers key it lowercased.
+// `folderId` is the user's first folder: the server invents one only for a user who has none
+// and refuses a blank folder otherwise, so later accounts follow the first into its folder.
 export async function ensureAccounts(
   answers: WizardAnswers,
   created: Map<string, string>,
   existingNames: Set<string>,
   names?: ReadonlyMap<string, string>,
+  folderId: string | null = null,
 ): Promise<{ accountId?: string }> {
+  let folder = folderId
+  // the request id only guards the operation; the server mints the account's own id
+  const create = async (name: string, currencyId: string) => {
+    const made = await createAccount({ id: uuidv7(), name, currencyId, balance: '0', icon: defaultAccountIcon, folderId: folder })
+    folder = made.item.folderId ?? folder
+    return made.item.id
+  }
   const choice = answers.account
   if (choice?.kind === 'new') {
     let id = created.get('new')
     if (!id) {
-      id = uuidv7()
-      await createAccount({ id, name: choice.name, currencyId: choice.currencyId, balance: '0', icon: defaultAccountIcon, folderId: null })
+      id = await create(choice.name, choice.currencyId)
       created.set('new', id)
     }
     return { accountId: id }
@@ -130,9 +139,7 @@ export async function ensureAccounts(
     for (const [name, currencyId] of Object.entries(choice.currencies)) {
       const key = name.toLowerCase()
       if (existingNames.has(key) || created.has(key)) continue
-      const id = uuidv7()
-      await createAccount({ id, name: names?.get(key) ?? name, currencyId, balance: '0', icon: defaultAccountIcon, folderId: null })
-      created.set(key, id)
+      created.set(key, await create(names?.get(key) ?? name, currencyId))
     }
   }
   return {}

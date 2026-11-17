@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { importTransactionList } from '@/api/transaction'
-import { useAccounts } from '@/features/accounts/queries'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { finishImportStep, scheduleAiRefresh } from '@/features/onboarding/finishImport'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
@@ -84,6 +84,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const online = useOnline()
   const userQuery = useUserData()
   const accountsQuery = useAccounts()
+  const foldersQuery = useFolders()
   const currenciesQuery = useCurrencies()
   const user = userQuery.data
 
@@ -240,7 +241,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       current.account?.kind === 'column' ? new Map(distinctNames(file, current.account.column).map((name) => [nameKey(name), name])) : undefined
     let accountId: string | undefined
     try {
-      accountId = (await ensureAccounts(current, created.current, existing, names)).accountId
+      accountId = (await ensureAccounts(current, created.current, existing, names, foldersQuery.data?.[0]?.id ?? null)).accountId
     } catch (error) {
       trackEvent(METRICS.TRANSACTION_IMPORT_FAIL, { failed: importCount })
       setImportError(apiErrorMessage(error))
