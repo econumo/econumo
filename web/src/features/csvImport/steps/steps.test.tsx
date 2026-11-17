@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ComponentType } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -73,15 +73,26 @@ it('with no accounts, the Account step starts on a new account in the user’s c
   expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
 })
 
-it('a new account’s name is kept when the field is left, not on every key', async () => {
+it('a typed account name is saved after a pause in typing', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
-  const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account is this statement from?' })
-  await user.clear(screen.getByLabelText('Account name'))
+  fireEvent.change(screen.getByLabelText('Account name'), { target: { value: '' } })
   expect(screen.getByRole('button', { name: 'Account' })).toBeInTheDocument()
-  await user.tab()
-  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+})
+
+it('a typed account name is kept when the step is left before the pause, with the field still focused', async () => {
+  server.use(...coreHandlers({ accounts: [] }))
+  renderWizard('Date,Amount\n2026-01-02,-5.50\n')
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  const name = screen.getByLabelText('Account name')
+  name.focus()
+  fireEvent.change(name, { target: { value: 'Travel card' } })
+  fireEvent.click(screen.getByRole('button', { name: /^Date/ }))
+  expect(screen.getByRole('heading', { name: 'Which column has the date?' })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /^Account/ }))
+  expect(screen.getByLabelText('Account name')).toHaveValue('Travel card')
 })
 
 it('with accounts, the Account step offers the account picker first', async () => {
@@ -141,4 +152,20 @@ it('one amount column shows how spending looks with a switch to flip it; separat
   expect(screen.queryByRole('switch', { name: 'Flip the signs' })).not.toBeInTheDocument()
   expect(screen.getByRole('radiogroup', { name: 'Money in' })).toBeInTheDocument()
   expect(screen.getByRole('radiogroup', { name: 'Money out' })).toBeInTheDocument()
+})
+
+it('spending is shown with the file’s first negative amount, as it will be imported', async () => {
+  render(<StepHarness text={'Date,Amount\n2026-01-02,12.00\n2026-01-03,-4.50\n'} Step={AmountStep} onSet={vi.fn()} />)
+  const user = userEvent.setup()
+  expect(screen.getByText('Spending shows as: -4.50')).toBeInTheDocument()
+  await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
+  expect(screen.getByText('Spending shows as: 4.50')).toBeInTheDocument()
+})
+
+it('with no negative amount, spending is shown with the file’s first amount, as it will be imported', async () => {
+  render(<StepHarness text={'Date,Amount\n2026-01-02,12.00\n2026-01-03,3.00\n'} Step={AmountStep} onSet={vi.fn()} />)
+  const user = userEvent.setup()
+  expect(screen.getByText('Spending shows as: 12.00')).toBeInTheDocument()
+  await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
+  expect(screen.getByText('Spending shows as: -12.00')).toBeInTheDocument()
 })

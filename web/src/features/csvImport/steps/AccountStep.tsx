@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { Input } from '@/components/ui/input'
@@ -32,11 +32,15 @@ function distinctNames(file: ParsedFile, column: number): string[] {
   return [...names.values()]
 }
 
-function NewAccountFields({ account, onChange }: { account: NewAccount; onChange: (account: NewAccount) => void }) {
+const NAME_DELAY_MS = 300
+
+function NewAccountFields({ account, onChange, onNameChange }: {
+  account: NewAccount
+  onChange: (account: NewAccount) => void
+  onNameChange: (account: NewAccount) => void
+}) {
   const { t } = useTranslation()
   const nameId = useId()
-  // The name is committed on blur, not per keystroke: every change to the answers
-  // prepares all of the file's rows again.
   const [name, setName] = useState(account.name)
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -45,8 +49,10 @@ function NewAccountFields({ account, onChange }: { account: NewAccount; onChange
           id={nameId}
           className={cardFieldControlClass}
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => name !== account.name && onChange({ ...account, name })}
+          onChange={(e) => {
+            setName(e.target.value)
+            onNameChange({ ...account, name: e.target.value })
+          }}
         />
       </CardField>
       <CurrencyField
@@ -113,7 +119,35 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
   const remembered = useRef<Partial<Record<Option, AccountChoice>>>(account ? { [account.kind]: account } : {})
   const option = account?.kind ?? picked
 
+  // Every change to the answers prepares all of the file's rows again, so a typed
+  // name is saved after a pause in typing, or when the step goes away, not per key.
+  const typedName = useRef<{ account: NewAccount; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const setAnswersRef = useRef(setAnswers)
+  setAnswersRef.current = setAnswers
+
+  const dropTypedName = (): NewAccount | null => {
+    const typed = typedName.current
+    if (!typed) return null
+    clearTimeout(typed.timer)
+    typedName.current = null
+    remembered.current.new = typed.account
+    return typed.account
+  }
+
+  const saveTypedName = () => {
+    const typed = dropTypedName()
+    if (typed) setAnswersRef.current('account', { account: typed })
+  }
+
+  useEffect(() => saveTypedName, [])
+
+  const typeName = (next: NewAccount) => {
+    if (typedName.current) clearTimeout(typedName.current.timer)
+    typedName.current = { account: next, timer: setTimeout(saveTypedName, NAME_DELAY_MS) }
+  }
+
   const set = (next: AccountChoice | null) => {
+    dropTypedName()
     if (next) remembered.current[next.kind] = next
     setAnswers('account', { account: next })
   }
@@ -121,6 +155,8 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
   const choose = (next: Option) => {
     setPicked(next)
     if (next === option) return
+    // leaving "new" keeps the typed name for coming back, without saving it as the answer
+    dropTypedName()
     const fallback: AccountChoice | null =
       next === 'new' ? { kind: 'new', name: defaultAccountName(state.fileName), currencyId } : null
     set(remembered.current[next] ?? fallback)
@@ -150,7 +186,7 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
         ]}
         onChange={choose}
       />
-      {option === 'new' && account?.kind === 'new' ? <NewAccountFields account={account} onChange={set} /> : null}
+      {option === 'new' && account?.kind === 'new' ? <NewAccountFields account={account} onChange={set} onNameChange={typeName} /> : null}
       {option === 'existing' ? (
         <SelectCard label={accountLabel}>
           <EntitySelect

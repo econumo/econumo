@@ -12,22 +12,20 @@ import { StepTitle } from './StepTitle'
 
 type Amount = WizardAnswers['amount']
 
-const SIGNS = /^[\s+\-−(]+|[\s\-−)]+$/g
-
-// A value from the file the current settings read as spending. A file with no
-// such value still gets an example: its first amount, written the way spending
-// would have to look for the current setting.
+// A real value from the file: its first negative amount, else its first amount,
+// shown the way it will be imported with the current settings.
 function spendingExample(values: string[], amount: Amount): string | null {
-  let first: string | null = null
+  let example: string | null = null
   for (const value of values) {
-    const read = signedAmount({ single: value }, 'single', amount.flip, amount.sep)
-    if (read === null || !/[1-9]/.test(read)) continue
-    if (isNegative(read)) return value
-    first ??= value
+    const read = parseAmountCell(value, amount.sep)
+    if (read === null) continue
+    if (isNegative(read)) {
+      example = value
+      break
+    }
+    example ??= value
   }
-  if (first === null) return null
-  const magnitude = first.replace(SIGNS, '')
-  return amount.flip ? magnitude : `−${magnitude}`
+  return example === null ? null : signedAmount({ single: example }, 'single', amount.flip, amount.sep)
 }
 
 function readAs(value: string, sep: DecimalSeparator, language: string): string {
