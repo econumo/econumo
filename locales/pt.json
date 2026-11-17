@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "De que conta é este extrato?",
-        "new": "Uma conta nova"
+        "new": "Uma conta nova",
+        "existing": "Uma conta que já tenho",
+        "column": "Cada linha indica a sua conta",
+        "name": "Nome da conta",
+        "currency": "Moeda",
+        "column_question": "Que coluna tem o nome da conta?",
+        "found": "Contas neste ficheiro",
+        "existing_name": "Conta existente",
+        "currency_of": "Moeda de {name}"
       },
       "date": {
-        "title": "Que coluna tem a data?"
+        "title": "Que coluna tem a data?",
+        "question": "{example} é {dmy} ou {mdy}?",
+        "skipped": "{count} linha não tem uma data legível e será ignorada | {count} linhas não têm uma data legível e serão ignoradas"
       },
       "amount": {
-        "title": "Como mostra o ficheiro os montantes?"
+        "title": "Como mostra o ficheiro os montantes?",
+        "single": "Uma coluna com + e −",
+        "dual": "Colunas separadas para dinheiro que entra e dinheiro que sai",
+        "column": "Que coluna tem o montante?",
+        "money_in": "Dinheiro que entra",
+        "money_out": "Dinheiro que sai",
+        "separator_question": "Quanto é {example}?",
+        "spending": "As despesas aparecem como: {example}",
+        "flip": "Inverter os sinais"
       },
       "description": {
         "title": "Que coluna descreve cada transação?"

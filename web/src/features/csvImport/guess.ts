@@ -151,7 +151,7 @@ interface GuessContext {
   currencies?: ReadonlyArray<{ id: string; code: string }>
 }
 
-function columnValues(file: ParsedFile, column: number | null): string[] {
+export function columnValues(file: ParsedFile, column: number | null): string[] {
   if (column === null) return []
   return file.rows.map((row) => (row[column] ?? '').trim()).filter((v) => v !== '')
 }

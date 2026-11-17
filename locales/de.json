@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "Von welchem Konto stammt dieser Kontoauszug?",
-        "new": "Ein neues Konto"
+        "new": "Ein neues Konto",
+        "existing": "Ein Konto, das ich schon habe",
+        "column": "Jede Zeile nennt ihr Konto",
+        "name": "Kontoname",
+        "currency": "Währung",
+        "column_question": "Welche Spalte enthält den Kontonamen?",
+        "found": "Konten in dieser Datei",
+        "existing_name": "Vorhandenes Konto",
+        "currency_of": "Währung für {name}"
       },
       "date": {
-        "title": "Welche Spalte enthält das Datum?"
+        "title": "Welche Spalte enthält das Datum?",
+        "question": "Ist {example} der {dmy} oder der {mdy}?",
+        "skipped": "{count} Zeile hat kein lesbares Datum und wird übersprungen | {count} Zeilen haben kein lesbares Datum und werden übersprungen"
       },
       "amount": {
-        "title": "Wie zeigt die Datei Beträge an?"
+        "title": "Wie zeigt die Datei Beträge an?",
+        "single": "Eine Spalte mit + und −",
+        "dual": "Getrennte Spalten für Eingänge und Ausgänge",
+        "column": "Welche Spalte enthält den Betrag?",
+        "money_in": "Eingänge",
+        "money_out": "Ausgänge",
+        "separator_question": "Wie viel ist {example}?",
+        "spending": "Ausgaben erscheinen als: {example}",
+        "flip": "Vorzeichen umkehren"
       },
       "description": {
         "title": "Welche Spalte beschreibt die einzelnen Buchungen?"

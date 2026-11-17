@@ -97,7 +97,7 @@ it('choosing a different date column on its step clears the warning', async () =
   await screen.findByRole('heading', { name: 'Which account is this statement from?' })
   expect(screen.getByRole('button', { name: /^Date.*needs your attention/ })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /^Date/ }))
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Which column has the date?' }), 'Day: 2026-01-02, 2026-01-03')
+  await user.click(screen.getByRole('radio', { name: /^Day/ }))
   expect(screen.getByRole('button', { name: 'Date' })).toBeInTheDocument()
 })
 

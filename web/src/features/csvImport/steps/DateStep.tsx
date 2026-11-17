@@ -1,20 +1,70 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { pluralPick } from '@/lib/plural'
+import { ChoiceCards, ColumnCards } from '../ColumnCards'
+import { detectDateOrder, parseDateCell, type DateOrder } from '../dates'
+import { columnValues } from '../guess'
 import type { StepBodyProps } from '../wizard'
-import { PlainColumnPicker } from './PlainColumnPicker'
 import { StepTitle } from './StepTitle'
 
-export function DateStep({ state, setAnswers }: StepBodyProps) {
-  const { t } = useTranslation()
-  const title = t('transactions.import_wizard.date.title')
+function longDate(value: string, order: DateOrder, language: string): string {
+  const parsed = parseDateCell(value, order)
+  if (!parsed) return value
+  const [y, m, d] = parsed.date.split('-').map(Number)
+  return new Intl.DateTimeFormat(language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(y, m - 1, d)),
+  )
+}
+
+function OrderQuestion({ example, order, onChange }: { example: string; order: DateOrder; onChange: (order: DateOrder) => void }) {
+  const { t, i18n } = useTranslation()
+  const dmy = longDate(example, 'dmy', i18n.language)
+  const mdy = longDate(example, 'mdy', i18n.language)
+  const question = t('transactions.import_wizard.date.question', { example, dmy, mdy })
   return (
     <div className="flex flex-col gap-2">
+      <p className="text-sm">{question}</p>
+      <ChoiceCards<DateOrder>
+        label={question}
+        value={order}
+        options={[
+          { value: 'dmy', label: dmy },
+          { value: 'mdy', label: mdy },
+        ]}
+        onChange={onChange}
+      />
+    </div>
+  )
+}
+
+export function DateStep({ state, setAnswers }: StepBodyProps) {
+  const { t, i18n } = useTranslation()
+  const title = t('transactions.import_wizard.date.title')
+  const { date } = state.answers
+  const detected = useMemo(
+    () => (date.column === null ? null : detectDateOrder(columnValues(state.file, date.column), navigator.language)),
+    [state.file, date.column],
+  )
+  const unreadable = date.column === null ? 0 : state.rows.filter((row) => row.reason === 'no_date').length
+  const example = detected?.ambiguous ? detected.example : null
+
+  return (
+    <div className="flex flex-col gap-3">
       <StepTitle>{title}</StepTitle>
-      <PlainColumnPicker
+      <ColumnCards
         label={title}
         profiles={state.profiles}
-        value={state.answers.date.column}
-        onChange={(column) => setAnswers('date', { date: { ...state.answers.date, column } })}
+        value={date.column}
+        onChange={(column) => setAnswers('date', { date: { ...date, column } })}
       />
+      {example ? (
+        <OrderQuestion example={example} order={date.order} onChange={(order) => setAnswers('date', { date: { ...date, order } })} />
+      ) : null}
+      {unreadable > 0 ? (
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          {pluralPick(t('transactions.import_wizard.date.skipped'), unreadable, i18n.language)}
+        </p>
+      ) : null}
     </div>
   )
 }

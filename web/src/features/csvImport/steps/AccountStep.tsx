@@ -1,39 +1,185 @@
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { Input } from '@/components/ui/input'
 import { useAccounts } from '@/features/accounts/queries'
+import { CurrencyField } from '@/features/currencies/CurrencyField'
+import { EntitySelect } from '@/features/transactions/EntitySelect'
+import { SelectCard } from '@/features/transactions/SelectCard'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { ChoiceCards, ColumnCards } from '../ColumnCards'
+import type { ParsedFile } from '../parse'
+import type { AccountChoice } from '../prepare'
 import { defaultAccountName, writableAccounts, type StepBodyProps } from '../wizard'
 import { StepTitle } from './StepTitle'
 
-const NEW = 'new'
+type Option = AccountChoice['kind']
+type NewAccount = Extract<AccountChoice, { kind: 'new' }>
+type PerRow = Extract<AccountChoice, { kind: 'column' }>
+
+// names are matched trimmed and case-insensitively, as the server matches them
+const nameKey = (name: string) => name.trim().toLowerCase()
+
+// account names are user text, so a name like "constructor" must not read Object.prototype
+const ownCurrency = (currencies: Record<string, string>, key: string) => (Object.hasOwn(currencies, key) ? currencies[key] : undefined)
+
+function distinctNames(file: ParsedFile, column: number): string[] {
+  const names = new Map<string, string>()
+  for (const row of file.rows) {
+    const name = (row[column] ?? '').trim()
+    if (name !== '' && !names.has(nameKey(name))) names.set(nameKey(name), name)
+  }
+  return [...names.values()]
+}
+
+function NewAccountFields({ account, onChange }: { account: NewAccount; onChange: (account: NewAccount) => void }) {
+  const { t } = useTranslation()
+  const nameId = useId()
+  // The name is committed on blur, not per keystroke: every change to the answers
+  // prepares all of the file's rows again.
+  const [name, setName] = useState(account.name)
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <CardField label={t('transactions.import_wizard.account.name')} htmlFor={nameId}>
+        <Input
+          id={nameId}
+          className={cardFieldControlClass}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => name !== account.name && onChange({ ...account, name })}
+        />
+      </CardField>
+      <CurrencyField
+        label={t('transactions.import_wizard.account.currency')}
+        value={account.currencyId || null}
+        onChange={(currencyId) => onChange({ ...account, name, currencyId })}
+      />
+    </div>
+  )
+}
+
+function PerRowAccounts({ file, account, existing, fallbackCurrency, onChange }: {
+  file: ParsedFile
+  account: PerRow
+  existing: ReadonlySet<string>
+  fallbackCurrency: string
+  onChange: (account: PerRow) => void
+}) {
+  const { t } = useTranslation()
+  const headingId = useId()
+  const names = useMemo(() => distinctNames(file, account.column), [file, account.column])
+  if (names.length === 0) return null
+  return (
+    <div className="flex flex-col gap-2">
+      <p id={headingId} className="text-sm">
+        {t('transactions.import_wizard.account.found')}
+      </p>
+      <ul aria-labelledby={headingId} className="flex flex-col gap-2">
+        {names.map((name) => {
+          const key = nameKey(name)
+          return (
+            <li key={key} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2">
+              <span className="truncate text-sm">{name}</span>
+              {existing.has(key) ? (
+                <span className="text-sm text-muted-foreground">{t('transactions.import_wizard.account.existing_name')}</span>
+              ) : (
+                <CurrencyField
+                  label={t('transactions.import_wizard.account.currency_of', { name })}
+                  value={ownCurrency(account.currencies, key) ?? fallbackCurrency}
+                  onChange={(currencyId) => onChange({ ...account, currencies: { ...account.currencies, [key]: currencyId } })}
+                />
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
 
 export function AccountStep({ state, setAnswers }: StepBodyProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
+  const writable = useMemo(() => writableAccounts(accounts, user?.id), [accounts, user?.id])
+  const existing = useMemo(() => new Set(writable.map((a) => nameKey(a.name))), [writable])
+  const currencyId = userCurrencyId(user) ?? ''
   const title = t('transactions.import_wizard.account.title')
   const { account } = state.answers
-  const value = account === null || account.kind === 'column' ? '' : account.kind === 'new' ? NEW : account.accountId
-  const choose = (picked: string) =>
-    setAnswers('account', {
-      account:
-        picked === NEW
-          ? { kind: 'new', name: defaultAccountName(state.fileName), currencyId: userCurrencyId(user) ?? '' }
-          : { kind: 'existing', accountId: picked },
-    })
+
+  // An option can be picked before it has an answer (no account or column chosen
+  // yet), and switching back restores what was chosen under it before.
+  const [picked, setPicked] = useState<Option>(() => account?.kind ?? (writable.length > 0 ? 'existing' : 'new'))
+  const remembered = useRef<Partial<Record<Option, AccountChoice>>>(account ? { [account.kind]: account } : {})
+  const option = account?.kind ?? picked
+
+  const set = (next: AccountChoice | null) => {
+    if (next) remembered.current[next.kind] = next
+    setAnswers('account', { account: next })
+  }
+
+  const choose = (next: Option) => {
+    setPicked(next)
+    if (next === option) return
+    const fallback: AccountChoice | null =
+      next === 'new' ? { kind: 'new', name: defaultAccountName(state.fileName), currencyId } : null
+    set(remembered.current[next] ?? fallback)
+  }
+
+  const chooseColumn = (column: number | null) => {
+    if (column === null) return
+    const previous = account?.kind === 'column' ? account.currencies : {}
+    const keys = distinctNames(state.file, column).map(nameKey).filter((key) => !existing.has(key))
+    // fromEntries, not assignment: a name like "__proto__" must stay a plain key
+    const currencies = Object.fromEntries(keys.map((key) => [key, ownCurrency(previous, key) ?? currencyId]))
+    set({ kind: 'column', column, currencies })
+  }
+
+  const accountLabel = t('transactions.import_wizard.steps.account')
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <StepTitle>{title}</StepTitle>
-      <select aria-label={title} className="h-9 w-full rounded-md border bg-transparent px-2 text-sm" value={value} onChange={(e) => choose(e.target.value)}>
-        <option value="" disabled>
-          {t('transactions.import_wizard.none')}
-        </option>
-        <option value={NEW}>{t('transactions.import_wizard.account.new')}</option>
-        {writableAccounts(accounts, user?.id).map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
+      <ChoiceCards<Option>
+        label={title}
+        value={option}
+        options={[
+          { value: 'new', label: t('transactions.import_wizard.account.new') },
+          ...(writable.length > 0 ? [{ value: 'existing' as const, label: t('transactions.import_wizard.account.existing') }] : []),
+          { value: 'column', label: t('transactions.import_wizard.account.column') },
+        ]}
+        onChange={choose}
+      />
+      {option === 'new' && account?.kind === 'new' ? <NewAccountFields account={account} onChange={set} /> : null}
+      {option === 'existing' ? (
+        <SelectCard label={accountLabel}>
+          <EntitySelect
+            aria-label={accountLabel}
+            value={account?.kind === 'existing' ? account.accountId : null}
+            onChange={(accountId) => set(accountId ? { kind: 'existing', accountId } : null)}
+            options={writable.map((a) => ({
+              value: a.id,
+              label: `${a.name} (${a.balance} ${a.currency.code})`,
+              icon: a.icon,
+              searchText: a.name,
+            }))}
+          />
+        </SelectCard>
+      ) : null}
+      {option === 'column' ? (
+        <>
+          <p className="text-sm">{t('transactions.import_wizard.account.column_question')}</p>
+          <ColumnCards
+            label={t('transactions.import_wizard.account.column_question')}
+            profiles={state.profiles}
+            value={account?.kind === 'column' ? account.column : null}
+            onChange={chooseColumn}
+          />
+          {account?.kind === 'column' ? (
+            <PerRowAccounts file={state.file} account={account} existing={existing} fallbackCurrency={currencyId} onChange={set} />
+          ) : null}
+        </>
+      ) : null}
     </div>
   )
 }

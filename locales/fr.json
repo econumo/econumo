@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "De quel compte provient ce relevé ?",
-        "new": "Un nouveau compte"
+        "new": "Un nouveau compte",
+        "existing": "Un compte que j’ai déjà",
+        "column": "Chaque ligne indique son compte",
+        "name": "Nom du compte",
+        "currency": "Devise",
+        "column_question": "Quelle colonne contient le nom du compte ?",
+        "found": "Comptes dans ce fichier",
+        "existing_name": "Compte existant",
+        "currency_of": "Devise de {name}"
       },
       "date": {
-        "title": "Quelle colonne contient la date ?"
+        "title": "Quelle colonne contient la date ?",
+        "question": "{example}, est-ce le {dmy} ou le {mdy} ?",
+        "skipped": "{count} ligne n’a pas de date lisible et sera ignorée | {count} lignes n’ont pas de date lisible et seront ignorées"
       },
       "amount": {
-        "title": "Comment le fichier présente-t-il les montants ?"
+        "title": "Comment le fichier présente-t-il les montants ?",
+        "single": "Une colonne avec + et −",
+        "dual": "Des colonnes séparées pour les entrées et les sorties d’argent",
+        "column": "Quelle colonne contient le montant ?",
+        "money_in": "Entrées d’argent",
+        "money_out": "Sorties d’argent",
+        "separator_question": "Combien vaut {example} ?",
+        "spending": "Les dépenses apparaissent ainsi : {example}",
+        "flip": "Inverser les signes"
       },
       "description": {
         "title": "Quelle colonne décrit chaque transaction ?"

@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "¿De qué cuenta es este extracto?",
-        "new": "Una cuenta nueva"
+        "new": "Una cuenta nueva",
+        "existing": "Una cuenta que ya tengo",
+        "column": "Cada fila indica su cuenta",
+        "name": "Nombre de la cuenta",
+        "currency": "Moneda",
+        "column_question": "¿Qué columna tiene el nombre de la cuenta?",
+        "found": "Cuentas en este archivo",
+        "existing_name": "Cuenta existente",
+        "currency_of": "Moneda de {name}"
       },
       "date": {
-        "title": "¿Qué columna tiene la fecha?"
+        "title": "¿Qué columna tiene la fecha?",
+        "question": "¿{example} es el {dmy} o el {mdy}?",
+        "skipped": "{count} fila no tiene una fecha legible y se omitirá | {count} filas no tienen una fecha legible y se omitirán"
       },
       "amount": {
-        "title": "¿Cómo muestra el archivo los importes?"
+        "title": "¿Cómo muestra el archivo los importes?",
+        "single": "Una columna con + y −",
+        "dual": "Columnas separadas para el dinero que entra y el que sale",
+        "column": "¿Qué columna tiene el importe?",
+        "money_in": "Dinero que entra",
+        "money_out": "Dinero que sale",
+        "separator_question": "¿Cuánto es {example}?",
+        "spending": "Los gastos aparecen como: {example}",
+        "flip": "Invertir los signos"
       },
       "description": {
         "title": "¿Qué columna describe cada transacción?"

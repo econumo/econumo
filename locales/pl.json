@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "Z którego konta jest ten wyciąg?",
-        "new": "Nowe konto"
+        "new": "Nowe konto",
+        "existing": "Konto, które już mam",
+        "column": "Każdy wiersz podaje swoje konto",
+        "name": "Nazwa konta",
+        "currency": "Waluta",
+        "column_question": "Która kolumna zawiera nazwę konta?",
+        "found": "Konta w tym pliku",
+        "existing_name": "Istniejące konto",
+        "currency_of": "Waluta dla {name}"
       },
       "date": {
-        "title": "Która kolumna zawiera datę?"
+        "title": "Która kolumna zawiera datę?",
+        "question": "Czy {example} to {dmy}, czy {mdy}?",
+        "skipped": "{count} wiersz nie ma czytelnej daty i zostanie pominięty | {count} wiersze nie mają czytelnej daty i zostaną pominięte | {count} wierszy nie ma czytelnej daty i zostanie pominiętych"
       },
       "amount": {
-        "title": "Jak plik pokazuje kwoty?"
+        "title": "Jak plik pokazuje kwoty?",
+        "single": "Jedna kolumna z + i −",
+        "dual": "Osobne kolumny dla wpływów i wydatków",
+        "column": "Która kolumna zawiera kwotę?",
+        "money_in": "Wpływy",
+        "money_out": "Wydatki",
+        "separator_question": "Ile to jest {example}?",
+        "spending": "Wydatki wyglądają tak: {example}",
+        "flip": "Odwróć znaki"
       },
       "description": {
         "title": "Która kolumna opisuje każdą transakcję?"

@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "Which account is this statement from?",
-        "new": "A new account"
+        "new": "A new account",
+        "existing": "An account I already have",
+        "column": "Each row says which account",
+        "name": "Account name",
+        "currency": "Currency",
+        "column_question": "Which column has the account name?",
+        "found": "Accounts in this file",
+        "existing_name": "Existing account",
+        "currency_of": "Currency for {name}"
       },
       "date": {
-        "title": "Which column has the date?"
+        "title": "Which column has the date?",
+        "question": "Is {example} the {dmy} or {mdy}?",
+        "skipped": "{count} row has no readable date and will be skipped | {count} rows have no readable date and will be skipped"
       },
       "amount": {
-        "title": "How does the file show amounts?"
+        "title": "How does the file show amounts?",
+        "single": "One column with + and −",
+        "dual": "Separate columns for money in and money out",
+        "column": "Which column has the amount?",
+        "money_in": "Money in",
+        "money_out": "Money out",
+        "separator_question": "How much is {example}?",
+        "spending": "Spending shows as: {example}",
+        "flip": "Flip the signs"
       },
       "description": {
         "title": "Which column describes each transaction?"

@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "Da quale conto proviene questo estratto?",
-        "new": "Un nuovo conto"
+        "new": "Un nuovo conto",
+        "existing": "Un conto che ho già",
+        "column": "Ogni riga indica il suo conto",
+        "name": "Nome del conto",
+        "currency": "Valuta",
+        "column_question": "Quale colonna contiene il nome del conto?",
+        "found": "Conti in questo file",
+        "existing_name": "Conto esistente",
+        "currency_of": "Valuta di {name}"
       },
       "date": {
-        "title": "Quale colonna contiene la data?"
+        "title": "Quale colonna contiene la data?",
+        "question": "{example} è il {dmy} o il {mdy}?",
+        "skipped": "{count} riga non ha una data leggibile e verrà saltata | {count} righe non hanno una data leggibile e verranno saltate"
       },
       "amount": {
-        "title": "Come mostra gli importi il file?"
+        "title": "Come mostra gli importi il file?",
+        "single": "Una colonna con + e −",
+        "dual": "Colonne separate per entrate e uscite",
+        "column": "Quale colonna contiene l’importo?",
+        "money_in": "Entrate",
+        "money_out": "Uscite",
+        "separator_question": "Quanto vale {example}?",
+        "spending": "Le spese appaiono come: {example}",
+        "flip": "Inverti i segni"
       },
       "description": {
         "title": "Quale colonna descrive ogni transazione?"

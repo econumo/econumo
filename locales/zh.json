@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "这份账单来自哪个账户？",
-        "new": "新账户"
+        "new": "新账户",
+        "existing": "我已有的账户",
+        "column": "每一行写明了所属账户",
+        "name": "账户名称",
+        "currency": "货币",
+        "column_question": "哪一列是账户名称？",
+        "found": "此文件中的账户",
+        "existing_name": "已有账户",
+        "currency_of": "{name} 的货币"
       },
       "date": {
-        "title": "哪一列是日期？"
+        "title": "哪一列是日期？",
+        "question": "{example} 是 {dmy} 还是 {mdy}？",
+        "skipped": "{count} 行没有可识别的日期，将被跳过"
       },
       "amount": {
-        "title": "文件中的金额是怎样表示的？"
+        "title": "文件中的金额是怎样表示的？",
+        "single": "一列，用 + 和 − 表示",
+        "dual": "收入和支出分成两列",
+        "column": "哪一列是金额？",
+        "money_in": "收入",
+        "money_out": "支出",
+        "separator_question": "{example} 是多少？",
+        "spending": "支出显示为：{example}",
+        "flip": "反转正负号"
       },
       "description": {
         "title": "哪一列描述每笔交易？"

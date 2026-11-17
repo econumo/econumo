@@ -479,13 +479,31 @@
       },
       "account": {
         "title": "Van welke rekening is dit afschrift?",
-        "new": "Een nieuwe rekening"
+        "new": "Een nieuwe rekening",
+        "existing": "Een rekening die ik al heb",
+        "column": "Elke regel vermeldt de rekening",
+        "name": "Naam van de rekening",
+        "currency": "Valuta",
+        "column_question": "Welke kolom bevat de naam van de rekening?",
+        "found": "Rekeningen in dit bestand",
+        "existing_name": "Bestaande rekening",
+        "currency_of": "Valuta voor {name}"
       },
       "date": {
-        "title": "Welke kolom bevat de datum?"
+        "title": "Welke kolom bevat de datum?",
+        "question": "Is {example} {dmy} of {mdy}?",
+        "skipped": "{count} regel heeft geen leesbare datum en wordt overgeslagen | {count} regels hebben geen leesbare datum en worden overgeslagen"
       },
       "amount": {
-        "title": "Hoe toont het bestand bedragen?"
+        "title": "Hoe toont het bestand bedragen?",
+        "single": "Eén kolom met + en −",
+        "dual": "Aparte kolommen voor geld erin en geld eruit",
+        "column": "Welke kolom bevat het bedrag?",
+        "money_in": "Geld erin",
+        "money_out": "Geld eruit",
+        "separator_question": "Hoeveel is {example}?",
+        "spending": "Uitgaven staan er als: {example}",
+        "flip": "Tekens omdraaien"
       },
       "description": {
         "title": "Welke kolom beschrijft elke transactie?"
