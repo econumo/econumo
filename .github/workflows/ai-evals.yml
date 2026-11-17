@@ -25,11 +25,13 @@ on:
             - "internal/onboarding/classify.go"
             - "internal/onboarding/review.go"
             - "internal/onboarding/service.go"
+            - "internal/transaction/suggest_columns.go"
             - "icons/icons.json"
             - "prompts/**"
             - "internal/infra/ai/**"
             - "internal/imports/aieval_test.go"
             - "internal/onboarding/aieval_test.go"
+            - "internal/transaction/aieval_test.go"
             - "internal/test/aieval/**"
             - ".github/workflows/ai-evals.yml"
     workflow_call:

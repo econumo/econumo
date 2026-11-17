@@ -239,7 +239,7 @@ test-upgrade:
 ai-eval:
 	@t="$${AIEVAL_TABLE:-$$(mktemp)}"; f="$${AIEVAL_FAILURES:-$$(mktemp)}"; : > "$$t"; : > "$$f"; \
 	AIEVAL_TABLE="$$t" AIEVAL_FAILURES="$$f" CGO_ENABLED=0 \
-		go test -tags aieval -count=1 -timeout 15m -run AIEval -v ./internal/imports/ ./internal/onboarding/; s=$$?; \
+		go test -tags aieval -count=1 -timeout 15m -run AIEval -v ./internal/imports/ ./internal/onboarding/ ./internal/transaction/; s=$$?; \
 	printf '\n| Area | Passed | Rate | Threshold | Status |\n|---|---|---|---|---|\n'; cat "$$t"; \
 	if [ -s "$$f" ]; then printf '\nFailed cases:\n'; cat "$$f"; fi; exit $$s
 
