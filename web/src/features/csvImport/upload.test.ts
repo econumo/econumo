@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAccount } from '@/api/account'
 import { ensureAccounts, runChunks, type ImportPoster } from './upload'
-import type { WizardAnswers } from './prepare'
+import type { ImportResultDto } from '@/api/transaction'
+import type { PreparedRow, WizardAnswers } from './prepare'
 
 vi.mock('@/api/account', () => ({ createAccount: vi.fn(async () => ({})) }))
 
@@ -52,7 +53,7 @@ describe('runChunks', () => {
   it('maps server rows (header = 1) through fileRows, 0 stays row-less', async () => {
     const upload = makeUpload(600)
     upload.fileRows = upload.fileRows.map((r) => r * 10)
-    const post = vi.fn<ImportPoster>(async (file) =>
+    const post = vi.fn<ImportPoster>(async (file): Promise<ImportResultDto> =>
       file.name === 'chunk_0.csv'
         ? { imported: 0, skipped: 2, errors: { bad: [2, 3], top: [0] } }
         : { imported: 0, skipped: 1, errors: { bad: [2] } },
@@ -67,11 +68,22 @@ describe('runChunks', () => {
 
   it('counts browser-skipped rows by reason', async () => {
     const post = vi.fn<ImportPoster>(async () => ({ imported: 1, skipped: 0, errors: {} }))
-    const skipped = [
-      { fileRow: 3, reason: 'no_date' },
-      { fileRow: 5, reason: 'no_date' },
-      { fileRow: 6, reason: 'no_amount' },
-    ] as never
+    const skippedRow = (fileRow: number, reason: PreparedRow['reason']): PreparedRow => ({
+      fileRow,
+      raw: '',
+      status: 'skipped',
+      reason,
+      date: null,
+      time: null,
+      amount: null,
+      account: null,
+      description: '',
+      payee: '',
+      category: '',
+      tag: '',
+      labels: '',
+    })
+    const skipped = [skippedRow(3, 'no_date'), skippedRow(5, 'no_date'), skippedRow(6, 'no_amount')]
     const result = await runChunks(makeUpload(1), post, { skipped })
     expect(result.failed).toBe(3)
     expect(result.errors).toEqual([
