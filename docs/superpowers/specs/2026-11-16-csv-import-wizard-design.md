@@ -56,7 +56,23 @@ is done, and an ambiguous date like `03/04/2026` is silently read day-first.
 
 ## The wizard
 
-One dialog (`ResponsiveDialog`, a sheet on a phone) with a step indicator, Back and Next.
+One dialog (`ResponsiveDialog`, a sheet on a phone) with a step bar, Back and Next.
+
+**Moving between steps.** Once a file is loaded, the step bar is clickable: the user can
+jump to any step, forward or back, in any order, because every step is already pre-filled.
+Steps are never locked behind earlier ones. A step whose answer is missing or causes
+skipped rows carries a warning mark in the bar, and Import is disabled until the required
+ones (account, date, amount) are answered. On a wide dialog the bar shows every step's
+name; on a phone it shows numbered dots with the current step's name, and each dot is
+tappable. Back and Next stay for people who just go through in order.
+
+**An Econumo export goes straight to the end.** When the file's header is an Econumo export
+(see Guessing), the wizard skips from File directly to the Preview step: everything is
+already mapped, so the user only confirms. In that case the Preview also shows the account
+list (described under step 2, each new account with its currency pre-filled from
+`account_currency`), so currencies can be checked without leaving the screen. The step bar
+is still there, so any step can be opened to change something. The same shortcut is not
+used for other files: a guessed mapping of a bank statement still walks through the steps.
 It replaces `ImportCsvDialog` everywhere it is used today: Getting started's Import step
 (`web/src/features/onboarding/ImportStep.tsx`) and Settings → Data
 (`web/src/features/imports/ImportsDataPage.tsx`). The `initialFile` (drag-and-drop) entry
@@ -141,7 +157,8 @@ The server still accepts those fields.
 - Totals: "214 transactions, 2026-01-03 to 2026-03-31. Money in 6,000.00, money out
   4,812.40." Rows that will be skipped are counted with the reason.
 - Each preview line can be tapped to jump back to the step that shapes it (date, amount,
-  description); a "Something looks wrong?" link goes back to step 3.
+  description); a "Something looks wrong?" link goes back to step 3 (step 2 for an Econumo
+  export).
 - Primary button "Import 214 transactions". The progress bar for chunked uploads stays.
 
 The result screen (`ImportResultDialog`) stays, with plain-language error wording.
