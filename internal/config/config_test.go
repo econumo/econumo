@@ -1112,3 +1112,19 @@ func TestParseAIDSN_Exported(t *testing.T) {
 		t.Fatal("a bad json flag must fail")
 	}
 }
+
+func TestLoad_ReferralCookie(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_REFERRAL_COOKIE", "affonso_referral")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ReferralCookie != "affonso_referral" {
+		t.Fatalf("ReferralCookie = %q", c.ReferralCookie)
+	}
+	t.Setenv("ECONUMO_REFERRAL_COOKIE", "bad name")
+	if _, err := Load(); err == nil {
+		t.Fatal("a name that is not a cookie token must fail at boot")
+	}
+}

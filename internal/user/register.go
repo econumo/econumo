@@ -7,6 +7,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -84,6 +85,9 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	now := s.clock.Now()
 	u := build(s.repo.NextIdentity(), encryptedEmail, s.avatars.Pick(), now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
+	if selfService {
+		u.SetAffiliate(reqctx.Affiliate(ctx), s.repo.NextIdentity(), now)
+	}
 	// Analytics default to on for every new user; the deprecated ECONUMO_ANALYTICS
 	// variable governs only the one-time migration:seed-analytics-option backfill
 	// of pre-existing users, not this path.

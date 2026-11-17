@@ -167,7 +167,13 @@ func New(deps Deps) http.Handler {
 	if deps.RegisterAPI != nil {
 		deps.RegisterAPI(apiMux)
 	}
-	root.Handle("/api/", global(apiMux))
+	var api http.Handler = apiMux
+	// Only the cloud edition reports referrals, to billing; elsewhere the cookie
+	// would be stored for nobody.
+	if deps.Cfg.ReferralCookie != "" && deps.Cfg.BillingURL != "" {
+		api = middleware.Affiliate(deps.Cfg.ReferralCookie)(apiMux)
+	}
+	root.Handle("/api/", global(api))
 
 	// MCP endpoint. Mounted at the root (outside /api: JSON-RPC, not the REST
 	// contract, so the apiparity machinery must not scan it) but inside the

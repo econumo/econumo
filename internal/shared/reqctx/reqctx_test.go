@@ -89,3 +89,12 @@ func TestIsLanguageExplicit(t *testing.T) {
 		t.Fatal("WithLanguage must mark explicit")
 	}
 }
+
+func TestAffiliate(t *testing.T) {
+	if got := Affiliate(context.Background()); got != "" {
+		t.Fatalf("empty context = %q", got)
+	}
+	if got := Affiliate(WithAffiliate(context.Background(), "abc123")); got != "abc123" {
+		t.Fatalf("got %q", got)
+	}
+}

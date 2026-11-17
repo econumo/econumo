@@ -7,6 +7,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -53,5 +54,61 @@ func assertNoAffiliate(t *testing.T, where string, opts []model.OptionResult) {
 		if o.Name == model.OptionAffiliate {
 			t.Errorf("%s exposes the affiliate option", where)
 		}
+	}
+}
+
+func TestRegisterStoresAffiliate(t *testing.T) {
+	ctx := reqctx.WithAffiliate(context.Background(), "abc123")
+	h := newRegisterHarness(t)
+	res, err := h.svc.Register(ctx, model.RegisterRequest{Name: "Aff", Email: "aff-reg@example.test", Password: "secretpass"})
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	for _, o := range res.User.Options {
+		if o.Name == model.OptionAffiliate {
+			t.Fatal("the Register response exposes the affiliate option")
+		}
+	}
+	stored, err := h.repo.GetByEmail(context.Background(), "aff-reg@example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Affiliate() != "abc123" {
+		t.Fatalf("Affiliate = %q, want abc123", stored.Affiliate())
+	}
+	if stored.Option(model.OptionAnalytics) == nil {
+		t.Fatal("default options must survive alongside the affiliate")
+	}
+}
+
+func TestProvisionExternalUserStoresAffiliate(t *testing.T) {
+	ctx := reqctx.WithAffiliate(context.Background(), "abc123")
+	h := newRegisterHarness(t)
+	u, err := h.svc.ProvisionExternalUser(ctx, "Ext", "ext-aff@example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := h.repo.GetByID(context.Background(), u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Affiliate() != "abc123" {
+		t.Fatalf("Affiliate = %q, want abc123", stored.Affiliate())
+	}
+}
+
+func TestAdminCreateUserIgnoresAffiliate(t *testing.T) {
+	ctx := reqctx.WithAffiliate(context.Background(), "abc123")
+	h := newRegisterHarness(t)
+	id, err := h.svc.AdminCreateUser(ctx, "Cli", "cli-aff@example.test", "secretpass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := h.repo.GetByID(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Option(model.OptionAffiliate) != nil {
+		t.Fatal("an operator-created account must carry no affiliate")
 	}
 }

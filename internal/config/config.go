@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/netip"
 	"net/url"
 	"os"
@@ -65,7 +66,10 @@ type Config struct {
 	AdminPort  string // ECONUMO_ADMIN_PORT
 	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
 	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
-	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
+	// ReferralCookie names the cookie a partner program sets on the root domain;
+	// its value is captured on new accounts, only together with BillingURL.
+	ReferralCookie string // ECONUMO_REFERRAL_COOKIE
+	AppURL         string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
 
 	// OAuth / OIDC provider slots (see docs/superpowers/specs/2026-09-07-oauth-login-design.md §3).
 	// A slot is enabled when every required variable is set; a partial slot fails at boot.
@@ -346,6 +350,13 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL requires ECONUMO_ADMIN_TOKEN (the handoff signing key)")
 		}
 		c.BillingURL = v
+	}
+
+	if v := os.Getenv("ECONUMO_REFERRAL_COOKIE"); v != "" {
+		if !validCookieName(v) {
+			return Config{}, fmt.Errorf("ECONUMO_REFERRAL_COOKIE: not a valid cookie name: %q", v)
+		}
+		c.ReferralCookie = v
 	}
 
 	if v := os.Getenv("ECONUMO_URL"); v != "" {
@@ -862,4 +873,9 @@ func getDurationStrict(key string, def time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("%s %q is not a positive Go duration (e.g. \"15m\")", key, v)
 	}
 	return d, nil
+}
+
+func validCookieName(name string) bool {
+	c := &http.Cookie{Name: name, Value: "x"}
+	return c.Valid() == nil
 }
