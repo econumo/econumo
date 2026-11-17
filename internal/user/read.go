@@ -64,6 +64,9 @@ func (s *ReadService) GetOptionList(ctx context.Context, userID vo.Id) (*model.G
 	}
 	items := make([]model.OptionResult, 0, len(opts))
 	for _, o := range opts {
+		if model.IsServerOnlyOption(o.Name) {
+			continue
+		}
 		value := o.Value
 		// The stored currency value is an ID; the options wire is frozen to
 		// show the CODE. The migration guarantees every stored value is a live
@@ -112,6 +115,9 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 	reportPeriod := model.DefaultReportPeriod
 	rawOptions := make([]model.OptionResult, 0, len(opts))
 	for _, o := range opts {
+		if model.IsServerOnlyOption(o.Name) {
+			continue
+		}
 		rawOptions = append(rawOptions, model.OptionResult{Name: o.Name, Value: o.Value})
 		switch o.Name {
 		case model.OptionCurrency:
