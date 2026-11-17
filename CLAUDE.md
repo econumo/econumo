@@ -536,13 +536,16 @@ surface.
 ### AI integration (`internal/infra/ai`)
 
 Consumers: onboarding (savings detection, icons for imported or newly named categories and
-accounts) and imports (rule suggestions, `suggest-match-text`). System prompts are Markdown
-files in the top-level `prompts/`; reply schemas live in `internal/{imports,onboarding}/prompts.go`.
+accounts), imports (rule suggestions, `suggest-match-text`) and transaction (the CSV import
+wizard's `suggest-import-columns`). System prompts are Markdown files in the top-level
+`prompts/`; reply schemas live in `internal/{imports,onboarding}/prompts.go` and
+`internal/transaction/suggest_columns.go`.
 
 - **Data allowlist, every prompt**: category names and types; payee, tag, label and account
   names; currency codes; language; timezone; a transaction's type and the bank's payee text;
-  opaque per-request keys (`a1`, `c1`, `p1`). NEVER amounts, balances, plans, dates,
-  descriptions/memos, entity ids, user names or emails.
+  opaque per-request keys (`a1`, `c1`, `p1`); CSV column header names and browser-computed
+  column types. NEVER amounts, balances, plans, dates, descriptions/memos, entity ids, user
+  names or emails.
 - A user with the `ai` option off sends nothing; the option is re-read right before each
   provider call.
 - AI never fails a request: a failure, timeout or unusable reply changes nothing and logs a

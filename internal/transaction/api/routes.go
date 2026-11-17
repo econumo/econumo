@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the 8 transaction endpoints, all auth-protected.
+// RegisterAPI mounts the 9 transaction endpoints, all auth-protected.
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
 		authMw := middleware.Auth(authn)
@@ -21,5 +21,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("GET /api/v1/transaction/get-account-transaction-list", auth(h.GetAccountTransactionList))
 		mux.Handle("GET /api/v1/transaction/export-transaction-list", auth(h.ExportTransactionList))
 		mux.Handle("POST /api/v1/transaction/import-transaction-list", auth(h.ImportTransactionList))
+		mux.Handle("GET /api/v1/transaction/suggest-import-columns", auth(h.SuggestImportColumns))
 	}
 }

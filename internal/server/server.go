@@ -138,6 +138,8 @@ type Seams struct {
 	// suggestion job.
 	ImportsCompleter appimports.Completer
 	ImportsJobRunner func(func())
+	// TransactionCompleter replaces the AI provider the CSV column guesser asks.
+	TransactionCompleter apptransaction.Completer
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -231,6 +233,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		apponboarding.RateScopeSuggestIcon: 60,
 		// One icon review per CSV import, apart from the savings job's allowance.
 		apponboarding.RateScopeIcons: 20,
+		// The CSV import wizard asks once per parsed file.
+		apptransaction.RateScopeImportColumns: 20,
 		// No per-key cap: the caller of start-login/start-link is anonymous
 		// until the provider answers. The per-IP per-minute cap applies.
 		appoauth.RateScopeOAuthStart: 0,
@@ -241,12 +245,13 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	limiterIPExempt := map[string]bool{
 		// One user's own limit could fill the cap for a household behind one IP, and
 		// their effects stay inside the caller's account.
-		appimports.RateScopeIngest:         true,
-		appimports.RateScopePreviewRule:    true,
-		appimports.RateScopeSuggest:        true,
-		apponboarding.RateScopeClassify:    true,
-		apponboarding.RateScopeIcons:       true,
-		apponboarding.RateScopeSuggestIcon: true,
+		appimports.RateScopeIngest:            true,
+		appimports.RateScopePreviewRule:       true,
+		appimports.RateScopeSuggest:           true,
+		apponboarding.RateScopeClassify:       true,
+		apponboarding.RateScopeIcons:          true,
+		apponboarding.RateScopeSuggestIcon:    true,
+		apptransaction.RateScopeImportColumns: true,
 	}
 	// Ceilings per email address across all client IPs, above the per-address-and-IP
 	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays
@@ -494,6 +499,11 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		labelOwnership, NewTransactionAccountZeroer(accountSvc), txm, opGuard, clk,
 	)
 	transactionSvc.SetImportIconReviewer(onboardingSvc)
+	if seams.TransactionCompleter != nil {
+		transactionSvc.SetColumnAdvisor(seams.TransactionCompleter, NewTransactionAIFacts(userRepo, clk), authLimiter)
+	} else if aiClient != nil {
+		transactionSvc.SetColumnAdvisor(aiClient, NewTransactionAIFacts(userRepo, clk), authLimiter)
+	}
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
 	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)

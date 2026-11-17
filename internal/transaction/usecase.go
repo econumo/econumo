@@ -40,6 +40,10 @@ type Service struct {
 	ops      port.OperationGuard
 	clock    port.Clock
 	icons    ImportIconReviewer
+
+	columnAI      Completer
+	columnFacts   AIFacts
+	columnLimiter AttemptLimiter
 }
 
 // NewService wires the transaction service.
@@ -63,6 +67,12 @@ func NewService(
 // SetImportIconReviewer starts the AI icon review after each CSV import; nil
 // (the default) starts none.
 func (s *Service) SetImportIconReviewer(r ImportIconReviewer) { s.icons = r }
+
+// SetColumnAdvisor lets suggest-import-columns ask the AI; without it (the
+// default) every suggestion is empty.
+func (s *Service) SetColumnAdvisor(c Completer, facts AIFacts, limiter AttemptLimiter) {
+	s.columnAI, s.columnFacts, s.columnLimiter = c, facts, limiter
+}
 
 // party is one side of a transaction: the account and the request field that
 // names it, so a rejection points at the field the caller sent.

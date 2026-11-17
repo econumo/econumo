@@ -1,0 +1,18 @@
+== suggest-import-columns GET /api/v1/transaction/suggest-import-columns?columns=%5B%7B%22name%22%3A%22Buchungstag%22%2C%22type%22%3A%22date%22%2C%22negatives%22%3Afalse%7D%2C%7B%22name%22%3A%22Betrag%22%2C%22type%22%3A%22number%22%2C%22negatives%22%3Atrue%7D%5D [owner] -> 200
+{"success":true,"message":"","data":{"roles":{}}}
+
+== suggest-import-columns-readonly GET /api/v1/transaction/suggest-import-columns?columns=%5B%7B%22name%22%3A%22Buchungstag%22%2C%22type%22%3A%22date%22%2C%22negatives%22%3Afalse%7D%2C%7B%22name%22%3A%22Betrag%22%2C%22type%22%3A%22number%22%2C%22negatives%22%3Atrue%7D%5D [readonly] -> 200
+{"success":true,"message":"","data":{"roles":{}}}
+
+== err:suggest-import-columns-missing GET /api/v1/transaction/suggest-import-columns [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"columns":["This value should not be blank."]}}
+
+== err:suggest-import-columns-malformed GET /api/v1/transaction/suggest-import-columns?columns=%5B%7B%22name%22%3A [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"columns":["This value is not valid."]}}
+
+== err:suggest-import-columns-blank-name GET /api/v1/transaction/suggest-import-columns?columns=%5B%7B%22name%22%3A%22++%22%2C%22type%22%3A%22text%22%7D%5D [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"columns":["This value should not be blank."]}}
+
+== err:suggest-import-columns-bad-type GET /api/v1/transaction/suggest-import-columns?columns=%5B%7B%22name%22%3A%22Betrag%22%2C%22type%22%3A%22money%22%7D%5D [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"columns":["The value you selected is not a valid choice."]}}
+
