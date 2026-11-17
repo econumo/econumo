@@ -232,8 +232,8 @@ The reply is a JSON object assigning header names to roles (`date`, `amount`,
 `amountIn`, `amountOut`, `description`, `payee`, `category`, `tag`, `labels`,
 `account`), each optional; names not in the header are ignored.
 
-Server side: a new endpoint `POST /api/v1/transaction/suggest-import-columns` (auth, JSON
-body, readonly callers get the usual 402) in the `transaction` feature, with its prompt in
+Server side: a new endpoint `GET /api/v1/transaction/suggest-import-columns` (auth, a read like `onboarding/suggest-icon`; reads stay GET per the API conventions
+and `GET` is never restricted for readonly callers) in the `transaction` feature, with its prompt in
 `prompts/import_columns.md`, its own per-user AI rate-limit scope, and the established AI
 rules (re-read the `ai` option before the call, never fail the request, WARN with ids and
 `err_type` only). It answers an empty suggestion rather than an error when AI is off or
