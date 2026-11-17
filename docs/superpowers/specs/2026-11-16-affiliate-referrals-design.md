@@ -38,8 +38,8 @@ same way it is the only part that knows about money.
 ```
 econumo.com?via=partner ──pixel──▶ Affonso creates a click, cookie affonso_referral=<click id>
                                    on the root domain (.econumo.com), SameSite=None; Secure
-app.econumo.com sign-up ──────────▶ the app reads the cookie, stores user option `affiliate_referral`
-user opens billing ───────────────▶ billing reads `affiliateReferral` from /admin/user-context
+app.econumo.com sign-up ──────────▶ the app reads the cookie, stores user option `affiliate`
+user opens billing ───────────────▶ billing reads `affiliate` from /admin/user-context
                                    ──▶ POST /v1/signups {click_id, external_user_id}
 user pays / is refunded ──────────▶ billing ──▶ POST /v1/conversions / .../refund
 ```
@@ -68,10 +68,10 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
     nothing.
   The value is validated (`^[A-Za-z0-9_-]{1,64}$`); anything else is dropped silently. A
   missing, malformed or unreadable cookie never fails or changes the sign-up.
-- **Storage**: user option `affiliate_referral` (`model.OptionAffiliateReferral`), written with the new user in
+- **Storage**: user option `affiliate` (`model.OptionAffiliate`), written with the new user in
   the same transaction, write-once (never overwritten or cleared by any flow).
 - **Exposure**: only through the private admin listener. `GET /admin/user-context` adds an
-  additive `affiliateReferral` field to the user view (`""` when none; connections carry it
+  additive `affiliate` field to the user view (`""` when none; connections carry it
   too, unused). It is filtered out of `get-user-data` and `get-option-list`, which today
   return every stored option, and not exposed on `/mcp`.
 - The name is deliberately not `referral`: the parked `feature/referral-program` branch uses
@@ -86,7 +86,7 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
 - **Reading**: billing already calls `GET /admin/user-context` server to server with
   `ECONUMO_ADMIN_URL` + `ECONUMO_ADMIN_TOKEN` (`internal/econumo/http.go`) every time the
   portal loads a user (`Service.Context`, `CreateCheckout`); the short-lived handoff token
-  only tells billing WHICH user. `internal/econumo` parses the new `affiliateReferral` field.
+  only tells billing WHICH user. `internal/econumo` parses the new `affiliate` field.
 - **Recording the sign-up**: whenever billing loads the user's context (opening the portal,
   starting a checkout) and the user has a referral not yet recorded, it upserts a row in a new
   table `affiliate_referrals (user_id PK, click_id, signup_status, signup_attempts,
@@ -97,7 +97,7 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
 - **Payments**: when a purchase is marked paid and its PAYER has an `affiliate_referrals`
   row, enqueue `POST /v1/conversions {external_user_id, sale_amount, sale_amount_currency,
   external_event_id: <purchase id>}` with `sale_amount` = `purchases.amount_cents` / 100
-  (TAX: see open question) and its currency; store the returned conversion id. A purchase
+  (the pre-tax amount, see below) and its currency; store the returned conversion id. A purchase
   with amount 0 (100% discount) is not reported. The worker sends a
   user's sign-up before any of their conversions.
 - **Refunds**: when a referred payer's purchase is refunded, enqueue
@@ -110,10 +110,13 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
   waits behind it; a refund whose conversion was dropped is dropped.
 - No backfill: purchases made before this ships are not reported.
 
-## Open question
+## Pre-tax amounts (decided)
 
-- `sale_amount`: the charged total including tax (what billing stores), or the amount before
-  tax? Pre-tax means both webhook handlers capture it and a billing migration adds a column.
+Commission is on the amount before tax. Billing records it when a purchase is paid, in a new
+nullable column `purchases.amount_net_cents` (migration), filled by both webhook handlers:
+Stripe from the session's total minus its tax, Paddle from the transaction totals' subtotal
+after discount, before tax. A conversion is sent with `amount_net_cents`; a purchase paid
+before the column existed has NULL and is not reported (there is no backfill anyway).
 
 ## Consequence of reporting at billing-open (accepted)
 
