@@ -509,7 +509,20 @@
         "title": "Welke kolom beschrijft elke transactie?"
       },
       "extras": {
-        "title": "Wilt u nog iets meenemen?"
+        "title": "Wilt u nog iets meenemen?",
+        "leave_out": "Weglaten",
+        "role": {
+          "category": "Categorie",
+          "payee": "Begunstigde",
+          "tag": "Budgettag",
+          "labels": "Rapportagetags"
+        },
+        "use_as": "„{name}” gebruiken als",
+        "separator_question": "Meerdere tags in één cel worden gescheiden door",
+        "tab": "Tab",
+        "custom_separator": "Iets anders",
+        "new_categories": "{count} nieuwe categorie wordt aangemaakt | {count} nieuwe categorieën worden aangemaakt",
+        "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt"
       },
       "preview": {
         "title": "Dit wordt geïmporteerd"

@@ -509,7 +509,20 @@
         "title": "Welche Spalte beschreibt die einzelnen Buchungen?"
       },
       "extras": {
-        "title": "Möchten Sie noch etwas übernehmen?"
+        "title": "Möchten Sie noch etwas übernehmen?",
+        "leave_out": "Weglassen",
+        "role": {
+          "category": "Kategorie",
+          "payee": "Zahlungsempfänger",
+          "tag": "Budget-Tag",
+          "labels": "Auswertungs-Tags"
+        },
+        "use_as": "„{name}“ verwenden als",
+        "separator_question": "Mehrere Tags in einer Zelle sind getrennt durch",
+        "tab": "Tabulator",
+        "custom_separator": "Etwas anderes",
+        "new_categories": "{count} neue Kategorie wird erstellt | {count} neue Kategorien werden erstellt",
+        "new_labels": "{count} neues Tag wird erstellt | {count} neue Tags werden erstellt"
       },
       "preview": {
         "title": "Das wird importiert"

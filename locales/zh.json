@@ -509,7 +509,20 @@
         "title": "哪一列描述每笔交易？"
       },
       "extras": {
-        "title": "还有其他要导入的吗？"
+        "title": "还有其他要导入的吗？",
+        "leave_out": "不导入",
+        "role": {
+          "category": "分类",
+          "payee": "收款人",
+          "tag": "预算标签",
+          "labels": "统计标签"
+        },
+        "use_as": "将“{name}”用作",
+        "separator_question": "一个单元格中的多个标签用以下符号分隔",
+        "tab": "制表符",
+        "custom_separator": "其他",
+        "new_categories": "将创建 {count} 个新分类",
+        "new_labels": "将创建 {count} 个新标签"
       },
       "preview": {
         "title": "以下内容将被导入"

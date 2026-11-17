@@ -509,7 +509,20 @@
         "title": "Quale colonna descrive ogni transazione?"
       },
       "extras": {
-        "title": "Altro da portare?"
+        "title": "Altro da portare?",
+        "leave_out": "Escludi",
+        "role": {
+          "category": "Categoria",
+          "payee": "Beneficiario",
+          "tag": "Tag di budget",
+          "labels": "Tag per i report"
+        },
+        "use_as": "Usa «{name}» come",
+        "separator_question": "Più tag in una cella sono separati da",
+        "tab": "Tabulazione",
+        "custom_separator": "Altro",
+        "new_categories": "Verrà creata {count} nuova categoria | Verranno create {count} nuove categorie",
+        "new_labels": "Verrà creato {count} nuovo tag | Verranno creati {count} nuovi tag"
       },
       "preview": {
         "title": "Ecco cosa verrà importato"

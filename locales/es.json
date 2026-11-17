@@ -509,7 +509,20 @@
         "title": "¿Qué columna describe cada transacción?"
       },
       "extras": {
-        "title": "¿Algo más que quieras traer?"
+        "title": "¿Algo más que quieras traer?",
+        "leave_out": "Omitir",
+        "role": {
+          "category": "Categoría",
+          "payee": "Beneficiario",
+          "tag": "Etiqueta de presupuesto",
+          "labels": "Etiquetas de informes"
+        },
+        "use_as": "Usar «{name}» como",
+        "separator_question": "Varias etiquetas en una celda se separan con",
+        "tab": "Tabulación",
+        "custom_separator": "Otro",
+        "new_categories": "Se creará {count} categoría nueva | Se crearán {count} categorías nuevas",
+        "new_labels": "Se creará {count} etiqueta nueva | Se crearán {count} etiquetas nuevas"
       },
       "preview": {
         "title": "Esto es lo que se importará"

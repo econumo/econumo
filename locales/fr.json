@@ -509,7 +509,20 @@
         "title": "Quelle colonne décrit chaque transaction ?"
       },
       "extras": {
-        "title": "Autre chose à reprendre ?"
+        "title": "Autre chose à reprendre ?",
+        "leave_out": "Ignorer",
+        "role": {
+          "category": "Catégorie",
+          "payee": "Bénéficiaire",
+          "tag": "Tag budgétaire",
+          "labels": "Tags de rapport"
+        },
+        "use_as": "Utiliser « {name} » comme",
+        "separator_question": "Plusieurs tags dans une cellule sont séparés par",
+        "tab": "Tabulation",
+        "custom_separator": "Autre chose",
+        "new_categories": "{count} nouvelle catégorie sera créée | {count} nouvelles catégories seront créées",
+        "new_labels": "{count} nouveau tag sera créé | {count} nouveaux tags seront créés"
       },
       "preview": {
         "title": "Voici ce qui sera importé"

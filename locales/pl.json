@@ -509,7 +509,20 @@
         "title": "Która kolumna opisuje każdą transakcję?"
       },
       "extras": {
-        "title": "Coś jeszcze do przeniesienia?"
+        "title": "Coś jeszcze do przeniesienia?",
+        "leave_out": "Pomiń",
+        "role": {
+          "category": "Kategoria",
+          "payee": "Odbiorca",
+          "tag": "Tag budżetowy",
+          "labels": "Tagi raportowe"
+        },
+        "use_as": "Użyj „{name}” jako",
+        "separator_question": "Kilka tagów w jednej komórce oddzielają",
+        "tab": "Tabulator",
+        "custom_separator": "Inny znak",
+        "new_categories": "Zostanie utworzona {count} nowa kategoria | Zostaną utworzone {count} nowe kategorie | Zostanie utworzonych {count} nowych kategorii",
+        "new_labels": "Zostanie utworzony {count} nowy tag | Zostaną utworzone {count} nowe tagi | Zostanie utworzonych {count} nowych tagów"
       },
       "preview": {
         "title": "Oto, co zostanie zaimportowane"
