@@ -40,6 +40,7 @@ export type RowFix = { date?: string; amount?: string } | 'skip'
 export type StepId = 'file' | 'account' | 'date' | 'amount' | 'description' | 'extras' | 'preview'
 
 export interface PreparedRow {
+  // the row number counting the header as row 1 (first data row = 2), as the server numbers rows
   fileRow: number
   raw: string
   status: 'ok' | 'skipped'
@@ -78,7 +79,7 @@ export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: Rea
 
   file.rows.forEach((row, i) => {
     if (row.every((c) => c.trim() === '')) return
-    const fileRow = i + 1
+    const fileRow = i + 2
     const fix = fixes.get(fileRow)
     const typed = fix === 'skip' ? undefined : fix
 

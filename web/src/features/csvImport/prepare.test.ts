@@ -19,10 +19,10 @@ const noFixes = new Map<number, RowFix>()
 const STATEMENT = 'Datum;Betrag;Text\n04.03.2026;-4,50;Kaffee\nirgendwann;12,00;Miete\n'
 
 describe('prepareRows', () => {
-  it('turns readable rows into transactions with 1-based file rows and the raw line', () => {
+  it('turns readable rows into transactions numbered as file lines (header = 1) with the raw line', () => {
     const [row] = prepareRows(parseCsvText(STATEMENT), answers(), noFixes)
     expect(row).toEqual({
-      fileRow: 1,
+      fileRow: 2,
       raw: '04.03.2026;-4,50;Kaffee',
       status: 'ok',
       reason: null,
@@ -41,18 +41,18 @@ describe('prepareRows', () => {
   it('skips a row whose date cannot be read, and a date fix makes it a transaction', () => {
     const file = parseCsvText(STATEMENT)
     expect(prepareRows(file, answers(), noFixes)[1]).toMatchObject({
-      fileRow: 2,
+      fileRow: 3,
       status: 'skipped',
       reason: 'no_date',
       date: null,
       amount: '12.00',
     })
-    const fixed = prepareRows(file, answers(), new Map([[2, { date: '2026-03-04' }]]))[1]
+    const fixed = prepareRows(file, answers(), new Map([[3, { date: '2026-03-04' }]]))[1]
     expect(fixed).toMatchObject({ status: 'ok', reason: null, date: '2026-03-04', time: null })
   })
 
   it('ignores a fix for a row that reads on its own', () => {
-    const rows = prepareRows(parseCsvText(STATEMENT), answers(), new Map([[1, { date: '2026-01-01', amount: '9' }]]))
+    const rows = prepareRows(parseCsvText(STATEMENT), answers(), new Map([[2, { date: '2026-01-01', amount: '9' }]]))
     expect(rows[0]).toMatchObject({ date: '2026-03-04', amount: '-4.50' })
   })
 
@@ -60,23 +60,23 @@ describe('prepareRows', () => {
     const file = parseCsvText('Datum;Betrag;Text\n04.03.2026;n/a;Kaffee\n')
     const a = answers({ amount: { ...answers().amount, flip: true } })
     expect(prepareRows(file, a, noFixes)[0]).toMatchObject({ status: 'skipped', reason: 'no_amount' })
-    expect(prepareRows(file, a, new Map([[1, { amount: '-4.50' }]]))[0]).toMatchObject({ status: 'ok', amount: '-4.50' })
-    expect(prepareRows(file, a, new Map([[1, { amount: '4,50' }]]))[0]).toMatchObject({ reason: 'no_amount' })
+    expect(prepareRows(file, a, new Map([[2, { amount: '-4.50' }]]))[0]).toMatchObject({ status: 'ok', amount: '-4.50' })
+    expect(prepareRows(file, a, new Map([[2, { amount: '4,50' }]]))[0]).toMatchObject({ reason: 'no_amount' })
   })
 
   it('marks a row the user skipped', () => {
-    const rows = prepareRows(parseCsvText(STATEMENT), answers(), new Map([[2, 'skip' as const]]))
+    const rows = prepareRows(parseCsvText(STATEMENT), answers(), new Map([[3, 'skip' as const]]))
     expect(rows[1]).toMatchObject({ status: 'skipped', reason: 'user_skipped' })
   })
 
   it('drops a skip once the row reads on its own', () => {
-    const rows = prepareRows(parseCsvText(STATEMENT), answers(), new Map([[1, 'skip' as const]]))
+    const rows = prepareRows(parseCsvText(STATEMENT), answers(), new Map([[2, 'skip' as const]]))
     expect(rows[0]).toMatchObject({ status: 'ok', reason: null })
   })
 
   it('skips a footer line that has no date', () => {
     const rows = prepareRows(parseCsvText(`${STATEMENT}Closing balance;1.234,56\n`), answers(), noFixes)
-    expect(rows[2]).toMatchObject({ fileRow: 3, status: 'skipped', reason: 'no_date', amount: '1234.56' })
+    expect(rows[2]).toMatchObject({ fileRow: 4, status: 'skipped', reason: 'no_date', amount: '1234.56' })
   })
 
   it('leaves fully blank rows out entirely', () => {
@@ -179,9 +179,9 @@ describe('summarize', () => {
 describe('buildUpload', () => {
   it('uploads only transactions, keeps their file rows aligned and writes the time of day', () => {
     const rows = [
-      row({ fileRow: 1, date: '2026-03-04', time: '14:05:09', amount: '-4.5', description: 'Lunch' }),
-      row({ fileRow: 2, status: 'skipped', reason: 'no_date', date: null }),
-      row({ fileRow: 3, date: '2026-03-05', amount: '10', description: 'Pay' }),
+      row({ fileRow: 2, date: '2026-03-04', time: '14:05:09', amount: '-4.5', description: 'Lunch' }),
+      row({ fileRow: 3, status: 'skipped', reason: 'no_date', date: null }),
+      row({ fileRow: 4, date: '2026-03-05', amount: '10', description: 'Pay' }),
     ]
     const upload = buildUpload(rows, answers())
     expect(upload.header).toEqual(['date', 'amount', 'description'])
@@ -189,7 +189,7 @@ describe('buildUpload', () => {
       ['2026-03-04 14:05:09', '-4.5', 'Lunch'],
       ['2026-03-05', '10', 'Pay'],
     ])
-    expect(upload.fileRows).toEqual([1, 3])
+    expect(upload.fileRows).toEqual([2, 4])
     expect(upload.mapping).toEqual({
       account: null,
       date: 'date',

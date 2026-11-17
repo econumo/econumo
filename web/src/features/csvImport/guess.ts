@@ -214,27 +214,21 @@ export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: G
   if (isEconumoExport(file)) return exportAnswers(file, ctx)
 
   const roles = guessRoles(profiles)
-  const dateColumn = roles.date ?? null
   const dual = roles.amountIn !== undefined && roles.amountOut !== undefined
-  const amountColumns = dual ? [roles.amountIn ?? null, roles.amountOut ?? null] : [roles.amount ?? null]
-
   const account: AccountChoice | null = ctx.hasWritableAccounts
     ? null
     : { kind: 'new', name: ctx.defaultAccountName, currencyId: ctx.userCurrencyId }
 
-  return {
+  const answers: WizardAnswers = {
     account,
-    date: {
-      column: dateColumn,
-      order: dateColumn === null ? localeDateOrder(ctx.locale) : detectDateOrder(columnValues(file, dateColumn), ctx.locale).order,
-    },
+    date: { column: roles.date ?? null, order: 'ymd' },
     amount: {
       mode: dual ? 'dual' : 'single',
       column: roles.amount ?? null,
       inColumn: roles.amountIn ?? null,
       outColumn: roles.amountOut ?? null,
       flip: false,
-      sep: detectDecimalSeparator(amountColumns.flatMap((c) => columnValues(file, c))).sep,
+      sep: '.',
     },
     description: roles.description ?? null,
     extras: {
@@ -245,6 +239,28 @@ export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: G
       labelsSeparator: ';',
     },
   }
+  return redetectFormats(answers, file, ctx.locale, { date: true, amount: true })
+}
+
+export function redetectFormats(
+  answers: WizardAnswers,
+  file: ParsedFile,
+  locale: string,
+  changed: { date?: boolean; amount?: boolean },
+): WizardAnswers {
+  let next = answers
+  if (changed.date) {
+    const { column } = answers.date
+    const order = column === null ? localeDateOrder(locale) : detectDateOrder(columnValues(file, column), locale).order
+    next = { ...next, date: { ...next.date, order } }
+  }
+  if (changed.amount) {
+    const { mode, column, inColumn, outColumn } = answers.amount
+    const columns = mode === 'single' ? [column] : [inColumn, outColumn]
+    const sep = detectDecimalSeparator(columns.flatMap((c) => columnValues(file, c))).sep
+    next = { ...next, amount: { ...next.amount, sep } }
+  }
+  return next
 }
 
 interface Slot {
@@ -267,15 +283,16 @@ const SLOTS: Slot[] = [
   { step: 'extras', role: 'labels', get: (a) => a.extras.labels, set: (a, c) => (a.extras.labels = c) },
 ]
 
-// The AI only sees header names, so it cannot list the account names a per-row
-// account needs currencies for, nor re-detect date order or decimal separator:
-// those stay as they are, and its 'account' role is not applied.
+// The AI's 'account' role is not applied: it cannot list the account names a
+// per-row account needs currencies for.
 export function applyAiGuess(
   answers: WizardAnswers,
   roles: Partial<Record<Role, string>>,
-  header: string[],
+  file: ParsedFile,
+  locale: string,
   touched: ReadonlySet<StepId>,
 ): WizardAnswers {
+  const { header } = file
   const next: WizardAnswers = { ...answers, date: { ...answers.date }, amount: { ...answers.amount }, extras: { ...answers.extras } }
   const open = SLOTS.filter((slot) => !touched.has(slot.step) && slot.role !== 'account')
   const taken = new Set(
@@ -314,5 +331,11 @@ export function applyAiGuess(
     if (picked !== undefined) slot.set(next, picked)
     else if (assigned.has(slot.get(next) ?? -1)) slot.set(next, null)
   }
-  return next
+
+  const a = answers.amount
+  const b = next.amount
+  return redetectFormats(next, file, locale, {
+    date: next.date.column !== answers.date.column,
+    amount: a.mode !== b.mode || a.column !== b.column || a.inColumn !== b.inColumn || a.outColumn !== b.outColumn,
+  })
 }
