@@ -225,7 +225,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     reportRun(again)
     const result = mergeRetry(run.result, again, run.upload, chunks)
     lastRun.current = { upload: run.upload, result }
-    await settle(again)
+    await settle(again).catch(() => undefined)
     return result
   }
 
@@ -269,16 +269,17 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     <ResponsiveDialog
       open={open}
       onOpenChange={(o) => !o && dismiss()}
+      dismissible={!importing}
       title={t('transactions.import_wizard.title')}
       size="wide"
       footer={
         <div className={dialogActionsClass}>
           {position > 0 ? (
-            <Button type="button" variant="secondary" onClick={() => setStep(steps[position - 1])}>
+            <Button type="button" variant="secondary" disabled={importing} onClick={() => setStep(steps[position - 1])}>
               {t('transactions.import_wizard.back')}
             </Button>
           ) : (
-            <Button type="button" variant="secondary" onClick={dismiss}>
+            <Button type="button" variant="secondary" disabled={importing} onClick={dismiss}>
               {t('common.button.cancel.label')}
             </Button>
           )}
@@ -304,10 +305,13 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
           }))}
           current={step}
           onSelect={setStep}
-          disabled={state === null}
+          disabled={state === null || importing}
         />
         {Body && state ? (
-          <Body state={state} setAnswers={setAnswers} setFixes={setFixes} goTo={setStep} />
+          // answers must not change between the upload and a retry of its failed chunks
+          <fieldset disabled={importing} className="contents">
+            <Body state={state} setAnswers={setAnswers} setFixes={setFixes} goTo={setStep} />
+          </fieldset>
         ) : (
           <FileStep fileName={loaded?.fileName ?? null} error={fileError} onFile={(f) => void handleFile(f)} />
         )}

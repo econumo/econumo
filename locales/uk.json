@@ -542,7 +542,9 @@
         "no_description": "Без опису",
         "no_account": "Рахунок не вибрано",
         "import": "Імпортувати {count} операцію | Імпортувати {count} операції | Імпортувати {count} операцій",
-        "importing": "Імпорт…"
+        "importing": "Імпорт…",
+        "totals_no_money": "{count} операція, з {first} по {last}. | {count} операції, з {first} по {last}. | {count} операцій, з {first} по {last}.",
+        "amount_unreadable": "Не вдається прочитати суму"
       },
       "skipped": {
         "no_date": "Немає зрозумілої дати",

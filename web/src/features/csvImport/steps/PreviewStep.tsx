@@ -13,6 +13,7 @@ import { abs, isNegative } from '@/lib/decimal'
 import { moneyFormat, type CurrencyLike } from '@/lib/money'
 import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { parseAmountCell, type DecimalSeparator } from '../amounts'
 import { summarize, type PreparedRow, type RowFix, type StepId, type WizardAnswers } from '../prepare'
 import { nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 import { PerRowAccounts } from './AccountStep'
@@ -21,7 +22,7 @@ import { StepTitle } from './StepTitle'
 interface AccountView {
   name: string | null
   icon: string
-  currency: CurrencyLike | null
+  currency: (CurrencyLike & { id: string }) | null
 }
 
 const SWIPE_MIN_PX = 50
@@ -134,16 +135,21 @@ function TransactionCard({ row, account, labelsSeparator, goTo }: { row: Prepare
   )
 }
 
-function AmountFix({ onSave }: { onSave: (amount: string) => void }) {
+// read the way the file's amounts are read, so "1.234,50" means the same here as in the file
+function AmountFix({ sep, onSave }: { sep: DecimalSeparator; onSave: (amount: string) => void }) {
   const { t } = useTranslation()
   const id = useId()
   const [value, setValue] = useState('')
+  const parsed = parseAmountCell(value, sep)
   const save = () => {
-    const normalized = value.replace(/\s/g, '').replace('−', '-').replace(',', '.')
-    if (normalized !== '') onSave(normalized)
+    if (parsed !== null) onSave(parsed)
   }
   return (
-    <CardField label={t('transactions.import_wizard.preview.fix_amount')} htmlFor={id}>
+    <CardField
+      label={t('transactions.import_wizard.preview.fix_amount')}
+      htmlFor={id}
+      error={value.trim() !== '' && parsed === null ? t('transactions.import_wizard.preview.amount_unreadable') : null}
+    >
       <Input
         id={id}
         inputMode="decimal"
@@ -159,7 +165,7 @@ function AmountFix({ onSave }: { onSave: (amount: string) => void }) {
   )
 }
 
-function ProblemCard({ row, setFix }: { row: PreparedRow; setFix: (update: (fix: RowFix | undefined) => RowFix | undefined) => void }) {
+function ProblemCard({ row, sep, setFix }: { row: PreparedRow; sep: DecimalSeparator; setFix: (update: (fix: RowFix | undefined) => RowFix | undefined) => void }) {
   const { t } = useTranslation()
   const dateId = useId()
   const typed = (patch: { date?: string; amount?: string }) =>
@@ -179,7 +185,7 @@ function ProblemCard({ row, setFix }: { row: PreparedRow; setFix: (update: (fix:
           <Input id={dateId} type="date" className={cardFieldControlClass} onChange={(e) => typed({ date: e.target.value || undefined })} />
         </CardField>
       ) : null}
-      {row.reason === 'no_amount' ? <AmountFix onSave={(amount) => typed({ amount })} /> : null}
+      {row.reason === 'no_amount' ? <AmountFix sep={sep} onSave={(amount) => typed({ amount })} /> : null}
       {canFix ? (
         <Button type="button" variant="secondary" className="self-start" onClick={() => setFix(() => 'skip')}>
           {t('transactions.import_wizard.preview.skip_row')}
@@ -201,6 +207,14 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
   const { rows, answers } = state
   const accountView = useAccountView(answers)
   const summary = useMemo(() => summarize(rows), [rows])
+  // one ok row per account name stands for all of that account's rows
+  const perRowSamples = useMemo(() => {
+    const byName = new Map<string, PreparedRow>()
+    for (const r of rows) {
+      if (r.status === 'ok' && r.account !== null && !byName.has(nameKey(r.account))) byName.set(nameKey(r.account), r)
+    }
+    return [...byName.values()]
+  }, [rows])
   const [index, setIndex] = useState(0)
   const current = Math.min(index, Math.max(rows.length - 1, 0))
   const row = rows[current] as PreparedRow | undefined
@@ -266,8 +280,15 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
     goTo(state.isExport ? 'account' : 'date')
   }
 
-  // one currency for the totals only when the whole file goes to one account
-  const totalsCurrency = answers.account?.kind === 'column' || !row ? null : accountView(row).currency
+  // money is added up only when every row lands in one currency; amounts in two can't be summed
+  const currencies = new Map(
+    (answers.account?.kind === 'column' ? perRowSamples : rows.slice(0, 1)).map((r) => {
+      const currency = accountView(r).currency
+      return [currency?.id ?? null, currency] as const
+    }),
+  )
+  const totalsCurrency = currencies.size === 1 ? ([...currencies.values()][0] ?? null) : null
+  const showMoney = currencies.size <= 1
   const money = (value: string) => moneyFormat(value, totalsCurrency, { showCurrency: totalsCurrency !== null, useNativePrecision: false })
   const reasons = Object.entries(summary.byReason)
     .map(([reason, n]) => `${t(`transactions.import_wizard.skipped.${reason}`)}: ${n}`)
@@ -280,7 +301,7 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
         <p>
           {count > 0 && summary.firstDate && summary.lastDate
             ? pluralPick(
-                t('transactions.import_wizard.preview.totals', {
+                t(showMoney ? 'transactions.import_wizard.preview.totals' : 'transactions.import_wizard.preview.totals_no_money', {
                   first: summary.firstDate,
                   last: summary.lastDate,
                   in: money(summary.moneyIn),
@@ -334,7 +355,7 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
             {row.status === 'ok' ? (
               <TransactionCard row={row} account={accountView(row)} labelsSeparator={answers.extras.labelsSeparator || ';'} goTo={goTo} />
             ) : (
-              <ProblemCard key={row.fileRow} row={row} setFix={setFix(row.fileRow)} />
+              <ProblemCard key={row.fileRow} row={row} sep={answers.amount.sep} setFix={setFix(row.fileRow)} />
             )}
           </div>
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">

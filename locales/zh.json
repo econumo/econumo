@@ -542,7 +542,9 @@
         "no_description": "无描述",
         "no_account": "未选择账户",
         "import": "导入 {count} 笔交易",
-        "importing": "正在导入…"
+        "importing": "正在导入…",
+        "totals_no_money": "{count} 笔交易，{first} 至 {last}。",
+        "amount_unreadable": "无法识别此金额"
       },
       "skipped": {
         "no_date": "没有可识别的日期",

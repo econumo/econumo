@@ -12,7 +12,7 @@ import { StepFooter } from './StepFooter'
 
 const isCsv = (file: File) => file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv'
 
-export function ImportStep({ onDone, onSkip }: StepBodyProps) {
+export function ImportStep({ onDone, onSkip, onImportResult }: StepBodyProps) {
   const { t } = useTranslation()
   const day0 = useDay0()
   const [open, setOpen] = useState(false)
@@ -112,7 +112,8 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
         open={open}
         initialFile={dropped}
         onClose={() => setOpen(false)}
-        onComplete={(result) => {
+        onComplete={(result, retry) => {
+          if (result.failed > 0) onImportResult?.(result, retry)
           if (result.imported > 0) finish()
         }}
       />

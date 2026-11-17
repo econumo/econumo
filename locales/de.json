@@ -542,7 +542,9 @@
         "no_description": "Keine Beschreibung",
         "no_account": "Kein Konto gewählt",
         "import": "{count} Buchung importieren | {count} Buchungen importieren",
-        "importing": "Wird importiert…"
+        "importing": "Wird importiert…",
+        "totals_no_money": "{count} Buchung, {first} bis {last}. | {count} Buchungen, {first} bis {last}.",
+        "amount_unreadable": "Dieser Betrag ist nicht lesbar"
       },
       "skipped": {
         "no_date": "Kein lesbares Datum",

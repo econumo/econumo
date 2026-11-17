@@ -154,9 +154,16 @@ it('typing an amount on a row without one brings it into the import', async () =
   await openCheck(user)
   await user.click(screen.getByRole('button', { name: 'Next problem' }))
   await user.click(screen.getByRole('button', { name: 'Next problem' }))
-  await user.type(screen.getByLabelText('Amount for this row'), '-2,25{Enter}')
+  const input = screen.getByLabelText('Amount for this row')
+  await user.type(input, 'abc')
+  expect(screen.getByText("Can't read this amount")).toBeInTheDocument()
+  await user.type(input, '{Enter}')
+  expect(importButton()).toHaveTextContent('Import 7 transactions')
+  await user.clear(input)
+  // read like the file's amounts: a point for decimals, commas group thousands
+  await user.type(input, '-1,234.50{Enter}')
   expect(importButton()).toHaveTextContent('Import 8 transactions')
-  expect(screen.getByRole('button', { name: /^−2\.25/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^−1,234\.50/ })).toBeInTheDocument()
 })
 
 it('Skip this row keeps the row out, and Don’t skip offers it again', async () => {
@@ -239,6 +246,32 @@ it('when the new account cannot be made, nothing is sent and the dialog says why
   expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_FAIL, { failed: 7 })
 })
 
+it('while the import runs, the steps and their answers are locked', async () => {
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => (release = resolve))
+  server.use(
+    http.post('*/api/v1/account/create-account', async ({ request }) => ok({ item: { id: ((await request.json()) as { id: string }).id } })),
+    http.post('*/api/v1/transaction/import-transaction-list', async () => {
+      await gate
+      return ok({ imported: 7, skipped: 0, errors: {} })
+    }),
+  )
+  renderWizard(PROBLEMS)
+  const user = userEvent.setup()
+  await openCheck(user)
+  expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+  await user.click(importButton())
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Date/ })).toBeDisabled())
+  expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Something looks wrong?' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /^−5\.50/ })).toBeDisabled()
+  expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('heading', { name: "Here's what will be imported" })).toBeInTheDocument()
+  release()
+  expect(await screen.findByText('7 transactions imported')).toBeInTheDocument()
+})
+
 it('a chunk that failed is offered again, and only that chunk is sent', async () => {
   const lines = Array.from({ length: 600 }, (_, i) => `${GOOD_DATES[i % GOOD_DATES.length]},-${i + 1}.00`)
   const sent: number[] = []
@@ -311,6 +344,17 @@ it('an Econumo export asks the AI nothing and shows its accounts on the Check st
   expect(screen.getByRole('button', { name: '2026-03-04 14:05:09' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /^−4\.50/ })).toBeInTheDocument()
   expect(asked).not.toHaveBeenCalled()
+})
+
+it('rows going to accounts in different currencies are not added up', async () => {
+  renderWizard(
+    'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
+      'a1,Wallet,EUR,Food,Lunch,,,Cafe,-4.5,2026-03-04 14:05:09\n' +
+      'a2,Purse,USD,Food,Tea,,,Cafe,-2,2026-03-05 10:00:00\n',
+  )
+  await screen.findByRole('heading', { name: "Here's what will be imported" })
+  expect(screen.getByText('2 transactions, 2026-03-04 to 2026-03-05.')).toBeInTheDocument()
+  expect(screen.queryByText(/Money in/)).not.toBeInTheDocument()
 })
 
 it('offline, Import is disabled', async () => {

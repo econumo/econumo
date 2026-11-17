@@ -542,7 +542,9 @@
         "no_description": "Без описания",
         "no_account": "Счёт не выбран",
         "import": "Импортировать {count} операцию | Импортировать {count} операции | Импортировать {count} операций",
-        "importing": "Импорт…"
+        "importing": "Импорт…",
+        "totals_no_money": "{count} операция, с {first} по {last}. | {count} операции, с {first} по {last}. | {count} операций, с {first} по {last}.",
+        "amount_unreadable": "Не удаётся прочитать сумму"
       },
       "skipped": {
         "no_date": "Нет понятной даты",

@@ -542,7 +542,9 @@
         "no_description": "Geen omschrijving",
         "no_account": "Geen rekening gekozen",
         "import": "{count} transactie importeren | {count} transacties importeren",
-        "importing": "Bezig met importeren…"
+        "importing": "Bezig met importeren…",
+        "totals_no_money": "{count} transactie, {first} tot {last}. | {count} transacties, {first} tot {last}.",
+        "amount_unreadable": "Dit bedrag is niet leesbaar"
       },
       "skipped": {
         "no_date": "Geen leesbare datum",

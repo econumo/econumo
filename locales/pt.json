@@ -542,7 +542,9 @@
         "no_description": "Sem descrição",
         "no_account": "Nenhuma conta escolhida",
         "import": "Importar {count} transação | Importar {count} transações",
-        "importing": "A importar…"
+        "importing": "A importar…",
+        "totals_no_money": "{count} transação, de {first} a {last}. | {count} transações, de {first} a {last}.",
+        "amount_unreadable": "Não é possível ler este montante"
       },
       "skipped": {
         "no_date": "Sem data legível",
