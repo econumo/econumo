@@ -158,6 +158,14 @@ The server still accepts those fields.
   phone) move through every row of the file. When some rows will be skipped, a "Next
   problem" button jumps to the next one, and a skipped row's card says why ("No readable
   date") instead of showing a transaction.
+- **Fixing a problem row on its card:** a row skipped for an unreadable date or amount
+  shows an input for that value right on the card (a date picker, an amount field). Once
+  filled, the row counts as a transaction and is uploaded with the typed value; "Skip this
+  row" leaves it out explicitly. These per-row fixes live in the dialog's state, and they
+  are dropped for a row if a step change makes it readable on its own. There is no
+  editable table of all rows: whole-file problems are fixed at their step, and any other
+  field can be edited in the app after the import. *(Agreed: no table; per-row fix is my
+  call, recommended and not objected to.)*
 - Under the card, always visible: the original line from the file, so a wrong date or
   amount can be traced to its source. Each value on the card links back to the step that
   shapes it (date, amount, description, extras); a "Something looks wrong?" link goes back
