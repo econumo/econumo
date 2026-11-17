@@ -97,14 +97,8 @@
       "back": {
         "label": "Zurück"
       },
-      "import": {
-        "label": "Importieren"
-      },
       "export": {
         "label": "Exportieren"
-      },
-      "change": {
-        "label": "Ändern"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "An"
         }
       }
-    },
-    "import_csv": {
-      "header": "CSV importieren",
-      "none": "Keine",
-      "file": {
-        "label": "CSV-Datei",
-        "hint": "Maximale Dateigröße: 10 MB"
-      },
-      "mapping": {
-        "description": "Ordnen Sie die Spalten Ihrer CSV-Datei den Transaktionsfeldern zu. Pflichtfelder sind mit einem Sternchen (*) markiert."
-      },
-      "amount_mode": {
-        "switch_to_single": "Zu einer einzelnen Betragsspalte wechseln",
-        "switch_to_dual": "In Eingangs-/Ausgangsspalten aufteilen"
-      },
-      "switch_to_manual": "Wert manuell eingeben",
-      "switch_to_csv": "CSV-Spalte verwenden",
-      "fields": {
-        "account": "Konto",
-        "date": "Datum",
-        "amount": "Betrag",
-        "amount_inflow": "Betrag (Eingang)",
-        "amount_outflow": "Betrag (Ausgang)",
-        "category": "Kategorie",
-        "description": "Beschreibung",
-        "description_placeholder": "Beschreibung für alle Transaktionen eingeben",
-        "payee": "Zahlungsempfänger",
-        "tag": "Budget-Tag",
-        "labels": "Auswertungs-Tags"
-      },
-      "labels_separator": {
-        "button": "Trennzeichen für Tags ändern",
-        "title": "Trennzeichen für Tags",
-        "tab": "Tabulator",
-        "newline": "Zeilenumbruch",
-        "custom_label": "Eigenes Trennzeichen"
-      },
-      "tag_hint": "Eine Transaktion kann nur einen Budget-Tag haben. Für mehrere Tags verwenden Sie Auswertungs-Tags.",
-      "new_labels_count": "Dieser Import erstellt {count} neues Tag | Dieser Import erstellt {count} neue Tags"
     },
     "import_wizard": {
       "title": "Buchungen importieren",

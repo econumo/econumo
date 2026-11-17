@@ -97,14 +97,8 @@
       "back": {
         "label": "Terug"
       },
-      "import": {
-        "label": "Importeren"
-      },
       "export": {
         "label": "Exporteren"
-      },
-      "change": {
-        "label": "Wijzigen"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "Naar"
         }
       }
-    },
-    "import_csv": {
-      "header": "CSV importeren",
-      "none": "Geen",
-      "file": {
-        "label": "CSV-bestand",
-        "hint": "Maximale bestandsgrootte: 10 MB"
-      },
-      "mapping": {
-        "description": "Koppel de kolommen uit uw CSV-bestand aan de transactievelden. Verplichte velden zijn gemarkeerd met een sterretje (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Overschakelen naar één bedragkolom",
-        "switch_to_dual": "Splitsen in kolommen voor bij- en afschrijvingen"
-      },
-      "switch_to_manual": "Handmatig een waarde invoeren",
-      "switch_to_csv": "Een CSV-kolom gebruiken",
-      "fields": {
-        "account": "Rekening",
-        "date": "Datum",
-        "amount": "Bedrag",
-        "amount_inflow": "Bedrag (bijschrijving)",
-        "amount_outflow": "Bedrag (afschrijving)",
-        "category": "Categorie",
-        "description": "Omschrijving",
-        "description_placeholder": "Voer een omschrijving in voor alle transacties",
-        "payee": "Begunstigde",
-        "tag": "Budgettag",
-        "labels": "Rapportagetags"
-      },
-      "labels_separator": {
-        "button": "Scheidingsteken voor tags wijzigen",
-        "title": "Scheidingsteken voor tags",
-        "tab": "Tab",
-        "newline": "Nieuwe regel",
-        "custom_label": "Eigen scheidingsteken"
-      },
-      "tag_hint": "Een transactie kan maar één budgettag hebben. Gebruik voor meerdere tags Rapportagetags.",
-      "new_labels_count": "Deze import maakt {count} nieuwe tag aan | Deze import maakt {count} nieuwe tags aan"
     },
     "import_wizard": {
       "title": "Transacties importeren",

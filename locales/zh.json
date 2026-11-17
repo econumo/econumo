@@ -97,14 +97,8 @@
       "back": {
         "label": "返回"
       },
-      "import": {
-        "label": "导入"
-      },
       "export": {
         "label": "导出"
-      },
-      "change": {
-        "label": "更改"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "转入账户"
         }
       }
-    },
-    "import_csv": {
-      "header": "导入 CSV",
-      "none": "无",
-      "file": {
-        "label": "CSV 文件",
-        "hint": "文件大小上限：10 MB"
-      },
-      "mapping": {
-        "description": "将 CSV 文件中的列与交易字段对应。带星号（*）的为必填字段。"
-      },
-      "amount_mode": {
-        "switch_to_single": "使用单个金额列",
-        "switch_to_dual": "拆分为收入和支出两列"
-      },
-      "switch_to_manual": "手动输入值",
-      "switch_to_csv": "使用 CSV 列",
-      "fields": {
-        "account": "账户",
-        "date": "日期",
-        "amount": "金额",
-        "amount_inflow": "金额（收入）",
-        "amount_outflow": "金额（支出）",
-        "category": "分类",
-        "description": "说明",
-        "description_placeholder": "为所有交易填写统一说明",
-        "payee": "收款人",
-        "tag": "预算标签",
-        "labels": "统计标签"
-      },
-      "labels_separator": {
-        "button": "修改标签分隔符",
-        "title": "标签分隔符",
-        "tab": "制表符",
-        "newline": "换行",
-        "custom_label": "自定义分隔符"
-      },
-      "tag_hint": "每笔交易只能有一个预算标签。如需多个，请使用统计标签。",
-      "new_labels_count": "本次导入将创建 {count} 个新标签"
     },
     "import_wizard": {
       "title": "导入交易",

@@ -221,6 +221,9 @@ components with `pnpm dlx shadcn add`. Lint is oxlint, tests are vitest.
   transaction (user row lock, then the operation-id claim), idempotent on its `id`. Progress
   is the `onboarding` user option; `completed` is terminal and written only by
   `complete-onboarding`. Onboarding never creates debts.
+- **CSV import** (`web/src/features/csvImport`, spec `2026-11-16-csv-import-wizard-design.md`):
+  the step wizard behind Getting started's Import step and Settings → Data; `prepareRows` feeds
+  both the preview and the upload, so the preview is exactly what is sent.
 - **Analytics** (`web/src/lib/analytics.ts`, the only file naming the vendor): identified
   only (nothing is sent without a session), hashed user id, synthetic `$host` so a
   self-hosted hostname never appears in a payload. Gated by the per-user `analytics` option

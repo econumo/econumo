@@ -97,14 +97,8 @@
       "back": {
         "label": "Retour"
       },
-      "import": {
-        "label": "Importer"
-      },
       "export": {
         "label": "Exporter"
-      },
-      "change": {
-        "label": "Modifier"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "Vers"
         }
       }
-    },
-    "import_csv": {
-      "header": "Importer un CSV",
-      "none": "Aucun",
-      "file": {
-        "label": "Fichier CSV",
-        "hint": "Taille maximale du fichier : 10 Mo"
-      },
-      "mapping": {
-        "description": "Associez les colonnes de votre fichier CSV aux champs de transaction. Les champs obligatoires sont marqués d’un astérisque (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Utiliser une seule colonne de montant",
-        "switch_to_dual": "Séparer en colonnes entrées/sorties"
-      },
-      "switch_to_manual": "Saisir une valeur manuellement",
-      "switch_to_csv": "Utiliser une colonne du CSV",
-      "fields": {
-        "account": "Compte",
-        "date": "Date",
-        "amount": "Montant",
-        "amount_inflow": "Montant (entrée)",
-        "amount_outflow": "Montant (sortie)",
-        "category": "Catégorie",
-        "description": "Description",
-        "description_placeholder": "Saisissez une description pour toutes les transactions",
-        "payee": "Bénéficiaire",
-        "tag": "Tag budgétaire",
-        "labels": "Tags de rapport"
-      },
-      "labels_separator": {
-        "button": "Modifier le séparateur de tags",
-        "title": "Séparateur de tags",
-        "tab": "Tabulation",
-        "newline": "Saut de ligne",
-        "custom_label": "Séparateur personnalisé"
-      },
-      "tag_hint": "Une transaction ne peut avoir qu’un seul tag budgétaire. Pour en indiquer plusieurs, utilisez Tags de rapport.",
-      "new_labels_count": "Cet import créera {count} nouveau tag | Cet import créera {count} nouveaux tags"
     },
     "import_wizard": {
       "title": "Importer des transactions",

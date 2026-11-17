@@ -97,14 +97,8 @@
       "back": {
         "label": "Voltar"
       },
-      "import": {
-        "label": "Importar"
-      },
       "export": {
         "label": "Exportar"
-      },
-      "change": {
-        "label": "Alterar"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "Para"
         }
       }
-    },
-    "import_csv": {
-      "header": "Importar CSV",
-      "none": "Nenhum",
-      "file": {
-        "label": "Ficheiro CSV",
-        "hint": "Tamanho máximo do ficheiro: 10 MB"
-      },
-      "mapping": {
-        "description": "Associe as colunas do seu ficheiro CSV aos campos da transação. Os campos obrigatórios estão marcados com um asterisco (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Mudar para uma única coluna de montante",
-        "switch_to_dual": "Dividir em colunas de entrada/saída"
-      },
-      "switch_to_manual": "Introduzir um valor manualmente",
-      "switch_to_csv": "Usar uma coluna do CSV",
-      "fields": {
-        "account": "Conta",
-        "date": "Data",
-        "amount": "Montante",
-        "amount_inflow": "Montante (entrada)",
-        "amount_outflow": "Montante (saída)",
-        "category": "Categoria",
-        "description": "Descrição",
-        "description_placeholder": "Introduza a descrição para todas as transações",
-        "payee": "Beneficiário",
-        "tag": "Etiqueta de orçamento",
-        "labels": "Etiquetas de relatório"
-      },
-      "labels_separator": {
-        "button": "Alterar o separador de etiquetas",
-        "title": "Separador de etiquetas",
-        "tab": "Tabulação",
-        "newline": "Nova linha",
-        "custom_label": "Separador personalizado"
-      },
-      "tag_hint": "Uma transação só pode ter uma etiqueta de orçamento. Para várias, use Etiquetas de relatório.",
-      "new_labels_count": "Esta importação irá criar {count} nova etiqueta | Esta importação irá criar {count} novas etiquetas"
     },
     "import_wizard": {
       "title": "Importar transações",

@@ -97,14 +97,8 @@
       "back": {
         "label": "Indietro"
       },
-      "import": {
-        "label": "Importa"
-      },
       "export": {
         "label": "Esporta"
-      },
-      "change": {
-        "label": "Cambia"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "A"
         }
       }
-    },
-    "import_csv": {
-      "header": "Importa CSV",
-      "none": "Nessuno",
-      "file": {
-        "label": "File CSV",
-        "hint": "Dimensione massima del file: 10 MB"
-      },
-      "mapping": {
-        "description": "Associa le colonne del file CSV ai campi della transazione. I campi obbligatori sono contrassegnati da un asterisco (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Usa una sola colonna per l'importo",
-        "switch_to_dual": "Dividi in colonne entrate/uscite"
-      },
-      "switch_to_manual": "Inserisci un valore manualmente",
-      "switch_to_csv": "Usa una colonna del CSV",
-      "fields": {
-        "account": "Conto",
-        "date": "Data",
-        "amount": "Importo",
-        "amount_inflow": "Importo (entrata)",
-        "amount_outflow": "Importo (uscita)",
-        "category": "Categoria",
-        "description": "Descrizione",
-        "description_placeholder": "Inserisci una descrizione per tutte le transazioni",
-        "payee": "Beneficiario",
-        "tag": "Tag di budget",
-        "labels": "Tag per i report"
-      },
-      "labels_separator": {
-        "button": "Cambia il separatore dei tag",
-        "title": "Separatore dei tag",
-        "tab": "Tabulazione",
-        "newline": "A capo",
-        "custom_label": "Separatore personalizzato"
-      },
-      "tag_hint": "Una transazione può avere un solo tag di budget. Per indicarne più di uno, usa Tag per i report.",
-      "new_labels_count": "Questa importazione creerà {count} nuovo tag | Questa importazione creerà {count} nuovi tag"
     },
     "import_wizard": {
       "title": "Importa transazioni",

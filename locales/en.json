@@ -97,14 +97,8 @@
       "back": {
         "label": "Back"
       },
-      "import": {
-        "label": "Import"
-      },
       "export": {
         "label": "Export"
-      },
-      "change": {
-        "label": "Change"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "To"
         }
       }
-    },
-    "import_csv": {
-      "header": "Import CSV",
-      "none": "None",
-      "file": {
-        "label": "CSV File",
-        "hint": "Maximum file size: 10 MB"
-      },
-      "mapping": {
-        "description": "Map the columns from your CSV file to the transaction fields. Required fields are marked with an asterisk (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Switch to a single amount column",
-        "switch_to_dual": "Split into inflow/outflow columns"
-      },
-      "switch_to_manual": "Enter a value manually",
-      "switch_to_csv": "Use a CSV column",
-      "fields": {
-        "account": "Account",
-        "date": "Date",
-        "amount": "Amount",
-        "amount_inflow": "Amount (Inflow)",
-        "amount_outflow": "Amount (Outflow)",
-        "category": "Category",
-        "description": "Description",
-        "description_placeholder": "Enter description for all transactions",
-        "payee": "Payee",
-        "tag": "Budget tag",
-        "labels": "Reporting tags"
-      },
-      "labels_separator": {
-        "button": "Change the tag separator",
-        "title": "Tag separator",
-        "tab": "Tab",
-        "newline": "New line",
-        "custom_label": "Custom separator"
-      },
-      "tag_hint": "A transaction can have only one budget tag. For several, use Reporting tags.",
-      "new_labels_count": "This import will create {count} new tag | This import will create {count} new tags"
     },
     "import_wizard": {
       "title": "Import transactions",

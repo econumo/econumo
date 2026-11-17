@@ -97,14 +97,8 @@
       "back": {
         "label": "Atrás"
       },
-      "import": {
-        "label": "Importar"
-      },
       "export": {
         "label": "Exportar"
-      },
-      "change": {
-        "label": "Cambiar"
       }
     },
     "date": {
@@ -409,45 +403,6 @@
           "label": "Destino"
         }
       }
-    },
-    "import_csv": {
-      "header": "Importar CSV",
-      "none": "Ninguno",
-      "file": {
-        "label": "Archivo CSV",
-        "hint": "Tamaño máximo del archivo: 10 MB"
-      },
-      "mapping": {
-        "description": "Asigna las columnas de tu archivo CSV a los campos de la transacción. Los campos obligatorios están marcados con un asterisco (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Usar una sola columna de importe",
-        "switch_to_dual": "Separar en columnas de entrada y salida"
-      },
-      "switch_to_manual": "Introducir un valor manualmente",
-      "switch_to_csv": "Usar una columna del CSV",
-      "fields": {
-        "account": "Cuenta",
-        "date": "Fecha",
-        "amount": "Importe",
-        "amount_inflow": "Importe (entrada)",
-        "amount_outflow": "Importe (salida)",
-        "category": "Categoría",
-        "description": "Descripción",
-        "description_placeholder": "Escribe una descripción para todas las transacciones",
-        "payee": "Beneficiario",
-        "tag": "Etiqueta de presupuesto",
-        "labels": "Etiquetas de informes"
-      },
-      "labels_separator": {
-        "button": "Cambiar el separador de etiquetas",
-        "title": "Separador de etiquetas",
-        "tab": "Tabulación",
-        "newline": "Salto de línea",
-        "custom_label": "Separador personalizado"
-      },
-      "tag_hint": "Una transacción solo puede tener una etiqueta de presupuesto. Para varias, usa Etiquetas de informes.",
-      "new_labels_count": "Esta importación creará {count} etiqueta nueva | Esta importación creará {count} etiquetas nuevas"
     },
     "import_wizard": {
       "title": "Importar transacciones",

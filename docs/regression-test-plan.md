@@ -351,8 +351,8 @@ navigation (single-pane vs sidebar).
       first one leaves the other rows and the "· Main" chip unchanged. Under the Currencies
       label a hint reads "Select the currencies you use most often. You can
       add more later in Settings." above the currency chips. No note about missing exchange rates appears.
-- [ ] 📱 Accounts after a CSV import (accounts arrive in the instance base
-      currency): an existing, shown account's currency chip is tappable and
+- [ ] 📱 Accounts after a CSV import (accounts arrive in the currency picked
+      in the import wizard): an existing, shown account's currency chip is tappable and
       opens the currency list, and its balance is an input prefilled with the
       current balance (to the currency's decimals, in the UI language's
       number format); its name stays read-only and an archived one shows
@@ -403,21 +403,39 @@ navigation (single-pane vs sidebar).
       width (each account row stays on one line; no horizontal scroll;
       Save and continue and Skip reachable).
 - [ ] Import step: "Choose a CSV file" (a dashed, accent-tinted area) opens
-      the CSV import dialog; under it sit "Skip" on the left and "I don't
+      the "Import transactions" wizard (§5, CSV import); under it sit "Skip" on the left and "I don't
       have one" on the right, both skipping the step (there is no separate
       Import button). On a desktop the area also reads "or
       drop it here": dragging a file over it highlights it, dropping a .csv
-      opens the dialog with that file already read (column mapping shown),
-      and dropping another kind of file opens nothing and shows "Only CSV
+      opens the wizard with that file already read (on its Account step, or on
+      Check for an Econumo export), and dropping another kind of file opens nothing and shows "Only CSV
       files can be imported here."; a successful import sends one
       `onboarding/finish-import` (it creates the budget when the user has
       none), ticks Import only and opens Categories: Categories and Accounts
       stay open as review steps of what the import brought in (they are not
-      ticked); closing the dialog or importing nothing leaves the step open;
+      ticked); closing the wizard or importing nothing leaves the step open;
       "Skip" and "I don't have one" skip only Import. A failed finish-import shows the
       error with "Try again", which resends the same operation id; the drop
       area is disabled meanwhile. The Network tab shows no
       `update-onboarding` carrying `import`.
+- [ ] 📱 Import step with a bank statement and NO accounts (e.g.
+      `Buchungstag;Betrag;Verwendungszweck` with `03.11.2026;-12,50;REWE`,
+      `05.11.2026;2.500,00;Gehalt`): the wizard opens on Account with "A new
+      account" chosen (there is no "An account I already have"), the name
+      prefilled with the file name without ".csv" and the currency with the
+      user's currency; picking EUR there and importing creates ONE account with
+      that name in EUR (in a "General" folder) holding exactly the file's rows,
+      2,487.50 here; the step is ticked and Categories opens. Nothing is
+      created before Import is pressed: closing the wizard earlier leaves no
+      account.
+- [ ] Import step, some rows not sent (stop the server while the second of
+      two 500-row chunks uploads, then start it): the result dialog shows
+      "Import completed with errors" with the imported and failed counts and
+      "Try the rest again"; pressing it (server up) sends only the failed
+      chunk, the counts update, and the account holds every row once. Rows the
+      wizard skipped are listed with their reason and row number, never
+      re-sent. While the step waits for a failed `finish-import`, the drop area
+      stays disabled so the same file cannot be imported twice.
 - [ ] While onboarding is in progress, a CSV import from Settings → Data also
       settles the Import step through `finish-import` (the budget appears and,
       with AI, icons arrive).
@@ -622,8 +640,10 @@ navigation (single-pane vs sidebar).
 - [ ] Account page in a narrow desktop browser window (phone layout): press and
       hold a row with the mouse for about half a second, then drag; a plain
       click still opens the preview.
-- [ ] CSV import that names a new category/payee/tag in different letter cases
-      ("Snacks" on one row, "snacks" on a later one) creates it as first spelled.
+- [ ] CSV import whose Extra details use a column as Category, Payee or Budget
+      tag, naming a new one in different letter cases ("Snacks" on one row,
+      "snacks" on a later one), creates it once, as first spelled; for a
+      category the wizard's note reads "1 new category will be created".
 - [ ] Account page 📱: dropping a row into another day's group moves it to that
       day (time of day kept, edit dialog shows the new date) at the drop
       position; while the row hovers another day, that day's header is
@@ -724,30 +744,125 @@ navigation (single-pane vs sidebar).
       imported row shows the import glyph (tooltip "Imported"), hand-entered
       rows do not; the preview dialog of an imported row lists "Imported from"
       (source · card · merchant amount currency · posted time).
-- [ ] **CSV import** 📱: pick a file, map columns (single amount and
-      inflow/outflow dual mode, date, category, payee, description, tags,
-      labels with separator), constant-value fields; result dialog shows
-      imported/failed counts and per-row errors; imported rows appear with
-      correct signs and classifications.
-- [ ] CSV import mapping layout: once a file is picked the dialog widens, every
-      field lines up at one width, and on desktop each column in a picker
-      (name plus sample value) stays on one line. "Change the tag separator"
-      shows under Reporting tags only while a column is mapped there. A note
-      under Budget tag says a transaction has one, and points to Reporting tags
-      for several.
-- [ ] Export transactions to CSV and import that file, with the UI in English
-      and in another language: every column maps by itself, the tags column
-      included, and the imported rows keep their budget tag and reporting tags,
-      also on a transaction with more than 10 reporting tags (the limit is 50,
-      as when entering a transaction).
-- [ ] Import with a broken row (bad date/amount) → partial result, failed rows
-      detailed, good rows imported.
+- [ ] **CSV import wizard** 📱 (Settings → Data → Import & export → Import
+      CSV, or Getting started's Import step): one dialog (a bottom sheet on a
+      phone) titled "Import transactions" with a step bar (Your file, Account,
+      Date, Amount, Description, Extra details, Check), Back and Next. Your
+      file accepts a .csv picked or dropped; a file over 10 MB says "This file
+      is larger than 10 MB", an empty one "This file is empty", a non-CSV one
+      "This file couldn't be read as a spreadsheet (CSV)", and each stays on
+      Your file. No screen uses the words "mapping", "field" or "CSV column";
+      every "which column" question shows the file's columns as cards (header
+      plus its first three values), the guessed one already selected, no
+      dropdowns of header names.
+- [ ] 📱 Step bar: once a file is read every step can be opened in any order,
+      forward or back, by clicking its name (desktop) or its numbered dot
+      (phone, the current step's name under the dots). A step whose required
+      answer is missing (Account, Date, Amount) or that makes rows be skipped
+      carries a warning mark, and Import stays disabled until Account, Date
+      and Amount are answered. Extra details appears only when some column is
+      left unused.
+- [ ] Bank statement (`Buchungstag;Betrag;Verwendungszweck`, decimal comma,
+      `dd.mm.yyyy` dates with a day above 12): Date, Amount and Description are
+      preselected (Buchungstag, Betrag, Verwendungszweck), no date or decimal
+      question is asked, and Check shows `−12.50` for `-12,50` and `+2,500.00`
+      for `2.500,00`, dated as in the file. Same in a file with Spanish
+      (Fecha, Importe) or Russian (Дата, Сумма, Описание) headers.
+- [ ] Ambiguous dates (every date like `03/04/2026`, no day above 12): Date
+      asks "Is 03/04/2026 the … or …?" with a value from the file and both
+      readings written out as dates in the UI language, preselected by the
+      browser's language (English US: month first; Russian, German: day
+      first); switching the answer moves every date on Check. Unreadable dates are counted under the cards ("1 row has
+      no readable date and will be skipped").
+- [ ] Decimal separator: a column whose values never settle it (only
+      `-1,500` or `1.500` style values) asks "How much is -1,500?" with its two
+      readings (−1.5 and −1500, in the UI language's number format) as choices; the choice moves every amount on
+      Check. A file with `250,00` or `2.500,00` asks nothing.
+- [ ] Flip signs: a file that writes spending as positive (`12.50` for a
+      purchase): Amount shows "Spending shows as: 12.50" with a real value from
+      the file; turning on "Flip the signs" makes that row −12.50 on Check and
+      income positive. With "Separate columns for money in and money out"
+      there is no switch: money in imports as + and money out as −, whatever
+      sign the file uses, and either column may be "None".
+- [ ] Extra details (a file with Category, Payee, Tags columns from another
+      app): each unused column is listed with its sample values and can be
+      used as Category, Payee, Budget tag, Reporting tags or left out
+      (recognised headers come preselected); Reporting tags asks how several
+      tags in one cell are separated (";" by default, ",", "|", Tab, or something else). A note counts
+      the new categories and tags the import will create. The imported rows
+      carry exactly those values.
+- [ ] 📱 Check: totals "N transactions, first date to last date. Money in …,
+      money out …." (money is left out when the rows land in accounts of two
+      currencies) and, when rows will be skipped, "N will be skipped (reason:
+      count)". ONE transaction is shown at a time, laid out like the app's
+      transaction view (description, category, payee, tags; signed red/green
+      amount with the account's currency, account, date — with the time when
+      the file has one), headed "Transaction 3 of 214", with the file's
+      original line under it ("From the file:"). Previous / Next, the ← / →
+      keys (not while typing in a field) and a horizontal swipe on a phone
+      move through every row; "Next problem" (only when rows will be skipped)
+      jumps to the next skipped row. Each value on the card opens the step
+      that shapes it; "Something looks wrong?" opens Date (Account for an
+      Econumo export). The Import button reads "Import N transactions" and
+      fits its button on a phone.
+- [ ] 📱 Problem rows on Check: a row with no readable date shows "No readable
+      date" with a date field, one with no readable amount "No readable
+      amount" with an amount field (read with the file's decimal separator;
+      unreadable input says "Can't read this amount"). Filling it turns the
+      card into a transaction, adds it to the totals and the Import count,
+      and imports it with the typed value; "Skip this row" leaves it out
+      ("Skipped by you", undone by "Don't skip"). Changing a step so that the
+      row reads on its own drops the typed value.
+- [ ] Account step: "An account I already have" (the default when the user
+      can write to an account) lists only accounts the user owns or may edit;
+      "A new account" asks a name and a currency; "Each row says which
+      account" asks for the column, then lists the names found: one matching
+      a writable account (any letter case) reads "Existing account", every
+      other gets its own currency picker. Import creates the new accounts
+      (in the user's first folder, or "General" for a user with none) and
+      puts each row in its account. Pressing Import again after an error
+      never creates an account twice.
+- [ ] Econumo export: export transactions (§ CSV export) and import that file,
+      with the UI in English and in another language: the wizard skips
+      straight to Check, with "Accounts in this file" listing each account; a
+      new one has a currency picker prefilled from the file's
+      `account_currency` (EUR stays EUR when the instance has EUR; otherwise
+      the user's currency). Every column is used by itself, the tags column
+      included, and the imported rows keep their account, category, payee,
+      budget tag and reporting tags, also on a transaction with more than 10
+      reporting tags (the limit is 50, as when entering a transaction). The
+      step bar still opens any step.
+- [ ] 📱 While importing (a large file shows the progress bar): the dialog
+      cannot be closed (no ✕; Escape, an outside click or a swipe-down do nothing), Back,
+      the step bar and every answer are disabled, and Import cannot be
+      pressed twice. Afterwards the result dialog shows "Import complete" (or
+      "Import completed with errors" with the failed rows by reason and row
+      number); when a request failed, "Try the rest again" re-sends only the
+      failed part and never duplicates rows that landed. Offline, Import
+      stays disabled.
+- [ ] AI on vs off: with AI (`ECONUMO_AI_DSN` set, the Profile's "Use AI
+      features" on) a file with unusual headers (e.g. `Wertstellung;Umsatz;
+      Info`) gets its columns guessed a moment after it is read, only on
+      steps the user has not touched yet; the request
+      (`GET transaction/suggest-import-columns`) carries only the header
+      names, a type per column (`date`/`number`/`text`/`empty`), whether a
+      number column has negatives and the language, never a cell value, and
+      the server log shows `outcome=suggested`. Without AI (`outcome=no_ai`)
+      or with the switch off (`outcome=opted_out`) the wizard keeps its
+      built-in guesses and shows no message. An Econumo export sends no such
+      request.
+- [ ] Non-UTF-8 file: a cp1251 statement (`Дата;Сумма;Описание`, saved in
+      Windows-1251) with the UI in Russian or Ukrainian shows readable
+      Cyrillic headers and descriptions on every step and imports them
+      readable; a UTF-8 file with a BOM reads the same as without. (With the
+      UI in another language a legacy file is read as Windows-1252.)
+- [ ] Import with a broken row (bad date/amount) → Check counts it as skipped
+      with the reason, the good rows import, and the result dialog lists the
+      skipped rows by reason and original row number.
 - [ ] Category type guard: a category only goes on a transaction of its own
       type. CSV: an income row (positive amount) whose category cell names an
       expense category ("Food") gets a new income category "Food" (a second
-      "Food" under Income), never the expense one; with a constant
-      "Category" picked for every row, the rows of the other type import
-      without a category. API/MCP: `create-transaction` with an expense type
+      "Food" under Income), never the expense one. API/MCP: `create-transaction` with an expense type
       and an income category (or the reverse) returns 400 with
       `errors.categoryId` = "The category type must match the transaction
       type."; so does an update that switches the type but keeps the old
@@ -782,7 +897,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       `IMPORT_APPLE_WALLET` key.
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
-      import/export rows; dialogs open as before) and "Apple Wallet" (its own page;
+      import/export rows; Import CSV opens the import wizard) and "Apple Wallet" (its own page;
       back returns to Settings), followed by "Clear cache and reload" as the
       group's last row on the Settings page itself (not inside Import & export).
 - [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
@@ -3206,7 +3321,8 @@ User C sees none of it.
       tap on an account this user owns); the import rule dialog makes no
       `suggest-match-text` request; onboarding's finish-import and
       save-accounts start no AI job, and neither does a CSV import (icons stay
-      default, no savings flagged).
+      default, no savings flagged); the import wizard's column guess reaches no
+      AI (`suggest-import-columns` logs `outcome=opted_out`).
       Switching it back on brings suggestions for new imports only.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
@@ -3904,8 +4020,7 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
 - [ ] One way to choose, everywhere. A field like Category (inline searchable
       dropdown on desktop / tablet, picker sheet on a phone): the Inbox folder
       for an accepted shared account (hidden folders marked with a crossed-out
-      eye), every CSV import column (each read with a sample value; the clear
-      row "—" unmaps it). A picker row that opens a checklist sheet: an
+      eye), the account under the import wizard's "An account I already have". A picker row that opens a checklist sheet: an
       envelope's categories, like a budget's Accounts / Savings accounts (the
       row names the ticked ones and counts them). A short fixed list (envelope
       status, recurring schedule, the end month when completing a budget): the
@@ -3927,7 +4042,7 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       a budget's Accounts / Savings
       accounts checklist with 6+ accounts; Merge into on categories, tags and
       payees; the account on Map to account for Apple Wallet / SimpleFIN cards;
-      the fixed account, category, payee and tag of a CSV import): on a phone
+      the account under the import wizard's "An account I already have"): on a phone
       the search is the sheet's bottom row, right above the keyboard (above the
       sheet's OK / Merge buttons where it has them), with the list above it;
       typing filters and the first row is highlighted, ↑ / ↓ move the
