@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { ImportResultDialog } from './ImportResultDialog'
-import type { AggregatedImportResult } from './importCsv'
+import type { ImportResult } from '@/features/csvImport/upload'
 
 beforeEach(() => {
   window.econumoConfig = {}
@@ -9,11 +9,11 @@ beforeEach(() => {
   }))
 })
 
-const renderResult = (result: AggregatedImportResult) =>
+const renderResult = (result: ImportResult) =>
   render(<ImportResultDialog open result={result} onClose={() => {}} />)
 
 it('full success: title + pluralized imported count', () => {
-  renderResult({ imported: 3, failed: 0, errors: [] })
+  renderResult({ imported: 3, failed: 0, errors: [], failedChunks: [] })
   expect(screen.getByText('Import complete')).toBeInTheDocument()
   expect(screen.getByText('3 transactions imported')).toBeInTheDocument()
   expect(screen.queryByText('Error details')).not.toBeInTheDocument()
@@ -27,6 +27,7 @@ it('partial success: both counts and error rows formatting', () => {
       { message: 'Invalid amount format', rows: [4] },
       { message: "Invalid date format 'x'", rows: [2, 3] },
     ],
+    failedChunks: [],
   })
   expect(screen.getByText('Import completed with errors')).toBeInTheDocument()
   expect(screen.getByText('1 transaction imported')).toBeInTheDocument()
@@ -47,7 +48,7 @@ it('total failure: error title, long row lists truncated, extra error groups cou
     { message: 'e6', rows: [6] },
     { message: 'e7', rows: [7] },
   ]
-  renderResult({ imported: 0, failed: 20, errors })
+  renderResult({ imported: 0, failed: 20, errors, failedChunks: [] })
   expect(screen.getByText('Import failed')).toBeInTheDocument()
   // first 10 rows + "+4 more"
   expect(screen.getByText(/Rows 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 \+4 more/)).toBeInTheDocument()

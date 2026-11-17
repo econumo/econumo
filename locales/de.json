@@ -449,6 +449,54 @@
       "tag_hint": "Eine Transaktion kann nur einen Budget-Tag haben. Für mehrere Tags verwenden Sie Auswertungs-Tags.",
       "new_labels_count": "Dieser Import erstellt {count} neues Tag | Dieser Import erstellt {count} neue Tags"
     },
+    "import_wizard": {
+      "title": "Buchungen importieren",
+      "steps_label": "Importschritte",
+      "needs_attention": "bitte prüfen",
+      "back": "Zurück",
+      "next": "Weiter",
+      "none": "Keine",
+      "steps": {
+        "file": "Ihre Datei",
+        "account": "Konto",
+        "date": "Datum",
+        "amount": "Betrag",
+        "description": "Beschreibung",
+        "extras": "Weitere Angaben",
+        "preview": "Prüfen"
+      },
+      "file": {
+        "title": "Wählen Sie eine Datei Ihrer Bank oder einer anderen App",
+        "choose": "Datei auswählen",
+        "choose_another": "Andere Datei auswählen",
+        "drop_here": "oder hier ablegen",
+        "hint": "Eine Tabellendatei (CSV), bis zu 10 MB",
+        "error": {
+          "too_big": "Diese Datei ist größer als 10 MB",
+          "empty": "Diese Datei ist leer",
+          "unreadable": "Diese Datei konnte nicht als Tabelle (CSV) gelesen werden"
+        }
+      },
+      "account": {
+        "title": "Von welchem Konto stammt dieser Kontoauszug?",
+        "new": "Ein neues Konto"
+      },
+      "date": {
+        "title": "Welche Spalte enthält das Datum?"
+      },
+      "amount": {
+        "title": "Wie zeigt die Datei Beträge an?"
+      },
+      "description": {
+        "title": "Welche Spalte beschreibt die einzelnen Buchungen?"
+      },
+      "extras": {
+        "title": "Möchten Sie noch etwas übernehmen?"
+      },
+      "preview": {
+        "title": "Das wird importiert"
+      }
+    },
     "import_result": {
       "success_title": "Import abgeschlossen",
       "partial_success_title": "Import mit Fehlern abgeschlossen",

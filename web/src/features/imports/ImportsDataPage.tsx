@@ -6,9 +6,9 @@ import { toast } from 'sonner'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
-import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
+import { ImportWizard } from '@/features/csvImport/ImportWizard'
+import type { ImportResult } from '@/features/csvImport/upload'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
-import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 import { apiErrorMessage } from '@/lib/apiError'
 import { isSimpleFINImportEnabled } from '@/lib/config'
 import { decryptCredential } from '@/lib/importCrypto'
@@ -88,7 +88,7 @@ export function ImportsDataPage() {
   const online = useOnline()
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-  const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
 
   return (
     <SettingsShell
@@ -102,7 +102,7 @@ export function ImportsDataPage() {
       </div>
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
-      <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
+      <ImportWizard open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
       <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
     </SettingsShell>
   )

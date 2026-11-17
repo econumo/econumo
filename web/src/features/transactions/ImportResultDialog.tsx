@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { pluralPick } from '@/lib/plural'
-import type { AggregatedImportResult } from './importCsv'
+import type { ImportResult } from '@/features/csvImport/upload'
 
 const MAX_DISPLAY_ERRORS = 5
 const MAX_DISPLAY_ROWS = 10
 
 interface ImportResultDialogProps {
   open: boolean
-  result: AggregatedImportResult | null
+  result: ImportResult | null
   onClose: () => void
 }
 

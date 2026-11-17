@@ -449,6 +449,54 @@
       "tag_hint": "Une transaction ne peut avoir qu’un seul tag budgétaire. Pour en indiquer plusieurs, utilisez Tags de rapport.",
       "new_labels_count": "Cet import créera {count} nouveau tag | Cet import créera {count} nouveaux tags"
     },
+    "import_wizard": {
+      "title": "Importer des transactions",
+      "steps_label": "Étapes de l’import",
+      "needs_attention": "à vérifier",
+      "back": "Retour",
+      "next": "Suivant",
+      "none": "Aucune",
+      "steps": {
+        "file": "Votre fichier",
+        "account": "Compte",
+        "date": "Date",
+        "amount": "Montant",
+        "description": "Description",
+        "extras": "Autres détails",
+        "preview": "Vérifier"
+      },
+      "file": {
+        "title": "Choisissez un fichier de votre banque ou d’une autre appli",
+        "choose": "Choisir un fichier",
+        "choose_another": "Choisir un autre fichier",
+        "drop_here": "ou déposez-le ici",
+        "hint": "Un fichier tableur (CSV), jusqu’à 10 Mo",
+        "error": {
+          "too_big": "Ce fichier dépasse 10 Mo",
+          "empty": "Ce fichier est vide",
+          "unreadable": "Ce fichier n’a pas pu être lu comme un tableur (CSV)"
+        }
+      },
+      "account": {
+        "title": "De quel compte provient ce relevé ?",
+        "new": "Un nouveau compte"
+      },
+      "date": {
+        "title": "Quelle colonne contient la date ?"
+      },
+      "amount": {
+        "title": "Comment le fichier présente-t-il les montants ?"
+      },
+      "description": {
+        "title": "Quelle colonne décrit chaque transaction ?"
+      },
+      "extras": {
+        "title": "Autre chose à reprendre ?"
+      },
+      "preview": {
+        "title": "Voici ce qui sera importé"
+      }
+    },
     "import_result": {
       "success_title": "Import terminé",
       "partial_success_title": "Import terminé avec des erreurs",

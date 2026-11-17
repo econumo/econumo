@@ -3,7 +3,7 @@ import type { DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
+import { ImportWizard } from '@/features/csvImport/ImportWizard'
 import { apiErrorMessage } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
 import type { StepBodyProps } from './OnboardingPage'
@@ -108,7 +108,7 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
           {t('onboarding.import_step.no_file')}
         </Button>
       </StepFooter>
-      <ImportCsvDialog
+      <ImportWizard
         open={open}
         initialFile={dropped}
         onClose={() => setOpen(false)}

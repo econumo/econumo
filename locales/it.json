@@ -449,6 +449,54 @@
       "tag_hint": "Una transazione può avere un solo tag di budget. Per indicarne più di uno, usa Tag per i report.",
       "new_labels_count": "Questa importazione creerà {count} nuovo tag | Questa importazione creerà {count} nuovi tag"
     },
+    "import_wizard": {
+      "title": "Importa transazioni",
+      "steps_label": "Passaggi dell’importazione",
+      "needs_attention": "da controllare",
+      "back": "Indietro",
+      "next": "Avanti",
+      "none": "Nessuna",
+      "steps": {
+        "file": "Il tuo file",
+        "account": "Conto",
+        "date": "Data",
+        "amount": "Importo",
+        "description": "Descrizione",
+        "extras": "Altri dettagli",
+        "preview": "Controlla"
+      },
+      "file": {
+        "title": "Scegli un file della tua banca o di un’altra app",
+        "choose": "Scegli un file",
+        "choose_another": "Scegli un altro file",
+        "drop_here": "oppure trascinalo qui",
+        "hint": "Un file di foglio di calcolo (CSV), fino a 10 MB",
+        "error": {
+          "too_big": "Questo file supera i 10 MB",
+          "empty": "Questo file è vuoto",
+          "unreadable": "Questo file non può essere letto come foglio di calcolo (CSV)"
+        }
+      },
+      "account": {
+        "title": "Da quale conto proviene questo estratto?",
+        "new": "Un nuovo conto"
+      },
+      "date": {
+        "title": "Quale colonna contiene la data?"
+      },
+      "amount": {
+        "title": "Come mostra gli importi il file?"
+      },
+      "description": {
+        "title": "Quale colonna descrive ogni transazione?"
+      },
+      "extras": {
+        "title": "Altro da portare?"
+      },
+      "preview": {
+        "title": "Ecco cosa verrà importato"
+      }
+    },
     "import_result": {
       "success_title": "Importazione completata",
       "partial_success_title": "Importazione completata con errori",

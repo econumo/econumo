@@ -449,6 +449,54 @@
       "tag_hint": "A transaction can have only one budget tag. For several, use Reporting tags.",
       "new_labels_count": "This import will create {count} new tag | This import will create {count} new tags"
     },
+    "import_wizard": {
+      "title": "Import transactions",
+      "steps_label": "Import steps",
+      "needs_attention": "needs your attention",
+      "back": "Back",
+      "next": "Next",
+      "none": "None",
+      "steps": {
+        "file": "Your file",
+        "account": "Account",
+        "date": "Date",
+        "amount": "Amount",
+        "description": "Description",
+        "extras": "Extra details",
+        "preview": "Check"
+      },
+      "file": {
+        "title": "Choose a file from your bank or another app",
+        "choose": "Choose a file",
+        "choose_another": "Choose another file",
+        "drop_here": "or drop it here",
+        "hint": "A spreadsheet file (CSV), up to 10 MB",
+        "error": {
+          "too_big": "This file is larger than 10 MB",
+          "empty": "This file is empty",
+          "unreadable": "This file couldn't be read as a spreadsheet (CSV)"
+        }
+      },
+      "account": {
+        "title": "Which account is this statement from?",
+        "new": "A new account"
+      },
+      "date": {
+        "title": "Which column has the date?"
+      },
+      "amount": {
+        "title": "How does the file show amounts?"
+      },
+      "description": {
+        "title": "Which column describes each transaction?"
+      },
+      "extras": {
+        "title": "Anything else to bring over?"
+      },
+      "preview": {
+        "title": "Here's what will be imported"
+      }
+    },
     "import_result": {
       "success_title": "Import complete",
       "partial_success_title": "Import completed with errors",

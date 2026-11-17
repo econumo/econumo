@@ -45,7 +45,7 @@ it('renders the CSV rows and opens the import dialog', async () => {
   expect(await screen.findByText('Import & export')).toBeInTheDocument()
   expect(screen.getByText('Export CSV')).toBeInTheDocument()
   await user.click(screen.getByText('Import CSV'))
-  expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
+  expect(await screen.findByText('A spreadsheet file (CSV), up to 10 MB')).toBeInTheDocument()
 })
 
 it('holds no Apple Wallet section, import history or import rules — they have their own pages', async () => {

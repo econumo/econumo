@@ -449,6 +449,54 @@
       "tag_hint": "Transakcja może mieć tylko jeden tag budżetowy. Aby dodać więcej, użyj pola Tagi raportowe.",
       "new_labels_count": "Ten import utworzy {count} nowy tag | Ten import utworzy {count} nowe tagi | Ten import utworzy {count} nowych tagów"
     },
+    "import_wizard": {
+      "title": "Importuj transakcje",
+      "steps_label": "Kroki importu",
+      "needs_attention": "wymaga uwagi",
+      "back": "Wstecz",
+      "next": "Dalej",
+      "none": "Brak",
+      "steps": {
+        "file": "Twój plik",
+        "account": "Konto",
+        "date": "Data",
+        "amount": "Kwota",
+        "description": "Opis",
+        "extras": "Dodatkowe dane",
+        "preview": "Sprawdź"
+      },
+      "file": {
+        "title": "Wybierz plik z banku lub innej aplikacji",
+        "choose": "Wybierz plik",
+        "choose_another": "Wybierz inny plik",
+        "drop_here": "lub upuść go tutaj",
+        "hint": "Plik arkusza kalkulacyjnego (CSV), do 10 MB",
+        "error": {
+          "too_big": "Ten plik jest większy niż 10 MB",
+          "empty": "Ten plik jest pusty",
+          "unreadable": "Nie udało się odczytać tego pliku jako arkusza kalkulacyjnego (CSV)"
+        }
+      },
+      "account": {
+        "title": "Z którego konta jest ten wyciąg?",
+        "new": "Nowe konto"
+      },
+      "date": {
+        "title": "Która kolumna zawiera datę?"
+      },
+      "amount": {
+        "title": "Jak plik pokazuje kwoty?"
+      },
+      "description": {
+        "title": "Która kolumna opisuje każdą transakcję?"
+      },
+      "extras": {
+        "title": "Coś jeszcze do przeniesienia?"
+      },
+      "preview": {
+        "title": "Oto, co zostanie zaimportowane"
+      }
+    },
     "import_result": {
       "success_title": "Import zakończony",
       "partial_success_title": "Import zakończony z błędami",

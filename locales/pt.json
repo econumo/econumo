@@ -449,6 +449,54 @@
       "tag_hint": "Uma transação só pode ter uma etiqueta de orçamento. Para várias, use Etiquetas de relatório.",
       "new_labels_count": "Esta importação irá criar {count} nova etiqueta | Esta importação irá criar {count} novas etiquetas"
     },
+    "import_wizard": {
+      "title": "Importar transações",
+      "steps_label": "Passos da importação",
+      "needs_attention": "precisa da sua atenção",
+      "back": "Voltar",
+      "next": "Seguinte",
+      "none": "Nenhuma",
+      "steps": {
+        "file": "O seu ficheiro",
+        "account": "Conta",
+        "date": "Data",
+        "amount": "Montante",
+        "description": "Descrição",
+        "extras": "Outros detalhes",
+        "preview": "Verificar"
+      },
+      "file": {
+        "title": "Escolha um ficheiro do seu banco ou de outra app",
+        "choose": "Escolher um ficheiro",
+        "choose_another": "Escolher outro ficheiro",
+        "drop_here": "ou largue-o aqui",
+        "hint": "Um ficheiro de folha de cálculo (CSV), até 10 MB",
+        "error": {
+          "too_big": "Este ficheiro tem mais de 10 MB",
+          "empty": "Este ficheiro está vazio",
+          "unreadable": "Não foi possível ler este ficheiro como folha de cálculo (CSV)"
+        }
+      },
+      "account": {
+        "title": "De que conta é este extrato?",
+        "new": "Uma conta nova"
+      },
+      "date": {
+        "title": "Que coluna tem a data?"
+      },
+      "amount": {
+        "title": "Como mostra o ficheiro os montantes?"
+      },
+      "description": {
+        "title": "Que coluna descreve cada transação?"
+      },
+      "extras": {
+        "title": "Mais alguma coisa a trazer?"
+      },
+      "preview": {
+        "title": "Isto é o que será importado"
+      }
+    },
     "import_result": {
       "success_title": "Importação concluída",
       "partial_success_title": "Importação concluída com erros",

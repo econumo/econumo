@@ -449,6 +449,54 @@
       "tag_hint": "Una transacción solo puede tener una etiqueta de presupuesto. Para varias, usa Etiquetas de informes.",
       "new_labels_count": "Esta importación creará {count} etiqueta nueva | Esta importación creará {count} etiquetas nuevas"
     },
+    "import_wizard": {
+      "title": "Importar transacciones",
+      "steps_label": "Pasos de la importación",
+      "needs_attention": "necesita tu atención",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "none": "Ninguna",
+      "steps": {
+        "file": "Tu archivo",
+        "account": "Cuenta",
+        "date": "Fecha",
+        "amount": "Importe",
+        "description": "Descripción",
+        "extras": "Más detalles",
+        "preview": "Revisar"
+      },
+      "file": {
+        "title": "Elige un archivo de tu banco o de otra app",
+        "choose": "Elegir un archivo",
+        "choose_another": "Elegir otro archivo",
+        "drop_here": "o suéltalo aquí",
+        "hint": "Un archivo de hoja de cálculo (CSV), hasta 10 MB",
+        "error": {
+          "too_big": "Este archivo supera los 10 MB",
+          "empty": "Este archivo está vacío",
+          "unreadable": "Este archivo no se pudo leer como hoja de cálculo (CSV)"
+        }
+      },
+      "account": {
+        "title": "¿De qué cuenta es este extracto?",
+        "new": "Una cuenta nueva"
+      },
+      "date": {
+        "title": "¿Qué columna tiene la fecha?"
+      },
+      "amount": {
+        "title": "¿Cómo muestra el archivo los importes?"
+      },
+      "description": {
+        "title": "¿Qué columna describe cada transacción?"
+      },
+      "extras": {
+        "title": "¿Algo más que quieras traer?"
+      },
+      "preview": {
+        "title": "Esto es lo que se importará"
+      }
+    },
     "import_result": {
       "success_title": "Importación completada",
       "partial_success_title": "Importación completada con errores",

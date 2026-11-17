@@ -449,6 +449,54 @@
       "tag_hint": "Een transactie kan maar één budgettag hebben. Gebruik voor meerdere tags Rapportagetags.",
       "new_labels_count": "Deze import maakt {count} nieuwe tag aan | Deze import maakt {count} nieuwe tags aan"
     },
+    "import_wizard": {
+      "title": "Transacties importeren",
+      "steps_label": "Importstappen",
+      "needs_attention": "vraagt uw aandacht",
+      "back": "Terug",
+      "next": "Volgende",
+      "none": "Geen",
+      "steps": {
+        "file": "Uw bestand",
+        "account": "Rekening",
+        "date": "Datum",
+        "amount": "Bedrag",
+        "description": "Omschrijving",
+        "extras": "Extra gegevens",
+        "preview": "Controleren"
+      },
+      "file": {
+        "title": "Kies een bestand van uw bank of een andere app",
+        "choose": "Kies een bestand",
+        "choose_another": "Kies een ander bestand",
+        "drop_here": "of sleep het hierheen",
+        "hint": "Een spreadsheetbestand (CSV), tot 10 MB",
+        "error": {
+          "too_big": "Dit bestand is groter dan 10 MB",
+          "empty": "Dit bestand is leeg",
+          "unreadable": "Dit bestand kon niet als spreadsheet (CSV) worden gelezen"
+        }
+      },
+      "account": {
+        "title": "Van welke rekening is dit afschrift?",
+        "new": "Een nieuwe rekening"
+      },
+      "date": {
+        "title": "Welke kolom bevat de datum?"
+      },
+      "amount": {
+        "title": "Hoe toont het bestand bedragen?"
+      },
+      "description": {
+        "title": "Welke kolom beschrijft elke transactie?"
+      },
+      "extras": {
+        "title": "Wilt u nog iets meenemen?"
+      },
+      "preview": {
+        "title": "Dit wordt geïmporteerd"
+      }
+    },
     "import_result": {
       "success_title": "Import voltooid",
       "partial_success_title": "Import voltooid met fouten",

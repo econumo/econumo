@@ -449,6 +449,54 @@
       "tag_hint": "每笔交易只能有一个预算标签。如需多个，请使用统计标签。",
       "new_labels_count": "本次导入将创建 {count} 个新标签"
     },
+    "import_wizard": {
+      "title": "导入交易",
+      "steps_label": "导入步骤",
+      "needs_attention": "需要你留意",
+      "back": "上一步",
+      "next": "下一步",
+      "none": "无",
+      "steps": {
+        "file": "你的文件",
+        "account": "账户",
+        "date": "日期",
+        "amount": "金额",
+        "description": "说明",
+        "extras": "其他信息",
+        "preview": "核对"
+      },
+      "file": {
+        "title": "选择来自银行或其他应用的文件",
+        "choose": "选择文件",
+        "choose_another": "选择其他文件",
+        "drop_here": "或拖放到这里",
+        "hint": "表格文件（CSV），最大 10 MB",
+        "error": {
+          "too_big": "此文件超过 10 MB",
+          "empty": "此文件是空的",
+          "unreadable": "无法将此文件读取为表格（CSV）"
+        }
+      },
+      "account": {
+        "title": "这份账单来自哪个账户？",
+        "new": "新账户"
+      },
+      "date": {
+        "title": "哪一列是日期？"
+      },
+      "amount": {
+        "title": "文件中的金额是怎样表示的？"
+      },
+      "description": {
+        "title": "哪一列描述每笔交易？"
+      },
+      "extras": {
+        "title": "还有其他要导入的吗？"
+      },
+      "preview": {
+        "title": "以下内容将被导入"
+      }
+    },
     "import_result": {
       "success_title": "导入完成",
       "partial_success_title": "导入完成，但有错误",
