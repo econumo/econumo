@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Switch } from '@/components/ui/switch'
 import { isNegative } from '@/lib/decimal'
 import { ChoiceCards, ColumnCards } from '../ColumnCards'
-import { detectDecimalSeparator, parseAmountCell, signedAmount, type DecimalSeparator } from '../amounts'
+import { detectDecimalSeparator, parseAmountCell, type DecimalSeparator } from '../amounts'
 import { columnValues } from '../guess'
 import type { ParsedFile } from '../parse'
 import type { WizardAnswers } from '../prepare'
@@ -13,7 +13,7 @@ import { StepTitle } from './StepTitle'
 type Amount = WizardAnswers['amount']
 
 // A real value from the file: its first negative amount, else its first amount,
-// shown the way it will be imported with the current settings.
+// written as the file writes it, with the sign the current setting gives it.
 function spendingExample(values: string[], amount: Amount): string | null {
   let example: string | null = null
   for (const value of values) {
@@ -25,7 +25,16 @@ function spendingExample(values: string[], amount: Amount): string | null {
     }
     example ??= value
   }
-  return example === null ? null : signedAmount({ single: example }, 'single', amount.flip, amount.sep)
+  return example === null ? null : amount.flip ? flipWritten(example) : example
+}
+
+// the sign is turned around in the file's own writing, so "-12,50" reads "12,50", not "12.50";
+// currency marks around the number ("EUR -12,50", "12,50 €") stay where they are
+function flipWritten(value: string): string {
+  if (/\(.*\d.*\)/.test(value)) return value.replace(/\((.*)\)/, '$1')
+  if (/[-−]\s*(?=[\d.,])/.test(value)) return value.replace(/[-−]\s*(?=[\d.,])/, '')
+  if (/\d\s*[-−]/.test(value)) return value.replace(/(\d)\s*[-−]/, '$1')
+  return value.replace(/\+?(?=[\d.,])/, '-')
 }
 
 function readAs(value: string, sep: DecimalSeparator, language: string): string {

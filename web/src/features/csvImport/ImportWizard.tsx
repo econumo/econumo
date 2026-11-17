@@ -146,7 +146,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   useEffect(() => {
     if (!loaded || answers !== null || !ready) return
     const guessed = guessAnswers(loaded.file, loaded.profiles, {
-      hasWritableAccounts: writableAccounts(accountsQuery.data ?? [], user?.id).length > 0,
+      writableAccountIds: writableAccounts(accountsQuery.data ?? [], user?.id).map((a) => a.id),
       userCurrencyId: userCurrencyId(user) ?? '',
       locale: navigator.language,
       defaultAccountName: defaultAccountName(loaded.fileName),
@@ -206,8 +206,14 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   }
 
   const importCount = rows.filter((row) => row.status === 'ok').length
+  // a new account needs the user's folder: the server refuses a blank one once the user has any
   const canImport =
-    state !== null && online && !importing && importCount > 0 && !(['account', 'date', 'amount'] as const).some((s) => missingAnswer(s, state.answers))
+    state !== null &&
+    online &&
+    !importing &&
+    !foldersQuery.isPending &&
+    importCount > 0 &&
+    !(['account', 'date', 'amount'] as const).some((s) => missingAnswer(s, state.answers))
 
   // the server asks the AI for icons for what the import created; show them once they land.
   // During onboarding, rows landing settle the import step through finish-import (budget + AI
@@ -289,7 +295,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
               {t('transactions.import_wizard.next')}
             </Button>
           ) : (
-            <Button type="button" disabled={!canImport} onClick={() => void startImport()}>
+            // a long count or language wraps to two lines instead of running out of a half-width button
+            <Button type="button" className="leading-tight whitespace-normal text-balance" disabled={!canImport} onClick={() => void startImport()}>
               {pluralPick(t('transactions.import_wizard.preview.import'), importCount, i18n.language)}
             </Button>
           )}

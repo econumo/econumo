@@ -46,18 +46,32 @@ describe('readCsvFile', () => {
     expect(parseCsvText(',Column 1\n1,2\n').header).toEqual(['Column 1', 'Column 1 (2)'])
   })
 
-  it('falls back to windows-1251 for Cyrillic locales', async () => {
-    vi.stubGlobal('navigator', { language: 'ru-RU' })
-    const bytes = new Uint8Array([0xc4, 0xe0, 0xf2, 0xe0, 0x3b, 0xd1, 0xf3, 0xec, 0xec, 0xe0, 0x0a, 0x31, 0x3b, 0x32, 0x0a])
+  it('reads a Windows-1251 file as Cyrillic whatever the browser language', async () => {
+    vi.stubGlobal('navigator', { language: 'en-US' })
+    // Дата;Сумма;Описание / 1;2;Пятёрочка
+    const bytes = new Uint8Array([
+      0xc4, 0xe0, 0xf2, 0xe0, 0x3b, 0xd1, 0xf3, 0xec, 0xec, 0xe0, 0x3b, 0xce, 0xef, 0xe8, 0xf1, 0xe0, 0xed, 0xe8, 0xe5, 0x0a,
+      0x31, 0x3b, 0x32, 0x3b, 0xcf, 0xff, 0xf2, 0xb8, 0xf0, 0xee, 0xf7, 0xea, 0xe0, 0x0a,
+    ])
     const r = await readCsvFile(new File([bytes], 'x.csv'))
-    expect(r).toMatchObject({ header: ['Дата', 'Сумма'] })
+    expect(r).toMatchObject({ header: ['Дата', 'Сумма', 'Описание'], rows: [['1', '2', 'Пятёрочка']] })
   })
 
-  it('falls back to windows-1252 otherwise', async () => {
-    vi.stubGlobal('navigator', { language: 'de-DE' })
-    const bytes = new Uint8Array([0x4d, 0xfc, 0x6c, 0x6c, 0x65, 0x72, 0x2c, 0x62, 0x0a, 0x31, 0x2c, 0x32, 0x0a])
+  it('reads a Windows-1252 file as Latin whatever the browser language', async () => {
+    vi.stubGlobal('navigator', { language: 'ru-RU' })
+    // Müller,Straße / 1,Café
+    const bytes = new Uint8Array([0x4d, 0xfc, 0x6c, 0x6c, 0x65, 0x72, 0x2c, 0x53, 0x74, 0x72, 0x61, 0xdf, 0x65, 0x0a, 0x31, 0x2c, 0x43, 0x61, 0x66, 0xe9, 0x0a])
     const r = await readCsvFile(new File([bytes], 'x.csv'))
-    expect(r).toMatchObject({ header: ['Müller', 'b'] })
+    expect(r).toMatchObject({ header: ['Müller', 'Straße'], rows: [['1', 'Café']] })
+  })
+
+  it('leaves a file with nothing to tell the encodings apart to the browser language', async () => {
+    // "\xe9 a\xe9": one word that reads as Cyrillic, one as an accented Latin word
+    const bytes = new Uint8Array([0xe9, 0x20, 0x61, 0xe9, 0x2c, 0x62, 0x0a, 0x31, 0x2c, 0x32, 0x0a])
+    vi.stubGlobal('navigator', { language: 'ru-RU' })
+    expect(await readCsvFile(new File([bytes], 'x.csv'))).toMatchObject({ header: ['й aй', 'b'] })
+    vi.stubGlobal('navigator', { language: 'de-DE' })
+    expect(await readCsvFile(new File([bytes], 'x.csv'))).toMatchObject({ header: ['é aé', 'b'] })
   })
 
   it('reads UTF-8 with a BOM', async () => {

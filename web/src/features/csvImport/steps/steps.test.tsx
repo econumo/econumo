@@ -31,7 +31,7 @@ function StepHarness({ text, Step, onSet }: { text: string; Step: ComponentType<
   const [file] = useState(() => parseCsvText(text))
   const [profiles] = useState(() => profileColumns(file))
   const [answers, setAnswersState] = useState(() =>
-    guessAnswers(file, profiles, { hasWritableAccounts: true, userCurrencyId: 'cur-usd', locale: 'en-GB', defaultAccountName: 'statement' }),
+    guessAnswers(file, profiles, { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB', defaultAccountName: 'statement' }),
   )
   const rows = prepareRows(file, answers, new Map())
   const setAnswers = (step: StepId, patch: Partial<WizardAnswers>) => {
@@ -160,6 +160,14 @@ it('spending is shown with the file’s first negative amount, as it will be imp
   expect(screen.getByText('Spending shows as: -4.50')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
   expect(screen.getByText('Spending shows as: 4.50')).toBeInTheDocument()
+})
+
+it('spending is written the way the file writes it, a decimal comma included', async () => {
+  render(<StepHarness text={'Datum;Betrag\n03.11.2026;-12,50\n05.11.2026;2.500,00\n'} Step={AmountStep} onSet={vi.fn()} />)
+  const user = userEvent.setup()
+  expect(screen.getByText('Spending shows as: -12,50')).toBeInTheDocument()
+  await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
+  expect(screen.getByText('Spending shows as: 12,50')).toBeInTheDocument()
 })
 
 it('with no negative amount, spending is shown with the file’s first amount, as it will be imported', async () => {

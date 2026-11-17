@@ -118,7 +118,8 @@ Column cards. Under the cards, the selected column's values are checked:
 - If every value reads one way only, nothing more is asked.
 - If they are ambiguous (`03/04/2026` could be either), ask with a real example from the
   file: "Is 03/04/2026 the 3rd of April or March 4th?" Pre-select from the values (any day
-  above 12 settles it), else from the UI language's locale.
+  above 12 settles it), else from the browser's locale (more specific than the UI language:
+  en-US vs en-GB).
 - Rows whose date cannot be read are counted ("3 rows have no readable date and will be
   skipped").
 

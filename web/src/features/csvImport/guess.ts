@@ -143,7 +143,7 @@ export function isEconumoExport(file: ParsedFile): boolean {
 }
 
 interface GuessContext {
-  hasWritableAccounts: boolean
+  writableAccountIds: readonly string[]
   userCurrencyId: string
   locale: string
   defaultAccountName: string
@@ -215,9 +215,13 @@ export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: G
 
   const roles = guessRoles(profiles)
   const dual = roles.amountIn !== undefined && roles.amountOut !== undefined
-  const account: AccountChoice | null = ctx.hasWritableAccounts
-    ? null
-    : { kind: 'new', name: ctx.defaultAccountName, currencyId: ctx.userCurrencyId }
+  const writable = ctx.writableAccountIds
+  const account: AccountChoice | null =
+    writable.length === 0
+      ? { kind: 'new', name: ctx.defaultAccountName, currencyId: ctx.userCurrencyId }
+      : writable.length === 1
+        ? { kind: 'existing', accountId: writable[0] }
+        : null
 
   const answers: WizardAnswers = {
     account,

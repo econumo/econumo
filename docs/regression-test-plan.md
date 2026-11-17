@@ -780,7 +780,8 @@ navigation (single-pane vs sidebar).
       Check. A file with `250,00` or `2.500,00` asks nothing.
 - [ ] Flip signs: a file that writes spending as positive (`12.50` for a
       purchase): Amount shows "Spending shows as: 12.50" with a real value from
-      the file; turning on "Flip the signs" makes that row −12.50 on Check and
+      the file, written as the file writes it (a decimal-comma file shows
+      `-12,50`, and `12,50` once flipped); turning on "Flip the signs" makes that row −12.50 on Check and
       income positive. With "Separate columns for money in and money out"
       there is no switch: money in imports as + and money out as −, whatever
       sign the file uses, and either column may be "None".
@@ -804,7 +805,8 @@ navigation (single-pane vs sidebar).
       jumps to the next skipped row. Each value on the card opens the step
       that shapes it; "Something looks wrong?" opens Date (Account for an
       Econumo export). The Import button reads "Import N transactions" and
-      fits its button on a phone.
+      stays inside its button on a 390 px phone, wrapping to two lines when
+      the language or count makes it long (Russian "Импортировать 3 операции").
 - [ ] 📱 Problem rows on Check: a row with no readable date shows "No readable
       date" with a date field, one with no readable amount "No readable
       amount" with an amount field (read with the file's decimal separator;
@@ -814,7 +816,8 @@ navigation (single-pane vs sidebar).
       ("Skipped by you", undone by "Don't skip"). Changing a step so that the
       row reads on its own drops the typed value.
 - [ ] Account step: "An account I already have" (the default when the user
-      can write to an account) lists only accounts the user owns or may edit;
+      can write to an account; with exactly one such account it is already
+      chosen and Account carries no warning) lists only accounts the user owns or may edit;
       "A new account" asks a name and a currency; "Each row says which
       account" asks for the column, then lists the names found: one matching
       a writable account (any letter case) reads "Existing account", every
@@ -852,10 +855,11 @@ navigation (single-pane vs sidebar).
       built-in guesses and shows no message. An Econumo export sends no such
       request.
 - [ ] Non-UTF-8 file: a cp1251 statement (`Дата;Сумма;Описание`, saved in
-      Windows-1251) with the UI in Russian or Ukrainian shows readable
-      Cyrillic headers and descriptions on every step and imports them
-      readable; a UTF-8 file with a BOM reads the same as without. (With the
-      UI in another language a legacy file is read as Windows-1252.)
+      Windows-1251) shows readable Cyrillic headers and descriptions on every
+      step and imports them readable, with the UI and the browser in English
+      as well as in Russian; a Windows-1252 file with accents (`Müller`,
+      `Café`) reads correctly with a Russian browser too. A UTF-8 file with a
+      BOM reads the same as without.
 - [ ] Import with a broken row (bad date/amount) → Check counts it as skipped
       with the reason, the good rows import, and the result dialog lists the
       skipped rows by reason and original row number.

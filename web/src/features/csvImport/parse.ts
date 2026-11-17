@@ -128,13 +128,28 @@ export function parseCsvText(text: string): ParsedFile {
 
 const CYRILLIC_LANGUAGES = ['ru', 'uk', 'be', 'bg', 'sr']
 
+// Read as Windows-1251, a Russian word is all Cyrillic letters, while a Latin word with an
+// accent ("Müller" -> "Mьller") mixes Cyrillic and ASCII letters; whichever kind of word is
+// more common decides. The browser language only breaks a tie.
+function legacyEncoding(bytes: Uint8Array): 'windows-1251' | 'windows-1252' {
+  let cyrillicWords = 0
+  let mixedWords = 0
+  for (const [word] of new TextDecoder('windows-1251').decode(bytes).matchAll(/\p{L}+/gu)) {
+    const cyrillic = /\p{Script=Cyrillic}/u.test(word)
+    if (!cyrillic) continue
+    if (/[A-Za-z]/.test(word)) mixedWords++
+    else cyrillicWords++
+  }
+  if (cyrillicWords !== mixedWords) return cyrillicWords > mixedWords ? 'windows-1251' : 'windows-1252'
+  const language = (typeof navigator === 'undefined' ? '' : navigator.language).toLowerCase()
+  return CYRILLIC_LANGUAGES.some((l) => language.startsWith(l)) ? 'windows-1251' : 'windows-1252'
+}
+
 function decodeBytes(bytes: Uint8Array): string {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
   } catch {
-    const language = (typeof navigator === 'undefined' ? '' : navigator.language).toLowerCase()
-    const legacy = CYRILLIC_LANGUAGES.some((l) => language.startsWith(l)) ? 'windows-1251' : 'windows-1252'
-    return new TextDecoder(legacy).decode(bytes)
+    return new TextDecoder(legacyEncoding(bytes)).decode(bytes)
   }
 }
 

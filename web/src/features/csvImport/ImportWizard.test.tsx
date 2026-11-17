@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { delay, http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -147,4 +148,44 @@ it('on a phone the bar shows numbered steps and the current step name', async ()
   expect(within(nav).getByRole('button', { name: /^Amount/ })).toHaveTextContent('4')
   await user.click(within(nav).getByRole('button', { name: /^Amount/ }))
   await waitFor(() => expect(shownName()).toHaveTextContent('Amount'))
+})
+
+const toCheckWithNewAccount = async (user: ReturnType<typeof userEvent.setup>) => {
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await user.click(screen.getByRole('radio', { name: 'A new account' }))
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+}
+
+// the server invents a folder only for a user who has none and refuses a blank one otherwise
+it('a new account goes into the user’s first folder and the rows into the account the server made', async () => {
+  let created: Record<string, unknown> | null = null
+  let accountId: FormDataEntryValue | null = null
+  server.use(
+    http.post('*/api/v1/account/create-account', async ({ request }) => {
+      created = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'made-by-server', folderId: 'f1' }, transaction: null } })
+    }),
+    http.post('*/api/v1/transaction/import-transaction-list', async ({ request }) => {
+      accountId = (await request.formData()).get('accountId')
+      return HttpResponse.json({ success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } })
+    }),
+  )
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await toCheckWithNewAccount(user)
+  await user.click(await screen.findByRole('button', { name: 'Import 2 transactions' }))
+  await waitFor(() => expect(accountId).toBe('made-by-server'))
+  expect(created).toMatchObject({ name: 'statement', folderId: 'f1' })
+  expect(created!.id).not.toBe('made-by-server')
+})
+
+it('Import waits until the user’s folders are known', async () => {
+  server.use(http.get('*/api/v1/account/get-folder-list', async () => {
+    await delay('infinite')
+    return HttpResponse.json({})
+  }))
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await toCheckWithNewAccount(user)
+  expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeDisabled()
 })
