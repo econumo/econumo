@@ -194,7 +194,7 @@ function PhoneEntitySelect({
       {/* a text field that never raises a keyboard, so iOS's ^ / v keys stop
           on it; a tap opens the sheet without focusing it (the focus would make
           iOS scroll the form to it), arriving by those keys opens it on focus */}
-      <div data-slot="entity-select" className={`${fieldClass} has-disabled:cursor-not-allowed`} onClick={() => !disabled && setOpen(true)}>
+      <div data-slot="entity-select" className={`${fieldClass} cursor-pointer has-disabled:cursor-not-allowed`} onClick={() => !disabled && setOpen(true)}>
         {selected?.icon ? <EntityIcon name={selected.icon} className="shrink-0 text-base text-muted-foreground" /> : null}
         <input
           ref={triggerRef}
@@ -245,7 +245,7 @@ function PhoneEntitySelect({
               setOpen(true)
             }
           }}
-          className="h-full w-full min-w-0 flex-1 truncate bg-transparent caret-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+          className="h-full w-full min-w-0 flex-1 truncate bg-transparent caret-transparent outline-none placeholder:text-muted-foreground cursor-pointer disabled:cursor-not-allowed"
         />
         {selected?.hiddenLabel ? <HiddenFieldMark label={selected.hiddenLabel} /> : null}
         <ChevronsUpDown className="pointer-events-none size-4 shrink-0 opacity-50" />

@@ -12,7 +12,23 @@
    interactive control in this app must read as clickable. */
 @layer base {
   button:not(:disabled),
-  [role='button']:not([aria-disabled='true']) {
+  summary,
+  select:not(:disabled),
+  input:is([type='checkbox'], [type='radio'], [type='file'], [type='color'], [type='range']):not(:disabled),
+  label:has(> input:is([type='checkbox'], [type='radio']):not(:disabled)),
+  :is(
+      [role='button'],
+      [role='link'],
+      [role='checkbox'],
+      [role='radio'],
+      [role='switch'],
+      [role='tab'],
+      [role='option'],
+      [role='menuitem'],
+      [role='menuitemcheckbox'],
+      [role='menuitemradio'],
+      [role='treeitem']
+    ):not(:disabled, [aria-disabled='true'], [data-disabled]:not([data-disabled='false'])) {
     cursor: pointer;
   }
 }

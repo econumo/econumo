@@ -3544,6 +3544,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
+- [ ] Desktop: every enabled control shows the hand cursor on hover: buttons,
+      ⋮ menu and dropdown items, picker and select options, switches,
+      checkboxes, tabs. Disabled ones keep the arrow (or the not-allowed sign).
 - [ ] 📱 Offline start of the installed app: open the app online once (in
       DevTools → Application → Service workers, `/sw.js` is activated and Cache
       storage holds `econumo-config` and one `econumo-shell-…` cache), then go offline (airplane
