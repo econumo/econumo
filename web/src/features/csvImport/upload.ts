@@ -1,5 +1,7 @@
+import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import { createAccount } from '@/api/account'
+import type { WriteOptions } from '@/api/client'
 import type { ImportResultDto } from '@/api/transaction'
 import { apiErrorMessage } from '@/lib/apiError'
 import { buildCsvText, chunkRows } from '@/lib/csv'
@@ -12,6 +14,7 @@ export type ImportPoster = (
   file: File,
   mapping: Record<string, string | null>,
   fields: Record<string, string>,
+  opts?: WriteOptions,
 ) => Promise<ImportResultDto>
 
 export interface ImportResult {
@@ -22,6 +25,24 @@ export interface ImportResult {
 }
 
 type Upload = ReturnType<typeof buildUpload>
+
+// The server's answer to a key it has already seen: the operation landed, the
+// response that said so was lost.
+function replayOf(error: unknown): { resourceId?: string } | null {
+  if (!isAxiosError<{ resourceId?: string }>(error) || error.response?.status !== 409) return null
+  return { resourceId: error.response.data?.resourceId || undefined }
+}
+
+// One Idempotency-Key per chunk for as long as the upload lives, so "Try the rest
+// again" of a chunk the server committed is answered as a replay, not imported twice.
+const chunkKeys = new WeakMap<Upload, string[]>()
+
+function chunkKey(upload: Upload, index: number): string {
+  const keys = chunkKeys.get(upload) ?? []
+  chunkKeys.set(upload, keys)
+  keys[index] ??= uuidv7()
+  return keys[index]
+}
 
 export interface RunChunksOptions {
   /** chunk indices to send; all of them when absent */
@@ -57,7 +78,7 @@ export async function runChunks(upload: Upload, post: ImportPoster, opts: RunChu
     const fileRowOf = (serverRow: number) => upload.fileRows[i * CHUNK_SIZE + (serverRow - 2)]
     const file = new File([buildCsvText(upload.header, chunk)], `chunk_${i}.csv`, { type: 'text/csv' })
     try {
-      const result = await post(file, upload.mapping, upload.fields)
+      const result = await post(file, upload.mapping, upload.fields, { idempotencyKey: chunkKey(upload, i) })
       imported += result.imported ?? 0
       failed += result.skipped ?? 0
       for (const [message, rows] of Object.entries(result.errors ?? {})) {
@@ -67,12 +88,17 @@ export async function runChunks(upload: Upload, post: ImportPoster, opts: RunChu
         )
       }
     } catch (error) {
-      failed += chunk.length
-      failedChunks.push(i)
-      addError(
-        `Chunk ${i + 1} failed: ${apiErrorMessage(error)}`,
-        chunk.map((_, k) => upload.fileRows[i * CHUNK_SIZE + k]),
-      )
+      if (replayOf(error)) {
+        // the replay carries no result, so the rows the server skipped that time are unknown
+        imported += chunk.length
+      } else {
+        failed += chunk.length
+        failedChunks.push(i)
+        addError(
+          `Chunk ${i + 1} failed: ${apiErrorMessage(error)}`,
+          chunk.map((_, k) => upload.fileRows[i * CHUNK_SIZE + k]),
+        )
+      }
     }
     opts.onProgress?.(done + 1, indices.length)
   }
@@ -108,7 +134,23 @@ export function mergeRetry(previous: ImportResult, retry: ImportResult, upload: 
   }
 }
 
-// `created` survives retries so a second attempt never creates an account twice.
+// Distinct prefixes so the single new account never answers for a per-row account named "new".
+const NEW_ACCOUNT = 'new'
+const PER_ROW = 'row:'
+
+type Attempt = { requestId: string; idempotencyKey: string }
+
+const attemptsByRun = new WeakMap<Map<string, string>, Map<string, Attempt>>()
+
+function attemptsOf(created: Map<string, string>) {
+  const attempts = attemptsByRun.get(created) ?? new Map<string, Attempt>()
+  attemptsByRun.set(created, attempts)
+  return attempts
+}
+
+// `created` survives retries so a second attempt never creates an account twice; each
+// account keeps its request id and Idempotency-Key across attempts, so one whose response
+// was lost is answered with its id instead of being made again.
 // `names` gives a per-row account its name as the file writes it; the answers key it lowercased.
 // `folderId` is the user's first folder: the server invents one only for a user who has none
 // and refuses a blank folder otherwise, so later accounts follow the first into its folder.
@@ -120,26 +162,38 @@ export async function ensureAccounts(
   folderId: string | null = null,
 ): Promise<{ accountId?: string }> {
   let folder = folderId
-  // the request id only guards the operation; the server mints the account's own id
-  const create = async (name: string, currencyId: string) => {
-    const made = await createAccount({ id: uuidv7(), name, currencyId, balance: '0', icon: defaultAccountIcon, folderId: folder })
-    folder = made.item.folderId ?? folder
-    return made.item.id
+  const attempts = attemptsOf(created)
+  const create = async (key: string, name: string, currencyId: string) => {
+    const existing = created.get(key)
+    if (existing) return existing
+    const attempt = attempts.get(key) ?? { requestId: uuidv7(), idempotencyKey: uuidv7() }
+    attempts.set(key, attempt)
+    let id: string
+    try {
+      // the request id only guards the operation; the server mints the account's own id
+      const made = await createAccount(
+        { id: attempt.requestId, name, currencyId, balance: '0', icon: defaultAccountIcon, folderId: folder },
+        { idempotencyKey: attempt.idempotencyKey },
+      )
+      folder = made.item.folderId ?? folder
+      id = made.item.id
+    } catch (error) {
+      const replayed = replayOf(error)?.resourceId
+      if (!replayed) throw error
+      id = replayed
+    }
+    created.set(key, id)
+    return id
   }
   const choice = answers.account
   if (choice?.kind === 'new') {
-    let id = created.get('new')
-    if (!id) {
-      id = await create(choice.name, choice.currencyId)
-      created.set('new', id)
-    }
-    return { accountId: id }
+    return { accountId: await create(NEW_ACCOUNT, choice.name, choice.currencyId) }
   }
   if (choice?.kind === 'column') {
     for (const [name, currencyId] of Object.entries(choice.currencies)) {
       const key = name.toLowerCase()
-      if (existingNames.has(key) || created.has(key)) continue
-      created.set(key, await create(names?.get(key) ?? name, currencyId))
+      if (existingNames.has(key)) continue
+      await create(`${PER_ROW}${key}`, names?.get(key) ?? name, currencyId)
     }
   }
   return {}

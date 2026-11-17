@@ -1,4 +1,4 @@
-import { api, apiUrl } from './client'
+import { api, apiUrl, writeConfig, type WriteOptions } from './client'
 import type { Id } from './types'
 import type { AccountDto, AccountItemDto, AccountRole } from './dto/account'
 import type { FolderDto } from './dto/folder'
@@ -36,8 +36,8 @@ export async function getAccountList(): Promise<AccountDto[]> {
   return response.data.data.items
 }
 
-export async function createAccount(form: CreateAccountForm): Promise<AccountItemDto> {
-  const response = await api.post<Envelope<AccountItemDto>>(apiUrl('/api/v1/account/create-account'), form)
+export async function createAccount(form: CreateAccountForm, opts?: WriteOptions): Promise<AccountItemDto> {
+  const response = await api.post<Envelope<AccountItemDto>>(apiUrl('/api/v1/account/create-account'), form, writeConfig(opts))
   return response.data.data
 }
 

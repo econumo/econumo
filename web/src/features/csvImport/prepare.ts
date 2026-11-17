@@ -73,8 +73,25 @@ function fixedDate(value: string | undefined): ParsedDate | null {
   return value ? parseDateCell(value, 'ymd') : null
 }
 
-export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: ReadonlyMap<number, RowFix>): PreparedRow[] {
+// What the row's own cells give under the current answers, before any typed fix.
+function readRow(row: string[], answers: WizardAnswers): { date: ParsedDate | null; amount: string | null; account: string | null } {
   const { amount: am, account } = answers
+  const date = answers.date.column === null ? null : parseDateCell(cell(row, answers.date.column), answers.date.order)
+  let amount: string | null = null
+  if (am.mode === 'single' ? am.column !== null : am.inColumn !== null || am.outColumn !== null) {
+    amount = signedAmount(
+      { single: cell(row, am.column), inflow: cell(row, am.inColumn), outflow: cell(row, am.outColumn) },
+      am.mode,
+      am.flip,
+      am.sep,
+    )
+  }
+  const accountName = account?.kind === 'column' ? cell(row, account.column) || null : null
+  return { date, amount, account: accountName }
+}
+
+export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: ReadonlyMap<number, RowFix>): PreparedRow[] {
+  const { account } = answers
   const result: PreparedRow[] = []
 
   file.rows.forEach((row, i) => {
@@ -83,21 +100,10 @@ export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: Rea
     const fix = fixes.get(fileRow)
     const typed = fix === 'skip' ? undefined : fix
 
-    let date = answers.date.column === null ? null : parseDateCell(cell(row, answers.date.column), answers.date.order)
-    date ??= fixedDate(typed?.date)
-
-    let amount: string | null = null
-    if (am.mode === 'single' ? am.column !== null : am.inColumn !== null || am.outColumn !== null) {
-      amount = signedAmount(
-        { single: cell(row, am.column), inflow: cell(row, am.inColumn), outflow: cell(row, am.outColumn) },
-        am.mode,
-        am.flip,
-        am.sep,
-      )
-    }
-    amount ??= fixedAmount(typed?.amount)
-
-    const accountName = account?.kind === 'column' ? cell(row, account.column) || null : null
+    const own = readRow(row, answers)
+    const date = own.date ?? fixedDate(typed?.date)
+    const amount = own.amount ?? fixedAmount(typed?.amount)
+    const accountName = own.account
 
     let reason: PreparedRow['reason'] = null
     if (date === null) reason = 'no_date'
@@ -122,6 +128,34 @@ export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: Rea
     })
   })
   return result
+}
+
+/** The fixes without what the rows now read on their own: a typed value the file's cell
+    replaced, or a skip of a row that is readable again. Dropped rather than ignored, so a
+    later answer change that breaks the row again does not bring the stale value back.
+    Returns `fixes` itself when nothing is stale. */
+export function pruneFixes(file: ParsedFile, answers: WizardAnswers, fixes: ReadonlyMap<number, RowFix>): ReadonlyMap<number, RowFix> {
+  let pruned: Map<number, RowFix> | null = null
+  for (const [fileRow, fix] of fixes) {
+    const row = file.rows[fileRow - 2]
+    if (!row) continue
+    const own = readRow(row, answers)
+    let kept: RowFix | null = fix
+    if (fix === 'skip') {
+      if (own.date !== null && own.amount !== null && (answers.account?.kind !== 'column' || own.account !== null)) kept = null
+    } else {
+      const next = { ...fix }
+      if (own.date !== null) delete next.date
+      if (own.amount !== null) delete next.amount
+      if (next.date === undefined && next.amount === undefined) kept = null
+      else if (next.date !== fix.date || next.amount !== fix.amount) kept = next
+    }
+    if (kept === fix) continue
+    pruned ??= new Map(fixes)
+    if (kept === null) pruned.delete(fileRow)
+    else pruned.set(fileRow, kept)
+  }
+  return pruned ?? fixes
 }
 
 const fractionDigits = (amount: string) => amount.split('.')[1]?.length ?? 0

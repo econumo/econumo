@@ -36,7 +36,28 @@ describe('parseCsvText', () => {
     expect(p.rows).toEqual([['1', '2'], ['3', '4']])
     expect(p.rawLines).toEqual(['1,2', '3,4'])
   })
+
+  it('keeps a quote inside an unquoted cell as text', () => {
+    const p = parseCsvText('a,b,c\n1,TV 55" wide,2\n3,4,5\n6,7,8\n')
+    expect(p.rows).toEqual([['1', 'TV 55" wide', '2'], ['3', '4', '5'], ['6', '7', '8']])
+  })
 })
+
+type Encoding = 'windows-1251' | 'windows-1252'
+
+// the bytes a legacy encoding writes for text, built from the browser's own decoder
+function encode(text: string, encoding: Encoding): Uint8Array<ArrayBuffer> {
+  const decoder = new TextDecoder(encoding)
+  const table = new Map<string, number>()
+  for (let byte = 0x80; byte <= 0xff; byte++) table.set(decoder.decode(new Uint8Array([byte])), byte)
+  return new Uint8Array(
+    [...text].map((char) => {
+      const byte = char.charCodeAt(0) < 0x80 ? char.charCodeAt(0) : table.get(char)
+      if (byte === undefined) throw new Error(`${char} is not in ${encoding}`)
+      return byte
+    }),
+  )
+}
 
 describe('readCsvFile', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -66,12 +87,33 @@ describe('readCsvFile', () => {
   })
 
   it('leaves a file with nothing to tell the encodings apart to the browser language', async () => {
-    // "\xe9 a\xe9": one word that reads as Cyrillic, one as an accented Latin word
-    const bytes = new Uint8Array([0xe9, 0x20, 0x61, 0xe9, 0x2c, 0x62, 0x0a, 0x31, 0x2c, 0x32, 0x0a])
+    // "\xe9,b": a lone letter, "й" in one reading and "é" in the other
+    const bytes = new Uint8Array([0xe9, 0x2c, 0x62, 0x0a, 0x31, 0x2c, 0x32, 0x0a])
     vi.stubGlobal('navigator', { language: 'ru-RU' })
-    expect(await readCsvFile(new File([bytes], 'x.csv'))).toMatchObject({ header: ['й aй', 'b'] })
+    expect(await readCsvFile(new File([bytes], 'x.csv'))).toMatchObject({ header: ['й', 'b'] })
     vi.stubGlobal('navigator', { language: 'de-DE' })
-    expect(await readCsvFile(new File([bytes], 'x.csv'))).toMatchObject({ header: ['é aé', 'b'] })
+    expect(await readCsvFile(new File([bytes], 'x.csv'))).toMatchObject({ header: ['é', 'b'] })
+  })
+
+  describe.each(['en-US', 'ru-RU'])('with the browser in %s', (language) => {
+    const files: [string, Encoding, string][] = [
+      ['German with umlauts and euro signs', 'windows-1252', 'Datum;Betrag;Empfänger\n01.02.2024;-12,50 €;Bäckerei Müller\n02.02.2024;-3 €;Straße Größe\n03.02.2024;-7 €;Café\n'],
+      ['German statement with more euro signs than accented words', 'windows-1252', 'Betrag;Name\n-12 €;Müller\n-3 €;Bank\n-7 €;Bank\n'],
+      ['French with accents', 'windows-1252', 'Date;Montant;Libellé\n01/02/2024;-12,50;Café à emporter\n02/02/2024;-3;Prélèvement été\n03/02/2024;-7;Boulangerie à côté\n'],
+      ['Italian with a lone è and a euro sign', 'windows-1252', 'Data;Importo;Descrizione\n01/02/2024;-12,50 €;è pagato\n02/02/2024;-3 €;è\n'],
+      ['Russian', 'windows-1251', 'Дата;Сумма;Описание\n01.02.2024;-12,50;Пятёрочка у дома\n02.02.2024;-3;Перевод в банк\n'],
+      ['Ukrainian', 'windows-1251', 'Дата;Сума;Опис\n01.02.2024;-12,50;Їжа і кава\n02.02.2024;-3;Єдиний внесок і податок\n'],
+    ]
+    it.each(files)('reads a %s file as %s', async (_, encoding, text) => {
+      vi.stubGlobal('navigator', { language })
+      const r = await readCsvFile(new File([encode(text, encoding)], 'x.csv'))
+      expect(r).toEqual(parseCsvText(text))
+    })
+  })
+
+  // the unclosed quote would fold every later row into one cell
+  it('reports a file whose quoted cell is never closed as unreadable', async () => {
+    expect(await readCsvFile(new File(['a,b\n1,"open\n2,3\n4,5\n'], 'x.csv'))).toEqual({ error: 'unreadable' })
   })
 
   it('reads UTF-8 with a BOM', async () => {

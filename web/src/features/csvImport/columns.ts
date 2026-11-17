@@ -56,3 +56,9 @@ export function profileColumns(file: ParsedFile): ColumnProfile[] {
     return { index, name, type, negatives, samples }
   })
 }
+
+// A file with no header row has its first transaction read as the header; those names are
+// cell values, which never go to the AI.
+export function headerLooksLikeData(profiles: ColumnProfile[]): boolean {
+  return profiles.some(({ name }) => isDate(name) || isNumber(name))
+}

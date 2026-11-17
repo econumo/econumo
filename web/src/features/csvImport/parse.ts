@@ -17,21 +17,28 @@ interface RawRecord {
   raw: string
 }
 
-function splitRecords(text: string, delimiter: string): RawRecord[] {
+// A quote opens a quoted cell only at the start of a cell (`55" TV` keeps its quote);
+// `unterminated` reports a quoted cell still open at the end of the text.
+function splitRecords(text: string, delimiter: string): { records: RawRecord[]; unterminated: boolean } {
   const records: RawRecord[] = []
   let cells: string[] = []
   let current = ''
+  let cellStarted = false
   let inQuotes = false
   let start = 0
 
-  const finish = (end: number) => {
+  const endCell = () => {
     cells.push(current)
+    current = ''
+    cellStarted = false
+  }
+  const finish = (end: number) => {
+    endCell()
     const raw = text.slice(start, end)
     if (cells.length > 1 || cells[0].trim() !== '') {
       records.push({ cells, raw })
     }
     cells = []
-    current = ''
   }
 
   for (let i = 0; i < text.length; i++) {
@@ -47,21 +54,22 @@ function splitRecords(text: string, delimiter: string): RawRecord[] {
       } else {
         current += char
       }
-    } else if (char === '"') {
+    } else if (char === '"' && !cellStarted) {
       inQuotes = true
+      cellStarted = true
     } else if (char === delimiter) {
-      cells.push(current)
-      current = ''
+      endCell()
     } else if (char === '\n' || char === '\r') {
       finish(i)
       if (char === '\r' && text[i + 1] === '\n') i++
       start = i + 1
     } else {
       current += char
+      cellStarted = true
     }
   }
   if (start < text.length || current !== '' || cells.length > 0) finish(text.length)
-  return records
+  return { records, unterminated: inQuotes }
 }
 
 function sniffDelimiter(text: string): CsvDelimiter {
@@ -111,36 +119,50 @@ function uniqueNames(names: string[]): string[] {
   })
 }
 
-export function parseCsvText(text: string): ParsedFile {
+function parse(text: string): { file: ParsedFile; unterminated: boolean } {
   const clean = text.replace(/^\uFEFF/, '')
   const delimiter = sniffDelimiter(clean)
-  const records = splitRecords(clean, delimiter)
+  const { records, unterminated } = splitRecords(clean, delimiter)
   if (records.length === 0) {
-    return { header: [], rows: [], delimiter, rawLines: [] }
+    return { file: { header: [], rows: [], delimiter, rawLines: [] }, unterminated }
   }
   return {
-    header: uniqueNames(records[0].cells),
-    rows: records.slice(1).map((r) => r.cells),
-    delimiter,
-    rawLines: records.slice(1).map((r) => r.raw),
+    file: {
+      header: uniqueNames(records[0].cells),
+      rows: records.slice(1).map((r) => r.cells),
+      delimiter,
+      rawLines: records.slice(1).map((r) => r.raw),
+    },
+    unterminated,
   }
+}
+
+export function parseCsvText(text: string): ParsedFile {
+  return parse(text).file
 }
 
 const CYRILLIC_LANGUAGES = ['ru', 'uk', 'be', 'bg', 'sr']
 
-// Read as Windows-1251, a Russian word is all Cyrillic letters, while a Latin word with an
-// accent ("Müller" -> "Mьller") mixes Cyrillic and ASCII letters; whichever kind of word is
-// more common decides. The browser language only breaks a tie.
+// Letters Windows-1251 makes of bytes that Windows-1252 uses for symbols (€ Š Œ Ž š œ ž Ÿ
+// £ ¼ ½ ¾ ƒ) and that Russian, Ukrainian and Belarusian never write on their own.
+const SYMBOL_LETTERS = /^[ЂЃѓЉЊЌЋЏђљњќћџЈјЅѕ]$/u
+
+// Both readings are scored on the words they make, read as Windows-1251:
+// - a word of two or more Cyrillic letters is how Russian or Ukrainian text reads;
+// - a Cyrillic letter inside a Latin word ("Müller" -> "Mьller", "Café" -> "Cafй") is an
+//   accented Latin letter, and a lone letter from a symbol byte ("12 €" -> "12 Ђ") is a
+//   Windows-1252 symbol.
+// One-letter Cyrillic words ("и", "в", "і", or a lone "à") count for neither. The browser
+// language only breaks a tie.
 function legacyEncoding(bytes: Uint8Array): 'windows-1251' | 'windows-1252' {
-  let cyrillicWords = 0
-  let mixedWords = 0
+  let cyrillic = 0
+  let latin = 0
   for (const [word] of new TextDecoder('windows-1251').decode(bytes).matchAll(/\p{L}+/gu)) {
-    const cyrillic = /\p{Script=Cyrillic}/u.test(word)
-    if (!cyrillic) continue
-    if (/[A-Za-z]/.test(word)) mixedWords++
-    else cyrillicWords++
+    if (!/\p{Script=Cyrillic}/u.test(word)) continue
+    if (/[A-Za-z]/.test(word) || SYMBOL_LETTERS.test(word)) latin++
+    else if (word.length >= 2) cyrillic++
   }
-  if (cyrillicWords !== mixedWords) return cyrillicWords > mixedWords ? 'windows-1251' : 'windows-1252'
+  if (cyrillic !== latin) return cyrillic > latin ? 'windows-1251' : 'windows-1252'
   const language = (typeof navigator === 'undefined' ? '' : navigator.language).toLowerCase()
   return CYRILLIC_LANGUAGES.some((l) => language.startsWith(l)) ? 'windows-1251' : 'windows-1252'
 }
@@ -164,7 +186,9 @@ export async function readCsvFile(
     return { error: 'unreadable' }
   }
   if (text.includes('\u0000')) return { error: 'unreadable' }
-  const parsed = parseCsvText(text)
+  // an unclosed quote swallows every row after it into one cell, so nothing below it can be trusted
+  const { file: parsed, unterminated } = parse(text)
+  if (unterminated) return { error: 'unreadable' }
   if (parsed.header.length === 0 || parsed.rows.length === 0) return { error: 'empty' }
   return parsed
 }

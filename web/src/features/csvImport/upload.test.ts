@@ -1,3 +1,4 @@
+import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAccount } from '@/api/account'
 import { ensureAccounts, mergeRetry, runChunks, type ImportPoster } from './upload'
@@ -5,6 +6,14 @@ import type { ImportResultDto } from '@/api/transaction'
 import type { PreparedRow, WizardAnswers } from './prepare'
 
 vi.mock('@/api/account', () => ({ createAccount: vi.fn(async () => ({ item: { id: 'server-id', folderId: 'general' }, transaction: null })) }))
+
+// what the server answers a key it has already seen
+function replay(resourceId?: string) {
+  return new AxiosError('conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status: 409,
+    data: { success: false, message: 'Operation is locked', code: 409, errors: {}, ...(resourceId ? { resourceId } : {}) },
+  } as AxiosResponse)
+}
 
 function makeUpload(count: number) {
   return {
@@ -91,6 +100,29 @@ describe('runChunks', () => {
       { message: 'transactions.import_wizard.skipped.no_amount', rows: [6] },
     ])
   })
+
+  it('resends a chunk with the key it was first sent with, a different key per chunk', async () => {
+    const upload = makeUpload(1200)
+    const post = vi.fn<ImportPoster>(async (file) => {
+      if (file.name === 'chunk_1.csv') throw new Error('timeout')
+      return { imported: 500, skipped: 0, errors: {} }
+    })
+    await runChunks(upload, post)
+    await runChunks(upload, post, { chunks: [1] })
+    const keys = post.mock.calls.map((call) => call[3]?.idempotencyKey)
+    expect(new Set(keys.slice(0, 3)).size).toBe(3)
+    expect(keys[3]).toBe(keys[1])
+    await runChunks(makeUpload(1200), post, { chunks: [1] })
+    expect(post.mock.calls[4][3]?.idempotencyKey).not.toBe(keys[1])
+  })
+
+  it('counts a chunk the server already took as imported, not failed', async () => {
+    const post = vi.fn<ImportPoster>(async () => {
+      throw replay()
+    })
+    const result = await runChunks(makeUpload(700), post, { chunks: [1] })
+    expect(result).toEqual({ imported: 200, failed: 0, errors: [], failedChunks: [] })
+  })
 })
 
 describe('ensureAccounts', () => {
@@ -116,11 +148,45 @@ describe('ensureAccounts', () => {
   })
 
   it('creates column accounts missing from existing names and created', async () => {
-    const created = new Map<string, string>([['b', 'id-b']])
+    const created = new Map<string, string>()
+    await ensureAccounts(answers({ kind: 'column', column: 0, currencies: { b: 'c1' } }), created, new Set())
+    vi.mocked(createAccount).mockClear()
     const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1', c: 'c2' } })
     await ensureAccounts(a, created, new Set(['c']))
     expect(createAccount).toHaveBeenCalledTimes(1)
     expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'a', currencyId: 'c1' })
+  })
+
+  it('retries a failed create with the same request id and key', async () => {
+    vi.mocked(createAccount).mockRejectedValueOnce(new Error('timeout'))
+    const created = new Map<string, string>()
+    const a = answers({ kind: 'new', name: 'Cash', currencyId: 'c1' })
+    await expect(ensureAccounts(a, created, new Set())).rejects.toThrow('timeout')
+    expect(await ensureAccounts(a, created, new Set())).toEqual({ accountId: 'server-id' })
+    const [first, second] = vi.mocked(createAccount).mock.calls
+    expect(second[0].id).toBe(first[0].id)
+    expect(second[1]?.idempotencyKey).toBe(first[1]?.idempotencyKey)
+    expect(first[1]?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  it('imports into the account a lost create made, as the replay names it', async () => {
+    vi.mocked(createAccount).mockRejectedValueOnce(replay('landed-id'))
+    const result = await ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), new Map(), new Set())
+    expect(result.accountId).toBe('landed-id')
+  })
+
+  it('reports a replay that names no account as a failure', async () => {
+    vi.mocked(createAccount).mockRejectedValueOnce(replay())
+    await expect(ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), new Map(), new Set())).rejects.toBeInstanceOf(AxiosError)
+  })
+
+  it('never takes a per-row account named "new" for the new account', async () => {
+    const created = new Map<string, string>()
+    vi.mocked(createAccount).mockResolvedValueOnce({ item: { id: 'row-new', folderId: 'general' }, transaction: null } as never)
+    await ensureAccounts(answers({ kind: 'column', column: 0, currencies: { new: 'c1' } }), created, new Set())
+    const result = await ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), created, new Set())
+    expect(result.accountId).toBe('server-id')
+    expect(createAccount).toHaveBeenCalledTimes(2)
   })
 
   // the server only invents a folder for a user who has none and refuses a blank one otherwise

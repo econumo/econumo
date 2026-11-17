@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseCsvText } from './parse'
-import { buildUpload, prepareRows, summarize } from './prepare'
+import { buildUpload, prepareRows, pruneFixes, summarize } from './prepare'
 import type { PreparedRow, RowFix, WizardAnswers } from './prepare'
 
 function answers(overrides: Partial<WizardAnswers> = {}): WizardAnswers {
@@ -140,6 +140,40 @@ function row(overrides: Partial<PreparedRow>): PreparedRow {
     ...overrides,
   }
 }
+
+describe('pruneFixes', () => {
+  // Betrag2 holds a readable amount where Betrag has none
+  const file = parseCsvText('Datum;Betrag;Text;Betrag2;Konto\n04.03.2026;n/a;Kaffee;-5,00;\nirgendwann;n/a;Miete;-7,00;Bar\n')
+  const onAmount2 = answers({ amount: { ...answers().amount, column: 3 } })
+
+  it('drops a typed amount once the row reads its own, so going back does not revive it', () => {
+    const fixes = new Map<number, RowFix>([[2, { amount: '-10' }]])
+    const pruned = pruneFixes(file, onAmount2, fixes)
+    expect(pruned.has(2)).toBe(false)
+    expect(prepareRows(file, answers(), pruned)[0]).toMatchObject({ status: 'skipped', reason: 'no_amount' })
+  })
+
+  it('keeps the part of a fix the row still needs', () => {
+    const pruned = pruneFixes(file, onAmount2, new Map<number, RowFix>([[3, { date: '2026-03-05', amount: '-10' }]]))
+    expect(pruned.get(3)).toEqual({ date: '2026-03-05' })
+  })
+
+  it('drops a skip once the row is readable, and keeps it while it is not', () => {
+    const fixes = new Map<number, RowFix>([
+      [2, 'skip'],
+      [3, 'skip'],
+    ])
+    const pruned = pruneFixes(file, onAmount2, fixes)
+    expect([...pruned]).toEqual([[3, 'skip']])
+    const byColumn = answers({ ...onAmount2, date: { column: 0, order: 'dmy' }, account: { kind: 'column', column: 4, currencies: {} } })
+    expect(pruneFixes(file, byColumn, new Map<number, RowFix>([[2, 'skip']])).get(2)).toBe('skip')
+  })
+
+  it('returns the same map when nothing is stale', () => {
+    const fixes = new Map<number, RowFix>([[2, { amount: '-10' }]])
+    expect(pruneFixes(file, answers(), fixes)).toBe(fixes)
+  })
+})
 
 describe('summarize', () => {
   it('adds money in and out exactly and spans the dates of the transactions', () => {

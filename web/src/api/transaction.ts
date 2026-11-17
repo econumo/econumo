@@ -56,6 +56,7 @@ export async function importTransactionList(
   file: File,
   mapping: Record<string, string | null>,
   fields: Record<string, string>,
+  opts?: WriteOptions,
 ): Promise<ImportResultDto> {
   const form = new FormData()
   form.append('file', file)
@@ -64,7 +65,7 @@ export async function importTransactionList(
     form.append(key, value)
   }
   // no explicit Content-Type: the browser adds multipart/form-data WITH the boundary
-  const response = await api.post<Envelope<ImportResultDto>>(apiUrl('/api/v1/transaction/import-transaction-list'), form)
+  const response = await api.post<Envelope<ImportResultDto>>(apiUrl('/api/v1/transaction/import-transaction-list'), form, writeConfig(opts))
   return response.data.data
 }
 
