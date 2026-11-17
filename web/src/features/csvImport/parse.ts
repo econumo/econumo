@@ -7,7 +7,7 @@ export interface ParsedFile {
   rawLines: string[]
 }
 
-export const MAX_CSV_BYTES = 5 * 1024 * 1024
+export const MAX_FILE_SIZE = 10485760
 
 const DELIMITERS: CsvDelimiter[] = [',', ';', '\t', '|']
 const SNIFF_LINES = 20
@@ -129,7 +129,7 @@ export function parseCsvText(text: string): ParsedFile {
 export async function readCsvFile(
   file: File,
 ): Promise<ParsedFile | { error: 'too_big' | 'empty' | 'unreadable' }> {
-  if (file.size > MAX_CSV_BYTES) return { error: 'too_big' }
+  if (file.size > MAX_FILE_SIZE) return { error: 'too_big' }
   let text: string
   try {
     text = await file.text()

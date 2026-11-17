@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCsvText, readCsvFile } from './parse'
+import { MAX_FILE_SIZE, parseCsvText, readCsvFile } from './parse'
 
 describe('parseCsvText', () => {
   it('strips BOM and CRLF and detects a semicolon delimiter', () => {
@@ -47,8 +47,12 @@ describe('readCsvFile', () => {
     expect(await readCsvFile(new File([''], 'x.csv'))).toEqual({ error: 'empty' })
     expect(await readCsvFile(new File(['a,b\n'], 'x.csv'))).toEqual({ error: 'empty' })
   })
-  it('reports too big', async () => {
-    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'x.csv')
-    expect(await readCsvFile(big)).toEqual({ error: 'too_big' })
+  it('accepts exactly MAX_FILE_SIZE bytes and rejects one more', async () => {
+    const head = 'a,b\n1,2\n'
+    const sized = (n: number) => new File([head + ' '.repeat(n - head.length)], 'x.csv')
+    expect(MAX_FILE_SIZE).toBe(10485760)
+    const ok = await readCsvFile(sized(MAX_FILE_SIZE))
+    expect('error' in ok).toBe(false)
+    expect(await readCsvFile(sized(MAX_FILE_SIZE + 1))).toEqual({ error: 'too_big' })
   })
 })
