@@ -46,11 +46,11 @@ var evalColumnCases = map[string][]columnsCase{
 		{"Transaction Date,Post Date,Description,Category,Type,Amount,Memo", "ddttNte", map[string]string{"date": "Transaction Date", "amount": "Amount", "description": "Description", "category": "Category"}},
 		{"Date,Description,Debit,Credit,Balance", "dtnnn", map[string]string{"date": "Date", "description": "Description", "amountOut": "Debit", "amountIn": "Credit"}},
 		{"Posting Date,Details,Description,Amount,Type,Balance,Check or Slip #", "dttNtne", map[string]string{"date": "Posting Date", "amount": "Amount", "description": "Description"}},
-		{"Date,Payee,Notes,Category,Tags,Amount,Currency,Account", "dtttttNtt", map[string]string{"date": "Date", "payee": "Payee", "description": "Notes", "category": "Category", "tag": "Tags", "amount": "Amount", "account": "Account"}},
+		{"Date,Payee,Notes,Category,Tags,Amount,Currency,Account", "dttttNtt", map[string]string{"date": "Date", "payee": "Payee", "description": "Notes", "category": "Category", "tag": "Tags", "amount": "Amount", "account": "Account"}},
 		{"Booking Date,Value Date,Merchant,Details,Money Out,Money In,Balance", "ddttnnn", map[string]string{"date": "Booking Date", "payee": "Merchant", "description": "Details", "amountOut": "Money Out", "amountIn": "Money In"}},
 		{"Date,Name,Memo,Withdrawals,Deposits", "dttnn", map[string]string{"date": "Date", "payee": "Name", "description": "Memo", "amountOut": "Withdrawals", "amountIn": "Deposits"}},
 		{"Date,Account,Merchant,Category,Labels,Amount", "dttttN", map[string]string{"date": "Date", "account": "Account", "payee": "Merchant", "category": "Category", "labels": "Labels", "amount": "Amount"}},
-		{"Settled Date,Reference,Transaction Description,Transaction Amount,Running Balance", "dtttNn", map[string]string{"date": "Settled Date", "description": "Transaction Description", "amount": "Transaction Amount"}},
+		{"Settled Date,Reference,Transaction Description,Transaction Amount,Running Balance", "dttNn", map[string]string{"date": "Settled Date", "description": "Transaction Description", "amount": "Transaction Amount"}},
 		{"Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance", "dttdnnn", map[string]string{"date": "Date", "description": "Narration", "amountOut": "Withdrawal Amt.", "amountIn": "Deposit Amt."}},
 	},
 	"de": {
@@ -80,6 +80,27 @@ var evalColumnSeparators = map[string]string{"en": ",", "de": ";", "ru": ";"}
 
 // The wizard states required roles by exact match; the rest only need to match when expected.
 var requiredColumnRoles = map[string]bool{"date": true, "amount": true, "amountIn": true, "amountOut": true}
+
+func TestAIEval_ColumnFixturesAreConsistent(t *testing.T) {
+	for lang, cases := range evalColumnCases {
+		for _, c := range cases {
+			headers := strings.Split(c.headers, evalColumnSeparators[lang])
+			if len(headers) != len(c.types) {
+				t.Errorf("%s %q: %d headers, %d types", lang, c.headers, len(headers), len(c.types))
+				continue
+			}
+			for role, want := range c.want {
+				found := false
+				for _, h := range headers {
+					found = found || h == want
+				}
+				if !found {
+					t.Errorf("%s %q: role %s names %q, not a header", lang, c.headers, role, want)
+				}
+			}
+		}
+	}
+}
 
 func TestAIEval_ImportColumns(t *testing.T) {
 	provider := aieval.Provider(t)
