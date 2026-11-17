@@ -24,4 +24,9 @@ describe('profileColumns', () => {
     expect(profileColumns(parseCsvText(`n\n${rows}\n`))[0].type).toBe('number')
     expect(profileColumns(parseCsvText('n\n1\n2\nabc\ndef\n'))[0].type).toBe('text')
   })
+
+  it('does not type long digit references as dates', () => {
+    const p = parseCsvText('ref;amt\n1234567890;1\n1234567891;2\n1234567892;3\n')
+    expect(profileColumns(p)[0].type).toBe('number')
+  })
 })

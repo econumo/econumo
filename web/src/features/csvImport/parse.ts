@@ -97,8 +97,8 @@ function sniffDelimiter(text: string): CsvDelimiter {
 function uniqueNames(names: string[]): string[] {
   const used = new Set<string>()
   const seen = new Map<string, number>()
-  return names.map((raw) => {
-    const name = raw.trim()
+  return names.map((raw, index) => {
+    const name = raw.trim() === '' ? `Column ${index + 1}` : raw.trim()
     let n = seen.get(name) ?? 0
     let candidate = name
     do {
@@ -112,7 +112,7 @@ function uniqueNames(names: string[]): string[] {
 }
 
 export function parseCsvText(text: string): ParsedFile {
-  const clean = text.replace(/^﻿/, '')
+  const clean = text.replace(/^\uFEFF/, '')
   const delimiter = sniffDelimiter(clean)
   const records = splitRecords(clean, delimiter)
   if (records.length === 0) {
@@ -126,13 +126,25 @@ export function parseCsvText(text: string): ParsedFile {
   }
 }
 
+const CYRILLIC_LANGUAGES = ['ru', 'uk', 'be', 'bg', 'sr']
+
+function decodeBytes(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    const language = (typeof navigator === 'undefined' ? '' : navigator.language).toLowerCase()
+    const legacy = CYRILLIC_LANGUAGES.some((l) => language.startsWith(l)) ? 'windows-1251' : 'windows-1252'
+    return new TextDecoder(legacy).decode(bytes)
+  }
+}
+
 export async function readCsvFile(
   file: File,
 ): Promise<ParsedFile | { error: 'too_big' | 'empty' | 'unreadable' }> {
   if (file.size > MAX_FILE_SIZE) return { error: 'too_big' }
   let text: string
   try {
-    text = await file.text()
+    text = decodeBytes(new Uint8Array(await file.arrayBuffer()))
   } catch {
     return { error: 'unreadable' }
   }

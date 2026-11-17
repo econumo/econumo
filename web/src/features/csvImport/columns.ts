@@ -18,7 +18,8 @@ const SAMPLE_COUNT = 3
 const SAMPLE_MAX = 25
 
 const isDate = (v: string) =>
-  parseDateCell(v, 'ymd') !== null || parseDateCell(v, 'dmy') !== null || parseDateCell(v, 'mdy') !== null
+  !/^\d+$/.test(v) &&
+  (parseDateCell(v, 'ymd') !== null || parseDateCell(v, 'dmy') !== null || parseDateCell(v, 'mdy') !== null)
 const isNumber = (v: string) => parseAmountCell(v, '.') !== null || parseAmountCell(v, ',') !== null
 
 export function profileColumns(file: ParsedFile): ColumnProfile[] {
