@@ -7,8 +7,9 @@ on new users, billing reads it and reports sign-ups, payments (pre-tax) and refu
 
 **Architecture:** econumo.com's pixel sets `affonso_referral=<click id>` on `.econumo.com`. The
 app copies that cookie (name from config, vendor-neutral) into a write-once user option
-`affiliate` at account creation and serves it on the private `GET /admin/user-context`. Billing
-records it when it loads a user, and an outbox worker (like `internal/grants`) calls Affonso.
+`affiliate` at account creation and serves it on the private admin listener: a polled list
+(`GET /admin/affiliate-users`) and `GET /admin/user-context`. Billing records it from both, and
+an outbox worker (like `internal/grants`) calls Affonso.
 
 **Tech Stack:** Go (both repos), sqlc, SQLite+PostgreSQL (app), PostgreSQL (billing), Astro (website).
 
@@ -44,6 +45,8 @@ records it when it loads a user, and an outbox worker (like `internal/grants`) c
   succeeds → Task 1 `TestNormalizeAffiliate`, Task 2 `TestRegisterWithMalformedAffiliateCookie`.
 - The option must not leak to the SPA through `get-user-data`, `get-option-list` or the
   register/login user payload → Task 1 `TestServerOnlyOptionHidden` (all three paths).
+- The app's list endpoint down or slow: the worker logs it and still drains queued reports;
+  a later pull catches up through the cursor overlap → Task 7 `TestPullFailureStillDrains`.
 - Affonso down / 5xx during a portal load or webhook: page and webhook behave exactly as
   without Affonso → Task 5 `TestContextSurvivesRecordFailure`, Task 7 retry tests.
 - A refund arriving before its conversion was sent, or after the sign-up failed for good →
@@ -125,13 +128,19 @@ records it when it loads a user, and an outbox worker (like `internal/grants`) c
 - [ ] **Step 4: Run** the same command — PASS; then `make go-lint`.
 - [ ] **Step 5: Commit** `feat: Capture the affiliate cookie on new accounts`.
 
-### Task 3: App admin — `affiliate` on `/admin/user-context`
+### Task 3: App admin — `affiliate` on `/admin/user-context` and `GET /admin/affiliate-users`
 
 **Files:**
 - Modify: `internal/admin/ports.go` (`UserRecord` + `Affiliate string`),
   `internal/admin/service.go` (`view`), `internal/model/admin_dto.go` (`AdminUserView`
   + `Affiliate string \`json:"affiliate"\``), `internal/server/glue_admin.go` (`record`:
   `Affiliate: u.Affiliate()`)
+- Create: queries `ListAffiliateUsers` in `internal/infra/storage/sqlc/query/{sqlite,pgsql}/users.sql`
+  (`SELECT user_id, value, created_at FROM users_options WHERE name = 'affiliate' AND created_at >= ?
+  ORDER BY created_at, user_id LIMIT ?` — check the real option table/column names), `sqlc generate`
+- Modify: `internal/admin/ports.go` (new port), `internal/admin/` (new `affiliates.go` use case),
+  `internal/admin/api/routes.go` + handler, `internal/model/admin_dto.go`, `internal/server/glue_admin.go`,
+  the user repo/read side that runs the query
 - Test: `internal/admin/admin_test.go`, the admin API tests; regenerate goldens if any suite
   covers the admin listener (`UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`, inspect diff)
 
@@ -139,9 +148,16 @@ records it when it loads a user, and an outbox worker (like `internal/grants`) c
 - Consumes: Task 1 `(*User).Affiliate()`.
 - Produces: wire field `user.affiliate` (and on each connection) in `GET /admin/user-context`;
   `""` when none. `POST /admin/set-access` returns the same view, so it carries it too.
+- Produces: `GET /admin/affiliate-users?since=<"2006-01-02 15:04:05" UTC>&limit=<1..500, default 500>`
+  → envelope `data: [{"userId","affiliate","createdAt"}]`, ordered by option `created_at`, then
+  user id; `since` required. Port: `AffiliateLister.ListAffiliateUsers(ctx, since time.Time, limit int)
+  ([]model.AdminAffiliateUser, error)`.
 
-- [ ] **Step 1: Write failing test** `TestUserContextIncludesAffiliate`: user with option →
-  JSON `"affiliate":"abc123"`; user without → `"affiliate":""`.
+- [ ] **Step 1: Write failing tests** `TestUserContextIncludesAffiliate`: user with option →
+  JSON `"affiliate":"abc123"`; user without → `"affiliate":""`. `TestListAffiliateUsers`: three
+  referred users + one without → three rows in creation order; `since` filters inclusively;
+  `limit=2` → first two; missing/garbled `since`, `limit=0`, `limit=501` → 400; the route is on
+  the admin listener only (404 on the public mux). Run on both engines (`DBTEST_ENGINE`).
 - [ ] **Step 2: Run** `go test ./internal/admin/... -run Affiliate` — FAIL.
 - [ ] **Step 3: Implement** the field through record → view.
 - [ ] **Step 4: Run** `make go-test` (smoke) — PASS.
@@ -190,8 +206,10 @@ records it when it loads a user, and an outbox worker (like `internal/grants`) c
 - Create: `internal/infra/storage/migrate/migrations/pgsql/20261116000000.sql`; update
   `internal/infra/storage/sqlc/schema.sql`, `internal/infra/storage/sqlc/query/pgsql/billing.sql`,
   then `make sqlc`
-- Modify: `internal/econumo/econumo.go` (`User.Affiliate string`), `internal/econumo/http.go`
-  (`wireUser`), `internal/test/econumofake/fake.go` (settable), `cmd/econumo-stub` (one seeded
+- Modify: `internal/econumo/econumo.go` (`User.Affiliate string`; `Client` gains
+  `AffiliateUsers(ctx, since time.Time, limit int) ([]AffiliateUser, error)` with
+  `type AffiliateUser struct { UserID, Affiliate string; CreatedAt time.Time }`),
+  `internal/econumo/http.go` (`wireUser` + the new call), `internal/test/econumofake/fake.go` (settable), `cmd/econumo-stub` (one seeded
   user with an affiliate)
 - Modify: `internal/billing/service.go` (`Service.Context`), `internal/billing/checkout.go`
   (`CreateCheckout`), `internal/billing/repo/` (new `affiliates.go` + test)
@@ -268,17 +286,23 @@ records it when it loads a user, and an outbox worker (like `internal/grants`) c
 
 **Interfaces:**
 - Consumes: Task 4 `affonso.Client`, Task 5/6 tables.
-- Produces: `affiliates.NewWorker(pool *pgxpool.Pool, c affonso.Client, logger *slog.Logger) *Worker`,
-  `(*Worker).Run(ctx)`, `(*Worker).Sweep(ctx) error`.
+- Produces: `affiliates.NewWorker(pool *pgxpool.Pool, ec econumo.Client, c affonso.Client, logger *slog.Logger) *Worker`,
+  `(*Worker).Run(ctx)`, `(*Worker).Sweep(ctx) error`; table
+  `affiliate_sync (id int PRIMARY KEY CHECK (id = 1), cursor timestamptz)` (add to Task 5's
+  migration if Task 5 is not merged yet, else a new migration).
 
-Sweep order per tick: (1) pending sign-ups → `Signup`; success = `reported`. (2) pending
+Sweep order per tick: (0) pull — `ec.AffiliateUsers(since = cursor - 10 min, or zero time,
+500)`, `RecordAffiliate` each row, repeat while a full page returns, then store the newest
+`CreatedAt` as the cursor; a pull failure is logged and the tick continues with (1). (1) pending sign-ups → `Signup`; success = `reported`. (2) pending
 `conversion` events whose user's referral is `reported` → `Conversion` with
 `EventID = purchase id`, store `conversion_id`, `sent`. (3) pending `refund` events whose
 conversion event is `sent` → `Refund(conversion_id, "refund-"+purchase id)`. An event whose
 referral is `failed`, or a refund whose conversion is `failed`, becomes `failed` without a call.
 `ErrPermanent` or attempts reaching `maxAttempts` → `failed` + one ERROR log with ids only.
 
-- [ ] **Step 1: Failing tests** (fake `affonso.Client`): `TestSignupReported`,
+- [ ] **Step 1: Failing tests** (fake `affonso.Client`, `econumofake`): `TestPullRecordsAndAdvancesCursor`,
+  `TestPullOverlapDoesNotDuplicate`, `TestPullPagesUntilShortPage`, `TestPullFailureStillDrains`,
+  `TestSignupReported`,
   `TestConversionWaitsForSignup`, `TestRefundWaitsForConversion`,
   `TestEventsDroppedWhenSignupFailed`, `TestRetryBackoffThenFail` (500 ×10 → failed),
   `TestPermanentErrorFailsAtOnce`, `TestServerWithoutAffonsoHasNoWorker`.

@@ -39,8 +39,8 @@ same way it is the only part that knows about money.
 econumo.com?via=partner ──pixel──▶ Affonso creates a click, cookie affonso_referral=<click id>
                                    on the root domain (.econumo.com), SameSite=None; Secure
 app.econumo.com sign-up ──────────▶ the app reads the cookie, stores user option `affiliate`
-user opens billing ───────────────▶ billing reads `affiliate` from /admin/user-context
-                                   ──▶ POST /v1/signups {click_id, external_user_id}
+billing polls every 30 s ─────────▶ GET /admin/affiliate-users?since=… (and /admin/user-context
+                                   when the user opens billing) ──▶ POST /v1/signups
 user pays / is refunded ──────────▶ billing ──▶ POST /v1/conversions / .../refund
 ```
 
@@ -76,6 +76,11 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
   return every stored option, and not exposed on `/mcp`.
 - The name is deliberately not `referral`: the parked `feature/referral-program` branch uses
   that for a different thing (the share report a user signed up from).
+- **Listing**: new private route `GET /admin/affiliate-users?since=<datetime>&limit=<n>`
+  (admin listener, admin token like the others). Returns users whose `affiliate` option was
+  created at or after `since` (frozen datetime layout, UTC), ordered by option `created_at`,
+  then user id, at most `limit` (default and max 500):
+  `[{"userId","affiliate","createdAt"}]`. Bad `since`/`limit` = 400 envelope.
 - No HTTP client, no outbound call, no retries in the app.
 
 ### 3. Billing (`econumo/billing`)
@@ -87,9 +92,14 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
   `ECONUMO_ADMIN_URL` + `ECONUMO_ADMIN_TOKEN` (`internal/econumo/http.go`) every time the
   portal loads a user (`Service.Context`, `CreateCheckout`); the short-lived handoff token
   only tells billing WHICH user. `internal/econumo` parses the new `affiliate` field.
-- **Recording the sign-up**: whenever billing loads the user's context (opening the portal,
-  starting a checkout) and the user has a referral not yet recorded, it upserts a row in a new
-  table `affiliate_referrals (user_id PK, click_id, signup_status, signup_attempts,
+- **Recording the sign-up**, two paths writing the same row (`ON CONFLICT DO NOTHING`):
+  - **Polling** (primary): each worker tick calls `affiliate-users` with
+    `since = stored cursor - 10 minutes` (the overlap covers transactions that committed late
+    with an earlier timestamp), pages while a full page comes back, and advances the cursor to
+    the newest `createdAt` seen. The cursor lives in billing's DB; no cursor = from the start.
+  - **Context load** (covers sign-up-then-pay inside one poll interval): whenever billing loads
+    the user's context (opening the portal, starting a checkout).
+  The row goes in a new table `affiliate_referrals (user_id PK, click_id, signup_status, signup_attempts,
   next_attempt_at, signup_reported_at, created_at)`. The request itself never calls Affonso.
 - **Outbox worker** (same pattern as `internal/grants`): reports due sign-ups with
   `POST /v1/signups {click_id, external_user_id: <econumo user id>}` (idempotent on
@@ -118,23 +128,17 @@ Stripe from the session's total minus its tax, Paddle from the transaction total
 after discount, before tax. A conversion is sent with `amount_net_cents`; a purchase paid
 before the column existed has NULL and is not reported (there is no backfill anyway).
 
-## Consequence of reporting at billing-open (accepted)
-
-Affonso learns of a sign-up only when the user first opens billing (or pays), not at
-registration. A referred user who never opens billing never appears as a lead. Payments and
-refunds are unaffected. Fine while commissions are paid on payments; revisit if lead-only
-commissions are wanted.
-
 ## Approaches considered
 
 - **Browser signup event in the app + pixel in the app** (`Affonso.signup(email)`): rejected;
   puts a third-party script in the app and sends emails to Affonso.
 - **App pushes each sign-up to billing**: rejected; the first app-to-billing call, needing a
   client, a contract and retries.
-- **Billing polls a referred-users list**: workable, reports leads within a minute, but adds a
-  list endpoint and cursor.
-- **Chosen: user option, passed in `/admin/user-context` when the user opens billing**:
-  smallest app change, one call direction (billing to app) as today. Picked by Dmitry.
+- **Only at billing-open** (user option read from `/admin/user-context`): smallest, but a
+  referred user who never opens billing never counts as a lead.
+- **Chosen: user option + billing polls a list endpoint, with the context read as a backup**:
+  leads reach Affonso within about a minute of sign-up, calls still go one way (billing to
+  app). Picked by Dmitry.
 - Affonso's native Stripe/Paddle integrations could report payments and refunds instead of
   billing; not used, to keep billing the single reporter and the integration optional.
 
