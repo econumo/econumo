@@ -1,0 +1,126 @@
+package server_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+)
+
+const (
+	affU1 = "a1000000-0000-0000-0000-000000000001"
+	affU2 = "a1000000-0000-0000-0000-000000000002"
+	affU3 = "a1000000-0000-0000-0000-000000000003"
+	affU4 = "a1000000-0000-0000-0000-000000000004"
+)
+
+func newAffiliateAdminHandler(t *testing.T) http.Handler {
+	t.Helper()
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	base := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
+	seed := []struct {
+		id, code string
+		at       time.Time
+	}{
+		// u2 and u1 share a created_at: the user id breaks the tie.
+		{affU2, "code-b", base},
+		{affU1, "code-a", base},
+		{affU3, "code-c", base.Add(time.Hour)},
+		{affU4, "", base},
+	}
+	for i, s := range seed {
+		f.User(fixture.User{ID: s.id, Email: s.id[len(s.id)-4:] + "@example.test", Name: "U"})
+		if s.code == "" {
+			continue
+		}
+		if _, err := db.Raw.Exec(db.Rebind(`INSERT INTO users_options (id, user_id, name, value, created_at, updated_at) VALUES (?, ?, 'affiliate', ?, ?, ?)`),
+			"b1000000-0000-0000-0000-00000000000"+string(rune('1'+i)), s.id, s.code, s.at, s.at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AdminToken: adminToken}
+	_, h, _, err := server.Build(cfg, db.Raw, server.Seams{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+func affiliateUsers(t *testing.T, h http.Handler, query string) []model.AdminAffiliateUser {
+	t.Helper()
+	rec := adminDo(t, h, http.MethodGet, "/admin/affiliate-users?"+query, adminToken, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var env struct {
+		Data []model.AdminAffiliateUser `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+		t.Fatal(err)
+	}
+	return env.Data
+}
+
+func TestListAffiliateUsers(t *testing.T) {
+	h := newAffiliateAdminHandler(t)
+
+	got := affiliateUsers(t, h, "since=2026-01-01+00:00:00")
+	want := []model.AdminAffiliateUser{
+		{UserId: affU1, Affiliate: "code-a", CreatedAt: "2026-11-01 10:00:00"},
+		{UserId: affU2, Affiliate: "code-b", CreatedAt: "2026-11-01 10:00:00"},
+		{UserId: affU3, Affiliate: "code-c", CreatedAt: "2026-11-01 11:00:00"},
+	}
+	if len(got) != 3 || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+
+	// since is inclusive.
+	if got := affiliateUsers(t, h, "since=2026-11-01+11:00:00"); len(got) != 1 || got[0].UserId != affU3 {
+		t.Fatalf("since filter: %+v", got)
+	}
+	if got := affiliateUsers(t, h, "since=2026-11-01+11:00:01"); got == nil || len(got) != 0 {
+		t.Fatalf("empty result must be [], got %#v", got)
+	}
+	if got := affiliateUsers(t, h, "since=2026-01-01+00:00:00&limit=2"); len(got) != 2 || got[1].UserId != affU2 {
+		t.Fatalf("limit: %+v", got)
+	}
+}
+
+func TestListAffiliateUsersValidation(t *testing.T) {
+	h := newAffiliateAdminHandler(t)
+	for _, q := range []string{
+		"", "since=garbage", "since=2026-01-01",
+		"since=2026-01-01+00:00:00&limit=0",
+		"since=2026-01-01+00:00:00&limit=501",
+		"since=2026-01-01+00:00:00&limit=x",
+	} {
+		if rec := adminDo(t, h, http.MethodGet, "/admin/affiliate-users?"+q, adminToken, ""); rec.Code != http.StatusBadRequest {
+			t.Errorf("%q: status = %d, want 400", q, rec.Code)
+		}
+	}
+	if rec := adminDo(t, h, http.MethodGet, "/admin/affiliate-users?since=2026-01-01+00:00:00", "", ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("no bearer: status = %d, want 401", rec.Code)
+	}
+}
+
+func TestAdminUserContextIncludesAffiliate(t *testing.T) {
+	h := newAffiliateAdminHandler(t)
+	if got := adminData(t, adminDo(t, h, http.MethodGet, "/admin/user-context?userId="+affU1, adminToken, "")); got.User.Affiliate != "code-a" {
+		t.Fatalf("affiliate = %q", got.User.Affiliate)
+	}
+	rec := adminDo(t, h, http.MethodGet, "/admin/user-context?userId="+affU4, adminToken, "")
+	if got := adminData(t, rec); got.User.Affiliate != "" {
+		t.Fatalf("affiliate = %q", got.User.Affiliate)
+	}
+	if !strings.Contains(rec.Body.String(), `"affiliate":""`) {
+		t.Fatalf("field missing: %s", rec.Body.String())
+	}
+}

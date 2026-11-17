@@ -49,6 +49,50 @@ func (q *Queries) GetUserOptions(ctx context.Context, userID string) ([]UsersOpt
 	return items, nil
 }
 
+const listAffiliateUsers = `-- name: ListAffiliateUsers :many
+SELECT user_id, value, created_at
+FROM users_options
+WHERE name = 'affiliate' AND value IS NOT NULL AND value <> '' AND created_at >= $1
+ORDER BY created_at, user_id
+LIMIT $2
+`
+
+type ListAffiliateUsersParams struct {
+	CreatedAt time.Time
+	Limit     int32
+}
+
+type ListAffiliateUsersRow struct {
+	UserID    string
+	Value     *string
+	CreatedAt time.Time
+}
+
+// Ties on created_at (one signup transaction) break by user id so paging by
+// created_at is stable across engines.
+func (q *Queries) ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsersParams) ([]ListAffiliateUsersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAffiliateUsers, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAffiliateUsersRow{}
+	for rows.Next() {
+		var i ListAffiliateUsersRow
+		if err := rows.Scan(&i.UserID, &i.Value, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserIDsMissingOption = `-- name: ListUserIDsMissingOption :many
 SELECT u.id
 FROM users u

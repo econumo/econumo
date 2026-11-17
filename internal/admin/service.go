@@ -9,13 +9,14 @@ import (
 )
 
 type Service struct {
-	users UserLookup
-	conns ConnectionLookup
-	clock port.Clock
+	users      UserLookup
+	conns      ConnectionLookup
+	affiliates AffiliateLister
+	clock      port.Clock
 }
 
-func NewService(users UserLookup, conns ConnectionLookup, clk port.Clock) *Service {
-	return &Service{users: users, conns: conns, clock: clk}
+func NewService(users UserLookup, conns ConnectionLookup, affiliates AffiliateLister, clk port.Clock) *Service {
+	return &Service{users: users, conns: conns, affiliates: affiliates, clock: clk}
 }
 
 func (s *Service) view(r UserRecord) model.AdminUserView {
@@ -26,6 +27,7 @@ func (s *Service) view(r UserRecord) model.AdminUserView {
 		Avatar:               r.Avatar,
 		AccessLevel:          string(r.AccessLevel),
 		AccessUntil:          formatUntil(r.AccessUntil),
+		Affiliate:            r.Affiliate,
 		EffectiveAccessLevel: string(model.EffectiveAccessLevel(r.AccessLevel, r.AccessUntil, s.clock.Now())),
 	}
 }

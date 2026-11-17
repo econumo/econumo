@@ -54,7 +54,7 @@ func newMux() http.Handler {
 	users := &stubUsers{byID: map[string]admin.UserRecord{
 		selfID.String(): {ID: selfID.String(), Name: "Alex", Email: "alex@example.test", AccessLevel: model.AccessLevelFull},
 	}}
-	svc := admin.NewService(users, &stubConns{ids: map[string][]vo.Id{}}, testClock{})
+	svc := admin.NewService(users, &stubConns{ids: map[string][]vo.Id{}}, nil, testClock{})
 	mux := http.NewServeMux()
 	adminapi.RegisterAdmin(adminapi.NewHandlers(svc))(mux)
 	return mux

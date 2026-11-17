@@ -62,7 +62,7 @@ func newFixture() (*Service, *stubUsers, vo.Id, vo.Id) {
 		until: map[string]*time.Time{},
 	}
 	conns := &stubConns{ids: map[string][]vo.Id{self.String(): {partner}}}
-	return NewService(users, conns, testClock{}), users, self, partner
+	return NewService(users, conns, nil, testClock{}), users, self, partner
 }
 
 func TestSetAccessWritesLevelAndExpiry(t *testing.T) {
@@ -237,7 +237,7 @@ func TestUserContextSkipsDanglingConnection(t *testing.T) {
 		self.String():    {ID: self.String(), Name: "Alex", Email: "alex@example.test", AccessLevel: model.AccessLevelFull},
 		partner.String(): {ID: partner.String(), Name: "Sam", Email: "sam@example.test", AccessLevel: model.AccessLevelFull},
 	}, saved: map[string]model.AccessLevel{}, until: map[string]*time.Time{}}
-	svc = NewService(users, svcConns, testClock{})
+	svc = NewService(users, svcConns, nil, testClock{})
 
 	res, err := svc.UserContext(context.Background(), self)
 	if err != nil {

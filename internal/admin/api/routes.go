@@ -9,5 +9,6 @@ func RegisterAdmin(h *Handlers) func(mux *http.ServeMux) {
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /admin/set-access", h.SetAccess)
 		mux.HandleFunc("GET /admin/user-context", h.UserContext)
+		mux.HandleFunc("GET /admin/affiliate-users", h.AffiliateUsers)
 	}
 }

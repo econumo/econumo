@@ -21,6 +21,7 @@ type UserRecord struct {
 	Avatar      string
 	AccessLevel model.AccessLevel
 	AccessUntil *time.Time
+	Affiliate   string
 }
 
 type UserLookup interface {
@@ -28,6 +29,11 @@ type UserLookup interface {
 	// SetAccess returns the record as written, so the caller's response cannot
 	// diverge from the write under a concurrent update.
 	SetAccess(ctx context.Context, id vo.Id, level model.AccessLevel, until *time.Time) (UserRecord, error)
+}
+
+// AffiliateLister reads referral attributions for the billing poller.
+type AffiliateLister interface {
+	ListAffiliateUsers(ctx context.Context, since time.Time, limit int) ([]model.AdminAffiliateUser, error)
 }
 
 type ConnectionLookup interface {

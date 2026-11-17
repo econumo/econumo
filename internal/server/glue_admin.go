@@ -1,7 +1,8 @@
 // Adapter bridging the admin feature to the user feature. It lives here
 // because features must not import each other; only the composition root may
-// join them. The connection side needs no adapter: *connectionrepo.Repo already
-// satisfies admin.ConnectionLookup (asserted below) and is wired directly.
+// join them. The connection and affiliate sides need no adapter: *connectionrepo.Repo
+// and *userrepo.Repo already satisfy admin.ConnectionLookup / AffiliateLister
+// (asserted below) and are wired directly.
 package server
 
 import (
@@ -13,9 +14,11 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 var _ appadmin.ConnectionLookup = (*connectionrepo.Repo)(nil)
+var _ appadmin.AffiliateLister = (*userrepo.Repo)(nil)
 
 type AdminUserAccess struct{ users *appuser.Service }
 
@@ -49,5 +52,6 @@ func record(u *model.User, email string) appadmin.UserRecord {
 		Avatar:      u.Avatar,
 		AccessLevel: u.AccessLevel,
 		AccessUntil: u.AccessUntil,
+		Affiliate:   u.Affiliate(),
 	}
 }

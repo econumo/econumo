@@ -40,9 +40,18 @@ type AdminUserView struct {
 	AccessLevel          string `json:"accessLevel"`
 	AccessUntil          string `json:"accessUntil"`
 	EffectiveAccessLevel string `json:"effectiveAccessLevel"`
+	Affiliate            string `json:"affiliate"`
 }
 
 type AdminUserContextResult struct {
 	User        AdminUserView   `json:"user"`
 	Connections []AdminUserView `json:"connections"`
+}
+
+// AdminAffiliateUser is one referred user; CreatedAt is when the code was
+// recorded (the signup), in the frozen datetime layout.
+type AdminAffiliateUser struct {
+	UserId    string `json:"userId"`
+	Affiliate string `json:"affiliate"`
+	CreatedAt string `json:"createdAt"`
 }

@@ -359,6 +359,9 @@ type Querier interface {
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// The same count for every AVAILABLE account (the balance query's set).
 	ListAccountTransactionsCountsForUser(ctx context.Context, userID string) ([]ListAccountTransactionsCountsForUserRow, error)
+	// Ties on created_at (one signup transaction) break by user id so paging by
+	// created_at is stable across engines.
+	ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsersParams) ([]ListAffiliateUsersRow, error)
 	ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
 	// (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1

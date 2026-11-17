@@ -22,3 +22,12 @@ FROM users u
 LEFT JOIN users_options o ON o.user_id = u.id AND o.name = $1
 WHERE o.user_id IS NULL
 ORDER BY u.id;
+
+-- name: ListAffiliateUsers :many
+-- Ties on created_at (one signup transaction) break by user id so paging by
+-- created_at is stable across engines.
+SELECT user_id, value, created_at
+FROM users_options
+WHERE name = 'affiliate' AND value IS NOT NULL AND value <> '' AND created_at >= $1
+ORDER BY created_at, user_id
+LIMIT $2;

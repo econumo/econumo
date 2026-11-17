@@ -6,9 +6,12 @@ package api
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/econumo/econumo/internal/admin"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/web/httpx"
@@ -66,6 +69,43 @@ func (h *Handlers) UserContext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.svc.UserContext(r.Context(), id)
+	if err != nil {
+		h.writeErr(r.Context(), w, err)
+		return
+	}
+	httpx.OK(w, res)
+}
+
+const (
+	defaultAffiliateLimit = 500
+	maxAffiliateLimit     = 500
+)
+
+func (h *Handlers) AffiliateUsers(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	raw := q.Get("since")
+	if raw == "" {
+		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+			errs.FieldError{Key: "since", Message: "This value should not be blank."}))
+		return
+	}
+	since, err := time.ParseInLocation(datetime.Layout, raw, time.UTC)
+	if err != nil {
+		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+			errs.FieldError{Key: "since", Message: "Invalid date"}))
+		return
+	}
+	limit := defaultAffiliateLimit
+	if raw := q.Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > maxAffiliateLimit {
+			h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+				errs.FieldError{Key: "limit", Message: "This value should be between 1 and 500."}))
+			return
+		}
+		limit = n
+	}
+	res, err := h.svc.AffiliateUsers(r.Context(), since, limit)
 	if err != nil {
 		h.writeErr(r.Context(), w, err)
 		return
