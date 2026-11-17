@@ -79,9 +79,17 @@ It replaces `ImportCsvDialog` everywhere it is used today: Getting started's Imp
 and the `onComplete(result)` contract stay, so `ImportStep` and `finishImportStep` keep
 working.
 
-Each "which column" step shows the file's columns as choice cards: the header name plus
-the first three non-empty values from that column. The guessed card is pre-selected. The
-user taps a card; there are no dropdowns of header names.
+Each "which column" step shows the file the way a spreadsheet does: a table of the header
+and the first rows (about 6), scrolling sideways on a phone. The step asks one question
+("Tap the column with the date") and the user taps anywhere in a column to choose it. The
+chosen column is highlighted; columns already given to another step carry a small label
+naming it ("Amount"). There are no dropdowns of header names and no per-column cards.
+*(Revised 2026-11-17 after trying the first build: separate cards per column broke the file
+into pieces and were hard to read.)*
+
+Warning marks in the step bar are for a missing required answer only. Rows that will be
+skipped are an informational note on the step and on Check, not a warning. Dates on Check
+are shown in the UI language's date format, not ISO.
 
 ### 1. File
 
