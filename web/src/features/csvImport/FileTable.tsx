@@ -129,7 +129,7 @@ export function FileTable({ file, label, selected, onSelect, labels = {}, locked
                   <td
                     key={column}
                     title={cells[column] ?? ''}
-                    className={cn('max-w-56 truncate px-3 py-1.5 whitespace-nowrap tabular-nums', !locked?.has(column) && 'cursor-pointer', tint(column))}
+                    className={cn('max-w-56 truncate px-3 py-1.5 whitespace-nowrap tabular-nums', locked?.has(column) ? 'text-muted-foreground' : 'cursor-pointer', tint(column))}
                     onClick={() => choose(column)}
                     onMouseEnter={() => setHovered(column)}
                   >
