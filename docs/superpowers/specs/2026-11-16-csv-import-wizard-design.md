@@ -151,19 +151,19 @@ The server still accepts those fields.
 
 ### 7. Preview: "Here's what will be imported"
 
-- Rows rendered like the transaction list: date, description (and payee if mapped),
-  category if mapped, signed amount in the account's currency, red/green like the app's
-  rows. 20 rows per page.
-- **Switching between records:** the user can page through every row of the file (Previous
-  / Next and "Rows 21-40 of 214"), not just the first page. A filter switches between
-  "All" and "Will be skipped" (only shown when some rows will be skipped), so problem rows
-  can be found in a long file. Tapping a row expands it to show the original line from the
-  file next to how it was read, so a wrong date or amount can be traced to its source.
-- Totals: "214 transactions, 2026-01-03 to 2026-03-31. Money in 6,000.00, money out
-  4,812.40." Rows that will be skipped are counted with the reason.
-- In the expanded row, each value links back to the step that shapes it (date, amount,
-  description); a "Something looks wrong?" link goes back to step 3 (step 2 for an Econumo
-  export).
+- **One transaction at a time**, not a list: a card laid out like the app's transaction
+  view (account, date, signed amount in the account's currency, red/green; description;
+  payee, category, tag and labels when mapped), headed "Transaction 3 of 214".
+- **Switching between records:** Previous / Next arrows (and left/right keys, a swipe on a
+  phone) move through every row of the file. When some rows will be skipped, a "Next
+  problem" button jumps to the next one, and a skipped row's card says why ("No readable
+  date") instead of showing a transaction.
+- Under the card, always visible: the original line from the file, so a wrong date or
+  amount can be traced to its source. Each value on the card links back to the step that
+  shapes it (date, amount, description, extras); a "Something looks wrong?" link goes back
+  to step 3 (step 2 for an Econumo export).
+- Totals above the card: "214 transactions, 2026-01-03 to 2026-03-31. Money in 6,000.00,
+  money out 4,812.40." Rows that will be skipped are counted with the reason.
 - Primary button "Import 214 transactions". The progress bar for chunked uploads stays.
 
 The result screen (`ImportResultDialog`) stays, with plain-language error wording.
