@@ -28,7 +28,7 @@
       [role='menuitemcheckbox'],
       [role='menuitemradio'],
       [role='treeitem']
-    ):not([aria-disabled='true'], [data-disabled]:not([data-disabled='false'])) {
+    ):not(:disabled, [aria-disabled='true'], [data-disabled]:not([data-disabled='false'])) {
     cursor: pointer;
   }
 }
