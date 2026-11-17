@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -50,23 +50,40 @@ beforeEach(() => {
   server.use(...coreHandlers())
 })
 
-it('lists only the columns the earlier steps left free, with their values', () => {
+it('shows the whole file; columns the earlier steps use are labelled and cannot be chosen here', async () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
-  expect(screen.getByText('Memo')).toBeInTheDocument()
-  expect(screen.getByText('lunch')).toBeInTheDocument()
-  expect(screen.getByText('Group')).toBeInTheDocument()
-  expect(screen.queryByText('Date')).not.toBeInTheDocument()
-  expect(screen.queryByText('Amount')).not.toBeInTheDocument()
+  const user = userEvent.setup()
+  expect(screen.getByRole('cell', { name: 'lunch' })).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'Date' })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('radio', { name: 'Amount' })).toHaveAccessibleDescription('Amount')
+  await user.click(screen.getByRole('cell', { name: '-5' }))
+  expect(screen.getByRole('radio', { name: 'Amount' })).not.toBeChecked()
+  expect(screen.queryByRole('radiogroup', { name: /^Use/ })).not.toBeInTheDocument()
+})
+
+it('tapping a column asks what it is, and the answer labels the column', async () => {
+  renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('cell', { name: 'Food' }))
+  expect(screen.getByRole('radio', { name: 'Group' })).toBeChecked()
+  await user.click(within(screen.getByRole('radiogroup', { name: 'Use “Group” as' })).getByRole('radio', { name: 'Category' }))
+  expect(extrasOf().category).toBe(3)
+  expect(screen.getByRole('radio', { name: 'Group' })).toHaveAccessibleDescription('Category')
 })
 
 it('a role belongs to one column: giving it to a second column takes it from the first', async () => {
   renderStep('Date,Amount,One,Two\n2026-01-02,-5,a,b\n')
   const user = userEvent.setup()
-  await user.selectOptions(screen.getByLabelText('Use “One” as'), 'category')
+  const useAs = (name: string, role: string) =>
+    user.click(within(screen.getByRole('radiogroup', { name: `Use “${name}” as` })).getByRole('radio', { name: role }))
+  await user.click(screen.getByRole('radio', { name: 'One' }))
+  await useAs('One', 'Category')
   expect(extrasOf().category).toBe(2)
-  await user.selectOptions(screen.getByLabelText('Use “Two” as'), 'category')
+  await user.click(screen.getByRole('radio', { name: 'Two' }))
+  await useAs('Two', 'Category')
   expect(extrasOf().category).toBe(3)
-  expect(screen.getByLabelText('Use “One” as')).toHaveValue('')
+  await user.click(screen.getByRole('radio', { name: 'One' }))
+  expect(within(screen.getByRole('radiogroup', { name: 'Use “One” as' })).getByRole('radio', { name: 'Leave out' })).toBeChecked()
 })
 
 it('counts new categories case-insensitively against the owner’s, archived ones included', async () => {
@@ -85,8 +102,9 @@ it('counts new labels split by the separator, sharing one name space with tags',
 it('offers the separator only for a labels column and keeps a custom one', async () => {
   renderStep('Date,Amount,Marks\n2026-01-02,-5,a/b\n')
   const user = userEvent.setup()
-  expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
-  await user.selectOptions(screen.getByLabelText('Use “Marks” as'), 'labels')
+  expect(screen.queryByRole('radiogroup', { name: /separated by/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'Marks' }))
+  await user.click(screen.getByRole('radio', { name: 'Reporting tags' }))
   expect(screen.getByRole('radio', { name: ';' })).toBeChecked()
   await user.type(screen.getByLabelText('Something else'), '/')
   expect(extrasOf().labelsSeparator).toBe('/')

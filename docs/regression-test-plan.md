@@ -752,15 +752,23 @@ navigation (single-pane vs sidebar).
       is larger than 10 MB", an empty one "This file is empty", a non-CSV one
       "This file couldn't be read as a spreadsheet (CSV)", and each stays on
       Your file. No screen uses the words "mapping", "field" or "CSV column";
-      every "which column" question shows the file's columns as cards (header
-      plus its first three values), the guessed one already selected, no
-      dropdowns of header names.
+      every "which column" question ("Tap the column with the date") shows the
+      file as a table, the header and its first 6 non-empty rows with every
+      column, scrolling sideways on a 390 px phone without widening the
+      dialog. Tapping any cell or the header chooses that column: it gets a
+      tinted background top to bottom and a check by its header, and the
+      guessed one is already chosen (scrolled into view on a phone). Columns
+      another step uses carry a small grey label under the header ("Amount",
+      "Date", "Description"). The header radios are reachable with Tab and
+      ← / → move the choice. No dropdowns of header names, no per-column
+      cards.
 - [ ] 📱 Step bar: once a file is read every step can be opened in any order,
       forward or back, by clicking its name (desktop) or its numbered dot
       (phone, the current step's name under the dots). A step whose required
-      answer is missing (Account, Date, Amount) or that makes rows be skipped
-      carries a warning mark, and Import stays disabled until Account, Date
-      and Amount are answered. Extra details appears only when some column is
+      answer is missing (Account, Date, Amount) carries a warning mark, and
+      Import stays disabled until those are answered. Rows that will be
+      skipped never put a mark on the bar: the step says so in grey with an
+      info icon, and those rows are greyed in its table. Extra details appears only when some column is
       left unused.
 - [ ] Bank statement (`Buchungstag;Betrag;Verwendungszweck`, decimal comma,
       `dd.mm.yyyy` dates with a day above 12): Date, Amount and Description are
@@ -772,8 +780,9 @@ navigation (single-pane vs sidebar).
       asks "Is 03/04/2026 the … or …?" with a value from the file and both
       readings written out as dates in the UI language, preselected by the
       browser's language (English US: month first; Russian, German: day
-      first); switching the answer moves every date on Check. Unreadable dates are counted under the cards ("1 row has
-      no readable date and will be skipped").
+      first); switching the answer moves every date on Check. Unreadable dates are counted under the table in grey ("1 row has
+      no readable date and will be skipped"); unreadable amounts likewise on
+      Amount, rows with no account name on Account's per-row option.
 - [ ] Decimal separator: a column whose values never settle it (only
       `-1,500` or `1.500` style values) asks "How much is -1,500?" with its two
       readings (−1.5 and −1500, in the UI language's number format) as choices; the choice moves every amount on
@@ -784,15 +793,26 @@ navigation (single-pane vs sidebar).
       `-12,50`, and `12,50` once flipped); turning on "Flip the signs" makes that row −12.50 on Check and
       income positive. With "Separate columns for money in and money out"
       there is no switch: money in imports as + and money out as −, whatever
-      sign the file uses, and either column may be "None".
+      sign the file uses. The step shows "Money in: …" and "Money out: …"
+      choices above one table: tapping a column for money in moves on to
+      money out, and either side can be "The file has no money-in/money-out
+      column"; each side's column carries its label in the table.
+- [ ] Description: tapping a column chooses it; "The file has no
+      description" under the table leaves descriptions empty.
 - [ ] Extra details (a file with Category, Payee, Tags columns from another
-      app): each unused column is listed with its sample values and can be
-      used as Category, Payee, Budget tag, Reporting tags or left out
-      (recognised headers come preselected); Reporting tags asks how several
+      app): the step shows the whole file; columns Account, Date, Amount or
+      Description use are labelled and cannot be tapped. Tapping another
+      column asks "Use “…” as" with Leave out, Category, Payee, Budget tag,
+      Reporting tags right under the table, and the answer labels the column
+      (recognised headers come preselected). A column given to Category here
+      and then chosen on Description is no longer a category (it is labelled
+      Description here and not uploaded twice); Reporting tags asks how several
       tags in one cell are separated (";" by default, ",", "|", Tab, or something else). A note counts
       the new categories and tags the import will create. The imported rows
       carry exactly those values.
-- [ ] 📱 Check: totals "N transactions, first date to last date. Money in …,
+- [ ] 📱 Check: dates are written in the UI language's date format ("Nov 3,
+      2026" in English, "03.11.2026" in German), never ISO; the card has no
+      "?" icon. Totals "N transactions, first date to last date. Money in …,
       money out …." (money is left out when the rows land in accounts of two
       currencies) and, when rows will be skipped, "N will be skipped (reason:
       count)". ONE transaction is shown at a time, laid out like the app's
@@ -808,13 +828,20 @@ navigation (single-pane vs sidebar).
       stays inside its button on a 390 px phone, wrapping to two lines when
       the language or count makes it long (Russian "Импортировать 3 операции").
 - [ ] 📱 Problem rows on Check: a row with no readable date shows "No readable
-      date" with a date field, one with no readable amount "No readable
+      date" (grey info icon, not a warning) with a date field, one with no readable amount "No readable
       amount" with an amount field (read with the file's decimal separator;
       unreadable input says "Can't read this amount"). Filling it turns the
       card into a transaction, adds it to the totals and the Import count,
       and imports it with the typed value; "Skip this row" leaves it out
       ("Skipped by you", undone by "Don't skip"). Changing a step so that the
       row reads on its own drops the typed value.
+- [ ] A file with an unclosed quote (`Date,Amount\n2026-01-02,"-5`) says "This
+      file couldn't be read as a spreadsheet (CSV)" and stays on Your file.
+- [ ] Lost responses (block the response, not the request, with the browser's
+      dev tools): "Try the rest again" after a chunk's response was lost imports
+      none of its rows twice and counts that chunk as imported; pressing Import
+      again after a lost create-account response uses the account already made
+      instead of creating a second one.
 - [ ] Account step: "An account I already have" (the default when the user
       can write to an account; with exactly one such account it is already
       chosen and Account carries no warning) lists only accounts the user owns or may edit;
@@ -822,7 +849,8 @@ navigation (single-pane vs sidebar).
       account" asks for the column, then lists the names found: one matching
       a writable account (any letter case) reads "Existing account", every
       other gets its own currency picker. Import creates the new accounts
-      (in the user's first folder, or "General" for a user with none) and
+      (in the user's first visible folder, never a hidden one, or "General"
+      for a user with none) and
       puts each row in its account. Pressing Import again after an error
       never creates an account twice.
 - [ ] Econumo export: export transactions (§ CSV export) and import that file,

@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "Columna {n}",
       "title": "Importar transacciones",
       "steps_label": "Pasos de la importación",
       "needs_attention": "necesita tu atención",
       "back": "Atrás",
       "next": "Siguiente",
-      "none": "Ninguna",
       "steps": {
         "file": "Tu archivo",
         "account": "Cuenta",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} fila no tiene nombre de cuenta y se omitirá | {count} filas no tienen nombre de cuenta y se omitirán",
         "title": "¿De qué cuenta es este extracto?",
         "new": "Una cuenta nueva",
         "existing": "Una cuenta que ya tengo",
         "column": "Cada fila indica su cuenta",
         "name": "Nombre de la cuenta",
         "currency": "Moneda",
-        "column_question": "¿Qué columna tiene el nombre de la cuenta?",
+        "column_question": "Toca la columna con el nombre de la cuenta",
         "found": "Cuentas en este archivo",
         "existing_name": "Cuenta existente",
         "currency_of": "Moneda de {name}"
       },
       "date": {
-        "title": "¿Qué columna tiene la fecha?",
+        "title": "Toca la columna con la fecha",
         "question": "¿{example} es el {dmy} o el {mdy}?",
         "skipped": "{count} fila no tiene una fecha legible y se omitirá | {count} filas no tienen una fecha legible y se omitirán"
       },
       "amount": {
+        "choosing": "Dinero que entra o que sale",
+        "tap_in": "Toca la columna del dinero que entra",
+        "tap_out": "Toca la columna del dinero que sale",
+        "none_in": "El archivo no tiene columna de dinero que entra",
+        "none_out": "El archivo no tiene columna de dinero que sale",
+        "no_column": "sin elegir",
+        "skipped": "{count} fila no tiene un importe legible y se omitirá | {count} filas no tienen un importe legible y se omitirán",
         "title": "¿Cómo muestra el archivo los importes?",
         "single": "Una columna con + y −",
         "dual": "Columnas separadas para el dinero que entra y el que sale",
-        "column": "¿Qué columna tiene el importe?",
+        "column": "Toca la columna con el importe",
         "money_in": "Dinero que entra",
         "money_out": "Dinero que sale",
         "separator_question": "¿Cuánto es {example}?",
@@ -461,9 +469,11 @@
         "flip": "Invertir los signos"
       },
       "description": {
-        "title": "¿Qué columna describe cada transacción?"
+        "none": "El archivo no tiene descripción",
+        "title": "Toca la columna que describe cada transacción"
       },
       "extras": {
+        "hint": "Toca una columna para traerla y luego elige qué es",
         "title": "¿Algo más que quieras traer?",
         "leave_out": "Omitir",
         "role": {

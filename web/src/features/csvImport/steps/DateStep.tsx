@@ -1,10 +1,13 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { pluralPick } from '@/lib/plural'
-import { ChoiceCards, ColumnCards } from '../ColumnCards'
+import { ChoiceCards } from '../ChoiceCards'
+import { columnLabels } from '../columnLabels'
+import { FileTable } from '../FileTable'
 import { detectDateOrder, parseDateCell, type DateOrder } from '../dates'
 import { columnValues } from '../guess'
-import type { StepBodyProps } from '../wizard'
+import { skippedRows, type StepBodyProps } from '../wizard'
+import { SkippedNote } from './SkippedNote'
 import { StepTitle } from './StepTitle'
 
 function longDate(value: string, order: DateOrder, language: string): string {
@@ -51,19 +54,19 @@ export function DateStep({ state, setAnswers }: StepBodyProps) {
   return (
     <div className="flex flex-col gap-3">
       <StepTitle>{title}</StepTitle>
-      <ColumnCards
+      <FileTable
+        file={state.file}
         label={title}
-        profiles={state.profiles}
-        value={date.column}
-        onChange={(column) => setAnswers('date', { date: { ...date, column } })}
+        selected={date.column}
+        onSelect={(column) => setAnswers('date', { date: { ...date, column } })}
+        labels={columnLabels(state.answers, t, ['date'])}
+        mutedRows={skippedRows(state.rows, 'no_date')}
       />
       {example ? (
         <OrderQuestion example={example} order={date.order} onChange={(order) => setAnswers('date', { date: { ...date, order } })} />
       ) : null}
       {unreadable > 0 ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
-          {pluralPick(t('transactions.import_wizard.date.skipped'), unreadable, i18n.language)}
-        </p>
+        <SkippedNote>{pluralPick(t('transactions.import_wizard.date.skipped'), unreadable, i18n.language)}</SkippedNote>
       ) : null}
     </div>
   )

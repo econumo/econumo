@@ -7,10 +7,14 @@ import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { SelectCard } from '@/features/transactions/SelectCard'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
-import { ChoiceCards, ColumnCards } from '../ColumnCards'
+import { pluralPick } from '@/lib/plural'
+import { ChoiceCards } from '../ChoiceCards'
+import { columnLabels } from '../columnLabels'
+import { FileTable } from '../FileTable'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice } from '../prepare'
-import { defaultAccountName, distinctNames, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
+import { defaultAccountName, distinctNames, nameKey, skippedRows, writableAccounts, type StepBodyProps } from '../wizard'
+import { SkippedNote } from './SkippedNote'
 import { StepTitle } from './StepTitle'
 
 type Option = AccountChoice['kind']
@@ -92,7 +96,7 @@ export function PerRowAccounts({ file, account, existing, fallbackCurrency, onCh
 }
 
 export function AccountStep({ state, setAnswers }: StepBodyProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const writable = useMemo(() => writableAccounts(accounts, user?.id), [accounts, user?.id])
@@ -160,6 +164,7 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
   }
 
   const accountLabel = t('transactions.import_wizard.steps.account')
+  const nameless = account?.kind === 'column' ? state.rows.filter((row) => row.reason === 'no_account').length : 0
 
   return (
     <div className="flex flex-col gap-3">
@@ -193,12 +198,17 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
       {option === 'column' ? (
         <>
           <p className="text-sm">{t('transactions.import_wizard.account.column_question')}</p>
-          <ColumnCards
+          <FileTable
+            file={state.file}
             label={t('transactions.import_wizard.account.column_question')}
-            profiles={state.profiles}
-            value={account?.kind === 'column' ? account.column : null}
-            onChange={chooseColumn}
+            selected={account?.kind === 'column' ? account.column : null}
+            onSelect={chooseColumn}
+            labels={columnLabels(state.answers, t, ['account'])}
+            mutedRows={skippedRows(state.rows, 'no_account')}
           />
+          {nameless > 0 ? (
+            <SkippedNote>{pluralPick(t('transactions.import_wizard.account.skipped'), nameless, i18n.language)}</SkippedNote>
+          ) : null}
           {account?.kind === 'column' ? (
             <PerRowAccounts file={state.file} account={account} existing={existing} fallbackCurrency={currencyId} onChange={set} />
           ) : null}

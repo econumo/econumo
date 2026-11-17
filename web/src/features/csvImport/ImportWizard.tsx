@@ -17,7 +17,7 @@ import { pluralPick } from '@/lib/plural'
 import { profileColumns, type ColumnProfile } from './columns'
 import { applyAiGuess, guessAnswers, isEconumoExport, redetectFormats } from './guess'
 import { readCsvFile, type ParsedFile } from './parse'
-import { buildUpload, prepareRows, type Role, type RowFix, type StepId, type WizardAnswers } from './prepare'
+import { buildUpload, prepareRows, pruneFixes, type Role, type RowFix, type StepId, type WizardAnswers } from './prepare'
 import { StepBar } from './StepBar'
 import { ensureAccounts, mergeRetry, runChunks, type ImportResult } from './upload'
 import { useColumnGuess } from './useColumnGuess'
@@ -27,6 +27,8 @@ import {
   distinctNames,
   missingAnswer,
   nameKey,
+  newAccountFolderId,
+  releaseTakenExtras,
   stepWarnings,
   visibleSteps,
   writableAccounts,
@@ -152,7 +154,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       defaultAccountName: defaultAccountName(loaded.fileName),
       currencies: currenciesQuery.data ?? [],
     })
-    setAnswersState(guessed)
+    setAnswersState(releaseTakenExtras(guessed))
     setStep(isEconumoExport(loaded.file) ? 'preview' : 'account')
   }, [loaded, answers, ready, accountsQuery.data, currenciesQuery.data, user])
 
@@ -163,10 +165,11 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
         if (prev === null) return prev
         const next = { ...prev, ...patch }
         // a new column gets its formats detected again, unless the same patch chose them
-        return redetectFormats(next, loaded.file, navigator.language, {
+        const redetected = redetectFormats(next, loaded.file, navigator.language, {
           date: next.date.column !== prev.date.column && next.date.order === prev.date.order,
           amount: amountColumnsChanged(prev.amount, next.amount) && next.amount.sep === prev.amount.sep,
         })
+        return releaseTakenExtras(redetected)
       })
       setTouched((prev) => (prev.has(changed) ? prev : new Set(prev).add(changed)))
     },
@@ -180,14 +183,19 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   useEffect(() => {
     if (!aiRoles || !answers || !loaded) return
     setAiRoles(null)
-    const next = applyAiGuess(answers, aiRoles, loaded.file, navigator.language, touched)
+    const next = releaseTakenExtras(applyAiGuess(answers, aiRoles, loaded.file, navigator.language, touched))
     if (JSON.stringify(next) === JSON.stringify(answers)) return
     setAnswersState(next)
     trackEvent(METRICS.TRANSACTION_IMPORT_AI_GUESS)
   }, [aiRoles, answers, loaded, touched])
 
+  // a typed value or a skip is dropped once a changed answer makes the row read on its own
+  useEffect(() => {
+    if (loaded && answers) setFixes((prev) => pruneFixes(loaded.file, answers, prev))
+  }, [loaded, answers])
+
   const rows = useMemo(() => (loaded && answers ? prepareRows(loaded.file, answers, fixes) : []), [loaded, answers, fixes])
-  const warnings = useMemo(() => (answers ? stepWarnings(answers, rows) : new Set<StepId>()), [answers, rows])
+  const warnings = useMemo(() => (answers ? stepWarnings(answers) : new Set<StepId>()), [answers])
   const steps = visibleSteps(answers, loaded?.profiles ?? [])
   const position = steps.indexOf(step)
 
@@ -247,7 +255,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       current.account?.kind === 'column' ? new Map(distinctNames(file, current.account.column).map((name) => [nameKey(name), name])) : undefined
     let accountId: string | undefined
     try {
-      accountId = (await ensureAccounts(current, created.current, existing, names, foldersQuery.data?.[0]?.id ?? null)).accountId
+      accountId = (await ensureAccounts(current, created.current, existing, names, newAccountFolderId(foldersQuery.data))).accountId
     } catch (error) {
       trackEvent(METRICS.TRANSACTION_IMPORT_FAIL, { failed: importCount })
       setImportError(apiErrorMessage(error))

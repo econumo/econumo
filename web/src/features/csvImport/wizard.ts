@@ -1,4 +1,5 @@
 import type { AccountDto } from '@/api/dto/account'
+import type { FolderDto } from '@/api/dto/folder'
 import type { ColumnProfile } from './columns'
 import type { ParsedFile } from './parse'
 import type { PreparedRow, RowFix, StepId, WizardAnswers } from './prepare'
@@ -33,7 +34,8 @@ export function writableAccounts(accounts: AccountDto[], meId: string | undefine
   })
 }
 
-function usedColumns(answers: WizardAnswers): Set<number> {
+/** columns the Account to Description steps read */
+export function usedColumns(answers: WizardAnswers): Set<number> {
   const { account, date, amount, description } = answers
   const used = [
     account?.kind === 'column' ? account.column : null,
@@ -65,19 +67,35 @@ export function missingAnswer(step: StepId, answers: WizardAnswers): boolean {
   }
 }
 
-const SKIP_STEP: Partial<Record<NonNullable<PreparedRow['reason']>, StepId>> = {
-  no_account: 'account',
-  no_date: 'date',
-  no_amount: 'amount',
+export function stepWarnings(answers: WizardAnswers): Set<StepId> {
+  return new Set<StepId>((['account', 'date', 'amount'] as const).filter((step) => missingAnswer(step, answers)))
 }
 
-export function stepWarnings(answers: WizardAnswers, rows: PreparedRow[]): Set<StepId> {
-  const warned = new Set<StepId>((['account', 'date', 'amount'] as const).filter((step) => missingAnswer(step, answers)))
-  for (const row of rows) {
-    const step = row.reason ? SKIP_STEP[row.reason] : undefined
-    if (step) warned.add(step)
+/** file row indexes (0 = first data row) whose rows will be skipped for `reason` */
+export function skippedRows(rows: PreparedRow[], reason: NonNullable<PreparedRow['reason']>): Set<number> {
+  return new Set(rows.filter((row) => row.reason === reason).map((row) => row.fileRow - 2))
+}
+
+/** a column one of the main steps reads is never also uploaded as an extra detail */
+export function releaseTakenExtras(answers: WizardAnswers): WizardAnswers {
+  const used = usedColumns(answers)
+  const extras = { ...answers.extras }
+  let changed = false
+  for (const role of ['payee', 'category', 'tag', 'labels'] as const) {
+    const column = extras[role]
+    if (column !== null && used.has(column)) {
+      extras[role] = null
+      changed = true
+    }
   }
-  return warned
+  return changed ? { ...answers, extras } : answers
+}
+
+// the folder the accounts list shows first; a hidden one only when every folder is hidden
+export function newAccountFolderId(folders: FolderDto[] | undefined): string | null {
+  if (!folders || folders.length === 0) return null
+  const ordered = [...folders].sort((a, b) => a.position - b.position)
+  return (ordered.find((f) => f.isVisible === 1) ?? ordered[0]).id
 }
 
 export function visibleSteps(answers: WizardAnswers | null, profiles: ColumnProfile[]): StepId[] {

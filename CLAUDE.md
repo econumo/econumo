@@ -385,7 +385,8 @@ global app and prints its secret once. CLI-created users never get a trial.
   every `POST`. The server checks the table BEFORE the handler and records the key inside the
   request's own DB transaction. A replay answers HTTP 409 with `common.operation_locked` and
   an additive `resourceId`. A non-2xx releases the key unless the handler pinned it
-  (`reqctx.PinIdempotency`: create/update/delete-transaction, `set-limit`, accept-suggestion).
+  (`reqctx.PinIdempotency`: create/update/delete-transaction, `set-limit`, accept-suggestion,
+  `create-account`).
   Absent key = no guard (MCP, other clients).
 - **Errors** are rendered in the caller's language when they carry a catalogue code
   (`internal/shared/errs/codes.go`); code-less errors keep literal English.

@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "第 {n} 列",
       "title": "导入交易",
       "steps_label": "导入步骤",
       "needs_attention": "需要你留意",
       "back": "上一步",
       "next": "下一步",
-      "none": "无",
       "steps": {
         "file": "你的文件",
         "account": "账户",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} 行没有账户名称，将被跳过",
         "title": "这份账单来自哪个账户？",
         "new": "新账户",
         "existing": "我已有的账户",
         "column": "每一行写明了所属账户",
         "name": "账户名称",
         "currency": "货币",
-        "column_question": "哪一列是账户名称？",
+        "column_question": "点选账户名称所在的列",
         "found": "此文件中的账户",
         "existing_name": "已有账户",
         "currency_of": "{name} 的货币"
       },
       "date": {
-        "title": "哪一列是日期？",
+        "title": "点选日期所在的列",
         "question": "{example} 是 {dmy} 还是 {mdy}？",
         "skipped": "{count} 行没有可识别的日期，将被跳过"
       },
       "amount": {
+        "choosing": "收入或支出",
+        "tap_in": "点选收入所在的列",
+        "tap_out": "点选支出所在的列",
+        "none_in": "文件中没有收入列",
+        "none_out": "文件中没有支出列",
+        "no_column": "未选择",
+        "skipped": "{count} 行没有可识别的金额，将被跳过",
         "title": "文件中的金额是怎样表示的？",
         "single": "一列，用 + 和 − 表示",
         "dual": "收入和支出分成两列",
-        "column": "哪一列是金额？",
+        "column": "点选金额所在的列",
         "money_in": "收入",
         "money_out": "支出",
         "separator_question": "{example} 是多少？",
@@ -461,9 +469,11 @@
         "flip": "反转正负号"
       },
       "description": {
-        "title": "哪一列描述每笔交易？"
+        "none": "文件中没有描述",
+        "title": "点选描述每笔交易的列"
       },
       "extras": {
+        "hint": "点选要导入的列，然后选择它的内容",
         "title": "还有其他要导入的吗？",
         "leave_out": "不导入",
         "role": {

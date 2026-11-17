@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { ColumnCards } from '../ColumnCards'
+import { columnLabels } from '../columnLabels'
+import { FileTable } from '../FileTable'
 import type { StepBodyProps } from '../wizard'
 import { StepTitle } from './StepTitle'
 
@@ -9,12 +10,13 @@ export function DescriptionStep({ state, setAnswers }: StepBodyProps) {
   return (
     <div className="flex flex-col gap-3">
       <StepTitle>{title}</StepTitle>
-      <ColumnCards
+      <FileTable
+        file={state.file}
         label={title}
-        profiles={state.profiles}
-        value={state.answers.description}
-        onChange={(description) => setAnswers('description', { description })}
-        allowNone
+        selected={state.answers.description}
+        onSelect={(description) => setAnswers('description', { description })}
+        labels={columnLabels(state.answers, t, ['description'])}
+        noneLabel={t('transactions.import_wizard.description.none')}
       />
     </div>
   )

@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "Colonna {n}",
       "title": "Importa transazioni",
       "steps_label": "Passaggi dell’importazione",
       "needs_attention": "da controllare",
       "back": "Indietro",
       "next": "Avanti",
-      "none": "Nessuna",
       "steps": {
         "file": "Il tuo file",
         "account": "Conto",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} riga non ha il nome del conto e verrà saltata | {count} righe non hanno il nome del conto e verranno saltate",
         "title": "Da quale conto proviene questo estratto?",
         "new": "Un nuovo conto",
         "existing": "Un conto che ho già",
         "column": "Ogni riga indica il suo conto",
         "name": "Nome del conto",
         "currency": "Valuta",
-        "column_question": "Quale colonna contiene il nome del conto?",
+        "column_question": "Tocca la colonna con il nome del conto",
         "found": "Conti in questo file",
         "existing_name": "Conto esistente",
         "currency_of": "Valuta di {name}"
       },
       "date": {
-        "title": "Quale colonna contiene la data?",
+        "title": "Tocca la colonna con la data",
         "question": "{example} è il {dmy} o il {mdy}?",
         "skipped": "{count} riga non ha una data leggibile e verrà saltata | {count} righe non hanno una data leggibile e verranno saltate"
       },
       "amount": {
+        "choosing": "Entrate o uscite",
+        "tap_in": "Tocca la colonna delle entrate",
+        "tap_out": "Tocca la colonna delle uscite",
+        "none_in": "Il file non ha una colonna delle entrate",
+        "none_out": "Il file non ha una colonna delle uscite",
+        "no_column": "non scelta",
+        "skipped": "{count} riga non ha un importo leggibile e verrà saltata | {count} righe non hanno un importo leggibile e verranno saltate",
         "title": "Come mostra gli importi il file?",
         "single": "Una colonna con + e −",
         "dual": "Colonne separate per entrate e uscite",
-        "column": "Quale colonna contiene l’importo?",
+        "column": "Tocca la colonna con l’importo",
         "money_in": "Entrate",
         "money_out": "Uscite",
         "separator_question": "Quanto vale {example}?",
@@ -461,9 +469,11 @@
         "flip": "Inverti i segni"
       },
       "description": {
-        "title": "Quale colonna descrive ogni transazione?"
+        "none": "Il file non ha una descrizione",
+        "title": "Tocca la colonna che descrive ogni transazione"
       },
       "extras": {
+        "hint": "Tocca una colonna da importare, poi scegli che cosa contiene",
         "title": "Altro da portare?",
         "leave_out": "Escludi",
         "role": {

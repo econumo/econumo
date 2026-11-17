@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "Coluna {n}",
       "title": "Importar transações",
       "steps_label": "Passos da importação",
       "needs_attention": "precisa da sua atenção",
       "back": "Voltar",
       "next": "Seguinte",
-      "none": "Nenhuma",
       "steps": {
         "file": "O seu ficheiro",
         "account": "Conta",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} linha não tem nome de conta e será ignorada | {count} linhas não têm nome de conta e serão ignoradas",
         "title": "De que conta é este extrato?",
         "new": "Uma conta nova",
         "existing": "Uma conta que já tenho",
         "column": "Cada linha indica a sua conta",
         "name": "Nome da conta",
         "currency": "Moeda",
-        "column_question": "Que coluna tem o nome da conta?",
+        "column_question": "Toque na coluna com o nome da conta",
         "found": "Contas neste ficheiro",
         "existing_name": "Conta existente",
         "currency_of": "Moeda de {name}"
       },
       "date": {
-        "title": "Que coluna tem a data?",
+        "title": "Toque na coluna com a data",
         "question": "{example} é {dmy} ou {mdy}?",
         "skipped": "{count} linha não tem uma data legível e será ignorada | {count} linhas não têm uma data legível e serão ignoradas"
       },
       "amount": {
+        "choosing": "Dinheiro que entra ou que sai",
+        "tap_in": "Toque na coluna do dinheiro que entra",
+        "tap_out": "Toque na coluna do dinheiro que sai",
+        "none_in": "O ficheiro não tem coluna de dinheiro que entra",
+        "none_out": "O ficheiro não tem coluna de dinheiro que sai",
+        "no_column": "não escolhida",
+        "skipped": "{count} linha não tem um montante legível e será ignorada | {count} linhas não têm um montante legível e serão ignoradas",
         "title": "Como mostra o ficheiro os montantes?",
         "single": "Uma coluna com + e −",
         "dual": "Colunas separadas para dinheiro que entra e dinheiro que sai",
-        "column": "Que coluna tem o montante?",
+        "column": "Toque na coluna com o montante",
         "money_in": "Dinheiro que entra",
         "money_out": "Dinheiro que sai",
         "separator_question": "Quanto é {example}?",
@@ -461,9 +469,11 @@
         "flip": "Inverter os sinais"
       },
       "description": {
-        "title": "Que coluna descreve cada transação?"
+        "none": "O ficheiro não tem descrição",
+        "title": "Toque na coluna que descreve cada transação"
       },
       "extras": {
+        "hint": "Toque numa coluna para a trazer e depois escolha o que é",
         "title": "Mais alguma coisa a trazer?",
         "leave_out": "Deixar de fora",
         "role": {

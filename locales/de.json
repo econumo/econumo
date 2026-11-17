@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "Spalte {n}",
       "title": "Buchungen importieren",
       "steps_label": "Importschritte",
       "needs_attention": "bitte prüfen",
       "back": "Zurück",
       "next": "Weiter",
-      "none": "Keine",
       "steps": {
         "file": "Ihre Datei",
         "account": "Konto",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} Zeile hat keinen Kontonamen und wird übersprungen | {count} Zeilen haben keinen Kontonamen und werden übersprungen",
         "title": "Von welchem Konto stammt dieser Kontoauszug?",
         "new": "Ein neues Konto",
         "existing": "Ein Konto, das ich schon habe",
         "column": "Jede Zeile nennt ihr Konto",
         "name": "Kontoname",
         "currency": "Währung",
-        "column_question": "Welche Spalte enthält den Kontonamen?",
+        "column_question": "Wählen Sie die Spalte mit dem Kontonamen",
         "found": "Konten in dieser Datei",
         "existing_name": "Vorhandenes Konto",
         "currency_of": "Währung für {name}"
       },
       "date": {
-        "title": "Welche Spalte enthält das Datum?",
+        "title": "Wählen Sie die Spalte mit dem Datum",
         "question": "Ist {example} der {dmy} oder der {mdy}?",
         "skipped": "{count} Zeile hat kein lesbares Datum und wird übersprungen | {count} Zeilen haben kein lesbares Datum und werden übersprungen"
       },
       "amount": {
+        "choosing": "Eingänge oder Ausgänge",
+        "tap_in": "Wählen Sie die Spalte mit den Eingängen",
+        "tap_out": "Wählen Sie die Spalte mit den Ausgängen",
+        "none_in": "Die Datei hat keine Spalte für Eingänge",
+        "none_out": "Die Datei hat keine Spalte für Ausgänge",
+        "no_column": "nicht gewählt",
+        "skipped": "{count} Zeile hat keinen lesbaren Betrag und wird übersprungen | {count} Zeilen haben keinen lesbaren Betrag und werden übersprungen",
         "title": "Wie zeigt die Datei Beträge an?",
         "single": "Eine Spalte mit + und −",
         "dual": "Getrennte Spalten für Eingänge und Ausgänge",
-        "column": "Welche Spalte enthält den Betrag?",
+        "column": "Wählen Sie die Spalte mit dem Betrag",
         "money_in": "Eingänge",
         "money_out": "Ausgänge",
         "separator_question": "Wie viel ist {example}?",
@@ -461,9 +469,11 @@
         "flip": "Vorzeichen umkehren"
       },
       "description": {
-        "title": "Welche Spalte beschreibt die einzelnen Buchungen?"
+        "none": "Die Datei hat keine Beschreibung",
+        "title": "Wählen Sie die Spalte, die die einzelnen Buchungen beschreibt"
       },
       "extras": {
+        "hint": "Wählen Sie eine Spalte, die Sie übernehmen möchten, und dann, was sie enthält",
         "title": "Möchten Sie noch etwas übernehmen?",
         "leave_out": "Weglassen",
         "role": {

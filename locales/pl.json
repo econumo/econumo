@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "Kolumna {n}",
       "title": "Importuj transakcje",
       "steps_label": "Kroki importu",
       "needs_attention": "wymaga uwagi",
       "back": "Wstecz",
       "next": "Dalej",
-      "none": "Brak",
       "steps": {
         "file": "Twój plik",
         "account": "Konto",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} wiersz nie ma nazwy konta i zostanie pominięty | {count} wiersze nie mają nazwy konta i zostaną pominięte | {count} wierszy nie ma nazwy konta i zostanie pominiętych",
         "title": "Z którego konta jest ten wyciąg?",
         "new": "Nowe konto",
         "existing": "Konto, które już mam",
         "column": "Każdy wiersz podaje swoje konto",
         "name": "Nazwa konta",
         "currency": "Waluta",
-        "column_question": "Która kolumna zawiera nazwę konta?",
+        "column_question": "Wybierz kolumnę z nazwą konta",
         "found": "Konta w tym pliku",
         "existing_name": "Istniejące konto",
         "currency_of": "Waluta dla {name}"
       },
       "date": {
-        "title": "Która kolumna zawiera datę?",
+        "title": "Wybierz kolumnę z datą",
         "question": "Czy {example} to {dmy}, czy {mdy}?",
         "skipped": "{count} wiersz nie ma czytelnej daty i zostanie pominięty | {count} wiersze nie mają czytelnej daty i zostaną pominięte | {count} wierszy nie ma czytelnej daty i zostanie pominiętych"
       },
       "amount": {
+        "choosing": "Wpływy czy wydatki",
+        "tap_in": "Wybierz kolumnę z wpływami",
+        "tap_out": "Wybierz kolumnę z wydatkami",
+        "none_in": "Plik nie ma kolumny z wpływami",
+        "none_out": "Plik nie ma kolumny z wydatkami",
+        "no_column": "nie wybrano",
+        "skipped": "{count} wiersz nie ma czytelnej kwoty i zostanie pominięty | {count} wiersze nie mają czytelnej kwoty i zostaną pominięte | {count} wierszy nie ma czytelnej kwoty i zostanie pominiętych",
         "title": "Jak plik pokazuje kwoty?",
         "single": "Jedna kolumna z + i −",
         "dual": "Osobne kolumny dla wpływów i wydatków",
-        "column": "Która kolumna zawiera kwotę?",
+        "column": "Wybierz kolumnę z kwotą",
         "money_in": "Wpływy",
         "money_out": "Wydatki",
         "separator_question": "Ile to jest {example}?",
@@ -461,9 +469,11 @@
         "flip": "Odwróć znaki"
       },
       "description": {
-        "title": "Która kolumna opisuje każdą transakcję?"
+        "none": "Plik nie ma opisu",
+        "title": "Wybierz kolumnę, która opisuje każdą transakcję"
       },
       "extras": {
+        "hint": "Wybierz kolumnę do przeniesienia, a potem wskaż, co zawiera",
         "title": "Coś jeszcze do przeniesienia?",
         "leave_out": "Pomiń",
         "role": {

@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "Kolom {n}",
       "title": "Transacties importeren",
       "steps_label": "Importstappen",
       "needs_attention": "vraagt uw aandacht",
       "back": "Terug",
       "next": "Volgende",
-      "none": "Geen",
       "steps": {
         "file": "Uw bestand",
         "account": "Rekening",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} regel heeft geen rekeningnaam en wordt overgeslagen | {count} regels hebben geen rekeningnaam en worden overgeslagen",
         "title": "Van welke rekening is dit afschrift?",
         "new": "Een nieuwe rekening",
         "existing": "Een rekening die ik al heb",
         "column": "Elke regel vermeldt de rekening",
         "name": "Naam van de rekening",
         "currency": "Valuta",
-        "column_question": "Welke kolom bevat de naam van de rekening?",
+        "column_question": "Kies de kolom met de naam van de rekening",
         "found": "Rekeningen in dit bestand",
         "existing_name": "Bestaande rekening",
         "currency_of": "Valuta voor {name}"
       },
       "date": {
-        "title": "Welke kolom bevat de datum?",
+        "title": "Kies de kolom met de datum",
         "question": "Is {example} {dmy} of {mdy}?",
         "skipped": "{count} regel heeft geen leesbare datum en wordt overgeslagen | {count} regels hebben geen leesbare datum en worden overgeslagen"
       },
       "amount": {
+        "choosing": "Geld erin of geld eruit",
+        "tap_in": "Kies de kolom met geld erin",
+        "tap_out": "Kies de kolom met geld eruit",
+        "none_in": "Het bestand heeft geen kolom voor geld erin",
+        "none_out": "Het bestand heeft geen kolom voor geld eruit",
+        "no_column": "niet gekozen",
+        "skipped": "{count} regel heeft geen leesbaar bedrag en wordt overgeslagen | {count} regels hebben geen leesbaar bedrag en worden overgeslagen",
         "title": "Hoe toont het bestand bedragen?",
         "single": "Eén kolom met + en −",
         "dual": "Aparte kolommen voor geld erin en geld eruit",
-        "column": "Welke kolom bevat het bedrag?",
+        "column": "Kies de kolom met het bedrag",
         "money_in": "Geld erin",
         "money_out": "Geld eruit",
         "separator_question": "Hoeveel is {example}?",
@@ -461,9 +469,11 @@
         "flip": "Tekens omdraaien"
       },
       "description": {
-        "title": "Welke kolom beschrijft elke transactie?"
+        "none": "Het bestand heeft geen omschrijving",
+        "title": "Kies de kolom die elke transactie beschrijft"
       },
       "extras": {
+        "hint": "Kies een kolom die u wilt overnemen en geef daarna aan wat erin staat",
         "title": "Wilt u nog iets meenemen?",
         "leave_out": "Weglaten",
         "role": {

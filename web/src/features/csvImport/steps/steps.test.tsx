@@ -90,7 +90,7 @@ it('a typed account name is kept when the step is left before the pause, with th
   name.focus()
   fireEvent.change(name, { target: { value: 'Travel card' } })
   fireEvent.click(screen.getByRole('button', { name: /^Date/ }))
-  expect(screen.getByRole('heading', { name: 'Which column has the date?' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Tap the column with the date' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /^Account/ }))
   expect(screen.getByLabelText('Account name')).toHaveValue('Travel card')
 })
@@ -116,12 +116,12 @@ it('lists the accounts a per-row column names, with a currency only for the new 
   expect(within(rows[1]).getByRole('combobox', { name: 'Currency for Travel card' })).toHaveValue('USD, $, US Dollar')
 })
 
-it('choosing a date card updates the answer and marks the Date step as answered', async () => {
+it('tapping a cell of another column makes it the date and marks the Date step as answered', async () => {
   const onSet = vi.fn()
   render(<StepHarness text={'Date,Valued,Amount\n2026-01-02,2026-01-05,-5\n'} Step={DateStep} onSet={onSet} />)
   const user = userEvent.setup()
   expect(screen.getByRole('radio', { name: /^Date/ })).toBeChecked()
-  await user.click(screen.getByRole('radio', { name: /^Valued/ }))
+  await user.click(screen.getByRole('cell', { name: '2026-01-05' }))
   expect(onSet).toHaveBeenCalledWith('date', { date: expect.objectContaining({ column: 1 }) })
   expect(screen.getByRole('radio', { name: /^Valued/ })).toBeChecked()
   expect(screen.getByRole('status', { name: 'first row date' })).toHaveTextContent('2026-01-05')
@@ -150,8 +150,28 @@ it('one amount column shows how spending looks with a switch to flip it; separat
   expect(screen.getByText('Spending shows as: 4.50')).toBeInTheDocument()
   await user.click(screen.getByRole('radio', { name: 'Separate columns for money in and money out' }))
   expect(screen.queryByRole('switch', { name: 'Flip the signs' })).not.toBeInTheDocument()
-  expect(screen.getByRole('radiogroup', { name: 'Money in' })).toBeInTheDocument()
-  expect(screen.getByRole('radiogroup', { name: 'Money out' })).toBeInTheDocument()
+  expect(screen.getByRole('radiogroup', { name: 'Tap the column with money in' })).toBeInTheDocument()
+})
+
+it('with separate columns, tapping money in moves on to money out, and either side can be left without a column', async () => {
+  const onSet = vi.fn()
+  render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n2026-01-03,,7.00,\n'} Step={AmountStep} onSet={onSet} />)
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('radio', { name: 'Separate columns for money in and money out' }))
+  await user.click(screen.getByRole('radio', { name: 'In' }))
+  expect(screen.getByRole('radio', { name: 'Money in: In' })).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: 'Money out: not chosen' })).toBeChecked()
+  expect(screen.getByRole('radiogroup', { name: 'Tap the column with money out' })).toBeInTheDocument()
+  expect(screen.getByText('Money in', { selector: 'span' })).toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'Out' }))
+  expect(screen.getByRole('radio', { name: 'Money out: Out' })).toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'The file has no money-out column' }))
+  expect(onSet).toHaveBeenLastCalledWith('amount', { amount: expect.objectContaining({ inColumn: 2, outColumn: null }) })
+})
+
+it('rows whose amount cannot be read are a quiet note, not a warning', () => {
+  render(<StepHarness text={'Date,Amount\n2026-01-02,-5\n2026-01-03,1\n2026-01-04,1\n2026-01-05,1\n2026-01-06,1\n2026-01-07,1\n2026-01-08,1\n2026-01-09,1\n2026-01-10,1\n2026-01-11,?\n'} Step={AmountStep} onSet={vi.fn()} />)
+  expect(screen.getByText('1 row has no readable amount and will be skipped')).toHaveClass('text-muted-foreground')
 })
 
 it('spending is shown with the file’s first negative amount, as it will be imported', async () => {

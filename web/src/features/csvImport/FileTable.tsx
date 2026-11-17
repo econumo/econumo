@@ -1,0 +1,161 @@
+import { useEffect, useId, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
+import { Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
+import type { ParsedFile } from './parse'
+
+const SHOWN_ROWS = 6
+
+interface FileTableProps {
+  file: ParsedFile
+  /** the step's question, the accessible name of the choice */
+  label: string
+  selected: number | null
+  onSelect: (column: number | null) => void
+  /** what other steps use a column for, shown under its header */
+  labels?: Record<number, string>
+  /** columns that cannot be chosen here */
+  locked?: ReadonlySet<number>
+  /** file row indexes (0 = first data row) that will be skipped */
+  mutedRows?: ReadonlySet<number>
+  /** offers "no column" as an answer, under the table */
+  noneLabel?: string
+}
+
+/** The file as a spreadsheet shows it, header and first rows; a column is chosen by tapping anywhere in it */
+export function FileTable({ file, label, selected, onSelect, labels = {}, locked, mutedRows, noneLabel }: FileTableProps) {
+  const { t } = useTranslation()
+  const baseId = useId()
+  const scroller = useRef<HTMLDivElement>(null)
+  const headers = useRef<(HTMLButtonElement | null)[]>([])
+  const [hovered, setHovered] = useState<number | null>(null)
+
+  const width = Math.max(file.header.length, ...file.rows.slice(0, SHOWN_ROWS).map((r) => r.length))
+  const columns = Array.from({ length: width }, (_, i) => i)
+  const choosable = columns.filter((c) => !locked?.has(c))
+  const rows: { index: number; cells: string[] }[] = []
+  file.rows.forEach((cells, index) => {
+    if (rows.length < SHOWN_ROWS && cells.some((c) => c.trim() !== '')) rows.push({ index, cells })
+  })
+  const tabStop = selected !== null && choosable.includes(selected) ? selected : (choosable[0] ?? null)
+
+  // a column chosen before the step opened may sit off-screen on a phone
+  useEffect(() => {
+    const box = scroller.current
+    const header = selected === null ? null : headers.current[selected]
+    if (!box || !header) return
+    const cell = header.closest('th')
+    if (!cell) return
+    if (cell.offsetLeft + cell.offsetWidth > box.scrollLeft + box.clientWidth || cell.offsetLeft < box.scrollLeft) {
+      box.scrollLeft = Math.max(cell.offsetLeft - 16, 0)
+    }
+    // only when the step opens: the user's own taps are already in view
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const choose = (column: number) => {
+    if (!locked?.has(column)) onSelect(column)
+  }
+
+  const onKeyDown = (e: KeyboardEvent, column: number) => {
+    const at = choosable.indexOf(column)
+    let next: number | undefined
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = choosable[(at + 1) % choosable.length]
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = choosable[(at - 1 + choosable.length) % choosable.length]
+    else if (e.key === 'Home') next = choosable[0]
+    else if (e.key === 'End') next = choosable[choosable.length - 1]
+    if (next === undefined) return
+    e.preventDefault()
+    headers.current[next]?.focus()
+    onSelect(next)
+  }
+
+  const tint = (column: number) =>
+    column === selected ? 'bg-primary/10' : column === hovered && !locked?.has(column) ? 'bg-econumo-hover' : ''
+
+  return (
+    <div role="radiogroup" aria-label={label} className="flex min-w-0 flex-col gap-2">
+      <div ref={scroller} className="max-w-full overflow-x-auto rounded-lg bg-econumo-card" onMouseLeave={() => setHovered(null)}>
+        <table className="w-max min-w-full border-separate border-spacing-0 text-left text-[13px]">
+          <thead>
+            <tr>
+              {columns.map((column) => {
+                const name = file.header[column]?.trim() || t('transactions.import_wizard.column_n', { n: column + 1 })
+                const isLocked = locked?.has(column) ?? false
+                const labelId = `${baseId}-label-${column}`
+                return (
+                  <th
+                    key={column}
+                    scope="col"
+                    className={cn('border-b border-border/60 px-3 py-2 align-top font-normal', !isLocked && 'cursor-pointer', tint(column))}
+                    onClick={() => choose(column)}
+                    onMouseEnter={() => setHovered(column)}
+                  >
+                    <button
+                      ref={(el) => {
+                        headers.current[column] = el
+                      }}
+                      type="button"
+                      role="radio"
+                      aria-checked={column === selected}
+                      aria-disabled={isLocked || undefined}
+                      aria-describedby={labels[column] ? labelId : undefined}
+                      tabIndex={column === tabStop ? 0 : -1}
+                      onKeyDown={(e) => onKeyDown(e, column)}
+                      className={cn(
+                        'flex max-w-56 items-center gap-1 rounded-sm text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                        isLocked ? 'cursor-default text-muted-foreground' : 'cursor-pointer',
+                        column === selected && 'text-primary',
+                      )}
+                    >
+                      <span className="truncate">{name}</span>
+                      {column === selected ? <Check aria-hidden className="size-4 shrink-0" /> : null}
+                    </button>
+                    {labels[column] ? (
+                      <span id={labelId} className="block text-xs text-muted-foreground">
+                        {labels[column]}
+                      </span>
+                    ) : null}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ index, cells }) => (
+              <tr key={index} className={mutedRows?.has(index) ? 'text-muted-foreground/70' : undefined}>
+                {columns.map((column) => (
+                  <td
+                    key={column}
+                    title={cells[column] ?? ''}
+                    className={cn('max-w-56 truncate px-3 py-1.5 whitespace-nowrap tabular-nums', !locked?.has(column) && 'cursor-pointer', tint(column))}
+                    onClick={() => choose(column)}
+                    onMouseEnter={() => setHovered(column)}
+                  >
+                    {cells[column] ?? ''}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {noneLabel ? (
+        <button
+          type="button"
+          role="radio"
+          aria-checked={selected === null}
+          onClick={() => onSelect(null)}
+          className={cn(
+            'flex items-center gap-1 self-start rounded-sm text-sm underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50',
+            selected === null ? 'text-primary' : 'text-muted-foreground',
+          )}
+        >
+          {selected === null ? <Check aria-hidden className="size-4 shrink-0" /> : null}
+          {noneLabel}
+        </button>
+      ) : null}
+    </div>
+  )
+}

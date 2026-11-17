@@ -97,7 +97,7 @@ it('the first card shows the amount the way it will be imported, read with a dec
   expect(amount).toHaveClass('text-expense')
   expect(screen.getByRole('button', { name: 'Kaffee' })).toBeInTheDocument()
   expect(screen.getByText('2026-01-02;-4,50;Kaffee')).toBeInTheDocument()
-  expect(screen.getByText(/^2 transactions, 2026-01-02 to 2026-01-03\. Money in 100\.00 \$, money out 4\.50 \$\.$/)).toBeInTheDocument()
+  expect(screen.getByText(/^2 transactions, Jan 2, 2026 to Jan 3, 2026\. Money in 100\.00 \$, money out 4\.50 \$\.$/)).toBeInTheDocument()
   expect(importButton()).toHaveTextContent('Import 2 transactions')
 })
 
@@ -183,7 +183,7 @@ it('Something looks wrong? goes back to the Date step', async () => {
   const user = userEvent.setup()
   await openCheck(user)
   await user.click(screen.getByRole('button', { name: 'Something looks wrong?' }))
-  expect(await screen.findByRole('heading', { name: 'Which column has the date?' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Tap the column with the date' })).toBeInTheDocument()
   expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_LOOKS_WRONG)
 })
 
@@ -341,7 +341,7 @@ it('an Econumo export asks the AI nothing and shows its accounts on the Check st
   await screen.findByRole('heading', { name: "Here's what will be imported" })
   expect(screen.getByText('Accounts in this file')).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Currency for Wallet' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '2026-03-04 14:05:09' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Mar 4, 2026 14:05:09' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /^−4\.50/ })).toBeInTheDocument()
   expect(asked).not.toHaveBeenCalled()
 })
@@ -353,7 +353,7 @@ it('rows going to accounts in different currencies are not added up', async () =
       'a2,Purse,USD,Food,Tea,,,Cafe,-2,2026-03-05 10:00:00\n',
   )
   await screen.findByRole('heading', { name: "Here's what will be imported" })
-  expect(screen.getByText('2 transactions, 2026-03-04 to 2026-03-05.')).toBeInTheDocument()
+  expect(screen.getByText('2 transactions, Mar 4, 2026 to Mar 5, 2026.')).toBeInTheDocument()
   expect(screen.queryByText(/Money in/)).not.toBeInTheDocument()
 })
 

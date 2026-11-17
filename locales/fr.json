@@ -405,12 +405,12 @@
       }
     },
     "import_wizard": {
+      "column_n": "Colonne {n}",
       "title": "Importer des transactions",
       "steps_label": "Étapes de l’import",
       "needs_attention": "à vérifier",
       "back": "Retour",
       "next": "Suivant",
-      "none": "Aucune",
       "steps": {
         "file": "Votre fichier",
         "account": "Compte",
@@ -433,27 +433,35 @@
         }
       },
       "account": {
+        "skipped": "{count} ligne n’a pas de nom de compte et sera ignorée | {count} lignes n’ont pas de nom de compte et seront ignorées",
         "title": "De quel compte provient ce relevé ?",
         "new": "Un nouveau compte",
         "existing": "Un compte que j’ai déjà",
         "column": "Chaque ligne indique son compte",
         "name": "Nom du compte",
         "currency": "Devise",
-        "column_question": "Quelle colonne contient le nom du compte ?",
+        "column_question": "Choisissez la colonne avec le nom du compte",
         "found": "Comptes dans ce fichier",
         "existing_name": "Compte existant",
         "currency_of": "Devise de {name}"
       },
       "date": {
-        "title": "Quelle colonne contient la date ?",
+        "title": "Choisissez la colonne avec la date",
         "question": "{example}, est-ce le {dmy} ou le {mdy} ?",
         "skipped": "{count} ligne n’a pas de date lisible et sera ignorée | {count} lignes n’ont pas de date lisible et seront ignorées"
       },
       "amount": {
+        "choosing": "Entrées ou sorties d’argent",
+        "tap_in": "Choisissez la colonne des entrées d’argent",
+        "tap_out": "Choisissez la colonne des sorties d’argent",
+        "none_in": "Le fichier n’a pas de colonne d’entrées",
+        "none_out": "Le fichier n’a pas de colonne de sorties",
+        "no_column": "non choisie",
+        "skipped": "{count} ligne n’a pas de montant lisible et sera ignorée | {count} lignes n’ont pas de montant lisible et seront ignorées",
         "title": "Comment le fichier présente-t-il les montants ?",
         "single": "Une colonne avec + et −",
         "dual": "Des colonnes séparées pour les entrées et les sorties d’argent",
-        "column": "Quelle colonne contient le montant ?",
+        "column": "Choisissez la colonne avec le montant",
         "money_in": "Entrées d’argent",
         "money_out": "Sorties d’argent",
         "separator_question": "Combien vaut {example} ?",
@@ -461,9 +469,11 @@
         "flip": "Inverser les signes"
       },
       "description": {
-        "title": "Quelle colonne décrit chaque transaction ?"
+        "none": "Le fichier n’a pas de description",
+        "title": "Choisissez la colonne qui décrit chaque transaction"
       },
       "extras": {
+        "hint": "Choisissez une colonne à reprendre, puis indiquez ce qu’elle contient",
         "title": "Autre chose à reprendre ?",
         "leave_out": "Ignorer",
         "role": {

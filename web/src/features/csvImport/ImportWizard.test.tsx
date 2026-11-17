@@ -66,10 +66,10 @@ it('any step opens from the step bar, and Back and Next walk the steps in order'
   expect(screen.getByRole('heading', { name: 'How does the file show amounts?' })).toBeInTheDocument()
   expect(currentStep()).toHaveAccessibleName(/^Amount/)
   await user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(screen.getByRole('heading', { name: 'Which column has the date?' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Tap the column with the date' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Next' }))
   await user.click(screen.getByRole('button', { name: 'Next' }))
-  expect(screen.getByRole('heading', { name: 'Which column describes each transaction?' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Tap the column that describes each transaction' })).toBeInTheDocument()
 })
 
 it('Extra details is left out when every column is already used', async () => {
@@ -100,6 +100,33 @@ it('choosing a different date column on its step clears the warning', async () =
   await user.click(screen.getByRole('button', { name: /^Date/ }))
   await user.click(screen.getByRole('radio', { name: /^Day/ }))
   expect(screen.getByRole('button', { name: 'Date' })).toBeInTheDocument()
+})
+
+it('rows that will be skipped never mark a step; the step says so quietly', async () => {
+  const days = Array.from({ length: 9 }, (_, i) => `2026-01-0${i + 1},-1.00,x`).join('\n')
+  renderWizard({ initialFile: csv(`Date,Amount,Details\n${days}\nsoon,1.00,y\n`) })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  expect(screen.getByRole('button', { name: 'Date' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Date' }))
+  expect(screen.getByText('1 row has no readable date and will be skipped')).toBeInTheDocument()
+})
+
+it('a column a main step takes stops being an extra detail', async () => {
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee,Cafe\n') })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await user.click(screen.getByRole('button', { name: 'Extra details' }))
+  await user.click(screen.getByRole('radio', { name: 'Merchant' }))
+  await user.click(within(screen.getByRole('radiogroup', { name: 'Use “Merchant” as' })).getByRole('radio', { name: 'Payee' }))
+  await user.click(screen.getByRole('button', { name: 'Description' }))
+  await user.click(screen.getByRole('cell', { name: 'Cafe' }))
+  await user.click(screen.getByRole('button', { name: 'Extra details' }))
+  const merchant = screen.getByRole('radio', { name: 'Merchant' })
+  expect(merchant).toHaveAttribute('aria-disabled', 'true')
+  expect(merchant).toHaveAccessibleDescription('Description')
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  expect(await screen.findAllByRole('button', { name: 'Cafe' })).toHaveLength(1)
 })
 
 it('an Econumo export goes straight to Check', async () => {
@@ -177,6 +204,31 @@ it('a new account goes into the user’s first folder and the rows into the acco
   await waitFor(() => expect(accountId).toBe('made-by-server'))
   expect(created).toMatchObject({ name: 'statement', folderId: 'f1' })
   expect(created!.id).not.toBe('made-by-server')
+})
+
+it('a new account never goes into a hidden folder', async () => {
+  let created: Record<string, unknown> | null = null
+  server.use(
+    http.get('*/api/v1/account/get-folder-list', () =>
+      HttpResponse.json({
+        success: true,
+        message: '',
+        data: { items: [{ id: 'f-hidden', name: 'Hidden', position: 0, isVisible: 0 }, { id: 'f2', name: 'Savings', position: 1, isVisible: 1 }] },
+      }),
+    ),
+    http.post('*/api/v1/account/create-account', async ({ request }) => {
+      created = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'made-by-server', folderId: 'f2' }, transaction: null } })
+    }),
+    http.post('*/api/v1/transaction/import-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } }),
+    ),
+  )
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await toCheckWithNewAccount(user)
+  await user.click(await screen.findByRole('button', { name: 'Import 2 transactions' }))
+  await waitFor(() => expect(created).toMatchObject({ folderId: 'f2' }))
 })
 
 it('Import waits until the user’s folders are known', async () => {

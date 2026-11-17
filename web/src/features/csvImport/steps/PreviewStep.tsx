@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode, TouchEvent } from 'react'
-import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -58,6 +58,13 @@ function useAccountView(answers: WizardAnswers): (row: PreparedRow) => AccountVi
   }
 }
 
+// the date as the UI language writes it ("3 Nov 2026"); the stored value stays ISO
+function formatDay(date: string, language: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  if (!y || !m || !d) return date
+  return new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)))
+}
+
 function formatAmount(amount: string, currency: CurrencyLike | null): { sign: string; text: string } {
   return {
     sign: isNegative(amount) ? '−' : '+',
@@ -75,14 +82,11 @@ function StepLink({ step, goTo, className = '', children }: { step: StepId; goTo
 }
 
 function TransactionCard({ row, account, labelsSeparator, goTo }: { row: PreparedRow; account: AccountView; labelsSeparator: string; goTo: (step: StepId) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const amount = row.amount === null ? null : formatAmount(row.amount, account.currency)
   const labels = row.labels === '' ? [] : row.labels.split(labelsSeparator).map((l) => l.trim()).filter((l) => l !== '')
   return (
     <div className="flex w-full items-start gap-4">
-      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-background">
-        <EntityIcon name="question_mark" className="text-xl text-entity-icon" />
-      </span>
       <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
         <StepLink step="description" goTo={goTo} className="break-words text-base leading-6">
           {row.description || <span className="text-muted-foreground">{t('transactions.import_wizard.preview.no_description')}</span>}
@@ -128,7 +132,7 @@ function TransactionCard({ row, account, labelsSeparator, goTo }: { row: Prepare
           <span className="truncate">{account.name ?? t('transactions.import_wizard.preview.no_account')}</span>
         </StepLink>
         <StepLink step="date" goTo={goTo} className="text-[13px] tabular-nums text-muted-foreground">
-          {row.time ? `${row.date} ${row.time}` : row.date}
+          {row.date === null ? null : [formatDay(row.date, i18n.language), row.time].filter(Boolean).join(' ')}
         </StepLink>
       </span>
     </div>
@@ -177,7 +181,7 @@ function ProblemCard({ row, sep, setFix }: { row: PreparedRow; sep: DecimalSepar
   return (
     <div className="flex flex-col gap-3">
       <p className="flex items-center gap-2 text-sm">
-        <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+        <Info className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         {t(`transactions.import_wizard.skipped.${row.reason ?? 'user_skipped'}`)}
       </p>
       {row.reason === 'no_date' ? (
@@ -302,8 +306,8 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
           {count > 0 && summary.firstDate && summary.lastDate
             ? pluralPick(
                 t(showMoney ? 'transactions.import_wizard.preview.totals' : 'transactions.import_wizard.preview.totals_no_money', {
-                  first: summary.firstDate,
-                  last: summary.lastDate,
+                  first: formatDay(summary.firstDate, i18n.language),
+                  last: formatDay(summary.lastDate, i18n.language),
                   in: money(summary.moneyIn),
                   out: money(summary.moneyOut),
                 }),
