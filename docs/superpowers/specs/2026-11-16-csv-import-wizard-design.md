@@ -151,12 +151,17 @@ The server still accepts those fields.
 
 ### 7. Preview: "Here's what will be imported"
 
-- The first 20 rows rendered like the transaction list: date, description (and payee if
-  mapped), category if mapped, signed amount in the account's currency, red/green like the
-  app's rows.
+- Rows rendered like the transaction list: date, description (and payee if mapped),
+  category if mapped, signed amount in the account's currency, red/green like the app's
+  rows. 20 rows per page.
+- **Switching between records:** the user can page through every row of the file (Previous
+  / Next and "Rows 21-40 of 214"), not just the first page. A filter switches between
+  "All" and "Will be skipped" (only shown when some rows will be skipped), so problem rows
+  can be found in a long file. Tapping a row expands it to show the original line from the
+  file next to how it was read, so a wrong date or amount can be traced to its source.
 - Totals: "214 transactions, 2026-01-03 to 2026-03-31. Money in 6,000.00, money out
   4,812.40." Rows that will be skipped are counted with the reason.
-- Each preview line can be tapped to jump back to the step that shapes it (date, amount,
+- In the expanded row, each value links back to the step that shapes it (date, amount,
   description); a "Something looks wrong?" link goes back to step 3 (step 2 for an Econumo
   export).
 - Primary button "Import 214 transactions". The progress bar for chunked uploads stays.
