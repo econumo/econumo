@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAccount } from '@/api/account'
-import { ensureAccounts, runChunks, type ImportPoster } from './upload'
+import { ensureAccounts, mergeRetry, runChunks, type ImportPoster } from './upload'
 import type { ImportResultDto } from '@/api/transaction'
 import type { PreparedRow, WizardAnswers } from './prepare'
 
@@ -114,5 +114,28 @@ describe('ensureAccounts', () => {
     await ensureAccounts(a, created, new Set(['c']))
     expect(createAccount).toHaveBeenCalledTimes(1)
     expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'a', currencyId: 'c1' })
+  })
+
+  it('names a column account as the file writes it', async () => {
+    const a = answers({ kind: 'column', column: 0, currencies: { 'my card': 'c1' } })
+    await ensureAccounts(a, new Map(), new Set(), new Map([['my card', 'My Card']]))
+    expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'My Card' })
+  })
+})
+
+describe('mergeRetry', () => {
+  it('counts the retried chunk by the retry and keeps the rest of the first run', async () => {
+    const upload = makeUpload(1200)
+    const first = await runChunks(upload, async (file) => {
+      if (file.name === 'chunk_1.csv') throw new Error('down')
+      return { imported: 1, skipped: 1, errors: { 'Invalid amount': [2] } }
+    })
+    expect(first.failedChunks).toEqual([1])
+    const again = await runChunks(upload, async () => ({ imported: 499, skipped: 1, errors: { 'Invalid amount': [3] } }), { chunks: [1] })
+    const merged = mergeRetry(first, again, upload, [1])
+    expect(merged.imported).toBe(2 + 499)
+    expect(merged.failed).toBe(2 + 1)
+    expect(merged.failedChunks).toEqual([])
+    expect(merged.errors).toEqual([{ message: 'Invalid amount', rows: [2, 503, 1002] }])
   })
 })

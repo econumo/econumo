@@ -1,5 +1,7 @@
 import { api, apiUrl, writeConfig, type WriteOptions } from './client'
 import type { Id } from './types'
+import type { ColumnType } from '@/features/csvImport/columns'
+import type { Role } from '@/features/csvImport/prepare'
 import type { AccountTransactionListDto, CreateTransactionDto, MoveTransactionDto, MoveTransactionResultDto, TransactionDto, TransactionItemDto } from './dto/transaction'
 
 interface Envelope<T> {
@@ -64,6 +66,23 @@ export async function importTransactionList(
   // no explicit Content-Type: the browser adds multipart/form-data WITH the boundary
   const response = await api.post<Envelope<ImportResultDto>>(apiUrl('/api/v1/transaction/import-transaction-list'), form)
   return response.data.data
+}
+
+// The import columns the server's AI provider assigns to roles, by header name; {} when there
+// is no provider, the user's AI option is off, or the request fails. Never an error.
+export async function suggestImportColumns(
+  columns: { name: string; type: ColumnType; negatives: boolean }[],
+  signal?: AbortSignal,
+): Promise<Partial<Record<Role, string>>> {
+  try {
+    const response = await api.get<Envelope<{ roles: Partial<Record<Role, string>> }>>(apiUrl('/api/v1/transaction/suggest-import-columns'), {
+      params: { columns: JSON.stringify(columns) },
+      signal,
+    })
+    return response.data.data.roles ?? {}
+  } catch {
+    return {}
+  }
 }
 
 // raw CSV, not the JSON envelope; a single comma-joined accountId param

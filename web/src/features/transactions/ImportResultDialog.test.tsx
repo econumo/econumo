@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { onlineManager } from '@tanstack/react-query'
 import { ImportResultDialog } from './ImportResultDialog'
 import type { ImportResult } from '@/features/csvImport/upload'
 
@@ -55,4 +57,34 @@ it('total failure: error title, long row lists truncated, extra error groups cou
   // only 5 error groups shown, remainder summarized
   expect(screen.queryByText('e6')).not.toBeInTheDocument()
   expect(screen.getByText('and 2 more error(s)')).toBeInTheDocument()
+})
+
+it('rows the file could not give are explained in plain words', () => {
+  renderResult({
+    imported: 1,
+    failed: 1,
+    errors: [{ message: 'transactions.import_wizard.skipped.no_date', rows: [3] }],
+    failedChunks: [],
+  })
+  expect(screen.getByText('No readable date')).toBeInTheDocument()
+})
+
+it('Try the rest again is offered only while some chunks failed, and calls back', async () => {
+  const onRetry = vi.fn(async () => {})
+  const result: ImportResult = { imported: 500, failed: 100, errors: [], failedChunks: [1] }
+  const { rerender } = render(<ImportResultDialog open result={result} onClose={() => {}} onRetry={onRetry} />)
+  await userEvent.click(screen.getByRole('button', { name: 'Try the rest again' }))
+  expect(onRetry).toHaveBeenCalledTimes(1)
+  rerender(<ImportResultDialog open result={{ ...result, failedChunks: [] }} onClose={() => {}} onRetry={onRetry} />)
+  expect(screen.queryByRole('button', { name: 'Try the rest again' })).not.toBeInTheDocument()
+})
+
+it('Try the rest again is disabled offline', () => {
+  onlineManager.setOnline(false)
+  try {
+    render(<ImportResultDialog open result={{ imported: 0, failed: 5, errors: [], failedChunks: [0] }} onClose={() => {}} onRetry={async () => {}} />)
+    expect(screen.getByRole('button', { name: 'Try the rest again' })).toBeDisabled()
+  } finally {
+    onlineManager.setOnline(true)
+  }
 })

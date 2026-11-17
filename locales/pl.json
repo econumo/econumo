@@ -525,7 +525,30 @@
         "new_labels": "Zostanie utworzony {count} nowy tag | Zostaną utworzone {count} nowe tagi | Zostanie utworzonych {count} nowych tagów"
       },
       "preview": {
-        "title": "Oto, co zostanie zaimportowane"
+        "title": "Oto, co zostanie zaimportowane",
+        "totals": "{count} transakcja, od {first} do {last}. Wpływy {in}, wydatki {out}. | {count} transakcje, od {first} do {last}. Wpływy {in}, wydatki {out}. | {count} transakcji, od {first} do {last}. Wpływy {in}, wydatki {out}.",
+        "nothing": "Na razie nic nie zostanie zaimportowane.",
+        "skipped": "{count} zostanie pominięta | {count} zostaną pominięte | {count} zostanie pominiętych",
+        "position": "Transakcja {n} z {total}",
+        "previous": "Poprzednia",
+        "next": "Następna",
+        "next_problem": "Następny problem",
+        "from_file": "Z pliku:",
+        "looks_wrong": "Coś się nie zgadza?",
+        "skip_row": "Pomiń ten wiersz",
+        "unskip_row": "Nie pomijaj",
+        "fix_date": "Data dla tego wiersza",
+        "fix_amount": "Kwota dla tego wiersza",
+        "no_description": "Brak opisu",
+        "no_account": "Nie wybrano konta",
+        "import": "Importuj {count} transakcję | Importuj {count} transakcje | Importuj {count} transakcji",
+        "importing": "Importowanie…"
+      },
+      "skipped": {
+        "no_date": "Brak czytelnej daty",
+        "no_amount": "Brak czytelnej kwoty",
+        "no_account": "Brak nazwy konta",
+        "user_skipped": "Pominięta przez Ciebie"
       }
     },
     "import_result": {
@@ -538,7 +561,8 @@
       "row": "Wiersz",
       "rows": "Wiersze",
       "more": "więcej",
-      "and_more": "i jeszcze {count} błędów"
+      "and_more": "i jeszcze {count} błędów",
+      "retry": "Spróbuj ponownie z resztą"
     },
     "export_csv": {
       "export_csv_form": {

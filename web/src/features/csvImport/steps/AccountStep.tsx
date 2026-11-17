@@ -10,27 +10,15 @@ import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { ChoiceCards, ColumnCards } from '../ColumnCards'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice } from '../prepare'
-import { defaultAccountName, writableAccounts, type StepBodyProps } from '../wizard'
+import { defaultAccountName, distinctNames, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 import { StepTitle } from './StepTitle'
 
 type Option = AccountChoice['kind']
 type NewAccount = Extract<AccountChoice, { kind: 'new' }>
 type PerRow = Extract<AccountChoice, { kind: 'column' }>
 
-// names are matched trimmed and case-insensitively, as the server matches them
-const nameKey = (name: string) => name.trim().toLowerCase()
-
 // account names are user text, so a name like "constructor" must not read Object.prototype
 const ownCurrency = (currencies: Record<string, string>, key: string) => (Object.hasOwn(currencies, key) ? currencies[key] : undefined)
-
-function distinctNames(file: ParsedFile, column: number): string[] {
-  const names = new Map<string, string>()
-  for (const row of file.rows) {
-    const name = (row[column] ?? '').trim()
-    if (name !== '' && !names.has(nameKey(name))) names.set(nameKey(name), name)
-  }
-  return [...names.values()]
-}
 
 const NAME_DELAY_MS = 300
 
@@ -64,7 +52,7 @@ function NewAccountFields({ account, onChange, onNameChange }: {
   )
 }
 
-function PerRowAccounts({ file, account, existing, fallbackCurrency, onChange }: {
+export function PerRowAccounts({ file, account, existing, fallbackCurrency, onChange }: {
   file: ParsedFile
   account: PerRow
   existing: ReadonlySet<string>

@@ -525,7 +525,30 @@
         "new_labels": "将创建 {count} 个新标签"
       },
       "preview": {
-        "title": "以下内容将被导入"
+        "title": "以下内容将被导入",
+        "totals": "{count} 笔交易，{first} 至 {last}。收入 {in}，支出 {out}。",
+        "nothing": "目前不会导入任何内容。",
+        "skipped": "{count} 笔将被跳过",
+        "position": "第 {n} 笔，共 {total} 笔",
+        "previous": "上一笔",
+        "next": "下一笔",
+        "next_problem": "下一个问题",
+        "from_file": "文件中的原文：",
+        "looks_wrong": "看起来不对？",
+        "skip_row": "跳过此行",
+        "unskip_row": "不跳过",
+        "fix_date": "此行的日期",
+        "fix_amount": "此行的金额",
+        "no_description": "无描述",
+        "no_account": "未选择账户",
+        "import": "导入 {count} 笔交易",
+        "importing": "正在导入…"
+      },
+      "skipped": {
+        "no_date": "没有可识别的日期",
+        "no_amount": "没有可识别的金额",
+        "no_account": "没有账户名称",
+        "user_skipped": "已由你跳过"
       }
     },
     "import_result": {
@@ -538,7 +561,8 @@
       "row": "行",
       "rows": "行",
       "more": "更多",
-      "and_more": "另有 {count} 个错误"
+      "and_more": "另有 {count} 个错误",
+      "retry": "重试其余部分"
     },
     "export_csv": {
       "export_csv_form": {

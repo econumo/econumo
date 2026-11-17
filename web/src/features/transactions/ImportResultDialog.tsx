@@ -1,22 +1,36 @@
+import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { useOnline } from '@/hooks/useOnline'
 import { pluralPick } from '@/lib/plural'
 import type { ImportResult } from '@/features/csvImport/upload'
 
 const MAX_DISPLAY_ERRORS = 5
 const MAX_DISPLAY_ROWS = 10
+// rows the browser could not read carry a catalogue key instead of the server's text
+const SKIPPED_KEY = 'transactions.import_wizard.skipped.'
 
 interface ImportResultDialogProps {
   open: boolean
   result: ImportResult | null
   onClose: () => void
+  /** re-sends the chunks that failed; offered while `result.failedChunks` is not empty */
+  onRetry?: () => Promise<unknown>
 }
 
-export function ImportResultDialog({ open, result, onClose }: ImportResultDialogProps) {
+export function ImportResultDialog({ open, result, onClose, onRetry }: ImportResultDialogProps) {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
+  const [retrying, setRetrying] = useState(false)
   if (!result) return null
+
+  const retry = () => {
+    if (!onRetry) return
+    setRetrying(true)
+    void onRetry().finally(() => setRetrying(false))
+  }
 
   const outcome =
     result.failed === 0
@@ -53,7 +67,7 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
             <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto">
               {shownErrors.map((error) => (
                 <li key={error.message} className="text-xs text-muted-foreground">
-                  <span className="text-foreground">{error.message}</span>
+                  <span className="text-foreground">{error.message.startsWith(SKIPPED_KEY) ? t(error.message) : error.message}</span>
                   {error.rows.length > 0 ? ` — ${formatRows(error.rows)}` : ''}
                 </li>
               ))}
@@ -64,7 +78,12 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
           </div>
         ) : null}
 
-        <Button type="button" className="w-full h-11" onClick={onClose}>
+        {onRetry && result.failedChunks.length > 0 ? (
+          <Button type="button" variant="secondary" className="w-full h-11" disabled={!online || retrying} onClick={retry}>
+            {t('transactions.import_result.retry')}
+          </Button>
+        ) : null}
+        <Button type="button" className="w-full h-11" disabled={retrying} onClick={onClose}>
           {t('common.button.ok.label')}
         </Button>
       </div>

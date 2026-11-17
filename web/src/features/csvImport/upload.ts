@@ -85,11 +85,36 @@ export async function runChunks(upload: Upload, post: ImportPoster, opts: RunChu
   }
 }
 
+/** The run after a "Try the rest again" of `chunks`: the retried chunks' rows count
+    by what the retry made of them, everything else stays as the first run left it. */
+export function mergeRetry(previous: ImportResult, retry: ImportResult, upload: Upload, chunks: number[]): ImportResult {
+  const retriedRows = new Set(chunks.flatMap((i) => upload.fileRows.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE)))
+  const errors = new Map<string, Set<number>>()
+  const add = (message: string, rows: number[]) => {
+    const bucket = errors.get(message) ?? new Set<number>()
+    for (const row of rows) bucket.add(row)
+    errors.set(message, bucket)
+  }
+  for (const error of previous.errors) {
+    const kept = error.rows.filter((row) => !retriedRows.has(row))
+    if (kept.length > 0 || error.rows.length === 0) add(error.message, kept)
+  }
+  for (const error of retry.errors) add(error.message, error.rows)
+  return {
+    imported: previous.imported + retry.imported,
+    failed: previous.failed - retriedRows.size + retry.failed,
+    errors: [...errors.entries()].map(([message, rows]) => ({ message, rows: [...rows].sort((a, b) => a - b) })),
+    failedChunks: retry.failedChunks,
+  }
+}
+
 // `created` survives retries so a second attempt never creates an account twice.
+// `names` gives a per-row account its name as the file writes it; the answers key it lowercased.
 export async function ensureAccounts(
   answers: WizardAnswers,
   created: Map<string, string>,
   existingNames: Set<string>,
+  names?: ReadonlyMap<string, string>,
 ): Promise<{ accountId?: string }> {
   const choice = answers.account
   if (choice?.kind === 'new') {
@@ -106,7 +131,7 @@ export async function ensureAccounts(
       const key = name.toLowerCase()
       if (existingNames.has(key) || created.has(key)) continue
       const id = uuidv7()
-      await createAccount({ id, name, currencyId, balance: '0', icon: defaultAccountIcon, folderId: null })
+      await createAccount({ id, name: names?.get(key) ?? name, currencyId, balance: '0', icon: defaultAccountIcon, folderId: null })
       created.set(key, id)
     }
   }

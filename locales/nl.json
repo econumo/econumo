@@ -525,7 +525,30 @@
         "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt"
       },
       "preview": {
-        "title": "Dit wordt geïmporteerd"
+        "title": "Dit wordt geïmporteerd",
+        "totals": "{count} transactie, {first} tot {last}. Geld erin {in}, geld eruit {out}. | {count} transacties, {first} tot {last}. Geld erin {in}, geld eruit {out}.",
+        "nothing": "Er wordt nog niets geïmporteerd.",
+        "skipped": "{count} wordt overgeslagen | {count} worden overgeslagen",
+        "position": "Transactie {n} van {total}",
+        "previous": "Vorige",
+        "next": "Volgende",
+        "next_problem": "Volgend probleem",
+        "from_file": "Uit het bestand:",
+        "looks_wrong": "Klopt er iets niet?",
+        "skip_row": "Deze regel overslaan",
+        "unskip_row": "Niet overslaan",
+        "fix_date": "Datum voor deze regel",
+        "fix_amount": "Bedrag voor deze regel",
+        "no_description": "Geen omschrijving",
+        "no_account": "Geen rekening gekozen",
+        "import": "{count} transactie importeren | {count} transacties importeren",
+        "importing": "Bezig met importeren…"
+      },
+      "skipped": {
+        "no_date": "Geen leesbare datum",
+        "no_amount": "Geen leesbaar bedrag",
+        "no_account": "Geen rekeningnaam",
+        "user_skipped": "Door u overgeslagen"
       }
     },
     "import_result": {
@@ -538,7 +561,8 @@
       "row": "Rij",
       "rows": "Rijen",
       "more": "meer",
-      "and_more": "en nog {count} fout(en)"
+      "and_more": "en nog {count} fout(en)",
+      "retry": "De rest opnieuw proberen"
     },
     "export_csv": {
       "export_csv_form": {

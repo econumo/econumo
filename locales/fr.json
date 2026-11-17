@@ -525,7 +525,30 @@
         "new_labels": "{count} nouveau tag sera créé | {count} nouveaux tags seront créés"
       },
       "preview": {
-        "title": "Voici ce qui sera importé"
+        "title": "Voici ce qui sera importé",
+        "totals": "{count} transaction, du {first} au {last}. Entrées {in}, sorties {out}. | {count} transactions, du {first} au {last}. Entrées {in}, sorties {out}.",
+        "nothing": "Rien ne sera importé pour l’instant.",
+        "skipped": "{count} sera ignorée | {count} seront ignorées",
+        "position": "Transaction {n} sur {total}",
+        "previous": "Précédente",
+        "next": "Suivante",
+        "next_problem": "Problème suivant",
+        "from_file": "Dans le fichier :",
+        "looks_wrong": "Quelque chose ne va pas ?",
+        "skip_row": "Ignorer cette ligne",
+        "unskip_row": "Ne pas ignorer",
+        "fix_date": "Date de cette ligne",
+        "fix_amount": "Montant de cette ligne",
+        "no_description": "Aucune description",
+        "no_account": "Aucun compte choisi",
+        "import": "Importer {count} transaction | Importer {count} transactions",
+        "importing": "Importation…"
+      },
+      "skipped": {
+        "no_date": "Pas de date lisible",
+        "no_amount": "Pas de montant lisible",
+        "no_account": "Pas de nom de compte",
+        "user_skipped": "Ignorée par vous"
       }
     },
     "import_result": {
@@ -538,7 +561,8 @@
       "row": "Ligne",
       "rows": "Lignes",
       "more": "de plus",
-      "and_more": "et {count} autre(s) erreur(s)"
+      "and_more": "et {count} autre(s) erreur(s)",
+      "retry": "Réessayer le reste"
     },
     "export_csv": {
       "export_csv_form": {

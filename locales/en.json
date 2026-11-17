@@ -525,7 +525,30 @@
         "new_labels": "{count} new tag will be created | {count} new tags will be created"
       },
       "preview": {
-        "title": "Here's what will be imported"
+        "title": "Here's what will be imported",
+        "totals": "{count} transaction, {first} to {last}. Money in {in}, money out {out}. | {count} transactions, {first} to {last}. Money in {in}, money out {out}.",
+        "nothing": "Nothing will be imported yet.",
+        "skipped": "{count} will be skipped",
+        "position": "Transaction {n} of {total}",
+        "previous": "Previous",
+        "next": "Next",
+        "next_problem": "Next problem",
+        "from_file": "From the file:",
+        "looks_wrong": "Something looks wrong?",
+        "skip_row": "Skip this row",
+        "unskip_row": "Don't skip",
+        "fix_date": "Date for this row",
+        "fix_amount": "Amount for this row",
+        "no_description": "No description",
+        "no_account": "No account chosen",
+        "import": "Import {count} transaction | Import {count} transactions",
+        "importing": "Importing…"
+      },
+      "skipped": {
+        "no_date": "No readable date",
+        "no_amount": "No readable amount",
+        "no_account": "No account name",
+        "user_skipped": "Skipped by you"
       }
     },
     "import_result": {
@@ -538,7 +561,8 @@
       "row": "Row",
       "rows": "Rows",
       "more": "more",
-      "and_more": "and {count} more error(s)"
+      "and_more": "and {count} more error(s)",
+      "retry": "Try the rest again"
     },
     "export_csv": {
       "export_csv_form": {

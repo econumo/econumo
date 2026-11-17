@@ -24,8 +24,7 @@ beforeEach(() => {
 
 afterEach(() => cancelAiRefresh())
 
-// skipped until the wizard's Check step imports (Task 11 of the CSV import wizard plan)
-it.skip('a successful import writes finish-import first and never marks import through update-onboarding', { timeout: 20000 }, async () => {
+it('a successful import writes finish-import first and never marks import through update-onboarding', { timeout: 20000 }, async () => {
   let option = 'started'
   let imported = false
   const writes: { path: string; body: unknown }[] = []
@@ -60,9 +59,12 @@ it.skip('a successful import writes finish-import first and never marks import t
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Bring in your history' }, { timeout: 5000 })
   await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
-  await user.upload(await screen.findByLabelText('CSV File'), new File([CSV], 'bank.csv', { type: 'text/csv' }))
-  await screen.findByText(/Map the columns/)
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Import' }))
+  await user.upload(await screen.findByLabelText('Choose a file'), new File([CSV], 'bank.csv', { type: 'text/csv' }))
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: /^Account/ }))
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Import 2 transactions' }))
   expect(await screen.findByRole('heading', { name: 'What do you spend on?' }, { timeout: 5000 })).toBeInTheDocument()
   await screen.findByRole('button', { name: 'Archive Food' })
   expect(writes[0]).toEqual({ path: 'finish-import', body: { id: expect.any(String) } })

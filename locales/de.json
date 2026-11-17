@@ -525,7 +525,30 @@
         "new_labels": "{count} neues Tag wird erstellt | {count} neue Tags werden erstellt"
       },
       "preview": {
-        "title": "Das wird importiert"
+        "title": "Das wird importiert",
+        "totals": "{count} Buchung, {first} bis {last}. Eingänge {in}, Ausgänge {out}. | {count} Buchungen, {first} bis {last}. Eingänge {in}, Ausgänge {out}.",
+        "nothing": "Noch wird nichts importiert.",
+        "skipped": "{count} wird übersprungen | {count} werden übersprungen",
+        "position": "Buchung {n} von {total}",
+        "previous": "Zurück",
+        "next": "Weiter",
+        "next_problem": "Nächstes Problem",
+        "from_file": "Aus der Datei:",
+        "looks_wrong": "Stimmt etwas nicht?",
+        "skip_row": "Diese Zeile überspringen",
+        "unskip_row": "Nicht überspringen",
+        "fix_date": "Datum für diese Zeile",
+        "fix_amount": "Betrag für diese Zeile",
+        "no_description": "Keine Beschreibung",
+        "no_account": "Kein Konto gewählt",
+        "import": "{count} Buchung importieren | {count} Buchungen importieren",
+        "importing": "Wird importiert…"
+      },
+      "skipped": {
+        "no_date": "Kein lesbares Datum",
+        "no_amount": "Kein lesbarer Betrag",
+        "no_account": "Kein Kontoname",
+        "user_skipped": "Von Ihnen übersprungen"
       }
     },
     "import_result": {
@@ -538,7 +561,8 @@
       "row": "Zeile",
       "rows": "Zeilen",
       "more": "weitere",
-      "and_more": "und {count} weitere Fehler"
+      "and_more": "und {count} weitere Fehler",
+      "retry": "Den Rest erneut versuchen"
     },
     "export_csv": {
       "export_csv_form": {

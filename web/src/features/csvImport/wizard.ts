@@ -89,3 +89,15 @@ export function visibleSteps(answers: WizardAnswers | null, profiles: ColumnProf
 export function defaultAccountName(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, '') || fileName
 }
+
+// names are matched trimmed and case-insensitively, as the server matches them
+export const nameKey = (name: string) => name.trim().toLowerCase()
+
+export function distinctNames(file: ParsedFile, column: number): string[] {
+  const names = new Map<string, string>()
+  for (const row of file.rows) {
+    const name = (row[column] ?? '').trim()
+    if (name !== '' && !names.has(nameKey(name))) names.set(nameKey(name), name)
+  }
+  return [...names.values()]
+}
