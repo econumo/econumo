@@ -91,7 +91,7 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
 ### 3. Billing (`econumo/billing`)
 
 - **Config**: optional group `AFFONSO_API_KEY` (+ `AFFONSO_API_URL`, default
-  `https://api.affonso.io/v1`, for tests). Unset = Affonso off: billing ignores `referral`
+  `https://api.affonso.io/v1`, for tests). Unset = Affonso off: billing ignores `affiliate`
   entirely, stores and sends nothing.
 - **Reading**: billing already calls `GET /admin/user-context` server to server with
   `ECONUMO_ADMIN_URL` + `ECONUMO_ADMIN_TOKEN` (`internal/econumo/http.go`) every time the
@@ -104,14 +104,14 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
     the newest `createdAt` seen. The cursor lives in billing's DB; no cursor = from the start.
   - **Context load** (covers sign-up-then-pay inside one poll interval): whenever billing loads
     the user's context (opening the portal, starting a checkout).
-  The row goes in a new table `affiliate_referrals (user_id PK, click_id, signup_status, signup_attempts,
-  next_attempt_at, signup_reported_at, created_at)`. The request itself never calls Affonso.
+  The row goes in a new table `affiliate_referrals (user_id PK, click_id, status, attempts,
+  next_attempt_at, reported_at, created_at)`. The request itself never calls Affonso.
 - **Outbox worker** (same pattern as `internal/grants`): reports due sign-ups with
   `POST /v1/signups {click_id, external_user_id: <econumo user id>}` (idempotent on
   `click_id`; a 200 repeat is success; 404 `CLICK_NOT_FOUND` is terminal and logged).
 - **Payments**: when a purchase is marked paid and its PAYER has an `affiliate_referrals`
   row, enqueue `POST /v1/conversions {external_user_id, sale_amount, sale_amount_currency,
-  external_event_id: <purchase id>}` with `sale_amount` = `purchases.amount_cents` / 100
+  external_event_id: <purchase id>}` with `sale_amount` = `purchases.amount_net_cents` / 100
   (the pre-tax amount, see below) and its currency; store the returned conversion id. A purchase
   with amount 0 (100% discount) is not reported. The worker sends a
   user's sign-up before any of their conversions.

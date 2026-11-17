@@ -207,7 +207,7 @@ an outbox worker (like `internal/grants`) calls Affonso.
   `internal/infra/storage/sqlc/schema.sql`, `internal/infra/storage/sqlc/query/pgsql/billing.sql`,
   then `make sqlc`
 - Modify: `internal/econumo/econumo.go` (`User.Affiliate string`; `Client` gains
-  `AffiliateUsers(ctx, since time.Time, limit int) ([]AffiliateUser, error)` with
+  `AffiliateUsers(ctx, since time.Time, afterUserID string, limit int) ([]AffiliateUser, error)` with
   `type AffiliateUser struct { UserID, Affiliate string; CreatedAt time.Time }`),
   `internal/econumo/http.go` (`wireUser` + the new call), `internal/test/econumofake/fake.go` (settable), `cmd/econumo-stub` (one seeded
   user with an affiliate)
@@ -291,8 +291,10 @@ an outbox worker (like `internal/grants`) calls Affonso.
   `affiliate_sync (id int PRIMARY KEY CHECK (id = 1), cursor timestamptz)` (add to Task 5's
   migration if Task 5 is not merged yet, else a new migration).
 
-Sweep order per tick: (0) pull — `ec.AffiliateUsers(since = cursor - 10 min, or zero time,
-500)`, `RecordAffiliate` each row, repeat while a full page returns, then store the newest
+Sweep order per tick: (0) pull — first page `ec.AffiliateUsers(since = cursor - 10 min, or zero time,
+afterUserID = "", 500)`; while a page is full, the next is `since = last.CreatedAt,
+afterUserID = last.UserID` (the endpoint's keyset continuation; `since` alone repeats
+same-second ties forever). `RecordAffiliate` each row, then store the newest
 `CreatedAt` as the cursor; a pull failure is logged and the tick continues with (1). (1) pending sign-ups → `Signup`; success = `reported`. (2) pending
 `conversion` events whose user's referral is `reported` → `Conversion` with
 `EventID = purchase id`, store `conversion_id`, `sent`. (3) pending `refund` events whose
