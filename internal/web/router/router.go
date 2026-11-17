@@ -168,8 +168,8 @@ func New(deps Deps) http.Handler {
 		deps.RegisterAPI(apiMux)
 	}
 	var api http.Handler = apiMux
-	// Only the cloud edition reports referrals, to billing; elsewhere the cookie
-	// would be stored for nobody.
+	// Referrals are reported only to billing: without ECONUMO_BILLING_URL the
+	// cookie would be stored for nobody.
 	if deps.Cfg.ReferralCookie != "" && deps.Cfg.BillingURL != "" {
 		api = middleware.Affiliate(deps.Cfg.ReferralCookie)(apiMux)
 	}

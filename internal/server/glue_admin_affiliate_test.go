@@ -46,6 +46,12 @@ func newAffiliateAdminHandler(t *testing.T) http.Handler {
 			t.Fatal(err)
 		}
 	}
+	f.Connect(affU1, affU3)
+	return buildAdminHandler(t, db)
+}
+
+func buildAdminHandler(t *testing.T, db *dbtest.DB) http.Handler {
+	t.Helper()
 	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AdminToken: adminToken}
 	_, h, _, err := server.Build(cfg, db.Raw, server.Seams{})
 	if err != nil {
@@ -94,6 +100,32 @@ func TestListAffiliateUsers(t *testing.T) {
 	}
 }
 
+func TestListAffiliateUsersPagesThroughSameSecondTies(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	at := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
+	for i, id := range []string{affU1, affU2, affU3} {
+		f.User(fixture.User{ID: id, Email: id[len(id)-4:] + "@example.test", Name: "U"})
+		if _, err := db.Raw.Exec(db.Rebind(`INSERT INTO users_options (id, user_id, name, value, created_at, updated_at) VALUES (?, ?, 'affiliate', ?, ?, ?)`),
+			"b1000000-0000-0000-0000-00000000000"+string(rune('1'+i)), id, "code", at, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := buildAdminHandler(t, db)
+
+	first := affiliateUsers(t, h, "since=2026-11-01+10:00:00&limit=2")
+	if len(first) != 2 || first[0].UserId != affU1 || first[1].UserId != affU2 {
+		t.Fatalf("first page: %+v", first)
+	}
+	second := affiliateUsers(t, h, "since="+strings.ReplaceAll(first[1].CreatedAt, " ", "+")+"&afterUserId="+first[1].UserId+"&limit=2")
+	if len(second) != 1 || second[0].UserId != affU3 {
+		t.Fatalf("second page: %+v", second)
+	}
+	if rec := adminDo(t, h, http.MethodGet, "/admin/affiliate-users?since=2026-11-01+10:00:00&afterUserId=nope", adminToken, ""); rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad afterUserId: status = %d, want 400", rec.Code)
+	}
+}
+
 func TestListAffiliateUsersValidation(t *testing.T) {
 	h := newAffiliateAdminHandler(t)
 	for _, q := range []string{
@@ -115,6 +147,9 @@ func TestAdminUserContextIncludesAffiliate(t *testing.T) {
 	h := newAffiliateAdminHandler(t)
 	if got := adminData(t, adminDo(t, h, http.MethodGet, "/admin/user-context?userId="+affU1, adminToken, "")); got.User.Affiliate != "code-a" {
 		t.Fatalf("affiliate = %q", got.User.Affiliate)
+	}
+	if got := adminData(t, adminDo(t, h, http.MethodGet, "/admin/user-context?userId="+affU1, adminToken, "")); len(got.Connections) != 1 || got.Connections[0].Id != affU3 || got.Connections[0].Affiliate != "code-c" {
+		t.Fatalf("connections = %+v", got.Connections)
 	}
 	rec := adminDo(t, h, http.MethodGet, "/admin/user-context?userId="+affU4, adminToken, "")
 	if got := adminData(t, rec); got.User.Affiliate != "" {

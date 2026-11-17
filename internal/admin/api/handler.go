@@ -105,7 +105,17 @@ func (h *Handlers) AffiliateUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		limit = n
 	}
-	res, err := h.svc.AffiliateUsers(r.Context(), since, limit)
+	after := q.Get("afterUserId")
+	if after != "" {
+		id, err := vo.ParseId(after)
+		if err != nil {
+			h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+				errs.FieldError{Key: "afterUserId", Message: "Invalid user id"}))
+			return
+		}
+		after = id.String()
+	}
+	res, err := h.svc.AffiliateUsers(r.Context(), since, after, limit)
 	if err != nil {
 		h.writeErr(r.Context(), w, err)
 		return

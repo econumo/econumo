@@ -8,8 +8,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
-func (s *Service) AffiliateUsers(ctx context.Context, since time.Time, limit int) ([]model.AdminAffiliateUser, error) {
-	rows, err := s.affiliates.ListAffiliateUsers(ctx, since, limit)
+func (s *Service) AffiliateUsers(ctx context.Context, since time.Time, afterUserID string, limit int) ([]model.AdminAffiliateUser, error) {
+	rows, err := s.affiliates.ListAffiliateUsers(ctx, since, afterUserID, limit)
 	if err != nil {
 		return nil, err
 	}

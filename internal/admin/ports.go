@@ -33,7 +33,7 @@ type UserLookup interface {
 
 // AffiliateLister reads referral attributions for the billing poller.
 type AffiliateLister interface {
-	ListAffiliateUsers(ctx context.Context, since time.Time, limit int) ([]model.AdminAffiliateUser, error)
+	ListAffiliateUsers(ctx context.Context, since time.Time, afterUserID string, limit int) ([]model.AdminAffiliateUser, error)
 }
 
 type ConnectionLookup interface {

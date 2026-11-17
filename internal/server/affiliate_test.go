@@ -1,7 +1,9 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,8 +28,11 @@ func affiliateOptionValue(t *testing.T, db *dbtest.DB, email string) (string, bo
 	var v *string
 	err := db.Raw.QueryRow(db.Rebind(`SELECT o.value FROM users_options o JOIN users u ON u.id = o.user_id WHERE u.email = ? AND o.name = ?`),
 		model.NormalizeEmail(email), model.OptionAffiliate).Scan(&v)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", false
+	}
+	if err != nil {
+		t.Fatal(err)
 	}
 	if v == nil {
 		return "", true

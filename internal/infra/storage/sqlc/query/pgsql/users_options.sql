@@ -24,10 +24,11 @@ WHERE o.user_id IS NULL
 ORDER BY u.id;
 
 -- name: ListAffiliateUsers :many
--- Ties on created_at (one signup transaction) break by user id so paging by
--- created_at is stable across engines.
+-- created_at has one-second precision, so a page can end inside a second:
+-- the cursor is (since, after_user_id). The nil UUID sorts below every
+-- id, which makes the cursor a plain created_at >= since.
 SELECT user_id, value, created_at
 FROM users_options
-WHERE name = 'affiliate' AND value IS NOT NULL AND value <> '' AND created_at >= $1
+WHERE name = 'affiliate' AND value IS NOT NULL AND value <> '' AND (created_at > sqlc.arg(since) OR (created_at = sqlc.arg(since) AND user_id > sqlc.arg(after_user_id)))
 ORDER BY created_at, user_id
-LIMIT $2;
+LIMIT sqlc.arg(row_limit);

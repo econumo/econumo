@@ -8,10 +8,18 @@ import (
 	"github.com/econumo/econumo/internal/shared/datetime"
 )
 
+// nilUserID sorts below every user id on both engines (the pgsql column is UUID,
+// so an empty string would not even parse).
+const nilUserID = "00000000-0000-0000-0000-000000000000"
+
 // ListAffiliateUsers returns users with a recorded affiliate code whose option
-// was created at or after since, oldest first.
-func (r *Repo) ListAffiliateUsers(ctx context.Context, since time.Time, limit int) ([]model.AdminAffiliateUser, error) {
-	rows, err := r.q.ListAffiliateUsers(ctx, r.db(ctx), since.UTC(), limit)
+// was created at or after since, oldest first. A non-empty afterUserID turns
+// since into an exclusive cursor: only rows after (since, afterUserID) return.
+func (r *Repo) ListAffiliateUsers(ctx context.Context, since time.Time, afterUserID string, limit int) ([]model.AdminAffiliateUser, error) {
+	if afterUserID == "" {
+		afterUserID = nilUserID
+	}
+	rows, err := r.q.ListAffiliateUsers(ctx, r.db(ctx), since.UTC(), afterUserID, limit)
 	if err != nil {
 		return nil, err
 	}

@@ -281,9 +281,12 @@ the quick-start subset. Non-obvious points:
 - `ECONUMO_TRIAL`: trial days for self-registered users (`0` = permanent full access); after
   it they are `readonly` (HTTP 402 on writes).
 - `ECONUMO_ADMIN_PORT` + `ECONUMO_ADMIN_TOKEN`: a second, private listener for the payment
-  portal (`/admin/set-access`, `/admin/user-context`), never on the public mux. The token
+  portal (`/admin/set-access`, `/admin/user-context`, `/admin/affiliate-users`), never on the public mux. The token
   (random, at least 32 chars) is also the HMAC key for billing links (`ECONUMO_BILLING_URL`)
   and `econumo://` AI gateway tokens.
+- `ECONUMO_REFERRAL_COOKIE`: name of the partner-program cookie copied into the write-once,
+  server-only user option `affiliate` on new accounts, only when `ECONUMO_BILLING_URL` is also
+  set; billing reads it on the admin listener.
 - Provider slots `ECONUMO_OAUTH_GOOGLE_*`, `ECONUMO_OAUTH_APPLE_*`, `ECONUMO_OIDC_*` are each
   all-or-nothing. Apple's key is a file path (`_PRIVATE_KEY_FILE`).
   `ECONUMO_OIDC_TRUST_EMAIL` treats the custom issuer's email as verified. See

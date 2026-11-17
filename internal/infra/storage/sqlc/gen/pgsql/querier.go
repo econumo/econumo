@@ -359,8 +359,9 @@ type Querier interface {
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// The same count for every AVAILABLE account (the balance query's set).
 	ListAccountTransactionsCountsForUser(ctx context.Context, userID string) ([]ListAccountTransactionsCountsForUserRow, error)
-	// Ties on created_at (one signup transaction) break by user id so paging by
-	// created_at is stable across engines.
+	// created_at has one-second precision, so a page can end inside a second:
+	// the cursor is (since, after_user_id). The nil UUID sorts below every
+	// id, which makes the cursor a plain created_at >= since.
 	ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsersParams) ([]ListAffiliateUsersRow, error)
 	ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted

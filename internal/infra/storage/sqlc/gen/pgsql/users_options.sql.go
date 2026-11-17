@@ -52,14 +52,15 @@ func (q *Queries) GetUserOptions(ctx context.Context, userID string) ([]UsersOpt
 const listAffiliateUsers = `-- name: ListAffiliateUsers :many
 SELECT user_id, value, created_at
 FROM users_options
-WHERE name = 'affiliate' AND value IS NOT NULL AND value <> '' AND created_at >= $1
+WHERE name = 'affiliate' AND value IS NOT NULL AND value <> '' AND (created_at > $1 OR (created_at = $1 AND user_id > $2))
 ORDER BY created_at, user_id
-LIMIT $2
+LIMIT $3
 `
 
 type ListAffiliateUsersParams struct {
-	CreatedAt time.Time
-	Limit     int32
+	Since       time.Time
+	AfterUserID string
+	RowLimit    int32
 }
 
 type ListAffiliateUsersRow struct {
@@ -68,10 +69,11 @@ type ListAffiliateUsersRow struct {
 	CreatedAt time.Time
 }
 
-// Ties on created_at (one signup transaction) break by user id so paging by
-// created_at is stable across engines.
+// created_at has one-second precision, so a page can end inside a second:
+// the cursor is (since, after_user_id). The nil UUID sorts below every
+// id, which makes the cursor a plain created_at >= since.
 func (q *Queries) ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsersParams) ([]ListAffiliateUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAffiliateUsers, arg.CreatedAt, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, listAffiliateUsers, arg.Since, arg.AfterUserID, arg.RowLimit)
 	if err != nil {
 		return nil, err
 	}

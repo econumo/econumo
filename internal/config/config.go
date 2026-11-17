@@ -63,12 +63,10 @@ type Config struct {
 
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
-	AdminPort  string // ECONUMO_ADMIN_PORT
-	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
-	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
-	// ReferralCookie names the cookie a partner program sets on the root domain;
-	// its value is captured on new accounts, only together with BillingURL.
-	ReferralCookie string // ECONUMO_REFERRAL_COOKIE
+	AdminPort      string // ECONUMO_ADMIN_PORT
+	AdminToken     string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
+	BillingURL     string // ECONUMO_BILLING_URL: payment portal; empty disables billing
+	ReferralCookie string // ECONUMO_REFERRAL_COOKIE: cookie a partner program sets on the root domain; captured on new accounts only together with BillingURL
 	AppURL         string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
 
 	// OAuth / OIDC provider slots (see docs/superpowers/specs/2026-09-07-oauth-login-design.md §3).
