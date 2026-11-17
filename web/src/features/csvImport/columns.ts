@@ -17,9 +17,20 @@ const MAJORITY = 0.8
 const SAMPLE_COUNT = 3
 const SAMPLE_MAX = 25
 
-const isDate = (v: string) =>
-  !/^\d+$/.test(v) &&
-  (parseDateCell(v, 'ymd') !== null || parseDateCell(v, 'dmy') !== null || parseDateCell(v, 'mdy') !== null)
+const parsesAsDate = (v: string) => {
+  const hits = (['ymd', 'dmy', 'mdy'] as const).map((order) => parseDateCell(v, order))
+  return hits.filter((h) => h !== null)
+}
+
+const isDate = (v: string) => {
+  const hits = parsesAsDate(v)
+  if (!/^\d+$/.test(v)) return hits.length > 0
+  if (v.length !== 8) return false
+  return hits.some((h) => {
+    const year = Number(h.date.slice(0, 4))
+    return year >= 1990 && year <= 2100
+  })
+}
 const isNumber = (v: string) => parseAmountCell(v, '.') !== null || parseAmountCell(v, ',') !== null
 
 export function profileColumns(file: ParsedFile): ColumnProfile[] {

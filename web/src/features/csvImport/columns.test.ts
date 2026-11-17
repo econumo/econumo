@@ -29,4 +29,9 @@ describe('profileColumns', () => {
     const p = parseCsvText('ref;amt\n1234567890;1\n1234567891;2\n1234567892;3\n')
     expect(profileColumns(p)[0].type).toBe('number')
   })
+
+  it('types 8-digit compact dates as dates but not other 8-digit numbers', () => {
+    expect(profileColumns(parseCsvText('d;x\n20260201;1\n20260215;2\n'))[0].type).toBe('date')
+    expect(profileColumns(parseCsvText('d;x\n12345678;1\n12345679;2\n'))[0].type).toBe('number')
+  })
 })
