@@ -32,7 +32,7 @@ func (r *Repo) ListAffiliateUsers(ctx context.Context, program string, since tim
 		}
 		out = append(out, model.AdminAffiliateUser{
 			UserId:        row.UserID,
-			Affiliate:     *row.Value,
+			Affiliate:     *row.Value, // the query excludes NULL values
 			AffiliateCode: code,
 			CreatedAt:     row.CreatedAt.UTC().Format(datetime.Layout),
 		})

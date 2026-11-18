@@ -53,7 +53,7 @@ const listAffiliateUsers = `-- name: ListAffiliateUsers :many
 SELECT o.user_id, o.value, c.value AS code, o.created_at
 FROM users_options o
 LEFT JOIN users_options c ON c.user_id = o.user_id AND c.name = 'affiliate_code'
-WHERE o.name = 'affiliate' AND (CAST(?1 AS TEXT) = '' OR o.value = ?1) AND (o.created_at > ?2 OR (o.created_at = ?2 AND o.user_id > ?3))
+WHERE o.name = 'affiliate' AND o.value IS NOT NULL AND o.value <> '' AND (CAST(?1 AS TEXT) = '' OR o.value = ?1) AND (o.created_at > ?2 OR (o.created_at = ?2 AND o.user_id > ?3))
 ORDER BY o.created_at, o.user_id
 LIMIT ?4
 `

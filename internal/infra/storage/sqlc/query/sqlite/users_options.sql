@@ -32,6 +32,6 @@ ORDER BY u.id;
 SELECT o.user_id, o.value, c.value AS code, o.created_at
 FROM users_options o
 LEFT JOIN users_options c ON c.user_id = o.user_id AND c.name = 'affiliate_code'
-WHERE o.name = 'affiliate' AND (CAST(sqlc.arg(program) AS TEXT) = '' OR o.value = sqlc.arg(program)) AND (o.created_at > sqlc.arg(since) OR (o.created_at = sqlc.arg(since) AND o.user_id > sqlc.arg(after_user_id)))
+WHERE o.name = 'affiliate' AND o.value IS NOT NULL AND o.value <> '' AND (CAST(sqlc.arg(program) AS TEXT) = '' OR o.value = sqlc.arg(program)) AND (o.created_at > sqlc.arg(since) OR (o.created_at = sqlc.arg(since) AND o.user_id > sqlc.arg(after_user_id)))
 ORDER BY o.created_at, o.user_id
 LIMIT sqlc.arg(row_limit);

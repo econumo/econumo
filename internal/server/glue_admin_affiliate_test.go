@@ -188,3 +188,23 @@ func TestAdminUserContextIncludesAffiliate(t *testing.T) {
 		t.Fatalf("field missing: %s", rec.Body.String())
 	}
 }
+
+func TestListAffiliateUsersSkipsRowsWithoutValue(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	at := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
+	f.User(fixture.User{ID: affU1, Email: "0001@example.test", Name: "U"})
+	f.User(fixture.User{ID: affU2, Email: "0002@example.test", Name: "U"})
+	seedAffiliate(t, db, 0, affU1, "a", "code-a", at)
+	if _, err := db.Raw.Exec(db.Rebind(`INSERT INTO users_options (id, user_id, name, value, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)`),
+		"b1000000-0000-0000-0000-000000000099", affU2, "affiliate", at, at); err != nil {
+		t.Fatal(err)
+	}
+	h := buildAdminHandler(t, db)
+	for _, q := range []string{"since=2026-01-01+00:00:00", "program=a&since=2026-01-01+00:00:00"} {
+		got := affiliateUsers(t, h, q)
+		if len(got) != 1 || got[0].UserId != affU1 {
+			t.Fatalf("%s: %+v", q, got)
+		}
+	}
+}
