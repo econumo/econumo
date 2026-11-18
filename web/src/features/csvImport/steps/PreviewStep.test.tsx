@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { readMultipart, server } from '@/test/msw'
+import { api } from '@/api/client'
 import { coreHandlers } from '@/test/fixtures'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { cancelAiRefresh } from '@/features/onboarding/finishImport'
@@ -15,6 +16,19 @@ vi.mock('@/lib/metrics', async (importOriginal) => ({ ...(await importOriginal<t
 
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 const csv = (text: string, name = 'statement.csv') => new File([text], name, { type: 'text/csv' })
+
+// The chunk files as handed to the HTTP client, in send order. Node 26's fetch sends a jsdom File
+// as an empty multipart part, so a handler cannot read the rows off the wire.
+function captureUploads(): File[] {
+  const files: File[] = []
+  const post = api.post.bind(api)
+  const spy = vi.spyOn(api, 'post').mockImplementation((url: string, body?: unknown, config?: Parameters<typeof api.post>[2]) => {
+    if (body instanceof FormData) files.push(body.get('file') as File)
+    return post(url, body, config)
+  })
+  onTestFinished(() => spy.mockRestore())
+  return files
+}
 
 const GOOD_DATES = ['2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-09']
 // row 4 of the file (the third transaction) has no readable date, row 7 no amount
@@ -198,6 +212,7 @@ it('a value on the card opens its step', async () => {
 it('importing into a new account creates it once, then imports into it', async () => {
   const created: { id: string; name: string }[] = []
   const posted: { accountId: string | undefined; file: string }[] = []
+  const uploads = captureUploads()
   server.use(
     http.post('*/api/v1/account/create-account', async ({ request }) => {
       const body = (await request.json()) as { id: string; name: string }
@@ -206,7 +221,7 @@ it('importing into a new account creates it once, then imports into it', async (
     }),
     http.post('*/api/v1/transaction/import-transaction-list', async ({ request }) => {
       const form = await readMultipart(request)
-      posted.push({ accountId: form.accountId, file: form.file })
+      posted.push({ accountId: form.accountId, file: await uploads[posted.length].text() })
       return ok({ imported: 7, skipped: 0, errors: {} })
     }),
   )
@@ -276,11 +291,12 @@ it('a chunk that failed is offered again, and only that chunk is sent', async ()
   const lines = Array.from({ length: 600 }, (_, i) => `${GOOD_DATES[i % GOOD_DATES.length]},-${i + 1}.00`)
   const sent: number[] = []
   let calls = 0
+  const uploads = captureUploads()
   server.use(
     http.post('*/api/v1/account/create-account', async ({ request }) => ok({ item: { id: ((await request.json()) as { id: string }).id } })),
-    http.post('*/api/v1/transaction/import-transaction-list', async ({ request }) => {
+    http.post('*/api/v1/transaction/import-transaction-list', async () => {
       calls++
-      const rows = (await readMultipart(request)).file.trim().split('\n').length - 1
+      const rows = (await uploads[calls - 1].text()).trim().split('\n').length - 1
       if (calls === 2) return HttpResponse.json({ success: false, message: 'Server down', code: 0, exceptionType: 'x' }, { status: 500 })
       sent.push(rows)
       return ok({ imported: rows, skipped: 0, errors: {} })
