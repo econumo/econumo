@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { server } from '@/test/msw'
+import { readMultipart, server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { cancelAiRefresh } from '@/features/onboarding/finishImport'
@@ -197,7 +197,7 @@ it('a value on the card opens its step', async () => {
 
 it('importing into a new account creates it once, then imports into it', async () => {
   const created: { id: string; name: string }[] = []
-  const posted: { accountId: FormDataEntryValue | null; file: string }[] = []
+  const posted: { accountId: string | undefined; file: string }[] = []
   server.use(
     http.post('*/api/v1/account/create-account', async ({ request }) => {
       const body = (await request.json()) as { id: string; name: string }
@@ -205,8 +205,8 @@ it('importing into a new account creates it once, then imports into it', async (
       return ok({ item: { id: body.id } })
     }),
     http.post('*/api/v1/transaction/import-transaction-list', async ({ request }) => {
-      const form = await request.formData()
-      posted.push({ accountId: form.get('accountId'), file: await (form.get('file') as File).text() })
+      const form = await readMultipart(request)
+      posted.push({ accountId: form.accountId, file: form.file })
       return ok({ imported: 7, skipped: 0, errors: {} })
     }),
   )
@@ -280,7 +280,7 @@ it('a chunk that failed is offered again, and only that chunk is sent', async ()
     http.post('*/api/v1/account/create-account', async ({ request }) => ok({ item: { id: ((await request.json()) as { id: string }).id } })),
     http.post('*/api/v1/transaction/import-transaction-list', async ({ request }) => {
       calls++
-      const rows = (await ((await request.formData()).get('file') as File).text()).trim().split('\n').length - 1
+      const rows = (await readMultipart(request)).file.trim().split('\n').length - 1
       if (calls === 2) return HttpResponse.json({ success: false, message: 'Server down', code: 0, exceptionType: 'x' }, { status: 500 })
       sent.push(rows)
       return ok({ imported: rows, skipped: 0, errors: {} })

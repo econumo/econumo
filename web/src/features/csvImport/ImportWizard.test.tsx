@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { server } from '@/test/msw'
+import { readMultipart, server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { ImportWizard } from './ImportWizard'
@@ -181,14 +181,14 @@ const toCheckWithNewAccount = async (user: ReturnType<typeof userEvent.setup>) =
 // the server invents a folder only for a user who has none and refuses a blank one otherwise
 it('a new account goes into the user’s first folder and the rows into the account the server made', async () => {
   let created: Record<string, unknown> | null = null
-  let accountId: FormDataEntryValue | null = null
+  let accountId: string | undefined
   server.use(
     http.post('*/api/v1/account/create-account', async ({ request }) => {
       created = (await request.json()) as Record<string, unknown>
       return HttpResponse.json({ success: true, message: '', data: { item: { id: 'made-by-server', folderId: 'f1' }, transaction: null } })
     }),
     http.post('*/api/v1/transaction/import-transaction-list', async ({ request }) => {
-      accountId = (await request.formData()).get('accountId')
+      accountId = (await readMultipart(request)).accountId
       return HttpResponse.json({ success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } })
     }),
   )
