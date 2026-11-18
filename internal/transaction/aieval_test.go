@@ -72,7 +72,7 @@ var evalColumnCases = map[string][]columnsCase{
 		{"Дата проводки;Контрагент;Назначение;Дебет;Кредит", "dttnn", map[string]string{"date": "Дата проводки", "payee": "Контрагент", "description": "Назначение", "amountOut": "Дебет", "amountIn": "Кредит"}},
 		{"Дата;Сумма;Категория;Метки;Комментарий;Счёт", "dNtttt", map[string]string{"date": "Дата", "amount": "Сумма", "category": "Категория", "labels": "Метки", "description": "Комментарий", "account": "Счёт"}},
 		{"Дата;Наименование;Сумма платежа;Баланс", "dtNn", map[string]string{"date": "Дата", "description|payee": "Наименование", "amount": "Сумма платежа"}},
-		{"Дата транзакции;Магазин;Сумма;Валюта;Теги;Заметка", "dtNttt", map[string]string{"date": "Дата транзакции", "payee": "Магазин", "amount": "Сумма", "tag": "Теги", "description": "Заметка"}},
+		{"Дата транзакции;Магазин;Сумма;Валюта;Теги;Заметка", "dtNttt", map[string]string{"date": "Дата транзакции", "payee": "Магазин", "amount": "Сумма", "tag|labels": "Теги", "description": "Заметка"}},
 		{"Дата;Расход;Доход;Категория;Комментарий", "dnntt", map[string]string{"date": "Дата", "amountOut": "Расход", "amountIn": "Доход", "category": "Категория", "description": "Комментарий"}},
 	},
 }
