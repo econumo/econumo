@@ -96,5 +96,5 @@ func (sqliteQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend
 }
 
 func (sqliteQuerier) ListAffiliateUsers(ctx context.Context, db backend.DBTX, program string, since time.Time, afterUserID string, limit int) ([]affiliateRow, error) {
-	return sqlitegen.New(db).ListAffiliateUsers(ctx, sqlitegen.ListAffiliateUsersParams{Program: &program, Since: since, AfterUserID: afterUserID, RowLimit: int64(limit)})
+	return sqlitegen.New(db).ListAffiliateUsers(ctx, sqlitegen.ListAffiliateUsersParams{Program: program, Since: since, AfterUserID: afterUserID, RowLimit: int64(limit)})
 }

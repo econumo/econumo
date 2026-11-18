@@ -287,7 +287,7 @@ the quick-start subset. Non-obvious points:
 - `ECONUMO_AFFILIATES`: comma-separated `program:cookie` pairs; on new accounts the first
   program whose cookie holds a valid code is copied into the write-once, server-only user
   options `affiliate` (program) and `affiliate_code`, only when `ECONUMO_BILLING_URL` is also
-  set; billing reads them on the admin listener (`/admin/affiliate-users?program=…`).
+  set; billing reads them on the admin listener (`/admin/affiliate-users?since=…`, optional `program=…`).
 - Provider slots `ECONUMO_OAUTH_GOOGLE_*`, `ECONUMO_OAUTH_APPLE_*`, `ECONUMO_OIDC_*` are each
   all-or-nothing. Apple's key is a file path (`_PRIVATE_KEY_FILE`).
   `ECONUMO_OIDC_TRUST_EMAIL` treats the custom issuer's email as verified. See

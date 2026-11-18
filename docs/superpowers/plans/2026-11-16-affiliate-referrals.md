@@ -27,7 +27,7 @@ an outbox worker (like `internal/grants`) calls Affonso.
 - The app never names the vendor: no "affonso" in `econumo/econumo` code, config names or docs
   except as the example value `ECONUMO_AFFILIATES=affonso:affonso_referral` in `docs/full.env.example`.
 - App capture runs only when BOTH `ECONUMO_AFFILIATES` and `ECONUMO_BILLING_URL` are set.
-- Options `affiliate` (program) and `affiliate_code`; admin JSON fields `affiliate` and `affiliateCode` (`""` when none); list endpoint takes a required `program`.
+- Options `affiliate` (program) and `affiliate_code`; admin JSON fields `affiliate` and `affiliateCode` (`""` when none); list endpoint takes an optional `program` (absent = all programs; billing filters on its side).
 - Valid value: `^[A-Za-z0-9_-]{1,64}$`; anything else is dropped silently, never an error.
 - Referral handling never fails or changes a sign-up, a portal page, a checkout, a webhook ack
   or a grant.

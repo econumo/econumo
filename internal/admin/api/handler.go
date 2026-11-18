@@ -84,7 +84,7 @@ const (
 func (h *Handlers) AffiliateUsers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	program := q.Get("program")
-	if !model.ValidAffiliateProgram(program) {
+	if program != "" && !model.ValidAffiliateProgram(program) {
 		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
 			errs.FieldError{Key: "program", Message: "Invalid program"}))
 		return

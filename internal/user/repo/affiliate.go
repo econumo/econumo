@@ -12,7 +12,8 @@ import (
 // so an empty string would not even parse).
 const nilUserID = "00000000-0000-0000-0000-000000000000"
 
-// ListAffiliateUsers returns users attributed to program whose affiliate option
+// ListAffiliateUsers returns users attributed to program (every program when
+// it is empty) whose affiliate option
 // was created at or after since, oldest first. A non-empty afterUserID turns
 // since into an exclusive cursor: only rows after (since, afterUserID) return.
 func (r *Repo) ListAffiliateUsers(ctx context.Context, program string, since time.Time, afterUserID string, limit int) ([]model.AdminAffiliateUser, error) {

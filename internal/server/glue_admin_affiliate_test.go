@@ -104,6 +104,15 @@ func TestListAffiliateUsers(t *testing.T) {
 		t.Fatalf("unknown program must be [], got %#v", got)
 	}
 
+	// No program means every program, in created_at then user id order.
+	all := affiliateUsers(t, h, "since=2026-01-01+00:00:00")
+	if len(all) != 4 || all[0].UserId != affU1 || all[1].UserId != affU2 || all[2].UserId != affU5 || all[3].UserId != affU3 {
+		t.Fatalf("no program: %+v", all)
+	}
+	if got := affiliateUsers(t, h, "program=&since=2026-01-01+00:00:00"); len(got) != 4 {
+		t.Fatalf("empty program: %+v", got)
+	}
+
 	// since is inclusive.
 	if got := affiliateUsers(t, h, "program=a&since=2026-11-01+11:00:00"); len(got) != 1 || got[0].UserId != affU3 {
 		t.Fatalf("since filter: %+v", got)
@@ -134,6 +143,11 @@ func TestListAffiliateUsersPagesThroughSameSecondTies(t *testing.T) {
 	if len(second) != 1 || second[0].UserId != affU3 {
 		t.Fatalf("second page: %+v", second)
 	}
+	firstAll := affiliateUsers(t, h, "since=2026-11-01+10:00:00&limit=2")
+	secondAll := affiliateUsers(t, h, "since="+strings.ReplaceAll(firstAll[1].CreatedAt, " ", "+")+"&afterUserId="+firstAll[1].UserId+"&limit=2")
+	if len(firstAll) != 2 || len(secondAll) != 1 || secondAll[0].UserId != affU3 {
+		t.Fatalf("paging without program: %+v then %+v", firstAll, secondAll)
+	}
 	if rec := adminDo(t, h, http.MethodGet, "/admin/affiliate-users?program=a&since=2026-11-01+10:00:00&afterUserId=nope", adminToken, ""); rec.Code != http.StatusBadRequest {
 		t.Fatalf("bad afterUserId: status = %d, want 400", rec.Code)
 	}
@@ -142,7 +156,7 @@ func TestListAffiliateUsersPagesThroughSameSecondTies(t *testing.T) {
 func TestListAffiliateUsersValidation(t *testing.T) {
 	h := newAffiliateAdminHandler(t)
 	for _, q := range []string{
-		"", "program=a", "since=2026-01-01+00:00:00", "program=A&since=2026-01-01+00:00:00",
+		"", "program=a", "program=A&since=2026-01-01+00:00:00",
 		"program=a+b&since=2026-01-01+00:00:00",
 		"program=a&since=garbage", "program=a&since=2026-01-01",
 		"program=a&since=2026-01-01+00:00:00&limit=0",

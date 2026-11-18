@@ -82,8 +82,8 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
 - The name is deliberately not `referral`: the parked `feature/referral-program` branch uses
   that for a different thing (the share report a user signed up from).
 - **Listing**: new private route `GET /admin/affiliate-users?program=<p>&since=<datetime>&limit=<n>&afterUserId=<id>`
-  (admin listener, admin token like the others). `program` is required (config's regex).
-  Returns users whose `affiliate` option equals `program` and was
+  (admin listener, admin token like the others). `program` is optional (config's regex when present; absent or empty = every program, billing
+  filters on its side). Returns users whose `affiliate` option equals `program` (when given) and was
   created at or after `since` (frozen datetime layout, UTC), ordered by option `created_at`,
   then user id, at most `limit` (default and max 500):
   `[{"userId","affiliate","affiliateCode","createdAt"}]`. Bad `program`/`since`/`limit`/`afterUserId` = 400 envelope.
@@ -91,7 +91,7 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
   `afterUserId` (needs `since`) the filter becomes `created_at > since OR (created_at = since AND
   user_id > afterUserId)`; billing pages by passing the last row's `createdAt` and `userId`.
   Without it the filter stays `created_at >= since`. Backed by a partial index
-  (`affiliate_program_created_at_idx_users_options` on `(value, created_at, user_id)`).
+  (`affiliate_created_at_idx_users_options` on `(created_at, user_id)`).
 - No HTTP client, no outbound call, no retries in the app.
 
 ### 3. Billing (`econumo/billing`)
