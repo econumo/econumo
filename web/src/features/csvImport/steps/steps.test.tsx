@@ -95,6 +95,20 @@ it('a typed account name is kept when the step is left before the pause, with th
   expect(screen.getByLabelText('Account name')).toHaveValue('Travel card')
 })
 
+it('a new account takes the currency the file names', async () => {
+  server.use(...coreHandlers({ accounts: [] }))
+  renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,eur\n2026-01-03,1.00,EUR\n')
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('EUR, €, Euro')
+})
+
+it('a file naming two currencies leaves a new account in the user’s currency', async () => {
+  server.use(...coreHandlers({ accounts: [] }))
+  renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,EUR\n2026-01-03,1.00,USD\n')
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
+})
+
 it('with accounts, the Account step offers the account picker first', async () => {
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
   await screen.findByRole('heading', { name: 'Which account is this statement from?' })
@@ -114,6 +128,17 @@ it('lists the accounts a per-row column names, with a currency only for the new 
   expect(rows[0]).toHaveTextContent('CashExisting account')
   expect(within(rows[0]).queryByRole('combobox')).not.toBeInTheDocument()
   expect(within(rows[1]).getByRole('combobox', { name: 'Currency for Travel card' })).toHaveValue('USD, $, US Dollar')
+})
+
+it('per-row accounts take the currency their own rows name, the user’s otherwise', async () => {
+  renderWizard('Date,Amount,Wallet,Cur\n2026-01-02,-5.50,Trip,EUR\n2026-01-03,7.00,Trip,EUR\n2026-01-04,1.00,Home,USD\n2026-01-05,1.00,Mixed,EUR\n2026-01-06,1.00,Mixed,USD\n')
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: 'Wallet' }))
+  expect(screen.getByRole('combobox', { name: 'Currency for Trip' })).toHaveValue('EUR, €, Euro')
+  expect(screen.getByRole('combobox', { name: 'Currency for Home' })).toHaveValue('USD, $, US Dollar')
+  expect(screen.getByRole('combobox', { name: 'Currency for Mixed' })).toHaveValue('USD, $, US Dollar')
 })
 
 it('tapping a cell of another column makes it the date and marks the Date step as answered', async () => {

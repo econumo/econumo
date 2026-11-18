@@ -405,6 +405,7 @@
       }
     },
     "import_wizard": {
+      "change_column": "{role} — tap to change",
       "column_n": "Column {n}",
       "title": "Import transactions",
       "steps_label": "Import steps",
@@ -490,6 +491,7 @@
         "new_labels": "{count} new tag will be created | {count} new tags will be created"
       },
       "preview": {
+        "position_skipped": "Skipped row {n} of {total}",
         "title": "Here's what will be imported",
         "totals": "{count} transaction, {first} to {last}. Money in {in}, money out {out}. | {count} transactions, {first} to {last}. Money in {in}, money out {out}.",
         "nothing": "Nothing will be imported yet.",

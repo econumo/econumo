@@ -13,6 +13,7 @@ const noExtras: WizardAnswers['extras'] = { payee: null, category: null, tag: nu
 
 function Harness({ text, extras = noExtras }: { text: string; extras?: WizardAnswers['extras'] }) {
   const [file] = useState(() => parseCsvText(text))
+  const [opened, setOpened] = useState('')
   const [profiles] = useState(() => profileColumns(file))
   const [answers, setAnswersState] = useState<WizardAnswers>(() => ({
     account: { kind: 'new', name: 'Main', currencyId: 'cur-usd' },
@@ -28,8 +29,9 @@ function Harness({ text, extras = noExtras }: { text: string; extras?: WizardAns
         state={{ file, fileName: 'a.csv', profiles, answers, touched: new Set(), fixes: new Map(), rows, isExport: false }}
         setAnswers={(_step, patch) => setAnswersState((prev) => ({ ...prev, ...patch }))}
         setFixes={() => {}}
-        goTo={() => {}}
+        goTo={setOpened}
       />
+      <output aria-label="opened">{opened}</output>
       <output aria-label="extras">{JSON.stringify(answers.extras)}</output>
     </>
   )
@@ -50,15 +52,14 @@ beforeEach(() => {
   server.use(...coreHandlers())
 })
 
-it('shows the whole file; columns the earlier steps use are labelled and cannot be chosen here', async () => {
+it('columns the earlier steps use are strips that open their step', async () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
   const user = userEvent.setup()
   expect(screen.getByRole('cell', { name: 'lunch' })).toBeInTheDocument()
-  expect(screen.getByRole('radio', { name: 'Date' })).toHaveAttribute('aria-disabled', 'true')
-  expect(screen.getByRole('radio', { name: 'Amount' })).toHaveAccessibleDescription('Amount')
-  await user.click(screen.getByRole('cell', { name: '-5' }))
-  expect(screen.getByRole('radio', { name: 'Amount' })).not.toBeChecked()
-  expect(screen.queryByRole('radiogroup', { name: /^Use/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('radio', { name: 'Date' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('cell', { name: '-5' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Amount — tap to change' }))
+  expect(screen.getByLabelText('opened').textContent).toBe('amount')
 })
 
 it('tapping a column asks what it is, and the answer labels the column', async () => {

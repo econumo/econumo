@@ -230,6 +230,8 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
   const hasProblems = summary.skipped > 0
   const count = summary.total - summary.skipped
 
+  // the counter agrees with the totals: transactions count among transactions, skipped rows among skipped ones
+  const positionAmong = (status: PreparedRow['status']) => rows.slice(0, current + 1).filter((r) => r.status === status).length
   const move = (by: number) => setIndex(Math.min(Math.max(current + by, 0), rows.length - 1))
   const nextProblem = () => {
     for (let step = 1; step <= rows.length; step++) {
@@ -337,7 +339,9 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
         <section aria-labelledby={positionId} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 id={positionId} className="text-sm text-muted-foreground" aria-live="polite">
-              {t('transactions.import_wizard.preview.position', { n: current + 1, total: rows.length })}
+              {row.status === 'ok'
+                ? t('transactions.import_wizard.preview.position', { n: positionAmong('ok'), total: count })
+                : t('transactions.import_wizard.preview.position_skipped', { n: positionAmong('skipped'), total: summary.skipped })}
             </h4>
             <div className="flex items-center gap-2">
               {hasProblems ? (

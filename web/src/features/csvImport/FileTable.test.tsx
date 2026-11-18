@@ -1,12 +1,21 @@
 import { useState } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { CollapsedColumn } from './columnLabels'
 import { FileTable } from './FileTable'
 import { parseCsvText } from './parse'
+import type { StepId } from './prepare'
 
 const FILE = parseCsvText('Day,Sum,Text,\n2026-01-02,-5,Coffee,\n2026-01-03,7,Salary,\n,,,\n2026-01-04,1,Gum,\n')
 
-function Harness(props: { initial?: number | null; labels?: Record<number, string>; locked?: Set<number>; noneLabel?: string; mutedRows?: Set<number> }) {
+function Harness(props: {
+  initial?: number | null
+  labels?: Record<number, string>
+  collapsed?: Record<number, CollapsedColumn>
+  onOpenStep?: (step: StepId) => void
+  noneLabel?: string
+  mutedRows?: Set<number>
+}) {
   const [selected, setSelected] = useState<number | null>(props.initial ?? null)
   return (
     <>
@@ -16,7 +25,8 @@ function Harness(props: { initial?: number | null; labels?: Record<number, strin
         selected={selected}
         onSelect={setSelected}
         labels={props.labels}
-        locked={props.locked}
+        collapsed={props.collapsed}
+        onOpenStep={props.onOpenStep}
         noneLabel={props.noneLabel}
         mutedRows={props.mutedRows}
       />
@@ -64,14 +74,25 @@ it('names what other steps use a column for', () => {
   expect(screen.getByRole('radio', { name: 'Sum' })).toHaveAccessibleDescription('Amount')
 })
 
-it('a locked column cannot be chosen by tap or by keyboard', async () => {
-  render(<Harness initial={0} locked={new Set([1])} />)
+it('a column another step answered is a narrow strip that opens that step', async () => {
+  const onOpenStep = vi.fn()
+  render(<Harness initial={0} collapsed={{ 1: { label: 'Amount', step: 'amount' } }} onOpenStep={onOpenStep} />)
   const user = userEvent.setup()
-  await user.click(screen.getByRole('cell', { name: '-5' }))
+  expect(screen.queryByRole('radio', { name: 'Sum' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('cell', { name: '-5' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Amount — tap to change' }))
+  expect(onOpenStep).toHaveBeenCalledWith('amount')
   expect(selected()).toBe('0')
+})
+
+it('arrow keys skip a collapsed column; the step’s own choice stays open even if another step uses it', async () => {
+  render(<Harness initial={0} collapsed={{ 0: { label: 'Date', step: 'date' }, 1: { label: 'Amount', step: 'amount' } }} />)
+  const user = userEvent.setup()
+  expect(screen.getByRole('radio', { name: 'Day' })).toBeChecked()
   await user.tab()
   await user.keyboard('{ArrowRight}')
   expect(selected()).toBe('2')
+  expect(screen.getByRole('button', { name: 'Date — tap to change' })).toBeInTheDocument()
 })
 
 it('offers no column as an answer when asked to', async () => {

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { pluralPick } from '@/lib/plural'
 import { ChoiceCards } from '../ChoiceCards'
-import { columnLabels } from '../columnLabels'
+import { columnMarks } from '../columnLabels'
 import { FileTable } from '../FileTable'
 import { detectDateOrder, parseDateCell, type DateOrder } from '../dates'
 import { columnValues } from '../guess'
@@ -40,7 +40,7 @@ function OrderQuestion({ example, order, onChange }: { example: string; order: D
   )
 }
 
-export function DateStep({ state, setAnswers }: StepBodyProps) {
+export function DateStep({ state, setAnswers, goTo }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const title = t('transactions.import_wizard.date.title')
   const { date } = state.answers
@@ -59,7 +59,8 @@ export function DateStep({ state, setAnswers }: StepBodyProps) {
         label={title}
         selected={date.column}
         onSelect={(column) => setAnswers('date', { date: { ...date, column } })}
-        labels={columnLabels(state.answers, t, ['date'])}
+        {...columnMarks(state.answers, t, 'date', ['date'])}
+        onOpenStep={goTo}
         mutedRows={skippedRows(state.rows, 'no_date')}
       />
       {example ? (

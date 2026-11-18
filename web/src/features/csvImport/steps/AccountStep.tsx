@@ -4,13 +4,15 @@ import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { Input } from '@/components/ui/input'
 import { useAccounts } from '@/features/accounts/queries'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
+import { useCurrencies } from '@/features/currencies/queries'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { SelectCard } from '@/features/transactions/SelectCard'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { pluralPick } from '@/lib/plural'
 import { ChoiceCards } from '../ChoiceCards'
-import { columnLabels } from '../columnLabels'
+import { columnMarks } from '../columnLabels'
 import { FileTable } from '../FileTable'
+import { currencyColumn, fileCurrencyId, rowsCurrencyId } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice } from '../prepare'
 import { defaultAccountName, distinctNames, nameKey, skippedRows, writableAccounts, type StepBodyProps } from '../wizard'
@@ -95,12 +97,13 @@ export function PerRowAccounts({ file, account, existing, fallbackCurrency, onCh
   )
 }
 
-export function AccountStep({ state, setAnswers }: StepBodyProps) {
+export function AccountStep({ state, setAnswers, goTo }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const writable = useMemo(() => writableAccounts(accounts, user?.id), [accounts, user?.id])
   const existing = useMemo(() => new Set(writable.map((a) => nameKey(a.name))), [writable])
+  const { data: currencies = [] } = useCurrencies()
   const currencyId = userCurrencyId(user) ?? ''
   const title = t('transactions.import_wizard.account.title')
   const { account } = state.answers
@@ -150,7 +153,7 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
     // leaving "new" keeps the typed name for coming back, without saving it as the answer
     dropTypedName()
     const fallback: AccountChoice | null =
-      next === 'new' ? { kind: 'new', name: defaultAccountName(state.fileName), currencyId } : null
+      next === 'new' ? { kind: 'new', name: defaultAccountName(state.fileName), currencyId: fileCurrencyId(state.file, currencies) ?? currencyId } : null
     set(remembered.current[next] ?? fallback)
   }
 
@@ -158,9 +161,12 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
     if (column === null) return
     const previous = account?.kind === 'column' ? account.currencies : {}
     const keys = distinctNames(state.file, column).map(nameKey).filter((key) => !existing.has(key))
+    // an account's own rows may say its currency; a currency already chosen for it is kept
+    const codes = currencyColumn(state.file, currencies)
+    const fromFile = (key: string) => rowsCurrencyId(state.file.rows.filter((row) => nameKey(row[column] ?? '') === key), codes, currencies)
     // fromEntries, not assignment: a name like "__proto__" must stay a plain key
-    const currencies = Object.fromEntries(keys.map((key) => [key, ownCurrency(previous, key) ?? currencyId]))
-    set({ kind: 'column', column, currencies })
+    const perAccount = Object.fromEntries(keys.map((key) => [key, ownCurrency(previous, key) ?? fromFile(key) ?? currencyId]))
+    set({ kind: 'column', column, currencies: perAccount })
   }
 
   const accountLabel = t('transactions.import_wizard.steps.account')
@@ -203,7 +209,8 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
             label={t('transactions.import_wizard.account.column_question')}
             selected={account?.kind === 'column' ? account.column : null}
             onSelect={chooseColumn}
-            labels={columnLabels(state.answers, t, ['account'])}
+            {...columnMarks(state.answers, t, 'account', ['account'])}
+            onOpenStep={goTo}
             mutedRows={skippedRows(state.rows, 'no_account')}
           />
           {nameless > 0 ? (

@@ -405,6 +405,7 @@
       }
     },
     "import_wizard": {
+      "change_column": "{role}——点按以更改",
       "column_n": "第 {n} 列",
       "title": "导入交易",
       "steps_label": "导入步骤",
@@ -490,6 +491,7 @@
         "new_labels": "将创建 {count} 个新标签"
       },
       "preview": {
+        "position_skipped": "跳过的行 {n}/{total}",
         "title": "以下内容将被导入",
         "totals": "{count} 笔交易，{first} 至 {last}。收入 {in}，支出 {out}。",
         "nothing": "目前不会导入任何内容。",

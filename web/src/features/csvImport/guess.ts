@@ -1,6 +1,7 @@
 import { detectDecimalSeparator } from './amounts'
 import type { ColumnProfile, ColumnType } from './columns'
 import { detectDateOrder, localeDateOrder } from './dates'
+import { fileCurrencyId } from './fileCurrency'
 import type { ParsedFile } from './parse'
 import type { AccountChoice, Role, StepId, WizardAnswers } from './prepare'
 
@@ -218,7 +219,7 @@ export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: G
   const writable = ctx.writableAccountIds
   const account: AccountChoice | null =
     writable.length === 0
-      ? { kind: 'new', name: ctx.defaultAccountName, currencyId: ctx.userCurrencyId }
+      ? { kind: 'new', name: ctx.defaultAccountName, currencyId: fileCurrencyId(file, ctx.currencies ?? []) ?? ctx.userCurrencyId }
       : writable.length === 1
         ? { kind: 'existing', accountId: writable[0] }
         : null

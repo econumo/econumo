@@ -405,6 +405,7 @@
       }
     },
     "import_wizard": {
+      "change_column": "{role} – zum Ändern antippen",
       "column_n": "Spalte {n}",
       "title": "Buchungen importieren",
       "steps_label": "Importschritte",
@@ -490,6 +491,7 @@
         "new_labels": "{count} neues Tag wird erstellt | {count} neue Tags werden erstellt"
       },
       "preview": {
+        "position_skipped": "Übersprungene Zeile {n} von {total}",
         "title": "Das wird importiert",
         "totals": "{count} Buchung, {first} bis {last}. Eingänge {in}, Ausgänge {out}. | {count} Buchungen, {first} bis {last}. Eingänge {in}, Ausgänge {out}.",
         "nothing": "Noch wird nichts importiert.",

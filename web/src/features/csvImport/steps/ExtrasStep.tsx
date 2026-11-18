@@ -8,8 +8,8 @@ import { useUserData } from '@/features/user/queries'
 import { pluralPick } from '@/lib/plural'
 import type { ParsedFile } from '../parse'
 import type { WizardAnswers } from '../prepare'
-import { usedColumns, type StepBodyProps } from '../wizard'
-import { columnLabels } from '../columnLabels'
+import type { StepBodyProps } from '../wizard'
+import { columnMarks } from '../columnLabels'
 import { FileTable } from '../FileTable'
 import { PillChoice } from './PillChoice'
 import { StepTitle } from './StepTitle'
@@ -37,7 +37,7 @@ function distinctNew(file: ParsedFile, column: number | null, split: string | nu
   return found.size
 }
 
-export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
+export function ExtrasStep({ state, setAnswers, goTo }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -73,7 +73,6 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
 
   const title = t('transactions.import_wizard.extras.title')
   const hint = t('transactions.import_wizard.extras.hint')
-  const locked = usedColumns(state.answers)
   const [picked, setPicked] = useState<number | null>(null)
   const pickedName = picked === null ? '' : state.file.header[picked]?.trim() || t('transactions.import_wizard.column_n', { n: picked + 1 })
 
@@ -86,8 +85,8 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
         label={hint}
         selected={picked}
         onSelect={setPicked}
-        labels={columnLabels(state.answers, t)}
-        locked={locked}
+        {...columnMarks(state.answers, t, 'extras')}
+        onOpenStep={goTo}
       />
 
       {picked !== null ? (

@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch'
 import { isNegative } from '@/lib/decimal'
 import { pluralPick } from '@/lib/plural'
 import { ChoiceCards } from '../ChoiceCards'
-import { columnLabels } from '../columnLabels'
+import { columnMarks } from '../columnLabels'
 import { FileTable } from '../FileTable'
 import { detectDecimalSeparator, parseAmountCell, type DecimalSeparator } from '../amounts'
 import { columnValues } from '../guess'
@@ -52,7 +52,7 @@ function amountValues(file: ParsedFile, amount: Amount): string[] {
   return columns.flatMap((column) => columnValues(file, column))
 }
 
-export function AmountStep({ state, setAnswers }: StepBodyProps) {
+export function AmountStep({ state, setAnswers, goTo }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const flipId = useId()
   const title = t('transactions.import_wizard.amount.title')
@@ -105,7 +105,8 @@ export function AmountStep({ state, setAnswers }: StepBodyProps) {
             label={columnQuestion}
             selected={amount.column}
             onSelect={(column) => set({ column })}
-            labels={columnLabels(state.answers, t, ['amount'])}
+            {...columnMarks(state.answers, t, 'amount', ['amount'])}
+            onOpenStep={goTo}
             mutedRows={mutedRows}
           />
         </>
@@ -126,7 +127,8 @@ export function AmountStep({ state, setAnswers }: StepBodyProps) {
             label={sideQuestion}
             selected={side === 'in' ? amount.inColumn : amount.outColumn}
             onSelect={pickSide}
-            labels={columnLabels(state.answers, t, [side === 'in' ? 'amountIn' : 'amountOut'])}
+            {...columnMarks(state.answers, t, 'amount', [side === 'in' ? 'amountIn' : 'amountOut'])}
+            onOpenStep={goTo}
             mutedRows={mutedRows}
             noneLabel={t(side === 'in' ? 'transactions.import_wizard.amount.none_in' : 'transactions.import_wizard.amount.none_out')}
           />

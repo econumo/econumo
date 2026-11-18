@@ -405,6 +405,7 @@
       }
     },
     "import_wizard": {
+      "change_column": "{role} — dotknij, aby zmienić",
       "column_n": "Kolumna {n}",
       "title": "Importuj transakcje",
       "steps_label": "Kroki importu",
@@ -490,6 +491,7 @@
         "new_labels": "Zostanie utworzony {count} nowy tag | Zostaną utworzone {count} nowe tagi | Zostanie utworzonych {count} nowych tagów"
       },
       "preview": {
+        "position_skipped": "Pominięty wiersz {n} z {total}",
         "title": "Oto, co zostanie zaimportowane",
         "totals": "{count} transakcja, od {first} do {last}. Wpływy {in}, wydatki {out}. | {count} transakcje, od {first} do {last}. Wpływy {in}, wydatki {out}. | {count} transakcji, od {first} do {last}. Wpływy {in}, wydatki {out}.",
         "nothing": "Na razie nic nie zostanie zaimportowane.",

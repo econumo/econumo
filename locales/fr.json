@@ -405,6 +405,7 @@
       }
     },
     "import_wizard": {
+      "change_column": "{role} — touchez pour modifier",
       "column_n": "Colonne {n}",
       "title": "Importer des transactions",
       "steps_label": "Étapes de l’import",
@@ -490,6 +491,7 @@
         "new_labels": "{count} nouveau tag sera créé | {count} nouveaux tags seront créés"
       },
       "preview": {
+        "position_skipped": "Ligne ignorée {n} sur {total}",
         "title": "Voici ce qui sera importé",
         "totals": "{count} transaction, du {first} au {last}. Entrées {in}, sorties {out}. | {count} transactions, du {first} au {last}. Entrées {in}, sorties {out}.",
         "nothing": "Rien ne sera importé pour l’instant.",

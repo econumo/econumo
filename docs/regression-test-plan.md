@@ -757,11 +757,17 @@ navigation (single-pane vs sidebar).
       column, scrolling sideways on a 390 px phone without widening the
       dialog. Tapping any cell or the header chooses that column: it gets a
       tinted background top to bottom and a check by its header, and the
-      guessed one is already chosen (scrolled into view on a phone). Columns
-      another step uses carry a small grey label under the header ("Amount",
-      "Date", "Description"). The header radios are reachable with Tab and
-      ← / → move the choice. No dropdowns of header names, no per-column
-      cards.
+      guessed one is already chosen (scrolled into view on a phone). A column
+      another step already uses is collapsed to a narrow strip showing only
+      its role with a check ("✓ Date"); tapping it (or Enter on it, it is a
+      button named "Date — tap to change") opens that step: Account for a
+      per-row account column, Extra details for a category/payee/tag column.
+      The step's own chosen column stays open and highlighted, and unused
+      columns stay full width, so the table narrows as the user advances. On
+      a phone a fade on the right edge shows there is more to scroll; it
+      disappears at the end. The header radios are reachable with Tab and
+      ← / → move the choice, skipping strips. No dropdowns of header names,
+      no per-column cards.
 - [ ] 📱 Step bar: once a file is read every step can be opened in any order,
       forward or back, by clicking its name (desktop) or its numbered dot
       (phone, the current step's name under the dots). A step whose required
@@ -801,12 +807,13 @@ navigation (single-pane vs sidebar).
       description" under the table leaves descriptions empty.
 - [ ] Extra details (a file with Category, Payee, Tags columns from another
       app): the step shows the whole file; columns Account, Date, Amount or
-      Description use are labelled and cannot be tapped. Tapping another
+      Description use are strips that open their step. Tapping another
       column asks "Use “…” as" with Leave out, Category, Payee, Budget tag,
       Reporting tags right under the table, and the answer labels the column
-      (recognised headers come preselected). A column given to Category here
-      and then chosen on Description is no longer a category (it is labelled
-      Description here and not uploaded twice); Reporting tags asks how several
+      (recognised headers come preselected). On Description, a column given
+      here is a strip that opens Extra details; a column that ends up on a
+      main step anyway (e.g. by the AI guess) is never also uploaded as an
+      extra detail; Reporting tags asks how several
       tags in one cell are separated (";" by default, ",", "|", Tab, or something else). A note counts
       the new categories and tags the import will create. The imported rows
       carry exactly those values.
@@ -818,7 +825,9 @@ navigation (single-pane vs sidebar).
       count)". ONE transaction is shown at a time, laid out like the app's
       transaction view (description, category, payee, tags; signed red/green
       amount with the account's currency, account, date — with the time when
-      the file has one), headed "Transaction 3 of 214", with the file's
+      the file has one), headed "Transaction 3 of 214" where 214 is the same
+      count the totals and the Import button show; a skipped row is headed
+      "Skipped row 1 of 2" instead, with the file's
       original line under it ("From the file:"). Previous / Next, the ← / →
       keys (not while typing in a field) and a horizontal swipe on a phone
       move through every row; "Next problem" (only when rows will be skipped)
@@ -845,10 +854,13 @@ navigation (single-pane vs sidebar).
 - [ ] Account step: "An account I already have" (the default when the user
       can write to an account; with exactly one such account it is already
       chosen and Account carries no warning) lists only accounts the user owns or may edit;
-      "A new account" asks a name and a currency; "Each row says which
+      "A new account" asks a name and a currency (pre-filled from a currency
+      column when every row names the same code the app knows, e.g. `EUR`;
+      the user's currency otherwise, always changeable); "Each row says which
       account" asks for the column, then lists the names found: one matching
       a writable account (any letter case) reads "Existing account", every
-      other gets its own currency picker. Import creates the new accounts
+      other gets its own currency picker, pre-filled with the currency its own
+      rows name when they name exactly one. Import creates the new accounts
       (in the user's first visible folder, never a hidden one, or "General"
       for a user with none) and
       puts each row in its account. Pressing Import again after an error

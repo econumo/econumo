@@ -405,6 +405,7 @@
       }
     },
     "import_wizard": {
+      "change_column": "{role} — tik om te wijzigen",
       "column_n": "Kolom {n}",
       "title": "Transacties importeren",
       "steps_label": "Importstappen",
@@ -490,6 +491,7 @@
         "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt"
       },
       "preview": {
+        "position_skipped": "Overgeslagen regel {n} van {total}",
         "title": "Dit wordt geïmporteerd",
         "totals": "{count} transactie, {first} tot {last}. Geld erin {in}, geld eruit {out}. | {count} transacties, {first} tot {last}. Geld erin {in}, geld eruit {out}.",
         "nothing": "Er wordt nog niets geïmporteerd.",

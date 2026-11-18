@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { Role, WizardAnswers } from './prepare'
+import type { Role, StepId, WizardAnswers } from './prepare'
 
 const ROLE_KEYS: Record<Role, string> = {
   account: 'transactions.import_wizard.steps.account',
@@ -34,13 +34,39 @@ export function columnRoles(answers: WizardAnswers): [Role, number][] {
   return roles.filter((entry): entry is [Role, number] => entry[1] !== null)
 }
 
-/** what each column is used for, leaving out the roles the current step asks about itself */
-export function columnLabels(answers: WizardAnswers, t: TFunction, omit: Role[] = []): Record<number, string> {
+const ROLE_STEP: Record<Role, StepId> = {
+  account: 'account',
+  date: 'date',
+  amount: 'amount',
+  amountIn: 'amount',
+  amountOut: 'amount',
+  description: 'description',
+  category: 'extras',
+  payee: 'extras',
+  tag: 'extras',
+  labels: 'extras',
+}
+
+export interface CollapsedColumn {
+  label: string
+  step: StepId
+}
+
+/** how a step's table marks columns: its own other roles as labels, other steps' columns collapsed to a link back */
+export function columnMarks(
+  answers: WizardAnswers,
+  t: TFunction,
+  step: StepId,
+  omit: Role[] = [],
+): { labels: Record<number, string>; collapsed: Record<number, CollapsedColumn> } {
   const labels: Record<number, string> = {}
+  const collapsed: Record<number, CollapsedColumn> = {}
   for (const [role, column] of columnRoles(answers)) {
     if (omit.includes(role)) continue
     const text = t(ROLE_KEYS[role])
-    labels[column] = labels[column] ? `${labels[column]}, ${text}` : text
+    if (ROLE_STEP[role] === step) labels[column] = labels[column] ? `${labels[column]}, ${text}` : text
+    else if (collapsed[column]) collapsed[column] = { ...collapsed[column], label: `${collapsed[column].label}, ${text}` }
+    else collapsed[column] = { label: text, step: ROLE_STEP[role] }
   }
-  return labels
+  return { labels, collapsed }
 }

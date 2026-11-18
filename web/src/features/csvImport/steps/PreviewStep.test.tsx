@@ -106,11 +106,11 @@ it('Next and the right arrow key move through the rows', async () => {
   const user = userEvent.setup()
   await openCheck(user)
   await user.click(screen.getByRole('button', { name: 'Next' }))
-  expect(screen.getByText('Transaction 2 of 9')).toBeInTheDocument()
+  expect(screen.getByText('Transaction 2 of 7')).toBeInTheDocument()
   await user.keyboard('{ArrowRight}')
-  expect(screen.getByText('Transaction 3 of 9')).toBeInTheDocument()
+  expect(screen.getByText('Skipped row 1 of 2')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Previous' }))
-  expect(screen.getByText('Transaction 2 of 9')).toBeInTheDocument()
+  expect(screen.getByText('Transaction 2 of 7')).toBeInTheDocument()
 })
 
 it('a swipe to the left shows the next row', async () => {
@@ -120,7 +120,7 @@ it('a swipe to the left shows the next row', async () => {
   const card = screen.getByRole('button', { name: 'Coffee' }).closest('.touch-pan-y') as HTMLElement
   fireEvent.touchStart(card, { touches: [{ clientX: 200, clientY: 10 }], changedTouches: [{ clientX: 200, clientY: 10 }] })
   fireEvent.touchEnd(card, { touches: [], changedTouches: [{ clientX: 100, clientY: 12 }] })
-  expect(screen.getByText('Transaction 2 of 9')).toBeInTheDocument()
+  expect(screen.getByText('Transaction 2 of 7')).toBeInTheDocument()
 })
 
 it('Next problem jumps to the first row that will be skipped, and says why', async () => {
@@ -129,11 +129,11 @@ it('Next problem jumps to the first row that will be skipped, and says why', asy
   await openCheck(user)
   expect(screen.getByText('2 will be skipped (No readable date: 1, No readable amount: 1)')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Next problem' }))
-  expect(screen.getByText('Transaction 3 of 9')).toBeInTheDocument()
+  expect(screen.getByText('Skipped row 1 of 2')).toBeInTheDocument()
   expect(screen.getByText('No readable date')).toBeInTheDocument()
   expect(screen.getByText('someday,-2.00,Cake')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Next problem' }))
-  expect(screen.getByText('Transaction 6 of 9')).toBeInTheDocument()
+  expect(screen.getByText('Skipped row 2 of 2')).toBeInTheDocument()
   expect(screen.getByText('No readable amount')).toBeInTheDocument()
 })
 
@@ -318,7 +318,7 @@ it('an AI guess fills a step the user left alone but never one they answered', a
   release()
   await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_AI_GUESS))
   expect(screen.getByRole('radio', { name: /^Value date/ })).toBeChecked()
-  await user.click(screen.getByRole('button', { name: /^Description/ }))
+  await user.click(screen.getByRole('button', { name: 'Description' }))
   expect(screen.getByRole('radio', { name: /^Info/ })).toBeChecked()
   expect(asked).toEqual([
     { name: 'Booking date', type: 'date', negatives: false },

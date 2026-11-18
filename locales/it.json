@@ -405,6 +405,7 @@
       }
     },
     "import_wizard": {
+      "change_column": "{role}: tocca per cambiare",
       "column_n": "Colonna {n}",
       "title": "Importa transazioni",
       "steps_label": "Passaggi dell’importazione",
@@ -490,6 +491,7 @@
         "new_labels": "Verrà creato {count} nuovo tag | Verranno creati {count} nuovi tag"
       },
       "preview": {
+        "position_skipped": "Riga saltata {n} di {total}",
         "title": "Ecco cosa verrà importato",
         "totals": "{count} transazione, dal {first} al {last}. Entrate {in}, uscite {out}. | {count} transazioni, dal {first} al {last}. Entrate {in}, uscite {out}.",
         "nothing": "Per ora non verrà importato nulla.",

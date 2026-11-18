@@ -112,7 +112,7 @@ it('rows that will be skipped never mark a step; the step says so quietly', asyn
   expect(screen.getByText('1 row has no readable date and will be skipped')).toBeInTheDocument()
 })
 
-it('a column a main step takes stops being an extra detail', async () => {
+it('a column given in Extra details is a strip on Description that opens Extra details', async () => {
   renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee,Cafe\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account is this statement from?' })
@@ -120,13 +120,9 @@ it('a column a main step takes stops being an extra detail', async () => {
   await user.click(screen.getByRole('radio', { name: 'Merchant' }))
   await user.click(within(screen.getByRole('radiogroup', { name: 'Use “Merchant” as' })).getByRole('radio', { name: 'Payee' }))
   await user.click(screen.getByRole('button', { name: 'Description' }))
-  await user.click(screen.getByRole('cell', { name: 'Cafe' }))
-  await user.click(screen.getByRole('button', { name: 'Extra details' }))
-  const merchant = screen.getByRole('radio', { name: 'Merchant' })
-  expect(merchant).toHaveAttribute('aria-disabled', 'true')
-  expect(merchant).toHaveAccessibleDescription('Description')
-  await user.click(screen.getByRole('button', { name: /^Check/ }))
-  expect(await screen.findAllByRole('button', { name: 'Cafe' })).toHaveLength(1)
+  expect(screen.queryByRole('cell', { name: 'Cafe' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Payee — tap to change' }))
+  expect(screen.getByRole('heading', { name: 'Anything else to bring over?' })).toBeInTheDocument()
 })
 
 it('an Econumo export goes straight to Check', async () => {
