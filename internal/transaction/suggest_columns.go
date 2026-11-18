@@ -128,7 +128,8 @@ func (s *Service) askColumns(ctx context.Context, userID vo.Id, language string,
 			continue
 		}
 		header = strings.TrimSpace(header)
-		if !headers[header] || taken[header] {
+		// null decodes to "", which would otherwise name a blank header
+		if header == "" || !headers[header] || taken[header] {
 			continue
 		}
 		roles[role] = header

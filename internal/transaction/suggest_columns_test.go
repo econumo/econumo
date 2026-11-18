@@ -153,6 +153,21 @@ func TestSuggestImportColumnsDropsUnknownRolesAndDuplicates(t *testing.T) {
 	}
 }
 
+func TestSuggestImportColumnsNullNeverNamesABlankHeader(t *testing.T) {
+	c := &columnsCompleter{reply: `{"date":"Buchungstag","amount":"Betrag","description":null,"payee":""}`}
+	svc := columnsService(c, apptransaction.AIFactsInfo{}, columnsLimiter{})
+	req := germanColumns()
+	req.Columns = append(req.Columns, model.ImportColumnFact{Name: "", Type: "text"})
+	res, err := svc.SuggestImportColumns(context.Background(), columnsUser, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"date": "Buchungstag", "amount": "Betrag"}
+	if !reflect.DeepEqual(res.Roles, want) {
+		t.Fatalf("roles = %v, want %v", res.Roles, want)
+	}
+}
+
 func TestSuggestImportColumnsEmptyWhen(t *testing.T) {
 	cases := map[string]struct {
 		completer *columnsCompleter
