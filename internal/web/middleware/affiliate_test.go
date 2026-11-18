@@ -46,3 +46,16 @@ func TestAffiliateMiddleware(t *testing.T) {
 		})
 	}
 }
+
+func TestAffiliateMiddlewareDuplicateCookieNames(t *testing.T) {
+	var program, code string
+	h := middleware.Affiliate([]model.AffiliateCookie{{Program: "affonso", Cookie: "affonso_referral"}})(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		program, code = reqctx.Affiliate(r.Context())
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/api/x", nil)
+	req.Header.Set("Cookie", "affonso_referral=a b; affonso_referral=abc123")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if program != "affonso" || code != "abc123" {
+		t.Fatalf("Affiliate = %q %q, want affonso abc123", program, code)
+	}
+}

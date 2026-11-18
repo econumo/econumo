@@ -14,11 +14,7 @@ func Affiliate(programs []model.AffiliateCookie) func(http.Handler) http.Handler
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			for _, p := range programs {
-				c, err := r.Cookie(p.Cookie)
-				if err != nil {
-					continue
-				}
-				if code := model.NormalizeAffiliateCode(c.Value); code != "" {
+				if code := firstValidCode(r.CookiesNamed(p.Cookie)); code != "" {
 					r = r.WithContext(reqctx.WithAffiliate(r.Context(), p.Program, code))
 					break
 				}
@@ -26,4 +22,15 @@ func Affiliate(programs []model.AffiliateCookie) func(http.Handler) http.Handler
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// A browser can send the same cookie name twice (a host-only one beside a
+// domain one), so a malformed first must not hide a valid later one.
+func firstValidCode(cookies []*http.Cookie) string {
+	for _, c := range cookies {
+		if code := model.NormalizeAffiliateCode(c.Value); code != "" {
+			return code
+		}
+	}
+	return ""
 }
