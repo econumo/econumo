@@ -42,16 +42,19 @@ func ClientIP(ctx context.Context) string {
 	return ip
 }
 
-// WithAffiliate returns a context carrying the already-validated referral code
-// of the visitor.
-func WithAffiliate(ctx context.Context, v string) context.Context {
-	return context.WithValue(ctx, affiliateKey, v)
+type affiliate struct{ program, code string }
+
+// WithAffiliate returns a context carrying the already-validated program and
+// referral code of the visitor.
+func WithAffiliate(ctx context.Context, program, code string) context.Context {
+	return context.WithValue(ctx, affiliateKey, affiliate{program, code})
 }
 
-// Affiliate returns the referral code, "" when the request carried none.
-func Affiliate(ctx context.Context) string {
-	v, _ := ctx.Value(affiliateKey).(string)
-	return v
+// Affiliate returns the program and referral code, both "" when the request
+// carried none.
+func Affiliate(ctx context.Context) (program, code string) {
+	a, _ := ctx.Value(affiliateKey).(affiliate)
+	return a.program, a.code
 }
 
 // idempotencyResource is a mutable holder: the auth middleware installs it and

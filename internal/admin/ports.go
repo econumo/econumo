@@ -15,13 +15,14 @@ import (
 // collapsed against a clock, so the effective level is derived in exactly one
 // place (Service.view).
 type UserRecord struct {
-	ID          string
-	Name        string
-	Email       string
-	Avatar      string
-	AccessLevel model.AccessLevel
-	AccessUntil *time.Time
-	Affiliate   string
+	ID            string
+	Name          string
+	Email         string
+	Avatar        string
+	AccessLevel   model.AccessLevel
+	AccessUntil   *time.Time
+	Affiliate     string
+	AffiliateCode string
 }
 
 type UserLookup interface {
@@ -33,7 +34,7 @@ type UserLookup interface {
 
 // AffiliateLister reads referral attributions for the billing poller.
 type AffiliateLister interface {
-	ListAffiliateUsers(ctx context.Context, since time.Time, afterUserID string, limit int) ([]model.AdminAffiliateUser, error)
+	ListAffiliateUsers(ctx context.Context, program string, since time.Time, afterUserID string, limit int) ([]model.AdminAffiliateUser, error)
 }
 
 type ConnectionLookup interface {

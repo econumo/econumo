@@ -86,7 +86,8 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	u := build(s.repo.NextIdentity(), encryptedEmail, s.avatars.Pick(), now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
 	if selfService {
-		u.SetAffiliate(reqctx.Affiliate(ctx), s.repo.NextIdentity(), now)
+		program, code := reqctx.Affiliate(ctx)
+		u.SetAffiliate(program, code, s.repo.NextIdentity, now)
 	}
 	// Analytics default to on for every new user; the deprecated ECONUMO_ANALYTICS
 	// variable governs only the one-time migration:seed-analytics-option backfill

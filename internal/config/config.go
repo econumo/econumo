@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/econumo/econumo/internal/model"
 )
 
 // Config is the fully-resolved application configuration.
@@ -63,11 +65,11 @@ type Config struct {
 
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
-	AdminPort      string // ECONUMO_ADMIN_PORT
-	AdminToken     string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
-	BillingURL     string // ECONUMO_BILLING_URL: payment portal; empty disables billing
-	ReferralCookie string // ECONUMO_REFERRAL_COOKIE: cookie a partner program sets on the root domain; captured on new accounts only together with BillingURL
-	AppURL         string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
+	AdminPort  string                  // ECONUMO_ADMIN_PORT
+	AdminToken string                  // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
+	BillingURL string                  // ECONUMO_BILLING_URL: payment portal; empty disables billing
+	Affiliates []model.AffiliateCookie // ECONUMO_AFFILIATES: program:cookie pairs, in priority order; captured on new accounts only together with BillingURL
+	AppURL     string                  // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
 
 	// OAuth / OIDC provider slots (see docs/superpowers/specs/2026-09-07-oauth-login-design.md §3).
 	// A slot is enabled when every required variable is set; a partial slot fails at boot.
@@ -350,11 +352,12 @@ func Load() (Config, error) {
 		c.BillingURL = v
 	}
 
-	if v := os.Getenv("ECONUMO_REFERRAL_COOKIE"); v != "" {
-		if !validCookieName(v) {
-			return Config{}, fmt.Errorf("ECONUMO_REFERRAL_COOKIE: not a valid cookie name: %q", v)
+	if v := os.Getenv("ECONUMO_AFFILIATES"); v != "" {
+		a, err := parseAffiliates(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("ECONUMO_AFFILIATES: %w", err)
 		}
-		c.ReferralCookie = v
+		c.Affiliates = a
 	}
 
 	if v := os.Getenv("ECONUMO_URL"); v != "" {
@@ -871,6 +874,23 @@ func getDurationStrict(key string, def time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("%s %q is not a positive Go duration (e.g. \"15m\")", key, v)
 	}
 	return d, nil
+}
+
+func parseAffiliates(raw string) ([]model.AffiliateCookie, error) {
+	var out []model.AffiliateCookie
+	programs, cookies := map[string]bool{}, map[string]bool{}
+	for _, entry := range strings.Split(raw, ",") {
+		program, cookie, ok := strings.Cut(strings.TrimSpace(entry), ":")
+		if !ok || !model.ValidAffiliateProgram(program) || !validCookieName(cookie) {
+			return nil, fmt.Errorf("entry %q is not program:cookie", entry)
+		}
+		if programs[program] || cookies[cookie] {
+			return nil, fmt.Errorf("entry %q repeats a program or cookie", entry)
+		}
+		programs[program], cookies[cookie] = true, true
+		out = append(out, model.AffiliateCookie{Program: program, Cookie: cookie})
+	}
+	return out, nil
 }
 
 func validCookieName(name string) bool {

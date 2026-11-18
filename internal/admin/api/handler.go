@@ -83,6 +83,12 @@ const (
 
 func (h *Handlers) AffiliateUsers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	program := q.Get("program")
+	if !model.ValidAffiliateProgram(program) {
+		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+			errs.FieldError{Key: "program", Message: "Invalid program"}))
+		return
+	}
 	raw := q.Get("since")
 	if raw == "" {
 		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
@@ -115,7 +121,7 @@ func (h *Handlers) AffiliateUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		after = id.String()
 	}
-	res, err := h.svc.AffiliateUsers(r.Context(), since, after, limit)
+	res, err := h.svc.AffiliateUsers(r.Context(), program, since, after, limit)
 	if err != nil {
 		h.writeErr(r.Context(), w, err)
 		return

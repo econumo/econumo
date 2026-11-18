@@ -38,8 +38,8 @@ same way it is the only part that knows about money.
 ```
 econumo.com?via=partner ──pixel──▶ Affonso creates a click, cookie affonso_referral=<click id>
                                    on the root domain (.econumo.com), SameSite=None; Secure
-app.econumo.com sign-up ──────────▶ the app reads the cookie, stores user option `affiliate`
-billing polls every 30 s ─────────▶ GET /admin/affiliate-users?since=… (and /admin/user-context
+app.econumo.com sign-up ──────────▶ the app reads the cookie, stores user options `affiliate` (program) and `affiliate_code`
+billing polls every 30 s ─────────▶ GET /admin/affiliate-users?program=…&since=… (and /admin/user-context
                                    when the user opens billing) ──▶ POST /v1/signups
 user pays / is refunded ──────────▶ billing ──▶ POST /v1/conversions / .../refund
 ```
@@ -59,8 +59,11 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
 
 ### 2. App (`econumo/econumo`)
 
-- **Config**: `ECONUMO_REFERRAL_COOKIE` (cookie name, e.g. `affonso_referral`). Capture runs
-  only when BOTH it and `ECONUMO_BILLING_URL` are set. Documented in `docs/full.env.example`.
+- **Config**: `ECONUMO_AFFILIATES`, comma-separated `program:cookie` pairs (e.g.
+  `affonso:affonso_referral`; program `^[a-z0-9_-]{1,32}$`, cookie a valid cookie name;
+  duplicates, empty entries or bad syntax fail at boot). Capture runs only when BOTH it and
+  `ECONUMO_BILLING_URL` are set. The first program, in config order, whose cookie holds a
+  valid code wins. Documented in `docs/full.env.example`.
 - **Capture**: at account creation only, on both paths:
   - `POST /api/v1/user/register-user`: the cookie on that request.
   - OAuth callback when it provisions a new user (`internal/oauth`): the cookie on the
@@ -68,24 +71,27 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
     nothing.
   The value is validated (`^[A-Za-z0-9_-]{1,64}$`); anything else is dropped silently. A
   missing, malformed or unreadable cookie never fails or changes the sign-up.
-- **Storage**: user option `affiliate` (`model.OptionAffiliate`), written with the new user in
-  the same transaction, write-once (never overwritten or cleared by any flow).
-- **Exposure**: only through the private admin listener. `GET /admin/user-context` adds an
-  additive `affiliate` field to the user view (`""` when none; connections carry it
-  too, unused). It is filtered out of `get-user-data` and `get-option-list`, which today
+- **Storage**: two server-only user options written together with the new user in the same
+  transaction, write-once (never overwritten or cleared by any flow; if either exists, neither
+  is written): `affiliate` = program (`model.OptionAffiliate`), `affiliate_code` = code
+  (`model.OptionAffiliateCode`).
+- **Exposure**: only through the private admin listener. `GET /admin/user-context` adds
+  additive `affiliate` (program) and `affiliateCode` fields to the user view (`""` when
+  none; connections carry them too, unused). It is filtered out of `get-user-data` and `get-option-list`, which today
   return every stored option, and not exposed on `/mcp`.
 - The name is deliberately not `referral`: the parked `feature/referral-program` branch uses
   that for a different thing (the share report a user signed up from).
-- **Listing**: new private route `GET /admin/affiliate-users?since=<datetime>&limit=<n>&afterUserId=<id>`
-  (admin listener, admin token like the others). Returns users whose `affiliate` option was
+- **Listing**: new private route `GET /admin/affiliate-users?program=<p>&since=<datetime>&limit=<n>&afterUserId=<id>`
+  (admin listener, admin token like the others). `program` is required (config's regex).
+  Returns users whose `affiliate` option equals `program` and was
   created at or after `since` (frozen datetime layout, UTC), ordered by option `created_at`,
   then user id, at most `limit` (default and max 500):
-  `[{"userId","affiliate","createdAt"}]`. Bad `since`/`limit`/`afterUserId` = 400 envelope.
+  `[{"userId","affiliate","affiliateCode","createdAt"}]`. Bad `program`/`since`/`limit`/`afterUserId` = 400 envelope.
   `createdAt` has one-second precision, so a page can end inside a second: with the optional
   `afterUserId` (needs `since`) the filter becomes `created_at > since OR (created_at = since AND
   user_id > afterUserId)`; billing pages by passing the last row's `createdAt` and `userId`.
   Without it the filter stays `created_at >= since`. Backed by a partial index
-  (`affiliate_created_at_idx_users_options`).
+  (`affiliate_program_created_at_idx_users_options` on `(value, created_at, user_id)`).
 - No HTTP client, no outbound call, no retries in the app.
 
 ### 3. Billing (`econumo/billing`)
@@ -96,7 +102,7 @@ request to app.econumo.com carries it, including Apple's cross-site `form_post` 
 - **Reading**: billing already calls `GET /admin/user-context` server to server with
   `ECONUMO_ADMIN_URL` + `ECONUMO_ADMIN_TOKEN` (`internal/econumo/http.go`) every time the
   portal loads a user (`Service.Context`, `CreateCheckout`); the short-lived handoff token
-  only tells billing WHICH user. `internal/econumo` parses the new `affiliate` field.
+  only tells billing WHICH user. `internal/econumo` parses the new `affiliate` and `affiliateCode` fields.
 - **Recording the sign-up**, two paths writing the same row (`ON CONFLICT DO NOTHING`):
   - **Polling** (primary): each worker tick calls `affiliate-users` with
     `since = stored cursor - 10 minutes` (the overlap covers transactions that committed late
@@ -149,7 +155,7 @@ before the column existed has NULL and is not reported (there is no backfill any
 
 ## Rules touched
 
-- Env vars: `ECONUMO_REFERRAL_COOKIE` in `docs/full.env.example` (not `.env.example`).
+- Env vars: `ECONUMO_AFFILIATES` in `docs/full.env.example` (not `.env.example`).
 - No user-observable change in the app, so no regression-plan, analytics or i18n items.
 - Admin user-context response gains a field; update its tests (and goldens if covered).
 

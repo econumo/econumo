@@ -46,12 +46,13 @@ func (a *AdminUserAccess) SetAccess(ctx context.Context, id vo.Id, level model.A
 
 func record(u *model.User, email string) appadmin.UserRecord {
 	return appadmin.UserRecord{
-		ID:          u.ID.String(),
-		Name:        u.Name,
-		Email:       email,
-		Avatar:      u.Avatar,
-		AccessLevel: u.AccessLevel,
-		AccessUntil: u.AccessUntil,
-		Affiliate:   u.Affiliate(),
+		ID:            u.ID.String(),
+		Name:          u.Name,
+		Email:         email,
+		Avatar:        u.Avatar,
+		AccessLevel:   u.AccessLevel,
+		AccessUntil:   u.AccessUntil,
+		Affiliate:     u.Affiliate(),
+		AffiliateCode: u.AffiliateCode(),
 	}
 }

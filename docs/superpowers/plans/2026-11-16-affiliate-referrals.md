@@ -25,9 +25,9 @@ an outbox worker (like `internal/grants`) calls Affonso.
 ## Global Constraints
 
 - The app never names the vendor: no "affonso" in `econumo/econumo` code, config names or docs
-  except as the example value `ECONUMO_REFERRAL_COOKIE=affonso_referral` in `docs/full.env.example`.
-- App capture runs only when BOTH `ECONUMO_REFERRAL_COOKIE` and `ECONUMO_BILLING_URL` are set.
-- Option name `affiliate`; admin JSON field `affiliate` (`""` when none).
+  except as the example value `ECONUMO_AFFILIATES=affonso:affonso_referral` in `docs/full.env.example`.
+- App capture runs only when BOTH `ECONUMO_AFFILIATES` and `ECONUMO_BILLING_URL` are set.
+- Options `affiliate` (program) and `affiliate_code`; admin JSON fields `affiliate` and `affiliateCode` (`""` when none); list endpoint takes a required `program`.
 - Valid value: `^[A-Za-z0-9_-]{1,64}$`; anything else is dropped silently, never an error.
 - Referral handling never fails or changes a sign-up, a portal page, a checkout, a webhook ack
   or a grant.
@@ -67,7 +67,8 @@ an outbox worker (like `internal/grants`) calls Affonso.
 - Produces: `model.OptionAffiliate = "affiliate"`; `model.NormalizeAffiliate(raw string) string`
   (raw if valid, else `""`); `func (u *User) SetAffiliate(value string, id vo.Id, now time.Time)`
   (no-op when value is `""` or the option already exists — write-once);
-  `func (u *User) Affiliate() string`; `model.IsServerOnlyOption(name string) bool` (true for
+  `func (u *User) Affiliate() string` (program), `AffiliateCode()`; (superseded by the
+  program/code split in the spec: `NormalizeAffiliateCode`, `SetAffiliate(program, code, newID, now)`); `model.IsServerOnlyOption(name string) bool` (true for
   `OptionAffiliate`).
 
 - [ ] **Step 1: Write failing tests** `TestNormalizeAffiliate` (table: `"cmwirmwzi0031h9pc8rhijzge"`
@@ -89,7 +90,7 @@ an outbox worker (like `internal/grants`) calls Affonso.
 - Modify: `internal/shared/reqctx/reqctx.go` (+ test): new key `affiliateKey`
 - Create: `internal/web/middleware/affiliate.go`, `internal/web/middleware/affiliate_test.go`
 - Modify: `internal/web/router/router.go:170` — `root.Handle("/api/", global(apiMux))` wraps
-  `apiMux` with `middleware.Affiliate(name)` only when `deps.Cfg.ReferralCookie != "" &&
+  `apiMux` with `middleware.Affiliate(programs)` only when `len(deps.Cfg.Affiliates) > 0 &&
   deps.Cfg.BillingURL != ""`
 - Modify: `internal/user/register.go` (`persistNewUser`, before `s.tx.WithTx`)
 - Modify: `docs/full.env.example` (next to `ECONUMO_BILLING_URL`, line ~155)
@@ -98,7 +99,7 @@ an outbox worker (like `internal/grants`) calls Affonso.
 
 **Interfaces:**
 - Consumes: Task 1 `model.NormalizeAffiliate`, `(*User).SetAffiliate`.
-- Produces: `config.Config.ReferralCookie string` (`ECONUMO_REFERRAL_COOKIE`; any non-empty
+- Produces: `config.Config.Affiliates []model.AffiliateCookie` (`ECONUMO_AFFILIATES`, `program:cookie` pairs; any non-empty
   value that is a valid cookie name per `net/http` token rules, else boot error);
   `reqctx.WithAffiliate(ctx, v string) context.Context`, `reqctx.Affiliate(ctx) string`;
   `middleware.Affiliate(cookieName string) func(http.Handler) http.Handler` — reads the cookie,
@@ -116,10 +117,10 @@ an outbox worker (like `internal/grants`) calls Affonso.
   - `TestAdminCreateUserIgnoresAffiliate`: CLI path (`selfService=false`) stores nothing.
   - `TestAffiliateNotWrittenOnExistingUserSignIn`: OAuth callback for an existing user with the
     cookie set leaves the user without the option.
-  - `TestRouterAffiliateGate`: with only one of `ReferralCookie` / `BillingURL` set, a
+  - `TestRouterAffiliateGate`: with only one of `Affiliates` / `BillingURL` set, a
     register request carrying the cookie stores nothing.
-  - Config test: `ECONUMO_REFERRAL_COOKIE=affonso_referral` parses; `bad name` errors.
-- [ ] **Step 2: Run** `go test ./internal/web/middleware/ ./internal/user/ ./internal/oauth/... ./internal/config/ ./internal/web/router/ -run 'Affiliate|ReferralCookie'` — FAIL.
+  - Config test: `ECONUMO_AFFILIATES=affonso:affonso_referral` parses; `bad name` errors.
+- [ ] **Step 2: Run** `go test ./internal/web/middleware/ ./internal/user/ ./internal/oauth/... ./internal/config/ ./internal/web/router/ -run 'Affiliate'` — FAIL.
 - [ ] **Step 3: Implement.** In `persistNewUser`: when `selfService` and `reqctx.Affiliate(ctx)`
   is non-empty, `u.SetAffiliate(v, s.repo.NextIdentity(), now)`. The OAuth callback needs no
   change: provisioning runs on the callback request's ctx (Apple's POST callback carries the
@@ -334,5 +335,5 @@ referral is `failed`, or a refund whose conversion is `failed`, becomes `failed`
 
 ## Rollout (after all PRs merge)
 
-Set on production: app `ECONUMO_REFERRAL_COOKIE=affonso_referral`; billing `AFFONSO_API_KEY`.
+Set on production: app `ECONUMO_AFFILIATES=affonso:affonso_referral`; billing `AFFONSO_API_KEY`.
 Test environment sets neither.

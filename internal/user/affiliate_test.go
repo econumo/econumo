@@ -17,13 +17,13 @@ func TestServerOnlyOptionHidden(t *testing.T) {
 	ctx := context.Background()
 	h := newRegisterHarness(t)
 	u := h.registerUser(t, "aff@example.test")
-	u.SetAffiliate("partner_1", vo.NewId(), time.Now().UTC())
+	u.SetAffiliate("affonso", "partner_1", vo.NewId, time.Now().UTC())
 	if err := h.db.TX.WithTx(ctx, func(ctx context.Context) error { return h.repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	stored, err := h.repo.GetByEmail(ctx, "aff@example.test")
-	if err != nil || stored.Affiliate() != "partner_1" {
-		t.Fatalf("affiliate not persisted: %v %q", err, stored.Affiliate())
+	if err != nil || stored.Affiliate() != "affonso" || stored.AffiliateCode() != "partner_1" {
+		t.Fatalf("affiliate not persisted: %v %q %q", err, stored.Affiliate(), stored.AffiliateCode())
 	}
 
 	read := appuser.NewReadService(userrepo.NewReadRepo(h.db.Engine, h.db.TX), auth.NewEncodeService(""), trialClock{})
@@ -51,21 +51,21 @@ func assertNoAffiliate(t *testing.T, where string, opts []model.OptionResult) {
 		t.Fatalf("%s: no options at all", where)
 	}
 	for _, o := range opts {
-		if o.Name == model.OptionAffiliate {
+		if model.IsServerOnlyOption(o.Name) {
 			t.Errorf("%s exposes the affiliate option", where)
 		}
 	}
 }
 
 func TestRegisterStoresAffiliate(t *testing.T) {
-	ctx := reqctx.WithAffiliate(context.Background(), "abc123")
+	ctx := reqctx.WithAffiliate(context.Background(), "affonso", "abc123")
 	h := newRegisterHarness(t)
 	res, err := h.svc.Register(ctx, model.RegisterRequest{Name: "Aff", Email: "aff-reg@example.test", Password: "secretpass"})
 	if err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 	for _, o := range res.User.Options {
-		if o.Name == model.OptionAffiliate {
+		if model.IsServerOnlyOption(o.Name) {
 			t.Fatal("the Register response exposes the affiliate option")
 		}
 	}
@@ -73,8 +73,8 @@ func TestRegisterStoresAffiliate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Affiliate() != "abc123" {
-		t.Fatalf("Affiliate = %q, want abc123", stored.Affiliate())
+	if stored.Affiliate() != "affonso" || stored.AffiliateCode() != "abc123" {
+		t.Fatalf("Affiliate = %q %q, want affonso abc123", stored.Affiliate(), stored.AffiliateCode())
 	}
 	if stored.Option(model.OptionAnalytics) == nil {
 		t.Fatal("default options must survive alongside the affiliate")
@@ -82,7 +82,7 @@ func TestRegisterStoresAffiliate(t *testing.T) {
 }
 
 func TestProvisionExternalUserStoresAffiliate(t *testing.T) {
-	ctx := reqctx.WithAffiliate(context.Background(), "abc123")
+	ctx := reqctx.WithAffiliate(context.Background(), "affonso", "abc123")
 	h := newRegisterHarness(t)
 	u, err := h.svc.ProvisionExternalUser(ctx, "Ext", "ext-aff@example.test")
 	if err != nil {
@@ -92,13 +92,13 @@ func TestProvisionExternalUserStoresAffiliate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Affiliate() != "abc123" {
-		t.Fatalf("Affiliate = %q, want abc123", stored.Affiliate())
+	if stored.Affiliate() != "affonso" || stored.AffiliateCode() != "abc123" {
+		t.Fatalf("Affiliate = %q %q, want affonso abc123", stored.Affiliate(), stored.AffiliateCode())
 	}
 }
 
 func TestAdminCreateUserIgnoresAffiliate(t *testing.T) {
-	ctx := reqctx.WithAffiliate(context.Background(), "abc123")
+	ctx := reqctx.WithAffiliate(context.Background(), "affonso", "abc123")
 	h := newRegisterHarness(t)
 	id, err := h.svc.AdminCreateUser(ctx, "Cli", "cli-aff@example.test", "secretpass")
 	if err != nil {
@@ -108,7 +108,7 @@ func TestAdminCreateUserIgnoresAffiliate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Option(model.OptionAffiliate) != nil {
+	if stored.Option(model.OptionAffiliate) != nil || stored.Option(model.OptionAffiliateCode) != nil {
 		t.Fatal("an operator-created account must carry no affiliate")
 	}
 }

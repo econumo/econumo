@@ -50,14 +50,16 @@ func (q *Queries) GetUserOptions(ctx context.Context, userID string) ([]UsersOpt
 }
 
 const listAffiliateUsers = `-- name: ListAffiliateUsers :many
-SELECT user_id, value, created_at
-FROM users_options
-WHERE name = 'affiliate' AND value IS NOT NULL AND value <> '' AND (created_at > ?1 OR (created_at = ?1 AND user_id > ?2))
-ORDER BY created_at, user_id
-LIMIT ?3
+SELECT o.user_id, o.value, c.value AS code, o.created_at
+FROM users_options o
+LEFT JOIN users_options c ON c.user_id = o.user_id AND c.name = 'affiliate_code'
+WHERE o.name = 'affiliate' AND o.value = ?1 AND (o.created_at > ?2 OR (o.created_at = ?2 AND o.user_id > ?3))
+ORDER BY o.created_at, o.user_id
+LIMIT ?4
 `
 
 type ListAffiliateUsersParams struct {
+	Program     *string
 	Since       time.Time
 	AfterUserID string
 	RowLimit    int64
@@ -66,6 +68,7 @@ type ListAffiliateUsersParams struct {
 type ListAffiliateUsersRow struct {
 	UserID    string
 	Value     *string
+	Code      *string
 	CreatedAt time.Time
 }
 
@@ -73,7 +76,12 @@ type ListAffiliateUsersRow struct {
 // the cursor is (since, after_user_id). The nil UUID sorts below every
 // id, which makes the cursor a plain created_at >= since.
 func (q *Queries) ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsersParams) ([]ListAffiliateUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAffiliateUsers, arg.Since, arg.AfterUserID, arg.RowLimit)
+	rows, err := q.db.QueryContext(ctx, listAffiliateUsers,
+		arg.Program,
+		arg.Since,
+		arg.AfterUserID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +89,12 @@ func (q *Queries) ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsers
 	items := []ListAffiliateUsersRow{}
 	for rows.Next() {
 		var i ListAffiliateUsersRow
-		if err := rows.Scan(&i.UserID, &i.Value, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Value,
+			&i.Code,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

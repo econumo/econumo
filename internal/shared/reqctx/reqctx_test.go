@@ -91,10 +91,10 @@ func TestIsLanguageExplicit(t *testing.T) {
 }
 
 func TestAffiliate(t *testing.T) {
-	if got := Affiliate(context.Background()); got != "" {
-		t.Fatalf("empty context = %q", got)
+	if p, c := Affiliate(context.Background()); p != "" || c != "" {
+		t.Fatalf("empty context = %q %q", p, c)
 	}
-	if got := Affiliate(WithAffiliate(context.Background(), "abc123")); got != "abc123" {
-		t.Fatalf("got %q", got)
+	if p, c := Affiliate(WithAffiliate(context.Background(), "affonso", "abc123")); p != "affonso" || c != "abc123" {
+		t.Fatalf("got %q %q", p, c)
 	}
 }

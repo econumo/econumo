@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/econumo/econumo/internal/model"
 )
 
 func TestDriverFromURL(t *testing.T) {
@@ -1113,18 +1115,25 @@ func TestParseAIDSN_Exported(t *testing.T) {
 	}
 }
 
-func TestLoad_ReferralCookie(t *testing.T) {
+func TestLoad_Affiliates(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
-	t.Setenv("ECONUMO_REFERRAL_COOKIE", "affonso_referral")
+	t.Setenv("ECONUMO_AFFILIATES", "affonso:affonso_referral")
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.ReferralCookie != "affonso_referral" {
-		t.Fatalf("ReferralCookie = %q", c.ReferralCookie)
+	if len(c.Affiliates) != 1 || c.Affiliates[0] != (model.AffiliateCookie{Program: "affonso", Cookie: "affonso_referral"}) {
+		t.Fatalf("Affiliates = %+v", c.Affiliates)
 	}
-	t.Setenv("ECONUMO_REFERRAL_COOKIE", "bad name")
-	if _, err := Load(); err == nil {
-		t.Fatal("a name that is not a cookie token must fail at boot")
+	t.Setenv("ECONUMO_AFFILIATES", "a:x,b:y")
+	c, err = Load()
+	if err != nil || len(c.Affiliates) != 2 || c.Affiliates[0].Program != "a" || c.Affiliates[1].Program != "b" {
+		t.Fatalf("order: %+v %v", c.Affiliates, err)
+	}
+	for _, bad := range []string{"bad", "A:x", "a:bad name", "a:x,a:y", "a:x,b:x", "a:x,,", ":x", "a:"} {
+		t.Setenv("ECONUMO_AFFILIATES", bad)
+		if _, err := Load(); err == nil {
+			t.Errorf("%q must fail at boot", bad)
+		}
 	}
 }

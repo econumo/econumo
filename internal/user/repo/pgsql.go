@@ -116,8 +116,8 @@ func (pgsqlQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend.
 	return pgsqlgen.New(db).UpdateUserEmailIfGeneration(ctx, pgsqlgen.UpdateUserEmailIfGenerationParams(p))
 }
 
-func (pgsqlQuerier) ListAffiliateUsers(ctx context.Context, db backend.DBTX, since time.Time, afterUserID string, limit int) ([]affiliateRow, error) {
-	rows, err := pgsqlgen.New(db).ListAffiliateUsers(ctx, pgsqlgen.ListAffiliateUsersParams{Since: since, AfterUserID: afterUserID, RowLimit: int32(limit)})
+func (pgsqlQuerier) ListAffiliateUsers(ctx context.Context, db backend.DBTX, program string, since time.Time, afterUserID string, limit int) ([]affiliateRow, error) {
+	rows, err := pgsqlgen.New(db).ListAffiliateUsers(ctx, pgsqlgen.ListAffiliateUsersParams{Program: &program, Since: since, AfterUserID: afterUserID, RowLimit: int32(limit)})
 	if err != nil {
 		return nil, err
 	}
