@@ -758,12 +758,17 @@ navigation (single-pane vs sidebar).
       dialog. Tapping any cell or the header chooses that column: it gets a
       tinted background top to bottom and a check by its header, and the
       guessed one is already chosen (scrolled into view on a phone). A column
-      another step already uses is collapsed to a narrow strip showing only
-      its role with a check ("✓ Date"); tapping it (or Enter on it, it is a
-      button named "Date — tap to change") opens that step: Account for a
-      per-row account column, Extra details for a category/payee/tag column.
-      The step's own chosen column stays open and highlighted, and unused
-      columns stay full width, so the table narrows as the user advances. On
+      another step already uses is folded to a narrow tinted strip: a small
+      ↔ mark, its role with a check ("✓ Date") and a faint clipped hint of
+      its values. Tapping anywhere on it (or Enter on it, it is a button
+      named "Date — tap to change") opens that step: Account for a per-row
+      account column, Extra details for a category/payee/tag column. Moving
+      between steps folds and unfolds columns like a horizontal accordion:
+      header and values close together as the width shrinks (and reopen on
+      the step that owns them); with the system's reduced-motion setting the
+      change is instant. The step's own chosen column stays open and
+      highlighted, and unused columns stay full width, so the table narrows
+      as the user advances. On
       a phone a fade on the right edge shows there is more to scroll; it
       disappears at the end. The header radios are reachable with Tab and
       ← / → move the choice, skipping strips. No dropdowns of header names,
@@ -804,7 +809,8 @@ navigation (single-pane vs sidebar).
       money out, and either side can be "The file has no money-in/money-out
       column"; each side's column carries its label in the table.
 - [ ] Description: tapping a column chooses it; "The file has no
-      description" under the table leaves descriptions empty.
+      description" is a rounded button under the table (highlighted with a
+      check when chosen) and leaves descriptions empty.
 - [ ] Extra details (a file with Category, Payee, Tags columns from another
       app): the step shows the whole file; columns Account, Date, Amount or
       Description use are strips that open their step. Tapping another

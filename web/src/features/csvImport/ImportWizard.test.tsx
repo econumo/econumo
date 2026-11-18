@@ -120,8 +120,7 @@ it('a column given in Extra details is a strip on Description that opens Extra d
   await user.click(screen.getByRole('radio', { name: 'Merchant' }))
   await user.click(within(screen.getByRole('radiogroup', { name: 'Use “Merchant” as' })).getByRole('radio', { name: 'Payee' }))
   await user.click(screen.getByRole('button', { name: 'Description' }))
-  expect(screen.queryByRole('cell', { name: 'Cafe' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Payee — tap to change' }))
+  await user.click(await screen.findByRole('button', { name: 'Payee — tap to change' }))
   expect(screen.getByRole('heading', { name: 'Anything else to bring over?' })).toBeInTheDocument()
 })
 

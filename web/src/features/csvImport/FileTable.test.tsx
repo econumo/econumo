@@ -3,12 +3,13 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { CollapsedColumn } from './columnLabels'
 import { FileTable } from './FileTable'
-import { parseCsvText } from './parse'
+import { parseCsvText, type ParsedFile } from './parse'
 import type { StepId } from './prepare'
 
-const FILE = parseCsvText('Day,Sum,Text,\n2026-01-02,-5,Coffee,\n2026-01-03,7,Salary,\n,,,\n2026-01-04,1,Gum,\n')
+const TEXT = 'Day,Sum,Text,\n2026-01-02,-5,Coffee,\n2026-01-03,7,Salary,\n,,,\n2026-01-04,1,Gum,\n'
 
 function Harness(props: {
+  file?: ParsedFile
   initial?: number | null
   labels?: Record<number, string>
   collapsed?: Record<number, CollapsedColumn>
@@ -16,11 +17,12 @@ function Harness(props: {
   noneLabel?: string
   mutedRows?: Set<number>
 }) {
+  const [file] = useState(() => props.file ?? parseCsvText(TEXT))
   const [selected, setSelected] = useState<number | null>(props.initial ?? null)
   return (
     <>
       <FileTable
-        file={FILE}
+        file={file}
         label="Tap the column with the date"
         selected={selected}
         onSelect={setSelected}
@@ -92,7 +94,7 @@ it('arrow keys skip a collapsed column; the step’s own choice stays open even 
   await user.tab()
   await user.keyboard('{ArrowRight}')
   expect(selected()).toBe('2')
-  expect(screen.getByRole('button', { name: 'Date — tap to change' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Date — tap to change' })).toBeInTheDocument()
 })
 
 it('offers no column as an answer when asked to', async () => {
@@ -107,4 +109,40 @@ it('rows that will be skipped are shown muted', () => {
   render(<Harness mutedRows={new Set([1])} />)
   expect(screen.getByRole('cell', { name: 'Salary' }).closest('tr')).toHaveClass('text-muted-foreground/70')
   expect(screen.getByRole('cell', { name: 'Coffee' }).closest('tr')).not.toHaveClass('text-muted-foreground/70')
+})
+
+it('a table for a file another step showed starts from its folds and folds the difference, as an accordion', async () => {
+  const file = parseCsvText(TEXT)
+  const first = render(<Harness file={file} initial={0} />)
+  first.unmount()
+  render(<Harness file={file} initial={2} collapsed={{ 0: { label: 'Date', step: 'date' } }} />)
+  expect(screen.getByRole('radio', { name: 'Day' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Date — tap to change' })).toBeInTheDocument()
+  expect(screen.queryByRole('radio', { name: 'Day' })).not.toBeInTheDocument()
+})
+
+it('a folded column keeps a faint clipped hint of its values and its whole height opens its step', async () => {
+  const onOpenStep = vi.fn()
+  render(<Harness initial={0} collapsed={{ 1: { label: 'Amount', step: 'amount' } }} onOpenStep={onOpenStep} />)
+  const hint = screen.getByText('-5')
+  expect(hint).toHaveClass('text-muted-foreground/50')
+  expect(hint).toHaveStyle({ maxWidth: '36px' })
+  const user = userEvent.setup()
+  await user.click(hint)
+  expect(onOpenStep).toHaveBeenCalledWith('amount')
+})
+
+it('with reduced motion a fold is instant', () => {
+  const file = parseCsvText(TEXT)
+  const media = window.matchMedia
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q === '(prefers-reduced-motion: reduce)', media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  try {
+    render(<Harness file={file} initial={0} />).unmount()
+    render(<Harness file={file} initial={2} collapsed={{ 0: { label: 'Date', step: 'date' } }} />)
+    expect(screen.getByRole('button', { name: 'Date — tap to change' })).toBeInTheDocument()
+  } finally {
+    window.matchMedia = media
+  }
 })

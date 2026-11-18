@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { Check } from 'lucide-react'
+import { Check, ChevronsLeftRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import type { CollapsedColumn } from './columnLabels'
@@ -8,6 +8,15 @@ import type { ParsedFile } from './parse'
 import type { StepId } from './prepare'
 
 const SHOWN_ROWS = 6
+const OPEN_WIDTH = 224
+const FOLDED_WIDTH = 36
+
+// The columns the last table of a file showed folded: the next step's table starts from them and
+// folds or unfolds the difference, so moving between steps reads as one table folding like an accordion.
+const shownFolded = new WeakMap<ParsedFile, ReadonlySet<number>>()
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 interface FileTableProps {
   file: ParsedFile
@@ -48,6 +57,26 @@ export function FileTable({ file, label, selected, onSelect, labels = {}, collap
   const nameOf = (column: number) => file.header[column]?.trim() || t('transactions.import_wizard.column_n', { n: column + 1 })
 
   const collapsedKey = choosable.join(',')
+  const target = columns.filter(isCollapsed)
+  const [folded, setFolded] = useState<ReadonlySet<number>>(() =>
+    prefersReducedMotion() ? new Set(target) : (shownFolded.get(file) ?? new Set(target)),
+  )
+  const isFolded = (column: number) => folded.has(column)
+
+  // the change lands two frames after the previous state was painted, so the width transition runs
+  useEffect(() => {
+    const next = new Set(target)
+    shownFolded.set(file, next)
+    if (prefersReducedMotion()) {
+      setFolded(next)
+      return
+    }
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setFolded(next))
+    })
+    return () => cancelAnimationFrame(frame)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, collapsedKey])
   const measure = useCallback(() => {
     const box = scroller.current
     if (box) setMoreRight(box.scrollLeft + box.clientWidth < box.scrollWidth - 1)
@@ -88,31 +117,63 @@ export function FileTable({ file, label, selected, onSelect, labels = {}, collap
     onSelect(next)
   }
 
-  const tint = (column: number) => (column === selected ? 'bg-primary/10' : column === hovered ? 'bg-econumo-hover' : '')
+  const tint = (column: number) =>
+    column === selected ? 'bg-primary/10' : isFolded(column) ? (column === hovered ? 'bg-econumo-hover' : 'bg-econumo-hover/60') : column === hovered ? 'bg-econumo-hover' : ''
+
+  // every cell's content sits in a box whose width animates, so header and values fold together
+  const fold = (column: number) => ({
+    style: { maxWidth: isFolded(column) ? FOLDED_WIDTH : OPEN_WIDTH },
+    className: cn(
+      'overflow-hidden whitespace-nowrap transition-[max-width,padding,opacity] duration-300 ease-out motion-reduce:transition-none',
+      isFolded(column) ? 'px-1.5 text-clip' : 'px-3 text-ellipsis',
+    ),
+  })
+
+  const openStep = (column: number) => {
+    const owner = collapsed[column]
+    if (owner) onOpenStep?.(owner.step)
+  }
 
   return (
     <div role="radiogroup" aria-label={label} className="flex min-w-0 flex-col gap-2">
       <div className="relative max-w-full">
-        <div ref={scroller} className="overflow-x-auto rounded-lg bg-econumo-card" onScroll={measure} onMouseLeave={() => setHovered(null)}>
+        <div
+          ref={scroller}
+          className="overflow-x-auto rounded-lg bg-econumo-card"
+          onScroll={measure}
+          onTransitionEnd={measure}
+          onMouseLeave={() => setHovered(null)}
+        >
           <table className="w-max min-w-full border-separate border-spacing-0 text-left text-[13px]">
             <thead>
               <tr>
                 {columns.map((column) => {
-                  const strip = isCollapsed(column) ? collapsed[column] : null
-                  if (strip) {
-                    const name = t('transactions.import_wizard.change_column', { role: strip.label })
+                  const box = fold(column)
+                  const owner = collapsed[column]
+                  if (isFolded(column) && owner) {
+                    const name = t('transactions.import_wizard.change_column', { role: owner.label })
                     return (
-                      <th key={column} scope="col" className="w-9 border-b border-border/60 bg-econumo-hover/70 p-0 align-top font-normal">
-                        <button
-                          type="button"
-                          aria-label={name}
-                          title={`${nameOf(column)} · ${name}`}
-                          onClick={() => onOpenStep?.(strip.step)}
-                          className="flex w-9 cursor-pointer items-center justify-start gap-1 py-3 text-xs text-muted-foreground outline-none hover:bg-econumo-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [writing-mode:vertical-rl]"
-                        >
-                          <Check aria-hidden className="size-3.5 shrink-0" />
-                          <span className="max-h-48 truncate">{strip.label}</span>
-                        </button>
+                      <th
+                        key={column}
+                        scope="col"
+                        className={cn('cursor-pointer border-b border-border/60 p-0 align-top font-normal', tint(column))}
+                        onClick={() => openStep(column)}
+                        onMouseEnter={() => setHovered(column)}
+                      >
+                        <div {...box} className={cn(box.className, 'py-2')}>
+                          <button
+                            type="button"
+                            aria-label={name}
+                            title={`${nameOf(column)} · ${name}`}
+                            className="flex cursor-pointer flex-col items-center gap-1 rounded-sm text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                          >
+                            <ChevronsLeftRight aria-hidden className="size-3.5 shrink-0" />
+                            <span className="flex items-center gap-1 [writing-mode:vertical-rl]">
+                              <Check aria-hidden className="size-3.5 shrink-0" />
+                              <span className="max-h-40 truncate">{owner.label}</span>
+                            </span>
+                          </button>
+                        </div>
                       </th>
                     )
                   }
@@ -121,33 +182,35 @@ export function FileTable({ file, label, selected, onSelect, labels = {}, collap
                     <th
                       key={column}
                       scope="col"
-                      className={cn('cursor-pointer border-b border-border/60 px-3 py-2 align-top font-normal', tint(column))}
-                      onClick={() => onSelect(column)}
+                      className={cn('cursor-pointer border-b border-border/60 p-0 align-top font-normal', tint(column))}
+                      onClick={() => (isCollapsed(column) ? openStep(column) : onSelect(column))}
                       onMouseEnter={() => setHovered(column)}
                     >
-                      <button
-                        ref={(el) => {
-                          headers.current[column] = el
-                        }}
-                        type="button"
-                        role="radio"
-                        aria-checked={column === selected}
-                        aria-describedby={labels[column] ? labelId : undefined}
-                        tabIndex={column === tabStop ? 0 : -1}
-                        onKeyDown={(e) => onKeyDown(e, column)}
-                        className={cn(
-                          'flex max-w-56 cursor-pointer items-center gap-1 rounded-sm text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                          column === selected && 'text-primary',
-                        )}
-                      >
-                        <span className="truncate">{nameOf(column)}</span>
-                        {column === selected ? <Check aria-hidden className="size-4 shrink-0" /> : null}
-                      </button>
-                      {labels[column] ? (
-                        <span id={labelId} className="block text-xs text-muted-foreground">
-                          {labels[column]}
-                        </span>
-                      ) : null}
+                      <div {...box} className={cn(box.className, 'py-2')}>
+                        <button
+                          ref={(el) => {
+                            headers.current[column] = el
+                          }}
+                          type="button"
+                          role="radio"
+                          aria-checked={column === selected}
+                          aria-describedby={labels[column] ? labelId : undefined}
+                          tabIndex={column === tabStop ? 0 : -1}
+                          onKeyDown={(e) => onKeyDown(e, column)}
+                          className={cn(
+                            'flex max-w-full cursor-pointer items-center gap-1 rounded-sm text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                            column === selected && 'text-primary',
+                          )}
+                        >
+                          <span className="truncate">{nameOf(column)}</span>
+                          {column === selected ? <Check aria-hidden className="size-4 shrink-0" /> : null}
+                        </button>
+                        {labels[column] ? (
+                          <span id={labelId} className="block truncate text-xs text-muted-foreground">
+                            {labels[column]}
+                          </span>
+                        ) : null}
+                      </div>
                     </th>
                   )
                 })}
@@ -157,18 +220,20 @@ export function FileTable({ file, label, selected, onSelect, labels = {}, collap
               {rows.map(({ index, cells }) => (
                 <tr key={index} className={mutedRows?.has(index) ? 'text-muted-foreground/70' : undefined}>
                   {columns.map((column) => {
-                    const strip = isCollapsed(column) ? collapsed[column] : null
-                    return strip ? (
-                      <td key={column} aria-hidden className="w-9 cursor-pointer bg-econumo-hover/70 p-0" onClick={() => onOpenStep?.(strip.step)} />
-                    ) : (
+                    const box = fold(column)
+                    const folded = isFolded(column)
+                    return (
                       <td
                         key={column}
-                        title={cells[column] ?? ''}
-                        className={cn('max-w-56 cursor-pointer truncate px-3 py-1.5 whitespace-nowrap tabular-nums', tint(column))}
-                        onClick={() => onSelect(column)}
+                        aria-hidden={folded || undefined}
+                        title={folded ? undefined : (cells[column] ?? '')}
+                        className={cn('cursor-pointer p-0 tabular-nums', tint(column))}
+                        onClick={() => (isCollapsed(column) ? openStep(column) : onSelect(column))}
                         onMouseEnter={() => setHovered(column)}
                       >
-                        {cells[column] ?? ''}
+                        <div {...box} className={cn(box.className, 'py-1.5', folded && 'text-muted-foreground/50')}>
+                          {cells[column] ?? ''}
+                        </div>
                       </td>
                     )
                   })}
@@ -188,8 +253,8 @@ export function FileTable({ file, label, selected, onSelect, labels = {}, collap
           aria-checked={selected === null}
           onClick={() => onSelect(null)}
           className={cn(
-            'flex items-center gap-1 self-start rounded-sm text-sm underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50',
-            selected === null ? 'text-primary' : 'text-muted-foreground',
+            'flex items-center gap-1.5 self-start rounded-full border px-3 py-1.5 text-sm transition-colors outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50',
+            selected === null && 'border-primary bg-primary/5 text-primary',
           )}
         >
           {selected === null ? <Check aria-hidden className="size-4 shrink-0" /> : null}
