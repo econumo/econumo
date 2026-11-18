@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -92,4 +93,8 @@ func (sqliteQuerier) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Cont
 
 func (sqliteQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend.DBTX, p emailGenParams) (int64, error) {
 	return sqlitegen.New(db).UpdateUserEmailIfGeneration(ctx, p)
+}
+
+func (sqliteQuerier) ListAffiliateUsers(ctx context.Context, db backend.DBTX, program string, since time.Time, afterUserID string, limit int) ([]affiliateRow, error) {
+	return sqlitegen.New(db).ListAffiliateUsers(ctx, sqlitegen.ListAffiliateUsersParams{Program: program, Since: since, AfterUserID: afterUserID, RowLimit: int64(limit)})
 }

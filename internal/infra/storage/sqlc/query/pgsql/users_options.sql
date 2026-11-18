@@ -22,3 +22,14 @@ FROM users u
 LEFT JOIN users_options o ON o.user_id = u.id AND o.name = $1
 WHERE o.user_id IS NULL
 ORDER BY u.id;
+
+-- name: ListAffiliateUsers :many
+-- created_at has one-second precision, so a page can end inside a second:
+-- the cursor is (since, after_user_id). The nil UUID sorts below every
+-- id, which makes the cursor a plain created_at >= since.
+SELECT o.user_id, o.value, c.value AS code, o.created_at
+FROM users_options o
+LEFT JOIN users_options c ON c.user_id = o.user_id AND c.name = 'affiliate_code'
+WHERE o.name = 'affiliate' AND o.value IS NOT NULL AND o.value <> '' AND (sqlc.arg(program)::text = '' OR o.value = sqlc.arg(program)) AND (o.created_at > sqlc.arg(since) OR (o.created_at = sqlc.arg(since) AND o.user_id > sqlc.arg(after_user_id)))
+ORDER BY o.created_at, o.user_id
+LIMIT sqlc.arg(row_limit);

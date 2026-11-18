@@ -585,7 +585,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		apidoc.RegisterAPI(),
 	)
 
-	adminSvc := appadmin.NewService(NewAdminUserAccess(userSvc), connectionRepo, clk)
+	adminSvc := appadmin.NewService(NewAdminUserAccess(userSvc), connectionRepo, userRepo, clk)
 	adminMux := http.NewServeMux()
 	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc))(adminMux)
 	// No CORS (never browser-reached) and no timezone/language (nothing here is

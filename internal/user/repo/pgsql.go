@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -113,4 +114,16 @@ func (pgsqlQuerier) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Conte
 
 func (pgsqlQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend.DBTX, p emailGenParams) (int64, error) {
 	return pgsqlgen.New(db).UpdateUserEmailIfGeneration(ctx, pgsqlgen.UpdateUserEmailIfGenerationParams(p))
+}
+
+func (pgsqlQuerier) ListAffiliateUsers(ctx context.Context, db backend.DBTX, program string, since time.Time, afterUserID string, limit int) ([]affiliateRow, error) {
+	rows, err := pgsqlgen.New(db).ListAffiliateUsers(ctx, pgsqlgen.ListAffiliateUsersParams{Program: program, Since: since, AfterUserID: afterUserID, RowLimit: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]affiliateRow, len(rows))
+	for i, r := range rows {
+		out[i] = affiliateRow(r)
+	}
+	return out, nil
 }

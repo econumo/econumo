@@ -233,6 +233,9 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 	}
 	options := make([]model.OptionResult, 0, len(u.Options)+1)
 	for _, o := range u.Options {
+		if model.IsServerOnlyOption(o.Name) {
+			continue
+		}
 		value := o.Value
 		if o.Name == model.OptionCurrency {
 			c := code

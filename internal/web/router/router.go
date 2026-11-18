@@ -167,7 +167,13 @@ func New(deps Deps) http.Handler {
 	if deps.RegisterAPI != nil {
 		deps.RegisterAPI(apiMux)
 	}
-	root.Handle("/api/", global(apiMux))
+	var api http.Handler = apiMux
+	// Referrals are reported only to billing: without ECONUMO_BILLING_URL the
+	// cookie would be stored for nobody.
+	if len(deps.Cfg.Affiliates) > 0 && deps.Cfg.BillingURL != "" {
+		api = middleware.Affiliate(deps.Cfg.Affiliates)(apiMux)
+	}
+	root.Handle("/api/", global(api))
 
 	// MCP endpoint. Mounted at the root (outside /api: JSON-RPC, not the REST
 	// contract, so the apiparity machinery must not scan it) but inside the

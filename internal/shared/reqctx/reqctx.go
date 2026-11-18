@@ -27,6 +27,7 @@ const (
 	explicitLocationKey
 	clientIPKey
 	idempotencyResourceKey
+	affiliateKey
 )
 
 // WithClientIP returns a context carrying the caller's rate-limit bucket: an IP
@@ -39,6 +40,21 @@ func WithClientIP(ctx context.Context, ip string) context.Context {
 func ClientIP(ctx context.Context) string {
 	ip, _ := ctx.Value(clientIPKey).(string)
 	return ip
+}
+
+type affiliate struct{ program, code string }
+
+// WithAffiliate returns a context carrying the already-validated program and
+// referral code of the visitor.
+func WithAffiliate(ctx context.Context, program, code string) context.Context {
+	return context.WithValue(ctx, affiliateKey, affiliate{program, code})
+}
+
+// Affiliate returns the program and referral code, both "" when the request
+// carried none.
+func Affiliate(ctx context.Context) (program, code string) {
+	a, _ := ctx.Value(affiliateKey).(affiliate)
+	return a.program, a.code
 }
 
 // idempotencyResource is a mutable holder: the auth middleware installs it and

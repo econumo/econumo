@@ -54,6 +54,7 @@ type (
 	emailGenParams      = sqlitegen.UpdateUserEmailIfGenerationParams
 	emailLookupParams   = sqlitegen.GetUserByEmailParams
 	userEmailRow        = sqlitegen.ListUserEmailsOldestFirstRow
+	affiliateRow        = sqlitegen.ListAffiliateUsersRow
 	setEmailParams      = sqlitegen.SetUserEmailParams
 )
 
@@ -74,6 +75,7 @@ type querier interface {
 	UpdateUserEmailIfGeneration(ctx context.Context, db backend.DBTX, p emailGenParams) (int64, error)
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
+	ListAffiliateUsers(ctx context.Context, db backend.DBTX, program string, since time.Time, afterUserID string, limit int) ([]affiliateRow, error)
 	UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error
 	GetUserTimezone(ctx context.Context, db backend.DBTX, id string) (string, error)
 	UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error

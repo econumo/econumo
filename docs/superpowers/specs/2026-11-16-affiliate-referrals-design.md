@@ -1,0 +1,167 @@
+# Affiliate referrals (Affonso, reported by billing)
+
+Date: 2026-11-16. Repos: `econumo/website`, `econumo/econumo` (this one), `econumo/billing`.
+
+## Intent
+
+Run a partner program on Affonso: credit a partner for the sign-ups and payments they send.
+Econumo Cloud only. The app (app.econumo.com) stays free of third-party scripts, and the
+app's code does not name the vendor: billing is the only part that knows about Affonso, the
+same way it is the only part that knows about money.
+
+## Goals
+
+- A visitor who arrives at econumo.com through a partner link and then creates an account
+  (password OR Google/Apple/OIDC) is attributed to that partner.
+- Payments and refunds of that user's purchases are reported to Affonso so commissions follow.
+- No email address goes to Affonso: the user is identified by the Econumo user id.
+
+## Non-goals
+
+- Tracking partner links that point at app.econumo.com directly. Partners link to
+  econumo.com.
+- Attributing existing users who click a partner link later: only accounts created while the
+  referral is present count.
+- Self-hosted instances: they never see the cookie, and without a billing URL nothing is
+  captured.
+- Any UI in the app.
+
+## Anti-goals
+
+- Any Affonso script, request or vendor name in app.econumo.com or in `econumo/econumo`.
+- A sign-up or a billing page failing, or slowing down noticeably, because of referral
+  handling.
+- Billing requiring Affonso: a test environment runs without it and reports nothing.
+
+## How it works
+
+```
+econumo.com?via=partner ──pixel──▶ Affonso creates a click, cookie affonso_referral=<click id>
+                                   on the root domain (.econumo.com), SameSite=None; Secure
+app.econumo.com sign-up ──────────▶ the app reads the cookie, stores user options `affiliate` (program) and `affiliate_code`
+billing polls every 30 s ─────────▶ GET /admin/affiliate-users?program=…&since=… (and /admin/user-context
+                                   when the user opens billing) ──▶ POST /v1/signups
+user pays / is refunded ──────────▶ billing ──▶ POST /v1/conversions / .../refund
+```
+
+Verified in the pixel source (`cdn.affonso.io/js/pixel.min.js`): the cookie value is the
+click id (`affonso_referral = e.cid`) and it is written for the registrable domain, so every
+request to app.econumo.com carries it, including Apple's cross-site `form_post` callback
+(SameSite=None).
+
+### 1. Website (`econumo/website`, PR #92)
+
+- Keep the econumo.com pixel snippet in `src/layouts/Layout.astro` as it is.
+- Drop both LilTag tags (`affonso`, `affonso-signup`) from `public/apps/liltag-app.json`.
+- Privacy policy: Affonso's script and 30-day cookie run on econumo.com only; when a referred
+  user opens billing or pays, we share an internal account identifier and the purchase amount
+  (and refunds) with Affonso. No email. Legal basis unchanged (legitimate interest).
+
+### 2. App (`econumo/econumo`)
+
+- **Config**: `ECONUMO_AFFILIATES`, comma-separated `program:cookie` pairs (e.g.
+  `affonso:affonso_referral`; program `^[a-z0-9_-]{1,32}$`, cookie a valid cookie name;
+  duplicates, empty entries or bad syntax fail at boot). Capture runs only when BOTH it and
+  `ECONUMO_BILLING_URL` are set. The first program, in config order, whose cookie holds a
+  valid code wins. Documented in `docs/full.env.example`.
+- **Capture**: at account creation only, on both paths:
+  - `POST /api/v1/user/register-user`: the cookie on that request.
+  - OAuth callback when it provisions a new user (`internal/oauth`): the cookie on the
+    callback request. A sign-in into an existing account or a link from Settings records
+    nothing.
+  The value is validated (`^[A-Za-z0-9_-]{1,64}$`); anything else is dropped silently. A
+  missing, malformed or unreadable cookie never fails or changes the sign-up.
+- **Storage**: two server-only user options written together with the new user in the same
+  transaction, write-once (never overwritten or cleared by any flow; if either exists, neither
+  is written): `affiliate` = program (`model.OptionAffiliate`), `affiliate_code` = code
+  (`model.OptionAffiliateCode`).
+- **Exposure**: only through the private admin listener. `GET /admin/user-context` adds
+  additive `affiliate` (program) and `affiliateCode` fields to the user view (`""` when
+  none; connections carry them too, unused). It is filtered out of `get-user-data` and `get-option-list`, which today
+  return every stored option, and not exposed on `/mcp`.
+- The name is deliberately not `referral`: the parked `feature/referral-program` branch uses
+  that for a different thing (the share report a user signed up from).
+- **Listing**: new private route `GET /admin/affiliate-users?program=<p>&since=<datetime>&limit=<n>&afterUserId=<id>`
+  (admin listener, admin token like the others). `program` is optional (config's regex when present; absent or empty = every program, billing
+  filters on its side). Returns users whose `affiliate` option equals `program` (when given) and was
+  created at or after `since` (frozen datetime layout, UTC), ordered by option `created_at`,
+  then user id, at most `limit` (default and max 500):
+  `[{"userId","affiliate","affiliateCode","createdAt"}]`. Bad `program`/`since`/`limit`/`afterUserId` = 400 envelope.
+  `createdAt` has one-second precision, so a page can end inside a second: with the optional
+  `afterUserId` (needs `since`) the filter becomes `created_at > since OR (created_at = since AND
+  user_id > afterUserId)`; billing pages by passing the last row's `createdAt` and `userId`.
+  Without it the filter stays `created_at >= since`. Backed by a partial index
+  (`affiliate_created_at_idx_users_options` on `(created_at, user_id)`).
+- No HTTP client, no outbound call, no retries in the app.
+
+### 3. Billing (`econumo/billing`)
+
+- **Config**: optional group `AFFONSO_API_KEY` (+ `AFFONSO_API_URL`, default
+  `https://api.affonso.io/v1`, for tests). Unset = Affonso off: billing ignores `affiliate`
+  entirely, stores and sends nothing.
+- **Reading**: billing already calls `GET /admin/user-context` server to server with
+  `ECONUMO_ADMIN_URL` + `ECONUMO_ADMIN_TOKEN` (`internal/econumo/http.go`) every time the
+  portal loads a user (`Service.Context`, `CreateCheckout`); the short-lived handoff token
+  only tells billing WHICH user. `internal/econumo` parses the new `affiliate` and `affiliateCode` fields.
+- **Recording the sign-up**, two paths writing the same row (`ON CONFLICT DO NOTHING`):
+  - **Polling** (primary): each worker tick calls `affiliate-users` with
+    `since = stored cursor - 10 minutes` (the overlap covers transactions that committed late
+    with an earlier timestamp), pages while a full page comes back, and advances the cursor to
+    the newest `createdAt` seen. The cursor lives in billing's DB; no cursor = from the start.
+  - **Context load** (covers sign-up-then-pay inside one poll interval): whenever billing loads
+    the user's context (opening the portal, starting a checkout).
+  The row goes in a new table `affiliate_referrals (user_id PK, click_id, status, attempts,
+  next_attempt_at, reported_at, created_at)`. The request itself never calls Affonso.
+- **Outbox worker** (same pattern as `internal/grants`): reports due sign-ups with
+  `POST /v1/signups {click_id, external_user_id: <econumo user id>}` (idempotent on
+  `click_id`; a 200 repeat is success; 404 `CLICK_NOT_FOUND` is terminal and logged).
+- **Payments**: when a purchase is marked paid and its PAYER has an `affiliate_referrals`
+  row, enqueue `POST /v1/conversions {external_user_id, sale_amount, sale_amount_currency,
+  external_event_id: <purchase id>}` with `sale_amount` = `purchases.amount_net_cents` / 100
+  (the pre-tax amount, see below) and its currency; store the returned conversion id. A purchase
+  with amount 0 (100% discount) is not reported. The worker sends a
+  user's sign-up before any of their conversions.
+- **Refunds**: when a referred payer's purchase is refunded, enqueue
+  `POST /v1/conversions/{conversion id}/refund` (full refund, `external_event_id:
+  refund-<purchase id>`), matching billing's rule that any refund revokes access.
+- Failures retry with backoff and give up after a fixed number of attempts with an ERROR log;
+  they never affect a checkout, a webhook acknowledgement or a grant.
+- If a sign-up fails for good, its conversions and refunds are dropped with it (Affonso
+  rejects identifiers that resolve to no referral). A refund whose conversion is not yet sent
+  waits behind it; a refund whose conversion was dropped is dropped.
+- No backfill: purchases made before this ships are not reported.
+
+## Pre-tax amounts (decided)
+
+Commission is on the amount before tax. Billing records it when a purchase is paid, in a new
+nullable column `purchases.amount_net_cents` (migration), filled by both webhook handlers:
+Stripe from the session's total minus its tax, Paddle from the transaction totals' subtotal
+after discount, before tax. A conversion is sent with `amount_net_cents`; a purchase paid
+before the column existed has NULL and is not reported (there is no backfill anyway).
+
+## Approaches considered
+
+- **Browser signup event in the app + pixel in the app** (`Affonso.signup(email)`): rejected;
+  puts a third-party script in the app and sends emails to Affonso.
+- **App pushes each sign-up to billing**: rejected; the first app-to-billing call, needing a
+  client, a contract and retries.
+- **Only at billing-open** (user option read from `/admin/user-context`): smallest, but a
+  referred user who never opens billing never counts as a lead.
+- **Chosen: user option + billing polls a list endpoint, with the context read as a backup**:
+  leads reach Affonso within about a minute of sign-up, calls still go one way (billing to
+  app). Picked by Dmitry.
+- Affonso's native Stripe/Paddle integrations could report payments and refunds instead of
+  billing; not used, to keep billing the single reporter and the integration optional.
+
+## Rules touched
+
+- Env vars: `ECONUMO_AFFILIATES` in `docs/full.env.example` (not `.env.example`).
+- No user-observable change in the app, so no regression-plan, analytics or i18n items.
+- Admin user-context response gains a field; update its tests (and goldens if covered).
+
+## Left to the builder
+
+- Exact table/column names and worker cadence in billing (mirror `grants`).
+- Where in the OAuth provisioning path the cookie is read (the callback handler has the
+  request; the parked `feature/referral-program` branch shows the provisioning seam, but no
+  OAuth-state column is needed since the cookie is on the callback itself).

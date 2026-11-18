@@ -478,6 +478,10 @@ type Querier interface {
 	// The same count for every AVAILABLE account (the balance query's set).
 	// Args: user_id (own), user_id (shared).
 	ListAccountTransactionsCountsForUser(ctx context.Context, arg ListAccountTransactionsCountsForUserParams) ([]ListAccountTransactionsCountsForUserRow, error)
+	// created_at has one-second precision, so a page can end inside a second:
+	// the cursor is (since, after_user_id). The nil UUID sorts below every
+	// id, which makes the cursor a plain created_at >= since.
+	ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsersParams) ([]ListAffiliateUsersRow, error)
 	ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted.
 	// A pending (not yet accepted) grant confers no access here -- it only rides
