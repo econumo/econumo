@@ -485,6 +485,7 @@
         },
         "separator_question": "Plusieurs tags dans une cellule sont séparés par",
         "tab": "Tabulation",
+        "newline": "Saut de ligne",
         "custom_separator": "Autre chose",
         "new_categories": "{count} nouvelle catégorie sera créée | {count} nouvelles catégories seront créées",
         "new_labels": "{count} nouveau tag sera créé | {count} nouveaux tags seront créés",

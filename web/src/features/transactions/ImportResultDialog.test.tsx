@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { onlineManager } from '@tanstack/react-query'
 import { ImportResultDialog } from './ImportResultDialog'
@@ -87,4 +87,20 @@ it('Try the rest again is disabled offline', () => {
   } finally {
     onlineManager.setOnline(true)
   }
+})
+
+it('cannot be closed while Try the rest again is running', async () => {
+  let finish: () => void = () => {}
+  const onRetry = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)))
+  const onClose = vi.fn()
+  render(<ImportResultDialog open result={{ imported: 500, failed: 100, errors: [], failedChunks: [1] }} onClose={onClose} onRetry={onRetry} />)
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Try the rest again' }))
+  await user.keyboard('{Escape}')
+  expect(onClose).not.toHaveBeenCalled()
+  expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  finish()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'OK' })).toBeEnabled())
+  await user.keyboard('{Escape}')
+  expect(onClose).toHaveBeenCalledTimes(1)
 })

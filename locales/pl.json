@@ -485,6 +485,7 @@
         },
         "separator_question": "Kilka tagów w jednej komórce oddzielają",
         "tab": "Tabulator",
+        "newline": "Nowa linia",
         "custom_separator": "Inny znak",
         "new_categories": "Zostanie utworzona {count} nowa kategoria | Zostaną utworzone {count} nowe kategorie | Zostanie utworzonych {count} nowych kategorii",
         "new_labels": "Zostanie utworzony {count} nowy tag | Zostaną utworzone {count} nowe tagi | Zostanie utworzonych {count} nowych tagów",

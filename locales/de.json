@@ -485,6 +485,7 @@
         },
         "separator_question": "Mehrere Tags in einer Zelle sind getrennt durch",
         "tab": "Tabulator",
+        "newline": "Zeilenumbruch",
         "custom_separator": "Etwas anderes",
         "new_categories": "{count} neue Kategorie wird erstellt | {count} neue Kategorien werden erstellt",
         "new_labels": "{count} neues Tag wird erstellt | {count} neue Tags werden erstellt",

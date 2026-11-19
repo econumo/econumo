@@ -53,7 +53,8 @@ export function ImportResultDialog({ open, result, onClose, onRetry }: ImportRes
   const extraErrors = result.errors.length - shownErrors.length
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={outcome.title}>
+    // a retry in flight writes its result back into this dialog, so it cannot be closed under it
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && !retrying && onClose()} dismissible={!retrying} title={outcome.title}>
       <div className="flex flex-col gap-3">
         <outcome.Icon className={`mx-auto size-10 ${outcome.tone}`} aria-hidden />
         <div className="flex flex-col gap-1 text-center text-sm">

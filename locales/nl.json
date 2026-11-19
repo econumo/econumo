@@ -485,6 +485,7 @@
         },
         "separator_question": "Meerdere tags in één cel worden gescheiden door",
         "tab": "Tab",
+        "newline": "Nieuwe regel",
         "custom_separator": "Iets anders",
         "new_categories": "{count} nieuwe categorie wordt aangemaakt | {count} nieuwe categorieën worden aangemaakt",
         "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt",

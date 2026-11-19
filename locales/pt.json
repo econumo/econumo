@@ -485,6 +485,7 @@
         },
         "separator_question": "Várias etiquetas numa célula são separadas por",
         "tab": "Tabulação",
+        "newline": "Nova linha",
         "custom_separator": "Outro",
         "new_categories": "Será criada {count} nova categoria | Serão criadas {count} novas categorias",
         "new_labels": "Será criada {count} nova etiqueta | Serão criadas {count} novas etiquetas",

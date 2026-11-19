@@ -44,6 +44,12 @@ describe('parseCsvText', () => {
     expect(parseCsvText('a,b\r"x\ry",1\r2,3').rowLines).toEqual([2, 4])
   })
 
+  it('counts delimiters after an inch mark when picking the delimiter', () => {
+    const p = parseCsvText('id,a,b,c\na;1,TV 55" x,2,3\nb;2,3,TV 27" x,4\nc;3,4,5,TV 32" x\nd;4,TV 40" y,5,6\n')
+    expect(p.delimiter).toBe(',')
+    expect(p.rows[0]).toEqual(['a;1', 'TV 55" x', '2', '3'])
+  })
+
   it('keeps a quote inside an unquoted cell as text', () => {
     const p = parseCsvText('a,b,c\n1,TV 55" wide,2\n3,4,5\n6,7,8\n')
     expect(p.rows).toEqual([['1', 'TV 55" wide', '2'], ['3', '4', '5'], ['6', '7', '8']])

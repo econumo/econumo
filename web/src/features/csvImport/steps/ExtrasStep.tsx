@@ -6,24 +6,29 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import { pluralPick } from '@/lib/plural'
-import type { ParsedFile } from '../parse'
+import type { PreparedRow } from '../prepare'
 import { unusedColumns, type StepBodyProps } from '../wizard'
 import { columnName } from '../columnLabels'
 import { Field, Segmented } from '../controls'
 
 type Role = 'category' | 'payee' | 'tag' | 'labels'
 const ROLES: Role[] = ['payee', 'category', 'tag', 'labels']
-const SEPARATORS = [';', ',', '|', '\t']
+const SEPARATORS = [';', ',', '|', '\t', '\n']
 const DEFAULT_SEPARATOR = ';'
+const SEPARATOR_NAMES: Record<string, string> = {
+  '\t': 'transactions.import_wizard.extras.tab',
+  '\n': 'transactions.import_wizard.extras.newline',
+}
 
 // names are matched trimmed and case-insensitively, as the server matches them
 const nameKey = (name: string) => name.trim().toLowerCase()
 
-function distinctNew(file: ParsedFile, column: number | null, split: string | null, existing: Set<string>): number {
-  if (column === null) return 0
+// Only rows that will upload: a name found only on a skipped row is never created.
+function distinctNew(rows: PreparedRow[], role: 'category' | 'labels', split: string | null, existing: Set<string>): number {
   const found = new Set<string>()
-  for (const row of file.rows) {
-    const cell = row[column] ?? ''
+  for (const row of rows) {
+    if (row.status !== 'ok') continue
+    const cell = row[role]
     for (const part of split === null ? [cell] : cell.split(split)) {
       const key = nameKey(part)
       if (key !== '' && !existing.has(key)) found.add(key)
@@ -53,8 +58,8 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
     () => new Set([...labels, ...tags].filter((item) => item.ownerUserId === ownerId).map((item) => nameKey(item.name))),
     [labels, tags, ownerId],
   )
-  const newCategories = useMemo(() => distinctNew(state.file, extras.category, null, existingCategories), [state.file, extras.category, existingCategories])
-  const newLabels = useMemo(() => distinctNew(state.file, extras.labels, separator, existingLabels), [state.file, extras.labels, separator, existingLabels])
+  const newCategories = useMemo(() => distinctNew(state.rows, 'category', null, existingCategories), [state.rows, existingCategories])
+  const newLabels = useMemo(() => distinctNew(state.rows, 'labels', separator, existingLabels), [state.rows, separator, existingLabels])
 
   // the main steps' columns are never offered; a column belongs to one role, so giving it to another takes it from the first
   const offered = unusedColumns(state.answers, state.profiles)
@@ -103,7 +108,7 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
             <Segmented<string>
               label={separatorQuestion}
               value={SEPARATORS.includes(separator) && custom === '' ? separator : null}
-              options={SEPARATORS.map((value) => ({ value, label: value === '\t' ? t('transactions.import_wizard.extras.tab') : value }))}
+              options={SEPARATORS.map((value) => ({ value, label: SEPARATOR_NAMES[value] ? t(SEPARATOR_NAMES[value]) : value }))}
               onChange={(value) => {
                 setCustom('')
                 setSeparator(value)

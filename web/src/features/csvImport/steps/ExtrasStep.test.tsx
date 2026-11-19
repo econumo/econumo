@@ -101,3 +101,17 @@ it('offers the separator only for a labels column and keeps a custom one', async
   expect(extrasOf().labelsSeparator).toBe('/')
   expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
 })
+
+it('a name found only on a row that will be skipped is not counted as created', async () => {
+  renderStep('Date,Amount,Group\n2026-01-02,-5,Travel\nsoon,-5,Garden\n', { ...noExtras, category: 2 })
+  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+})
+
+it('tags on separate lines of one cell split by New line', async () => {
+  renderStep('Date,Amount,Marks\n2026-01-02,-5,"a\nb"\n', { ...noExtras, labels: 2 })
+  const user = userEvent.setup()
+  expect(await screen.findByText('1 new tag will be created')).toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'New line' }))
+  expect(extrasOf().labelsSeparator).toBe('\n')
+  expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
+})

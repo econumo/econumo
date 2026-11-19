@@ -432,7 +432,9 @@ navigation (single-pane vs sidebar).
       two 500-row chunks uploads, then start it): the result dialog shows
       "Import completed with errors" with the imported and failed counts and
       "Try the rest again"; pressing it (server up) sends only the failed
-      chunk, the counts update, and the account holds every row once. Rows the
+      chunk, the counts update, and the account holds every row once. While it
+      runs the dialog cannot be closed (no ✕; Escape, an outside click or a
+      swipe-down do nothing). Rows the
       wizard skipped are listed with their reason and row number, never
       re-sent. While the step waits for a failed `finish-import`, the drop area
       stays disabled so the same file cannot be imported twice.
@@ -820,8 +822,10 @@ navigation (single-pane vs sidebar).
       carries "now payee"; a column that ends up on a main step anyway (e.g. by
       the AI guess) is never also uploaded as an extra detail; Reporting tags
       asks how several tags in one cell are separated (";" by default, ",",
-      "|", Tab, or something else). A note counts the new categories and tags
-      the import will create. The imported rows carry exactly those values.
+      "|", Tab, New line, or something else). A note counts the new categories
+      and tags the import will create, from the rows that will be imported
+      only (a name found only on a skipped row is not counted). The imported
+      rows carry exactly those values.
 - [ ] 📱 Check and import: three tiles, Transactions, Money in (green) and
       Money out (the money tiles are left out when the rows land in accounts
       of two currencies), then "first date to last date" in the UI language's

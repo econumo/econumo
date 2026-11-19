@@ -93,9 +93,22 @@ function sniffDelimiter(text: string): CsvDelimiter {
     for (const line of lines) {
       let n = 0
       let inQuotes = false
-      for (const char of line) {
-        if (char === '"') inQuotes = !inQuotes
-        else if (!inQuotes && char === candidate) n++
+      let cellStarted = false
+      // the quote rule of splitRecords: `55" TV` keeps its quote and the delimiters after it count
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i]
+        if (inQuotes) {
+          if (char === '"' && line[i + 1] === '"') i++
+          else if (char === '"') inQuotes = false
+        } else if (char === '"' && !cellStarted) {
+          inQuotes = true
+          cellStarted = true
+        } else if (char === candidate) {
+          n++
+          cellStarted = false
+        } else {
+          cellStarted = true
+        }
       }
       if (n > 0) counts.set(n, (counts.get(n) ?? 0) + 1)
     }

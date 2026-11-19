@@ -485,6 +485,7 @@
         },
         "separator_question": "一个单元格中的多个标签用以下符号分隔",
         "tab": "制表符",
+        "newline": "换行",
         "custom_separator": "其他",
         "new_categories": "将创建 {count} 个新分类",
         "new_labels": "将创建 {count} 个新标签",
