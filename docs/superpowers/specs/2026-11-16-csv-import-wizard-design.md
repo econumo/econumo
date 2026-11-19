@@ -56,6 +56,33 @@ is done, and an ambiguous date like `03/04/2026` is silently read day-first.
 
 ## The wizard
 
+> **Layout revised 2026-11-18: design 17, "sidebar stepper".** After trying a step bar with
+> column cards and then a folding table, Dmitry compared 20 prototypes (local branch
+> `feature/csv-import-lab`, `web/lab/variants/v17-sidebar-stepper.tsx`) and picked 17. It
+> overrides the layout described below wherever they differ; the steps, their questions and
+> all behaviour (guessing, AI, normalisation, fixes, retry, lock) stay.
+>
+> - **Desktop:** a wide dialog split in two. Left: title, the file (name, row count), then a
+>   vertical list of steps (Account, Date, Amount, Description, Extra details, Check and
+>   import), each with a check mark when answered and its answer in plain words underneath
+>   ("New: Girokonto · EUR", "Buchungstag · 2 Oct 2026", "Betrag · 1.234,56",
+>   "12 to import · 1 left out"); a footer line "12 transactions ready · 1 left out". Any step
+>   can be opened from the list. Right: "Step 2 of 6 · Date", the step's question as a heading,
+>   the body, and Back / Continue (Import on the last step).
+> - **Phone:** the step list is the first screen (with "We read your file and filled in what
+>   we could. Tap a step to change it." and a primary "Check N transactions"); tapping a step
+>   opens it full screen with a back arrow to the list.
+> - **Choosing a column:** a list of radio options, one per column, each showing the header
+>   and its first values in one line ("02.10.2026 · 03.10.2026 · 05.10.2026"); a column used by
+>   another step carries a small "now payee" style tag. This replaces the table and the
+>   folding columns.
+> - **Formats** sit under the choice as segmented controls with a live example ("“02.10.2026”
+>   will be read as 2 Oct 2026").
+> - **Check and import:** three stat tiles (Transactions, Money in, Money out), then the list of
+>   transactions as they will be added (date, description, payee · category, signed amount).
+>   Rows that will be left out appear in the list as problem rows with their reason and the
+>   inline fix (type a date/amount, or skip), instead of the one-at-a-time card.
+
 One dialog (`ResponsiveDialog`, a sheet on a phone) with a step bar, Back and Next.
 
 **Moving between steps.** Once a file is loaded, the step bar is clickable: the user can
