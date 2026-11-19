@@ -80,6 +80,16 @@ export async function runChunks(upload: Upload, post: ImportPoster, opts: RunChu
     const file = new File([buildCsvText(upload.header, chunk)], `chunk_${i}.csv`, { type: 'text/csv' })
     try {
       const result = await post(file, upload.mapping, upload.fields, { idempotencyKey: chunkKey(upload, i) })
+      const rowsOfChunk = chunk.map((_, k) => upload.fileRows[i * CHUNK_SIZE + k])
+      // An error naming no row refused the whole chunk (an account it may not write into, a
+      // bad override): nothing landed, so every row failed. Sending it again is refused again.
+      const refusal = Object.entries(result.errors ?? {}).find(([, rows]) => rows.length === 0)
+      if (refusal && !(result.imported ?? 0)) {
+        failed += chunk.length
+        addError(refusal[0], rowsOfChunk)
+        opts.onProgress?.(done + 1, indices.length)
+        continue
+      }
       imported += result.imported ?? 0
       failed += result.skipped ?? 0
       for (const [message, rows] of Object.entries(result.errors ?? {})) {

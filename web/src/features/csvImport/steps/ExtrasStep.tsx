@@ -6,6 +6,8 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import { pluralPick } from '@/lib/plural'
+import type { CategoryType } from '@/api/dto/category'
+import { isNegative } from '@/lib/decimal'
 import type { PreparedRow } from '../prepare'
 import { unusedColumns, type StepBodyProps } from '../wizard'
 import { columnName } from '../columnLabels'
@@ -23,6 +25,11 @@ const SEPARATOR_NAMES: Record<string, string> = {
 // names are matched trimmed and case-insensitively, as the server matches them
 const nameKey = (name: string) => name.trim().toLowerCase()
 
+// A category is found within its kind, as the server does: an income row (an amount that is
+// not negative) naming the expense category "Food" gets an income "Food" of its own.
+const categoryKey = (type: CategoryType, name: string) => `${type}:${nameKey(name)}`
+const rowKind = (row: PreparedRow): CategoryType => (row.amount !== null && isNegative(row.amount) ? 'expense' : 'income')
+
 // Only rows that will upload: a name found only on a skipped row is never created.
 function distinctNew(rows: PreparedRow[], role: 'category' | 'labels', split: string | null, existing: Set<string>): number {
   const found = new Set<string>()
@@ -30,8 +37,9 @@ function distinctNew(rows: PreparedRow[], role: 'category' | 'labels', split: st
     if (row.status !== 'ok') continue
     const cell = row[role]
     for (const part of split === null ? [cell] : cell.split(split)) {
-      const key = nameKey(part)
-      if (key !== '' && !existing.has(key)) found.add(key)
+      if (nameKey(part) === '') continue
+      const key = role === 'category' ? categoryKey(rowKind(row), part) : nameKey(part)
+      if (!existing.has(key)) found.add(key)
     }
   }
   return found.size
@@ -53,7 +61,7 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
 
   // Archived ones count too: the server finds them and does not create a second one.
   // Labels and tags share one name space.
-  const existingCategories = useMemo(() => new Set(categories.filter((c) => c.ownerUserId === ownerId).map((c) => nameKey(c.name))), [categories, ownerId])
+  const existingCategories = useMemo(() => new Set(categories.filter((c) => c.ownerUserId === ownerId).map((c) => categoryKey(c.type, c.name))), [categories, ownerId])
   const existingLabels = useMemo(
     () => new Set([...labels, ...tags].filter((item) => item.ownerUserId === ownerId).map((item) => nameKey(item.name))),
     [labels, tags, ownerId],

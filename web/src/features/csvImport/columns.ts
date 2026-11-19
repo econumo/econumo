@@ -71,8 +71,10 @@ const MONEY_NAMES = [...SYNONYMS.amount, ...SYNONYMS.amountIn, ...SYNONYMS.amoun
 // A file with no header row has its first transaction read as the header; those names are
 // cell values, which never go to the AI. A row that only fails to parse ("someday,n/a,medical
 // memo") looks like headers too, so this fails closed: the header row counts as one only when
-// a date column or a money column is headed by a word that names it, which a transaction's own
-// cell in that column practically never is. A number is read only from a name without letters:
+// both the dates and the money are headed by words that name them (one date column named when
+// the file has date columns, one number column named when it has number columns), which a
+// transaction's own cells practically never are: a stray word in one of them ("unknown,Amount,
+// Coffee") still leaves the other unnamed. A number is read only from a name without letters:
 // the amount reader strips them, so "Column 3", "Amount (2)" (names parse.ts gives a blank or a
 // repeated header) and "Memo 2" would read as numbers; a cell like "-12.50 EUR" still fails the
 // word check.
@@ -80,10 +82,10 @@ const HAS_LETTER = /\p{L}/u
 
 export function headerLooksLikeData(profiles: ColumnProfile[]): boolean {
   if (profiles.some(({ name }) => isDate(name) || (!HAS_LETTER.test(name) && isNumber(name)))) return true
-  const named = profiles.some(
-    ({ name, type }) =>
-      (type === 'date' && DATE_NAMES.some((s) => names(name, s))) ||
-      (type === 'number' && MONEY_NAMES.some((s) => names(name, s))),
-  )
-  return !named
+  const kinds = [
+    { type: 'date', words: DATE_NAMES },
+    { type: 'number', words: MONEY_NAMES },
+  ].filter(({ type }) => profiles.some((p) => p.type === type))
+  const named = (type: string, words: string[]) => profiles.some((p) => p.type === type && words.some((s) => names(p.name, s)))
+  return kinds.length === 0 || !kinds.every(({ type, words }) => named(type, words))
 }

@@ -40,7 +40,8 @@ function splitRecords(text: string, delimiter: string): { records: RawRecord[]; 
   const finish = (end: number) => {
     endCell()
     const raw = text.slice(start, end)
-    if (cells.length > 1 || cells[0].trim() !== '') {
+    // a line of only delimiters (`;;`) is a blank line too: it must never become the header
+    if (cells.some((c) => c.trim() !== '')) {
       records.push({ cells, raw, line: startLine })
     }
     cells = []

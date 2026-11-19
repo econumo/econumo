@@ -50,6 +50,13 @@ describe('parseCsvText', () => {
     expect(p.rows[0]).toEqual(['a;1', 'TV 55" x', '2', '3'])
   })
 
+  it('skips a line of only delimiters, before the header too', () => {
+    const p = parseCsvText(';;\nDate;Amount;Memo\n;;\n2026-01-02;-5;x\n')
+    expect(p.header).toEqual(['Date', 'Amount', 'Memo'])
+    expect(p.rows).toEqual([['2026-01-02', '-5', 'x']])
+    expect(p.rowLines).toEqual([4])
+  })
+
   it('keeps a quote inside an unquoted cell as text', () => {
     const p = parseCsvText('a,b,c\n1,TV 55" wide,2\n3,4,5\n6,7,8\n')
     expect(p.rows).toEqual([['1', 'TV 55" wide', '2'], ['3', '4', '5'], ['6', '7', '8']])

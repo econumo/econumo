@@ -1,5 +1,6 @@
 import type { WizardAnswers } from './prepare'
-import { newAccountFolderId, releaseTakenExtras, visibleSteps } from './wizard'
+import type { AccountDto } from '@/api/dto/account'
+import { newAccountFolderId, releaseTakenExtras, visibleSteps, writableAccounts } from './wizard'
 
 const answers = (patch: Partial<WizardAnswers>): WizardAnswers => ({
   account: { kind: 'existing', accountId: 'a1' },
@@ -36,4 +37,18 @@ it('Extra details stays listed while it is open, even with no free column left',
   const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [] }))
   expect(visibleSteps(answers({}), profiles)).not.toContain('extras')
   expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'description', 'extras', 'preview'])
+})
+
+it('offers the accounts the import accepts: mine, or shared with an accepted admin or user grant', () => {
+  const account = (id: string, owner: string, access: { role: 'admin' | 'user' | 'guest'; isAccepted: 0 | 1 }[] = []) =>
+    ({ id, owner: { id: owner }, sharedAccess: access.map((a) => ({ user: { id: 'me' }, ...a })) }) as unknown as AccountDto
+  const accounts = [
+    account('mine', 'me'),
+    account('user', 'o', [{ role: 'user', isAccepted: 1 }]),
+    account('admin', 'o', [{ role: 'admin', isAccepted: 1 }]),
+    account('guest', 'o', [{ role: 'guest', isAccepted: 1 }]),
+    account('pending', 'o', [{ role: 'user', isAccepted: 0 }]),
+    account('other', 'o'),
+  ]
+  expect(writableAccounts(accounts, 'me').map((a) => a.id)).toEqual(['mine', 'user', 'admin'])
 })

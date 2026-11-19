@@ -105,7 +105,14 @@ func (l *ImportLookup) AvailableAccounts(ctx context.Context, userID vo.Id) ([]m
 	return l.accounts.AvailableAccounts(ctx, userID)
 }
 
+// AccountByID answers the accountId override only when the user may add a
+// transaction there: their own account, or one shared with them with a write
+// grant, exactly what the import wizard offers.
 func (l *ImportLookup) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*model.ImportAccount, error) {
+	can, err := l.CanAddTransaction(ctx, userID, id)
+	if err != nil || !can {
+		return nil, err
+	}
 	return l.accounts.AccountByID(ctx, userID, id)
 }
 

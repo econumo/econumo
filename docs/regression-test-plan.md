@@ -824,7 +824,9 @@ navigation (single-pane vs sidebar).
       asks how several tags in one cell are separated (";" by default, ",",
       "|", Tab, New line, or something else). A note counts the new categories
       and tags the import will create, from the rows that will be imported
-      only (a name found only on a skipped row is not counted). The imported
+      only (a name found only on a skipped row is not counted), a category
+      within its kind (an income row naming the expense category "Food" counts
+      a new income "Food"). The imported
       rows carry exactly those values.
 - [ ] 📱 Check and import: three tiles, Transactions, Money in (green) and
       Money out (the money tiles are left out when the rows land in accounts
@@ -864,7 +866,9 @@ navigation (single-pane vs sidebar).
       first made.
 - [ ] Account step: "An account I already have" (the default when the user
       can write to an account; with exactly one such account it is already
-      chosen and Account carries no warning) lists only accounts the user owns or may edit;
+      chosen and Account carries no warning) lists only accounts the user owns
+      or holds an accepted admin/user share of (not a guest share, not a
+      pending invitation), and rows imported into a shared one land there;
       "A new account" asks a name and a currency (pre-filled from a currency
       column when every row names the same code the app knows, e.g. `EUR`;
       the user's currency otherwise, always changeable); "Each row says which
@@ -908,11 +912,16 @@ navigation (single-pane vs sidebar).
       built-in guesses and shows no message. An Econumo export sends no such
       request, and neither does a file whose first row is a transaction (no
       header row), even one whose first row does not parse (e.g.
-      `someday,n/a,medical memo` over dated rows): the request goes out only
-      when a date or money column is headed by a word for it (`Date`,
-      `Buchungstag`, `Betrag (EUR)`, `Debit`). A suggested column whose type
+      `someday,n/a,medical memo` or `unknown,Amount,Coffee` over dated rows):
+      the request goes out only when both a date column and a money column
+      are headed by a word for them (`Date`, `Buchungstag`; `Betrag (EUR)`,
+      `Debit`). A suggested column whose type
       cannot hold the role (a text column as Amount, an empty column) is
       ignored.
+- [ ] A file whose first line is only delimiters (`;;`) still reads its real
+      header from the next line. An import the server refuses as a whole
+      (e.g. the chosen account was unshared meanwhile) shows "Import failed"
+      with every row counted as failed, never "Import complete".
 - [ ] Non-UTF-8 file: a cp1251 statement (`Дата;Сумма;Описание`, saved in
       Windows-1251) shows readable Cyrillic headers and descriptions on every
       step and imports them readable, with the UI and the browser in English

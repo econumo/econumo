@@ -40,6 +40,8 @@ describe('useColumnGuess', () => {
     ['an amount', 'Coffee shop,-12.50\nTea,-3.00\n'],
     ['a bank date and amount', '01.02.2024;-12,50;Bäckerei Müller\n02.02.2024;-3,00;Café\n'],
     ['an amount with a currency', '2 Mar 2024,-12.50 EUR,Coffee\n2024-03-03,-3.00,Tea\n2024-03-04,-4.00,Cake\n'],
+    ['a transaction with a header word in its amount cell', 'unknown,Amount,Coffee\n2026-01-03,-5.00,Tea\n2026-01-04,-6.00,Cake\n'],
+    ['a transaction with a header word in its date cell', 'Date,n/a,Coffee\n2026-01-03,-5.00,Tea\n2026-01-04,-6.00,Cake\n'],
     ['an unreadable transaction', 'someday,n/a,medical memo\n2024-01-02,-10,Coffee\n2024-01-03,-5,Tea\n'],
     ['words that only contain a header word', 'update fee,summary,medical memo\n2024-01-02,-10,Coffee\n2024-01-03,-5,Tea\n'],
   ])('asks nothing when the header row holds %s', (_, text) => {

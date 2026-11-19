@@ -132,6 +132,14 @@ it('lists the accounts a per-row column names, with a currency only for the new 
   expect(within(rows[1]).getByRole('combobox', { name: 'Currency for Travel card' })).toHaveValue('USD, $, US Dollar')
 })
 
+it('Each row says which account, with no column chosen yet, marks the Account step', async () => {
+  renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Cash\n')
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+})
+
 it('per-row accounts take the currency their own rows name, the user’s otherwise', async () => {
   renderWizard('Date,Amount,Wallet,Cur\n2026-01-02,-5.50,Trip,EUR\n2026-01-03,7.00,Trip,EUR\n2026-01-04,1.00,Home,USD\n2026-01-05,1.00,Mixed,EUR\n2026-01-06,1.00,Mixed,USD\n')
   const user = userEvent.setup()

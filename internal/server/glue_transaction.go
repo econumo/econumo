@@ -146,14 +146,13 @@ func (a *TransactionImportAccounts) AvailableAccounts(ctx context.Context, userI
 	return out, nil
 }
 
-func (a *TransactionImportAccounts) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*model.ImportAccount, error) {
+// AccountByID only looks the account up; whether the caller may import into
+// it (owner or write grant) is ImportLookup's check, the same one a per-row
+// account name goes through.
+func (a *TransactionImportAccounts) AccountByID(ctx context.Context, _ vo.Id, id vo.Id) (*model.ImportAccount, error) {
 	acct, err := a.accountRepo.GetByID(ctx, id)
-	if err != nil {
+	if err != nil || acct.IsDeleted {
 		return nil, nil // not found -> nil
-	}
-	// Only available (own) accounts qualify.
-	if !acct.UserID.Equal(userID) {
-		return nil, nil
 	}
 	return &model.ImportAccount{ID: acct.ID.String(), Name: acct.Name, OwnerID: acct.UserID.String()}, nil
 }

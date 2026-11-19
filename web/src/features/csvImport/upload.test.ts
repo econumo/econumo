@@ -62,6 +62,18 @@ describe('runChunks', () => {
     expect(result.imported).toBe(5)
   })
 
+  it('counts every row of a chunk the server refused as a whole as failed, not to be sent again', async () => {
+    const upload = makeUpload(3)
+    const post = vi.fn<ImportPoster>(async () => ({ imported: 0, skipped: 0, errors: { 'Account not found for provided accountId': [] } }))
+    const result = await runChunks(upload, post)
+    expect(result).toEqual({
+      imported: 0,
+      failed: 3,
+      errors: [{ message: 'Account not found for provided accountId', rows: [2, 3, 4] }],
+      failedChunks: [],
+    })
+  })
+
   it('maps server rows (header = 1) through fileRows, 0 stays row-less', async () => {
     const upload = makeUpload(600)
     upload.fileRows = upload.fileRows.map((r) => r * 10)

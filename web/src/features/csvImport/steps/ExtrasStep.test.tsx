@@ -115,3 +115,8 @@ it('tags on separate lines of one cell split by New line', async () => {
   expect(extrasOf().labelsSeparator).toBe('\n')
   expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
 })
+
+it('counts a category within its kind: an income row naming an expense category makes a new one', async () => {
+  renderStep('Date,Amount,Group\n2026-01-02,-5,Food\n2026-01-03,5,food\n', { ...noExtras, category: 2 })
+  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+})

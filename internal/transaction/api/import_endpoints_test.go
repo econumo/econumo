@@ -650,6 +650,35 @@ func TestImport_RowMappedSharedAccount_LabelsOwnedByAccountOwner(t *testing.T) {
 	}
 }
 
+// The accountId override takes what the wizard offers: a shared account with a
+// write grant imports, a guest grant is refused.
+func TestImport_OverrideIntoSharedAccount(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		role     int
+		imported int
+	}{{"write grant", roleUser, 1}, {"guest grant", roleGuest, 0}} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.shareAccount(t, tc.role, true)
+			tok := h.token(t)
+			status, env := h.doImport(t, tok, "Date,Amount\n2024-03-01,-10\n", `{"date":"Date","amount":"Amount"}`, map[string]string{"accountId": sharedAcctID})
+			if status != http.StatusOK {
+				t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+			}
+			res := mustUnmarshal[importResult](t, env.Data)
+			if res.Imported != tc.imported {
+				t.Fatalf("imported=%d want %d; errors=%v", res.Imported, tc.imported, res.Errors)
+			}
+			if tc.imported == 0 {
+				if _, ok := res.Errors["Account not found for provided accountId"]; !ok {
+					t.Fatalf("errors=%v, want the accountId refusal", res.Errors)
+				}
+			}
+		})
+	}
+}
+
 // A category name resolves within the row's kind: an income row naming the
 // expense category "Food" gets an income "Food" of its own, never the expense one.
 func TestImport_CategoryNameResolvesWithinTheRowsKind(t *testing.T) {

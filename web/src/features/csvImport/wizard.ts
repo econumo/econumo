@@ -25,12 +25,13 @@ export interface StepBodyProps {
   goTo: (step: StepId) => void
 }
 
-// accounts I can write transactions into: mine, or shared to me above view-only
+// accounts I can write transactions into, as the import checks it: mine, or shared to me with
+// an accepted admin or user grant (a pending invitation rides the account list too)
 export function writableAccounts(accounts: AccountDto[], meId: string | undefined): AccountDto[] {
   return accounts.filter((account) => {
     if (account.owner.id === meId) return true
     const grant = account.sharedAccess.find((a) => a.user.id === meId)
-    return grant !== undefined && grant.role !== 'guest'
+    return grant !== undefined && grant.isAccepted === 1 && grant.role !== 'guest'
   })
 }
 
