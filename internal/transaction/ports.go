@@ -150,6 +150,10 @@ type Importer interface {
 	// CanAddTransaction reports whether the user may add a transaction to the
 	// account: they own it, or hold an admin/user grant on it.
 	CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error)
+	// CanCreateForAccountOwner reports whether the user may add categories,
+	// payees, tags and labels to the account owner's lists: they own the
+	// account or hold an accepted admin grant on it, as the category API asks.
+	CanCreateForAccountOwner(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error)
 	// CreateAccount creates a new account (base currency, first/new folder, icon
 	// 'wallet', balance 0) and returns its view.
 	CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error)

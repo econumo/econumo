@@ -487,6 +487,7 @@
         "tab": "Tabulazione",
         "newline": "A capo",
         "custom_separator": "Altro",
+        "shared_owner_lists": "Categorie, beneficiari e tag che il proprietario di questo conto non ha ancora vengono tralasciati: solo il proprietario o un amministratore può aggiungerli.",
         "new_categories": "Verrà creata {count} nuova categoria | Verranno create {count} nuove categorie",
         "new_labels": "Verrà creato {count} nuovo tag | Verranno creati {count} nuovi tag",
         "role_hint": {
@@ -522,7 +523,8 @@
         "no_date": "Nessuna data leggibile",
         "no_amount": "Nessun importo leggibile",
         "no_account": "Nessun nome del conto",
-        "user_skipped": "Saltata da te"
+        "user_skipped": "Saltata da te",
+        "unconfirmed": "Inviata, ma la risposta è andata persa: controlla il conto"
       },
       "continue": "Continua",
       "step_of": "Passo {n} di {total} · {title}",
@@ -552,6 +554,7 @@
       "error_title": "Importazione non riuscita",
       "imported": "{count} transazione importata | {count} transazioni importate",
       "failed": "{count} transazione non importata | {count} transazioni non importate",
+      "unconfirmed": "{count} transazione è stata inviata, ma la risposta è andata persa: controlla il conto | {count} transazioni sono state inviate, ma la risposta è andata persa: controlla il conto",
       "errors_detail": "Dettagli degli errori",
       "row": "Riga",
       "rows": "Righe",

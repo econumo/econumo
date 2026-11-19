@@ -57,7 +57,13 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
   const [custom, setCustom] = useState(() => (SEPARATORS.includes(extras.labelsSeparator) ? '' : extras.labelsSeparator))
   const separator = extras.labelsSeparator || DEFAULT_SEPARATOR
 
-  const ownerId = account?.kind === 'existing' ? (accounts.find((a) => a.id === account.accountId)?.owner.id ?? user?.id) : user?.id
+  const target = account?.kind === 'existing' ? accounts.find((a) => a.id === account.accountId) : undefined
+  const ownerId = target?.owner.id ?? user?.id
+  // a member with a user grant imports into the owner's lists but cannot grow them: the server
+  // leaves a name the owner does not have yet out of the row
+  const readOnlyLists =
+    target !== undefined && target.owner.id !== user?.id && target.sharedAccess.find((a) => a.user.id === user?.id)?.role !== 'admin'
+  const anyDetail = ROLES.some((role) => extras[role] !== null)
 
   // Archived ones count too: the server finds them and does not create a second one.
   // Labels and tags share one name space.
@@ -137,12 +143,17 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
         </div>
       ) : null}
 
-      {newCategories > 0 ? (
+      {readOnlyLists && anyDetail ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          {t('transactions.import_wizard.extras.shared_owner_lists')}
+        </p>
+      ) : null}
+      {!readOnlyLists && newCategories > 0 ? (
         <p role="status" className="text-xs text-muted-foreground">
           {pluralPick(t('transactions.import_wizard.extras.new_categories'), newCategories, i18n.language)}
         </p>
       ) : null}
-      {newLabels > 0 ? (
+      {!readOnlyLists && newLabels > 0 ? (
         <p role="status" className="text-xs text-muted-foreground">
           {pluralPick(t('transactions.import_wizard.extras.new_labels'), newLabels, i18n.language)}
         </p>

@@ -487,6 +487,7 @@
         "tab": "制表符",
         "newline": "换行",
         "custom_separator": "其他",
+        "shared_owner_lists": "此账户所有者尚未拥有的分类、收款人和标签将被略过：只有所有者或管理员可以添加。",
         "new_categories": "将创建 {count} 个新分类",
         "new_labels": "将创建 {count} 个新标签",
         "role_hint": {
@@ -522,7 +523,8 @@
         "no_date": "没有可识别的日期",
         "no_amount": "没有可识别的金额",
         "no_account": "没有账户名称",
-        "user_skipped": "已由你跳过"
+        "user_skipped": "已由你跳过",
+        "unconfirmed": "已发送，但回应丢失：请检查账户"
       },
       "continue": "继续",
       "step_of": "第 {n} 步，共 {total} 步 · {title}",
@@ -552,6 +554,7 @@
       "error_title": "导入失败",
       "imported": "已导入 {count} 笔交易",
       "failed": "{count} 笔交易导入失败",
+      "unconfirmed": "已发送 {count} 笔交易，但回应丢失：请检查账户",
       "errors_detail": "错误详情",
       "row": "行",
       "rows": "行",

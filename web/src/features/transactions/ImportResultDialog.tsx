@@ -32,10 +32,11 @@ export function ImportResultDialog({ open, result, onClose, onRetry }: ImportRes
     void onRetry().finally(() => setRetrying(false))
   }
 
+  const unconfirmed = result.unconfirmed ?? 0
   const outcome =
-    result.failed === 0
+    result.failed === 0 && unconfirmed === 0
       ? { title: t('transactions.import_result.success_title'), Icon: CheckCircle2, tone: 'text-income' }
-      : result.imported > 0
+      : result.imported > 0 || unconfirmed > 0
         ? { title: t('transactions.import_result.partial_success_title'), Icon: AlertTriangle, tone: 'text-amber-700 dark:text-amber-300' }
         : { title: t('transactions.import_result.error_title'), Icon: XCircle, tone: 'text-destructive' }
 
@@ -60,6 +61,7 @@ export function ImportResultDialog({ open, result, onClose, onRetry }: ImportRes
         <div className="flex flex-col gap-1 text-center text-sm">
           {result.imported > 0 ? <p>{pluralPick(t('transactions.import_result.imported'), result.imported, i18n.language)}</p> : null}
           {result.failed > 0 ? <p>{pluralPick(t('transactions.import_result.failed'), result.failed, i18n.language)}</p> : null}
+          {unconfirmed > 0 ? <p>{pluralPick(t('transactions.import_result.unconfirmed'), unconfirmed, i18n.language)}</p> : null}
         </div>
 
         {shownErrors.length > 0 ? (

@@ -104,3 +104,16 @@ it('cannot be closed while Try the rest again is running', async () => {
   await user.keyboard('{Escape}')
   expect(onClose).toHaveBeenCalledTimes(1)
 })
+
+it('rows whose answer was lost are neither imported nor failed, and never read as complete', () => {
+  renderResult({
+    imported: 0,
+    failed: 0,
+    unconfirmed: 2,
+    errors: [{ message: 'transactions.import_wizard.skipped.unconfirmed', rows: [2, 3] }],
+    failedChunks: [],
+  })
+  expect(screen.getByText('Import completed with errors')).toBeInTheDocument()
+  expect(screen.getByText('2 transactions were sent, but the answer was lost: check the account')).toBeInTheDocument()
+  expect(screen.getByText('Sent, but the answer was lost: check the account')).toBeInTheDocument()
+})

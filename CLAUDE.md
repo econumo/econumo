@@ -536,6 +536,9 @@ surface.
   live import leaves rows unclassified, a background job proposes a rule, landing in the
   owner's Inbox. One open suggestion per (owner, merchant, type); one owner's jobs run one at
   a time.
+- **CSV import** (`transaction/import-transaction-list`) into another user's shared account:
+  only the owner or an admin of it may add categories, payees, tags or labels to the owner's
+  lists; a user-role member's rows use the owner's existing names and leave a new one empty.
 
 ### AI integration (`internal/infra/ai`)
 

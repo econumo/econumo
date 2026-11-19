@@ -57,6 +57,13 @@ describe('parseCsvText', () => {
     expect(p.rowLines).toEqual([4])
   })
 
+  it('reads a quoted cell over several lines as part of its record when picking the delimiter', () => {
+    const memo = '"first, line\nsecond, line\nthird, line\nfourth, line"'
+    const p = parseCsvText('Date;Amount;Memo\n2026-01-02;-5;' + memo + '\n2026-01-03;-6;' + memo + '\n')
+    expect(p.delimiter).toBe(';')
+    expect(p.rows[0]).toEqual(['2026-01-02', '-5', 'first, line\nsecond, line\nthird, line\nfourth, line'])
+  })
+
   it('keeps a quote inside an unquoted cell as text', () => {
     const p = parseCsvText('a,b,c\n1,TV 55" wide,2\n3,4,5\n6,7,8\n')
     expect(p.rows).toEqual([['1', 'TV 55" wide', '2'], ['3', '4', '5'], ['6', '7', '8']])

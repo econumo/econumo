@@ -260,8 +260,12 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     setProgress(null)
     const { answers: current, file } = state
     const existing = new Set(writableAccounts(accountsQuery.data ?? [], user?.id).map((a) => nameKey(a.name)))
+    const importedNames = new Set(rows.flatMap((row) => (row.status === 'ok' && row.account ? [nameKey(row.account)] : [])))
+    // only accounts the imported rows name: a name found only on left-out rows makes none
     const names =
-      current.account?.kind === 'column' ? new Map(distinctNames(file, current.account.column).map((name) => [nameKey(name), name])) : undefined
+      current.account?.kind === 'column'
+        ? new Map(distinctNames(file, current.account.column).filter((name) => importedNames.has(nameKey(name))).map((name) => [nameKey(name), name]))
+        : undefined
     let accountId: string | undefined
     try {
       accountId = (await ensureAccounts(current, created.current, existing, names, newAccountFolderId(foldersQuery.data))).accountId

@@ -113,7 +113,7 @@ export function ImportStep({ onDone, onSkip, onImportResult }: StepBodyProps) {
         initialFile={dropped}
         onClose={() => setOpen(false)}
         onComplete={(result, retry) => {
-          if (result.failed > 0) onImportResult?.(result, retry)
+          if (result.failed > 0 || (result.unconfirmed ?? 0) > 0) onImportResult?.(result, retry)
           if (result.imported > 0) finish()
         }}
       />

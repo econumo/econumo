@@ -858,9 +858,12 @@ navigation (single-pane vs sidebar).
       file couldn't be read as a spreadsheet (CSV)" and stays on Your file.
 - [ ] Lost responses (block the response, not the request, with the browser's
       dev tools): "Try the rest again" after a chunk's response was lost imports
-      none of its rows twice and counts that chunk as imported; pressing Import
+      none of its rows twice; the result dialog counts that chunk's rows as
+      "sent, but the answer was lost: check the account" (neither imported nor
+      failed, title "Import completed with errors"); pressing Import
       again after a lost create-account response uses the account already made
-      instead of creating a second one. For a user with no folders and "Each
+      instead of creating a second one, unless the new account's name or
+      currency was edited in between (then that account is made as asked). For a user with no folders and "Each
       row says which account" naming two new accounts, a lost response to the
       first create still lets the second land in the "General" folder the
       first made.
@@ -868,7 +871,12 @@ navigation (single-pane vs sidebar).
       can write to an account; with exactly one such account it is already
       chosen and Account carries no warning) lists only accounts the user owns
       or holds an accepted admin/user share of (not a guest share, not a
-      pending invitation), and rows imported into a shared one land there;
+      pending invitation), and rows imported into a shared one land there.
+      With a user (not admin) share, Extra details says categories, payees
+      and tags the owner doesn't have yet are left out, and the rows import
+      with the owner's existing ones and without the new ones (nothing is
+      added to the owner's lists); with an admin share they are created in
+      the owner's lists as for the owner;
       "A new account" asks a name and a currency (pre-filled from a currency
       column when every row names the same code the app knows, e.g. `EUR`;
       the user's currency otherwise, always changeable); "Each row says which
@@ -878,7 +886,8 @@ navigation (single-pane vs sidebar).
       rows name when they name exactly one. Import creates the new accounts
       (in the user's first visible folder, never a hidden one, or "General"
       for a user with none) and
-      puts each row in its account. Pressing Import again after an error
+      puts each row in its account; a name found only on rows that will be
+      left out (no readable date or amount, or skipped) gets no account. Pressing Import again after an error
       never creates an account twice, also after choosing the file again or
       closing and reopening the dialog: an account the failed Import made is
       then listed as "Existing account".
@@ -927,7 +936,8 @@ navigation (single-pane vs sidebar).
       step and imports them readable, with the UI and the browser in English
       as well as in Russian; a Windows-1252 file with accents (`Müller`,
       `Café`) reads correctly with a Russian browser too. A UTF-8 file with a
-      BOM reads the same as without.
+      BOM reads the same as without. A semicolon file whose memo cells are
+      quoted over several lines with commas inside still splits on `;`.
 - [ ] Import with a broken row (bad date/amount) → Check counts it as skipped
       with the reason, the good rows import, and the result dialog lists the
       skipped rows by reason and original row number: the line the row starts

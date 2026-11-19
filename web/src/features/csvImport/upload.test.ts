@@ -131,12 +131,28 @@ describe('runChunks', () => {
     expect(post.mock.calls[4][3]?.idempotencyKey).not.toBe(keys[1])
   })
 
-  it('counts a chunk the server already took as imported, not failed', async () => {
+  // the replay says the request succeeded, not how many of its rows landed (a row-level skip,
+  // or a refusal of the whole chunk, answers 200 too)
+  it('counts a chunk the server already took as unconfirmed, neither imported nor failed', async () => {
     const post = vi.fn<ImportPoster>(async () => {
       throw replay()
     })
-    const result = await runChunks(makeUpload(700), post, { chunks: [1] })
-    expect(result).toEqual({ imported: 200, failed: 0, errors: [], failedChunks: [] })
+    const upload = makeUpload(502)
+    const result = await runChunks(upload, post, { chunks: [1] })
+    expect(result).toEqual({
+      imported: 0,
+      failed: 0,
+      unconfirmed: 2,
+      errors: [{ message: 'transactions.import_wizard.skipped.unconfirmed', rows: [502, 503] }],
+      failedChunks: [],
+    })
+  })
+
+  it('a retry answered by a replay turns its failed rows into unconfirmed ones', () => {
+    const upload = makeUpload(3)
+    const first = { imported: 0, failed: 3, errors: [{ message: 'Chunk 1 failed: x', rows: [2, 3, 4] }], failedChunks: [0] }
+    const again = { imported: 0, failed: 0, unconfirmed: 3, errors: [{ message: 'transactions.import_wizard.skipped.unconfirmed', rows: [2, 3, 4] }], failedChunks: [] }
+    expect(mergeRetry(first, again, upload, [0])).toMatchObject({ imported: 0, failed: 0, unconfirmed: 3, failedChunks: [] })
   })
 })
 
@@ -187,6 +203,19 @@ describe('ensureAccounts', () => {
     expect(first[1]?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/)
   })
 
+  it('an edited name or currency after a lost create is a new account with a request of its own', async () => {
+    vi.mocked(createAccount).mockRejectedValueOnce(new Error('timeout'))
+    const created = new Map<string, string>()
+    await expect(ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), created, new Set())).rejects.toThrow('timeout')
+    await ensureAccounts(answers({ kind: 'new', name: 'Wallet', currencyId: 'c1' }), created, new Set())
+    await ensureAccounts(answers({ kind: 'new', name: 'Wallet', currencyId: 'c2' }), created, new Set())
+    await ensureAccounts(answers({ kind: 'new', name: 'Wallet', currencyId: 'c2' }), created, new Set())
+    const calls = vi.mocked(createAccount).mock.calls
+    expect(calls.map((call) => [call[0].name, call[0].currencyId])).toEqual([['Cash', 'c1'], ['Wallet', 'c1'], ['Wallet', 'c2']])
+    expect(new Set(calls.map((call) => call[1]?.idempotencyKey)).size).toBe(3)
+    expect(new Set(calls.map((call) => call[0].id)).size).toBe(3)
+  })
+
   it('imports into the account a lost create made, as the replay names it', async () => {
     vi.mocked(createAccount).mockRejectedValueOnce(replay('landed-id'))
     const result = await ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), new Map(), new Set())
@@ -234,6 +263,12 @@ describe('ensureAccounts', () => {
     await expect(ensureAccounts(a, created, new Set(), undefined, null)).rejects.toThrow('timeout')
     await ensureAccounts(a, created, new Set(), undefined, null)
     expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'general', 'made-by-server'])
+  })
+
+  it('makes no account for a name that only left-out rows carry', async () => {
+    const a = answers({ kind: 'column', column: 0, currencies: { kept: 'c1', 'left out': 'c1' } })
+    await ensureAccounts(a, new Map(), new Set(), new Map([['kept', 'Kept']]))
+    expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].name)).toEqual(['Kept'])
   })
 
   it('names a column account as the file writes it', async () => {

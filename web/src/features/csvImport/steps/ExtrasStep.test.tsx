@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
 import { profileColumns } from '../columns'
 import { parseCsvText } from '../parse'
 import { prepareRows, type WizardAnswers } from '../prepare'
@@ -11,11 +11,11 @@ import { ExtrasStep } from './ExtrasStep'
 
 const noExtras: WizardAnswers['extras'] = { payee: null, category: null, tag: null, labels: null, labelsSeparator: ';' }
 
-function Harness({ text, extras = noExtras }: { text: string; extras?: WizardAnswers['extras'] }) {
+function Harness({ text, extras = noExtras, account = { kind: 'new', name: 'Main', currencyId: 'cur-usd' } }: { text: string; extras?: WizardAnswers['extras']; account?: WizardAnswers['account'] }) {
   const [file] = useState(() => parseCsvText(text))
   const [profiles] = useState(() => profileColumns(file))
   const [answers, setAnswersState] = useState<WizardAnswers>(() => ({
-    account: { kind: 'new', name: 'Main', currencyId: 'cur-usd' },
+    account,
     date: { column: 0, order: 'ymd' },
     amount: { mode: 'single', column: 1, flip: false, sep: '.' },
     description: null,
@@ -35,11 +35,11 @@ function Harness({ text, extras = noExtras }: { text: string; extras?: WizardAns
   )
 }
 
-function renderStep(text: string, extras?: WizardAnswers['extras']) {
+function renderStep(text: string, extras?: WizardAnswers['extras'], account?: WizardAnswers['account']) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <Harness text={text} extras={extras} />
+      <Harness text={text} extras={extras} account={account} />
     </QueryClientProvider>,
   )
 }
@@ -119,4 +119,25 @@ it('tags on separate lines of one cell split by New line', async () => {
 it('counts a category within its kind: an income row naming an expense category makes a new one', async () => {
   renderStep('Date,Amount,Group\n2026-01-02,-5,Food\n2026-01-03,5,food\n', { ...noExtras, category: 2 })
   expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+})
+
+const sharedAccount = (role: 'admin' | 'user') => ({
+  ...fixtureAccounts[0],
+  id: 'shared',
+  owner: { id: 'u2', avatar: 'face:amber', name: 'Bo' },
+  sharedAccess: [{ user: fixtureOwner, role, isAccepted: 1 }],
+})
+
+it('into a shared account with a user grant, says new names are left out instead of counting them', async () => {
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('user')] }))
+  renderStep('Date,Amount,Group\n2026-01-02,-5,Gadgets\n', { ...noExtras, category: 2 }, { kind: 'existing', accountId: 'shared' })
+  expect(await screen.findByText(/only the owner or an admin can add them/)).toBeInTheDocument()
+  expect(screen.queryByText(/will be created/)).not.toBeInTheDocument()
+})
+
+it('into a shared account with an admin grant, counts the new names as usual', async () => {
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('admin')] }))
+  renderStep('Date,Amount,Group\n2026-01-02,-5,Gadgets\n', { ...noExtras, category: 2 }, { kind: 'existing', accountId: 'shared' })
+  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+  expect(screen.queryByText(/only the owner or an admin/)).not.toBeInTheDocument()
 })

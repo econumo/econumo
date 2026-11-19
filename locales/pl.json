@@ -487,6 +487,7 @@
         "tab": "Tabulator",
         "newline": "Nowa linia",
         "custom_separator": "Inny znak",
+        "shared_owner_lists": "Kategorie, odbiorcy i tagi, których właściciel tego konta jeszcze nie ma, zostaną pominięte: dodać je może tylko właściciel lub administrator.",
         "new_categories": "Zostanie utworzona {count} nowa kategoria | Zostaną utworzone {count} nowe kategorie | Zostanie utworzonych {count} nowych kategorii",
         "new_labels": "Zostanie utworzony {count} nowy tag | Zostaną utworzone {count} nowe tagi | Zostanie utworzonych {count} nowych tagów",
         "role_hint": {
@@ -522,7 +523,8 @@
         "no_date": "Brak czytelnej daty",
         "no_amount": "Brak czytelnej kwoty",
         "no_account": "Brak nazwy konta",
-        "user_skipped": "Pominięta przez Ciebie"
+        "user_skipped": "Pominięta przez Ciebie",
+        "unconfirmed": "Wysłana, ale odpowiedź zaginęła: sprawdź konto"
       },
       "continue": "Dalej",
       "step_of": "Krok {n} z {total} · {title}",
@@ -552,6 +554,7 @@
       "error_title": "Import nie powiódł się",
       "imported": "{count} transakcja została zaimportowana | {count} transakcje zostały zaimportowane | {count} transakcji zostało zaimportowanych",
       "failed": "{count} transakcja nie została zaimportowana | {count} transakcje nie zostały zaimportowane | {count} transakcji nie zostało zaimportowanych",
+      "unconfirmed": "{count} transakcja została wysłana, ale odpowiedź zaginęła: sprawdź konto | {count} transakcje zostały wysłane, ale odpowiedź zaginęła: sprawdź konto | {count} transakcji zostało wysłanych, ale odpowiedź zaginęła: sprawdź konto",
       "errors_detail": "Szczegóły błędów",
       "row": "Wiersz",
       "rows": "Wiersze",

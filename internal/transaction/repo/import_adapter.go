@@ -33,6 +33,7 @@ type importAccountPort interface {
 type importAccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
+	HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
 // importCategoryPort is the category-touching surface the importer uses,
@@ -129,6 +130,19 @@ func (l *ImportLookup) CanAddTransaction(ctx context.Context, userID vo.Id, acco
 		return true, nil
 	}
 	return l.access.HasWriteGrant(ctx, accountID, userID)
+}
+
+// CanCreateForAccountOwner: the owner, or an accepted admin grant (a user
+// grant may add transactions but not grow the owner's lists).
+func (l *ImportLookup) CanCreateForAccountOwner(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error) {
+	owner, err := l.access.AccountOwner(ctx, accountID)
+	if err != nil {
+		return false, nil
+	}
+	if owner.Equal(userID) {
+		return true, nil
+	}
+	return l.access.HasAdminGrant(ctx, accountID, userID)
 }
 
 func (l *ImportLookup) CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error) {

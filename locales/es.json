@@ -487,6 +487,7 @@
         "tab": "Tabulación",
         "newline": "Salto de línea",
         "custom_separator": "Otro",
+        "shared_owner_lists": "Las categorías, beneficiarios y etiquetas que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlos.",
         "new_categories": "Se creará {count} categoría nueva | Se crearán {count} categorías nuevas",
         "new_labels": "Se creará {count} etiqueta nueva | Se crearán {count} etiquetas nuevas",
         "role_hint": {
@@ -522,7 +523,8 @@
         "no_date": "Sin fecha legible",
         "no_amount": "Sin importe legible",
         "no_account": "Sin nombre de cuenta",
-        "user_skipped": "Omitida por ti"
+        "user_skipped": "Omitida por ti",
+        "unconfirmed": "Enviada, pero se perdió la respuesta: revisa la cuenta"
       },
       "continue": "Continuar",
       "step_of": "Paso {n} de {total} · {title}",
@@ -552,6 +554,7 @@
       "error_title": "La importación falló",
       "imported": "{count} transacción importada | {count} transacciones importadas",
       "failed": "{count} transacción falló | {count} transacciones fallaron",
+      "unconfirmed": "Se envió {count} transacción, pero se perdió la respuesta: revisa la cuenta | Se enviaron {count} transacciones, pero se perdió la respuesta: revisa la cuenta",
       "errors_detail": "Detalles de los errores",
       "row": "Fila",
       "rows": "Filas",

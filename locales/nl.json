@@ -487,6 +487,7 @@
         "tab": "Tab",
         "newline": "Nieuwe regel",
         "custom_separator": "Iets anders",
+        "shared_owner_lists": "Categorieën, begunstigden en tags die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen.",
         "new_categories": "{count} nieuwe categorie wordt aangemaakt | {count} nieuwe categorieën worden aangemaakt",
         "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt",
         "role_hint": {
@@ -522,7 +523,8 @@
         "no_date": "Geen leesbare datum",
         "no_amount": "Geen leesbaar bedrag",
         "no_account": "Geen rekeningnaam",
-        "user_skipped": "Door u overgeslagen"
+        "user_skipped": "Door u overgeslagen",
+        "unconfirmed": "Verstuurd, maar het antwoord ging verloren: controleer de rekening"
       },
       "continue": "Doorgaan",
       "step_of": "Stap {n} van {total} · {title}",
@@ -552,6 +554,7 @@
       "error_title": "Import mislukt",
       "imported": "{count} transactie geïmporteerd | {count} transacties geïmporteerd",
       "failed": "{count} transactie mislukt | {count} transacties mislukt",
+      "unconfirmed": "{count} transactie is verstuurd, maar het antwoord ging verloren: controleer de rekening | {count} transacties zijn verstuurd, maar het antwoord ging verloren: controleer de rekening",
       "errors_detail": "Foutdetails",
       "row": "Rij",
       "rows": "Rijen",

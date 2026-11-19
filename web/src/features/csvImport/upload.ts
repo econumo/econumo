@@ -21,6 +21,9 @@ export type ImportPoster = (
 export interface ImportResult {
   imported: number
   failed: number
+  // rows of a chunk the server had already taken when its answer was lost: the replay says the
+  // request succeeded, not how many of its rows landed, so they are neither imported nor failed
+  unconfirmed?: number
   errors: { message: string; rows: number[] }[]
   failedChunks: number[]
 }
@@ -66,6 +69,7 @@ export async function runChunks(upload: Upload, post: ImportPoster, opts: RunChu
 
   let imported = 0
   let failed = 0
+  let unconfirmed = 0
   const failedChunks: number[] = []
 
   for (const row of opts.skipped ?? []) {
@@ -100,8 +104,11 @@ export async function runChunks(upload: Upload, post: ImportPoster, opts: RunChu
       }
     } catch (error) {
       if (replayOf(error)) {
-        // the replay carries no result, so the rows the server skipped that time are unknown
-        imported += chunk.length
+        unconfirmed += chunk.length
+        addError(
+          'transactions.import_wizard.skipped.unconfirmed',
+          chunk.map((_, k) => upload.fileRows[i * CHUNK_SIZE + k]),
+        )
       } else {
         failed += chunk.length
         failedChunks.push(i)
@@ -117,6 +124,7 @@ export async function runChunks(upload: Upload, post: ImportPoster, opts: RunChu
   return {
     imported,
     failed,
+    ...(unconfirmed > 0 ? { unconfirmed } : {}),
     errors: [...errorMap.entries()].map(([message, rows]) => ({ message, rows: [...rows].sort((a, b) => a - b) })),
     failedChunks,
   }
@@ -137,9 +145,11 @@ export function mergeRetry(previous: ImportResult, retry: ImportResult, upload: 
     if (kept.length > 0 || error.rows.length === 0) add(error.message, kept)
   }
   for (const error of retry.errors) add(error.message, error.rows)
+  const unconfirmed = (previous.unconfirmed ?? 0) + (retry.unconfirmed ?? 0)
   return {
     imported: previous.imported + retry.imported,
     failed: previous.failed - retriedRows.size + retry.failed,
+    ...(unconfirmed > 0 ? { unconfirmed } : {}),
     errors: [...errors.entries()].map(([message, rows]) => ({ message, rows: [...rows].sort((a, b) => a - b) })),
     failedChunks: retry.failedChunks,
   }
@@ -161,8 +171,11 @@ function attemptsOf(created: Map<string, string>) {
 
 // `created` survives retries so a second attempt never creates an account twice; each
 // account keeps its request id and Idempotency-Key across attempts, so one whose response
-// was lost is answered with its id instead of being made again.
-// `names` gives a per-row account its name as the file writes it; the answers key it lowercased.
+// was lost is answered with its id instead of being made again. Both are keyed by the name
+// and currency asked for: a replay answers with the account the FIRST request made, so an
+// edited name or currency is a different account and gets a request of its own.
+// `names` gives a per-row account its name as the file writes it (the answers key it lowercased)
+// and holds only names on rows that will be imported: a name on left-out rows only gets no account.
 // `folderId` is the user's first folder: the server invents one only for a user who has none
 // and refuses a blank folder otherwise, so later accounts follow the first into its folder. With
 // no folder known once an account exists (its create was replayed, or a stale folder list from
@@ -176,7 +189,8 @@ export async function ensureAccounts(
 ): Promise<{ accountId?: string }> {
   let folder = folderId
   const attempts = attemptsOf(created)
-  const create = async (key: string, name: string, currencyId: string) => {
+  const create = async (slot: string, name: string, currencyId: string) => {
+    const key = JSON.stringify([slot, name.trim(), currencyId])
     const existing = created.get(key)
     if (existing) return existing
     const attempt = attempts.get(key) ?? { requestId: uuidv7(), idempotencyKey: uuidv7() }
@@ -206,7 +220,7 @@ export async function ensureAccounts(
   if (choice?.kind === 'column') {
     for (const [name, currencyId] of Object.entries(choice.currencies)) {
       const key = name.toLowerCase()
-      if (existingNames.has(key)) continue
+      if (existingNames.has(key) || (names && !names.has(key))) continue
       await create(`${PER_ROW}${key}`, names?.get(key) ?? name, currencyId)
     }
   }

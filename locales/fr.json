@@ -487,6 +487,7 @@
         "tab": "Tabulation",
         "newline": "Saut de ligne",
         "custom_separator": "Autre chose",
+        "shared_owner_lists": "Les catégories, bénéficiaires et tags que le propriétaire de ce compte n’a pas encore sont ignorés : seul le propriétaire ou un administrateur peut les ajouter.",
         "new_categories": "{count} nouvelle catégorie sera créée | {count} nouvelles catégories seront créées",
         "new_labels": "{count} nouveau tag sera créé | {count} nouveaux tags seront créés",
         "role_hint": {
@@ -522,7 +523,8 @@
         "no_date": "Pas de date lisible",
         "no_amount": "Pas de montant lisible",
         "no_account": "Pas de nom de compte",
-        "user_skipped": "Ignorée par vous"
+        "user_skipped": "Ignorée par vous",
+        "unconfirmed": "Envoyée, mais la réponse s’est perdue : vérifiez le compte"
       },
       "continue": "Continuer",
       "step_of": "Étape {n} sur {total} · {title}",
@@ -552,6 +554,7 @@
       "error_title": "Échec de l’import",
       "imported": "{count} transaction importée | {count} transactions importées",
       "failed": "{count} transaction non importée | {count} transactions non importées",
+      "unconfirmed": "{count} transaction a été envoyée, mais la réponse s’est perdue : vérifiez le compte | {count} transactions ont été envoyées, mais la réponse s’est perdue : vérifiez le compte",
       "errors_detail": "Détails des erreurs",
       "row": "Ligne",
       "rows": "Lignes",

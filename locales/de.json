@@ -487,6 +487,7 @@
         "tab": "Tabulator",
         "newline": "Zeilenumbruch",
         "custom_separator": "Etwas anderes",
+        "shared_owner_lists": "Kategorien, Empfänger und Tags, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen.",
         "new_categories": "{count} neue Kategorie wird erstellt | {count} neue Kategorien werden erstellt",
         "new_labels": "{count} neues Tag wird erstellt | {count} neue Tags werden erstellt",
         "role_hint": {
@@ -522,7 +523,8 @@
         "no_date": "Kein lesbares Datum",
         "no_amount": "Kein lesbarer Betrag",
         "no_account": "Kein Kontoname",
-        "user_skipped": "Von Ihnen übersprungen"
+        "user_skipped": "Von Ihnen übersprungen",
+        "unconfirmed": "Gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto"
       },
       "continue": "Weiter",
       "step_of": "Schritt {n} von {total} · {title}",
@@ -552,6 +554,7 @@
       "error_title": "Import fehlgeschlagen",
       "imported": "{count} Transaktion importiert | {count} Transaktionen importiert",
       "failed": "{count} Transaktion fehlgeschlagen | {count} Transaktionen fehlgeschlagen",
+      "unconfirmed": "{count} Transaktion wurde gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto | {count} Transaktionen wurden gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto",
       "errors_detail": "Fehlerdetails",
       "row": "Zeile",
       "rows": "Zeilen",

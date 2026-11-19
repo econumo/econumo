@@ -91,11 +91,14 @@ function sniffDelimiter(text: string): CsvDelimiter {
   let bestCount = 0
   for (const candidate of DELIMITERS) {
     const counts = new Map<number, number>()
+    let n = 0
+    let inQuotes = false
+    let cellStarted = false
+    // the quote rule of splitRecords: `55" TV` keeps its quote and the delimiters after it count.
+    // A quote after any candidate delimiter opens a cell, so another candidate's quoted text
+    // (`;"a, b"`) is not counted as commas; a quoted cell left open runs on into the next line,
+    // so a record is counted as a whole
     for (const line of lines) {
-      let n = 0
-      let inQuotes = false
-      let cellStarted = false
-      // the quote rule of splitRecords: `55" TV` keeps its quote and the delimiters after it count
       for (let i = 0; i < line.length; i++) {
         const char = line[i]
         if (inQuotes) {
@@ -107,11 +110,16 @@ function sniffDelimiter(text: string): CsvDelimiter {
         } else if (char === candidate) {
           n++
           cellStarted = false
+        } else if (DELIMITERS.includes(char as CsvDelimiter)) {
+          cellStarted = false
         } else {
           cellStarted = true
         }
       }
+      if (inQuotes) continue
       if (n > 0) counts.set(n, (counts.get(n) ?? 0) + 1)
+      n = 0
+      cellStarted = false
     }
     for (const [count, lineCount] of counts) {
       if (lineCount > bestScore || (lineCount === bestScore && count > bestCount)) {
