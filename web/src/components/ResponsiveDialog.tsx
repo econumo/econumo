@@ -53,8 +53,10 @@ interface ResponsiveDialogProps {
   /** desktop width: `wide` suits list-heavy dialogs (the global search palette);
    *  `large` covers most of the screen (90% of its width and height) and scrolls
    *  inside, a page-sized view that still reads as a dialog; `column` is as tall
-   *  but only as wide as a reading column (52rem, at most 90% of the width) */
-  size?: 'default' | 'wide' | 'large' | 'column'
+   *  but only as wide as a reading column (52rem, at most 90% of the width);
+   *  `split` is a wide, fixed-height frame whose children lay out their own
+   *  panes, scrolling and actions (no header row, padding or footer of its own) */
+  size?: 'default' | 'wide' | 'large' | 'column' | 'split'
   /** phone sheet: the top stays where it opened and the keyboard moves only
    *  the bottom edge (pickers, whose list scrolls between the two) */
   anchorTop?: boolean
@@ -318,6 +320,24 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           ) : null}
         </DrawerContent>
       </Drawer>
+    )
+  }
+  if (size === 'split') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          ref={contentRef}
+          className="flex h-[min(680px,90dvh)] w-[min(64rem,94vw)] max-w-[min(64rem,94vw)] gap-0 overflow-hidden p-0 sm:max-w-[min(64rem,94vw)]"
+          onInteractOutside={onInteractOutside}
+          onEscapeKeyDown={onEscapeKeyDown}
+          onCloseAutoFocus={onCloseAutoFocus}
+          showCloseButton={showCloseButton}
+        >
+          <DialogTitle className="sr-only">{title}</DialogTitle>
+          {description ? <DialogDescription className="sr-only">{description}</DialogDescription> : null}
+          {children}
+        </DialogContent>
+      </Dialog>
     )
   }
   // both page-sized: a flex column whose body scrolls; overflow-hidden keeps
