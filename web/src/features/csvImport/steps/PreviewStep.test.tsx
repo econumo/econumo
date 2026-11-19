@@ -80,9 +80,9 @@ function renderWizard(text: string) {
 }
 
 async function openCheck(user: ReturnType<typeof userEvent.setup>) {
-  await screen.findByRole('heading', { name: /Which account|Here's what/ })
+  await screen.findByRole('heading', { name: /Which account|Here is what/ })
   await user.click(screen.getByRole('button', { name: /^Check/ }))
-  return screen.findByRole('heading', { name: "Here's what will be imported" })
+  return screen.findByRole('heading', { name: "Here is what will be added" })
 }
 
 const importButton = () => screen.getByRole('button', { name: /^Import \d+ transactions?$/ })
@@ -102,53 +102,48 @@ afterEach(() => {
   onlineManager.setOnline(true)
 })
 
-it('the first card shows the amount the way it will be imported, read with a decimal comma', async () => {
+const listItems = () => within(screen.getByRole('list', { name: 'Transactions to add' })).getAllByRole('listitem')
+const problemRow = (text: string) => listItems().find((li) => li.textContent?.includes(text)) as HTMLElement
+
+it('the list shows each transaction the way it will be imported, read with a decimal comma', async () => {
   renderWizard('Datum;Betrag;Text\n2026-01-02;-4,50;Kaffee\n2026-01-03;100,00;Lohn\n')
   const user = userEvent.setup()
   await openCheck(user)
-  expect(screen.getByText('Transaction 1 of 2')).toBeInTheDocument()
   const amount = screen.getByRole('button', { name: /^−4\.50/ })
-  expect(amount).toHaveClass('text-expense')
-  expect(screen.getByRole('button', { name: 'Kaffee' })).toBeInTheDocument()
-  expect(screen.getByText('2026-01-02;-4,50;Kaffee')).toBeInTheDocument()
-  expect(screen.getByText(/^2 transactions, Jan 2, 2026 to Jan 3, 2026\. Money in 100\.00 \$, money out 4\.50 \$\.$/)).toBeInTheDocument()
+  expect(amount).not.toHaveClass('text-income')
+  expect(screen.getByRole('button', { name: /^\+100\.00/ })).toHaveClass('text-income')
+  expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).toHaveAttribute('title', '2026-01-02;-4,50;Kaffee')
+  expect(screen.getByRole('button', { name: 'Jan 2, 2026' })).toHaveTextContent('Jan 2')
+  expect(screen.getByText('Transactions').nextSibling).toHaveTextContent('2')
+  expect(screen.getByText('Money in').nextSibling).toHaveTextContent('100.00 $')
+  expect(screen.getByText('Money out').nextSibling).toHaveTextContent('−4.50 $')
+  expect(screen.getByText('Jan 2, 2026 to Jan 3, 2026')).toBeInTheDocument()
   expect(importButton()).toHaveTextContent('Import 2 transactions')
 })
 
-it('Next and the right arrow key move through the rows', async () => {
-  renderWizard(PROBLEMS)
-  const user = userEvent.setup()
-  await openCheck(user)
-  await user.click(screen.getByRole('button', { name: 'Next' }))
-  expect(screen.getByText('Transaction 2 of 7')).toBeInTheDocument()
-  await user.keyboard('{ArrowRight}')
-  expect(screen.getByText('Skipped row 1 of 2')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Previous' }))
-  expect(screen.getByText('Transaction 2 of 7')).toBeInTheDocument()
-})
-
-it('a swipe to the left shows the next row', async () => {
-  renderWizard(PROBLEMS)
-  const user = userEvent.setup()
-  await openCheck(user)
-  const card = screen.getByRole('button', { name: 'Coffee' }).closest('.touch-pan-y') as HTMLElement
-  fireEvent.touchStart(card, { touches: [{ clientX: 200, clientY: 10 }], changedTouches: [{ clientX: 200, clientY: 10 }] })
-  fireEvent.touchEnd(card, { touches: [], changedTouches: [{ clientX: 100, clientY: 12 }] })
-  expect(screen.getByText('Transaction 2 of 7')).toBeInTheDocument()
-})
-
-it('Next problem jumps to the first row that will be skipped, and says why', async () => {
+it('rows that will be left out sit in the list in file order, with the reason and the line from the file', async () => {
   renderWizard(PROBLEMS)
   const user = userEvent.setup()
   await openCheck(user)
   expect(screen.getByText('2 will be skipped (No readable date: 1, No readable amount: 1)')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Next problem' }))
-  expect(screen.getByText('Skipped row 1 of 2')).toBeInTheDocument()
-  expect(screen.getByText('No readable date')).toBeInTheDocument()
-  expect(screen.getByText('someday,-2.00,Cake')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Next problem' }))
-  expect(screen.getByText('Skipped row 2 of 2')).toBeInTheDocument()
-  expect(screen.getByText('No readable amount')).toBeInTheDocument()
+  const items = listItems()
+  expect(items).toHaveLength(9)
+  expect(items[2]).toHaveTextContent('Row 4: Cake')
+  expect(within(items[2]).getByText('No readable date')).toBeInTheDocument()
+  expect(within(items[2]).getByText('someday,-2.00,Cake')).toBeInTheDocument()
+  expect(items[5]).toHaveTextContent('Row 7: Nothing')
+  expect(within(items[5]).getByText('No readable amount')).toBeInTheDocument()
+})
+
+it('a long file shows its first rows and every row that will be left out; the rest on request', async () => {
+  const good = Array.from({ length: 150 }, (_, i) => `${GOOD_DATES[i % GOOD_DATES.length]},-1.00,Row${i}`)
+  renderWizard('Date,Amount,Details\n' + good.join('\n') + '\nsomeday,-2.00,Late\n')
+  const user = userEvent.setup()
+  await openCheck(user)
+  expect(listItems()).toHaveLength(101)
+  expect(problemRow('Late')).toHaveTextContent('No readable date')
+  await user.click(screen.getByRole('button', { name: 'Show 50 more rows' }))
+  expect(listItems()).toHaveLength(151)
 })
 
 it('typing a date on a row without one brings it into the import', async () => {
@@ -156,7 +151,6 @@ it('typing a date on a row without one brings it into the import', async () => {
   const user = userEvent.setup()
   await openCheck(user)
   expect(importButton()).toHaveTextContent('Import 7 transactions')
-  await user.click(screen.getByRole('button', { name: 'Next problem' }))
   fireEvent.change(screen.getByLabelText('Date for this row'), { target: { value: '2026-01-03' } })
   expect(importButton()).toHaveTextContent('Import 8 transactions')
   expect(screen.getByRole('button', { name: 'Cake' })).toBeInTheDocument()
@@ -166,8 +160,6 @@ it('typing an amount on a row without one brings it into the import', async () =
   renderWizard(PROBLEMS)
   const user = userEvent.setup()
   await openCheck(user)
-  await user.click(screen.getByRole('button', { name: 'Next problem' }))
-  await user.click(screen.getByRole('button', { name: 'Next problem' }))
   const input = screen.getByLabelText('Amount for this row')
   await user.type(input, 'abc')
   expect(screen.getByText("Can't read this amount")).toBeInTheDocument()
@@ -184,11 +176,10 @@ it('Skip this row keeps the row out, and Don’t skip offers it again', async ()
   renderWizard(PROBLEMS)
   const user = userEvent.setup()
   await openCheck(user)
-  await user.click(screen.getByRole('button', { name: 'Next problem' }))
-  await user.click(screen.getByRole('button', { name: 'Skip this row' }))
-  expect(screen.getByText('Skipped by you')).toBeInTheDocument()
+  await user.click(within(problemRow('Cake')).getByRole('button', { name: 'Skip this row' }))
+  expect(within(problemRow('Cake')).getByText('Skipped by you')).toBeInTheDocument()
   expect(importButton()).toHaveTextContent('Import 7 transactions')
-  await user.click(screen.getByRole('button', { name: "Don't skip" }))
+  await user.click(within(problemRow('Cake')).getByRole('button', { name: "Don't skip" }))
   expect(screen.getByLabelText('Date for this row')).toBeInTheDocument()
 })
 
@@ -197,16 +188,16 @@ it('Something looks wrong? goes back to the Date step', async () => {
   const user = userEvent.setup()
   await openCheck(user)
   await user.click(screen.getByRole('button', { name: 'Something looks wrong?' }))
-  expect(await screen.findByRole('heading', { name: 'Tap the column with the date' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Which column says when each payment happened?' })).toBeInTheDocument()
   expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_LOOKS_WRONG)
 })
 
-it('a value on the card opens its step', async () => {
+it('a value in the list opens its step', async () => {
   renderWizard(PROBLEMS)
   const user = userEvent.setup()
   await openCheck(user)
   await user.click(screen.getByRole('button', { name: /^−5\.50/ }))
-  expect(await screen.findByRole('heading', { name: 'How does the file show amounts?' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Which column has the money?' })).toBeInTheDocument()
 })
 
 it('importing into a new account creates it once, then imports into it', async () => {
@@ -282,7 +273,7 @@ it('while the import runs, the steps and their answers are locked', async () => 
   expect(screen.getByRole('button', { name: /^−5\.50/ })).toBeDisabled()
   expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
-  expect(screen.getByRole('heading', { name: "Here's what will be imported" })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: "Here is what will be added" })).toBeInTheDocument()
   release()
   expect(await screen.findByText('7 transactions imported')).toBeInTheDocument()
 })
@@ -328,7 +319,7 @@ it('an AI guess fills a step the user left alone but never one they answered', a
   )
   renderWizard('Booking date,Value date,Amount,Info\n2026-01-02,2026-01-03,-5.50,Coffee\n2026-01-04,2026-01-05,100.00,Salary\n')
   const user = userEvent.setup()
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
   await user.click(screen.getByRole('radio', { name: /^Value date/ }))
   release()
@@ -354,10 +345,11 @@ it('an Econumo export asks the AI nothing and shows its accounts on the Check st
     'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
       'a1,Wallet,EUR,Food,Lunch,,,Cafe,-4.5,2026-03-04 14:05:09\n',
   )
-  await screen.findByRole('heading', { name: "Here's what will be imported" })
+  await screen.findByRole('heading', { name: "Here is what will be added" })
   expect(screen.getByText('Accounts in this file')).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Currency for Wallet' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Mar 4, 2026 14:05:09' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Mar 4, 2026 14:05:09' })).toHaveTextContent('Mar 4')
+  expect(screen.getByRole('button', { name: 'Lunch' }).closest('li')).toHaveTextContent('Wallet · Cafe · Food')
   expect(screen.getByRole('button', { name: /^−4\.50/ })).toBeInTheDocument()
   expect(asked).not.toHaveBeenCalled()
 })
@@ -368,8 +360,9 @@ it('rows going to accounts in different currencies are not added up', async () =
       'a1,Wallet,EUR,Food,Lunch,,,Cafe,-4.5,2026-03-04 14:05:09\n' +
       'a2,Purse,USD,Food,Tea,,,Cafe,-2,2026-03-05 10:00:00\n',
   )
-  await screen.findByRole('heading', { name: "Here's what will be imported" })
-  expect(screen.getByText('2 transactions, Mar 4, 2026 to Mar 5, 2026.')).toBeInTheDocument()
+  await screen.findByRole('heading', { name: "Here is what will be added" })
+  expect(screen.getByText('Mar 4, 2026 to Mar 5, 2026')).toBeInTheDocument()
+  expect(screen.getByText('Transactions').nextSibling).toHaveTextContent('2')
   expect(screen.queryByText(/Money in/)).not.toBeInTheDocument()
 })
 
@@ -388,5 +381,5 @@ it('without an account answer, Import is disabled', async () => {
   const user = userEvent.setup()
   await openCheck(user)
   expect(importButton()).toBeDisabled()
-  expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'No account chosen' })).toBeInTheDocument()
+  expect(within(screen.getByRole('dialog')).getByRole('button', { name: /^Account.*needs your attention/ })).toHaveAccessibleDescription('Not chosen')
 })

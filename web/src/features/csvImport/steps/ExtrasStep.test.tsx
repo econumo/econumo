@@ -13,7 +13,6 @@ const noExtras: WizardAnswers['extras'] = { payee: null, category: null, tag: nu
 
 function Harness({ text, extras = noExtras }: { text: string; extras?: WizardAnswers['extras'] }) {
   const [file] = useState(() => parseCsvText(text))
-  const [opened, setOpened] = useState('')
   const [profiles] = useState(() => profileColumns(file))
   const [answers, setAnswersState] = useState<WizardAnswers>(() => ({
     account: { kind: 'new', name: 'Main', currencyId: 'cur-usd' },
@@ -29,9 +28,8 @@ function Harness({ text, extras = noExtras }: { text: string; extras?: WizardAns
         state={{ file, fileName: 'a.csv', profiles, answers, touched: new Set(), fixes: new Map(), rows, isExport: false }}
         setAnswers={(_step, patch) => setAnswersState((prev) => ({ ...prev, ...patch }))}
         setFixes={() => {}}
-        goTo={setOpened}
+        goTo={() => {}}
       />
-      <output aria-label="opened">{opened}</output>
       <output aria-label="extras">{JSON.stringify(answers.extras)}</output>
     </>
   )
@@ -52,39 +50,32 @@ beforeEach(() => {
   server.use(...coreHandlers())
 })
 
-it('columns the earlier steps use are strips that open their step', async () => {
+const optionsOf = (role: string) => within(screen.getByRole('combobox', { name: role })).getAllByRole('option').map((o) => o.textContent)
+
+it('offers each detail the columns the earlier steps left free, with their values', () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
-  const user = userEvent.setup()
-  expect(screen.getByRole('cell', { name: 'lunch' })).toBeInTheDocument()
-  expect(screen.queryByRole('radio', { name: 'Date' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('cell', { name: '-5' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Amount — tap to change' }))
-  expect(screen.getByLabelText('opened').textContent).toBe('amount')
+  expect(optionsOf('Payee')).toEqual(['Don’t bring it', 'Memo — lunch', 'Group — Food'])
+  expect(optionsOf('Category')).toEqual(optionsOf('Payee'))
+  expect(screen.getByRole('combobox', { name: 'Reporting tags' })).toHaveValue('')
 })
 
-it('tapping a column asks what it is, and the answer labels the column', async () => {
+it('choosing a column for a detail brings it over', async () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
   const user = userEvent.setup()
-  await user.click(screen.getByRole('cell', { name: 'Food' }))
-  expect(screen.getByRole('radio', { name: 'Group' })).toBeChecked()
-  await user.click(within(screen.getByRole('radiogroup', { name: 'Use “Group” as' })).getByRole('radio', { name: 'Category' }))
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'Group — Food')
   expect(extrasOf().category).toBe(3)
-  expect(screen.getByRole('radio', { name: 'Group' })).toHaveAccessibleDescription('Category')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'Don’t bring it')
+  expect(extrasOf().category).toBeNull()
 })
 
-it('a role belongs to one column: giving it to a second column takes it from the first', async () => {
+it('a column belongs to one detail: giving it to a second takes it from the first', async () => {
   renderStep('Date,Amount,One,Two\n2026-01-02,-5,a,b\n')
   const user = userEvent.setup()
-  const useAs = (name: string, role: string) =>
-    user.click(within(screen.getByRole('radiogroup', { name: `Use “${name}” as` })).getByRole('radio', { name: role }))
-  await user.click(screen.getByRole('radio', { name: 'One' }))
-  await useAs('One', 'Category')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'One — a')
   expect(extrasOf().category).toBe(2)
-  await user.click(screen.getByRole('radio', { name: 'Two' }))
-  await useAs('Two', 'Category')
-  expect(extrasOf().category).toBe(3)
-  await user.click(screen.getByRole('radio', { name: 'One' }))
-  expect(within(screen.getByRole('radiogroup', { name: 'Use “One” as' })).getByRole('radio', { name: 'Leave out' })).toBeChecked()
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Payee' }), 'One — a')
+  expect(extrasOf()).toMatchObject({ payee: 2, category: null })
+  expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('')
 })
 
 it('counts new categories case-insensitively against the owner’s, archived ones included', async () => {
@@ -104,8 +95,7 @@ it('offers the separator only for a labels column and keeps a custom one', async
   renderStep('Date,Amount,Marks\n2026-01-02,-5,a/b\n')
   const user = userEvent.setup()
   expect(screen.queryByRole('radiogroup', { name: /separated by/ })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('radio', { name: 'Marks' }))
-  await user.click(screen.getByRole('radio', { name: 'Reporting tags' }))
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Reporting tags' }), 'Marks — a/b')
   expect(screen.getByRole('radio', { name: ';' })).toBeChecked()
   await user.type(screen.getByLabelText('Something else'), '/')
   expect(extrasOf().labelsSeparator).toBe('/')

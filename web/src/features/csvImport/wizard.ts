@@ -67,15 +67,6 @@ export function missingAnswer(step: StepId, answers: WizardAnswers): boolean {
   }
 }
 
-export function stepWarnings(answers: WizardAnswers): Set<StepId> {
-  return new Set<StepId>((['account', 'date', 'amount'] as const).filter((step) => missingAnswer(step, answers)))
-}
-
-/** file row indexes (0 = first data row) whose rows will be skipped for `reason` */
-export function skippedRows(rows: PreparedRow[], reason: NonNullable<PreparedRow['reason']>): Set<number> {
-  return new Set(rows.filter((row) => row.reason === reason).map((row) => row.fileRow - 2))
-}
-
 /** a column one of the main steps reads is never also uploaded as an extra detail */
 export function releaseTakenExtras(answers: WizardAnswers): WizardAnswers {
   const used = usedColumns(answers)

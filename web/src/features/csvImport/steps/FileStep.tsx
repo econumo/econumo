@@ -36,7 +36,6 @@ export function FileStep({ fileName, error, onFile }: FileStepProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-base font-normal">{t('transactions.import_wizard.file.title')}</h3>
       <button
         type="button"
         data-dragging={dragging || undefined}

@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { Role, StepId, WizardAnswers } from './prepare'
+import type { Role, WizardAnswers } from './prepare'
 
 const ROLE_KEYS: Record<Role, string> = {
   account: 'transactions.import_wizard.steps.account',
@@ -34,39 +34,26 @@ export function columnRoles(answers: WizardAnswers): [Role, number][] {
   return roles.filter((entry): entry is [Role, number] => entry[1] !== null)
 }
 
-const ROLE_STEP: Record<Role, StepId> = {
-  account: 'account',
-  date: 'date',
-  amount: 'amount',
-  amountIn: 'amount',
-  amountOut: 'amount',
-  description: 'description',
-  category: 'extras',
-  payee: 'extras',
-  tag: 'extras',
-  labels: 'extras',
+/** a column's header, or "Column 3" when the file left it blank */
+export function columnName(profile: { index: number; name: string }, t: TFunction): string {
+  return profile.name.trim() || t('transactions.import_wizard.column_n', { n: profile.index + 1 })
 }
 
-export interface CollapsedColumn {
-  label: string
-  step: StepId
+export function roleLabel(role: Role, t: TFunction): string {
+  return t(ROLE_KEYS[role])
 }
 
-/** how a step's table marks columns: its own other roles as labels, other steps' columns collapsed to a link back */
-export function columnMarks(
-  answers: WizardAnswers,
-  t: TFunction,
-  step: StepId,
-  omit: Role[] = [],
-): { labels: Record<number, string>; collapsed: Record<number, CollapsedColumn> } {
-  const labels: Record<number, string> = {}
-  const collapsed: Record<number, CollapsedColumn> = {}
+// a role named inside a phrase ("now payee", "with payee, category"); German nouns keep their capital
+export const inPhrase = (text: string, language: string) => (language.startsWith('de') ? text : text.toLocaleLowerCase(language))
+
+/** the small "now payee" tag of each column another role already reads */
+export function columnTags(answers: WizardAnswers, t: TFunction, language: string, omit: Role[] = []): Record<number, string> {
+  const names: Record<number, string[]> = {}
   for (const [role, column] of columnRoles(answers)) {
     if (omit.includes(role)) continue
-    const text = t(ROLE_KEYS[role])
-    if (ROLE_STEP[role] === step) labels[column] = labels[column] ? `${labels[column]}, ${text}` : text
-    else if (collapsed[column]) collapsed[column] = { ...collapsed[column], label: `${collapsed[column].label}, ${text}` }
-    else collapsed[column] = { label: text, step: ROLE_STEP[role] }
+    ;(names[column] ??= []).push(inPhrase(roleLabel(role, t), language))
   }
-  return { labels, collapsed }
+  return Object.fromEntries(
+    Object.entries(names).map(([column, roles]) => [column, t('transactions.import_wizard.now_used', { role: roles.join(', ') })]),
+  )
 }

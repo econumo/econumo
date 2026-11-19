@@ -405,13 +405,11 @@
       }
     },
     "import_wizard": {
-      "change_column": "{role} — toque para alterar",
       "column_n": "Coluna {n}",
       "title": "Importar transações",
       "steps_label": "Passos da importação",
       "needs_attention": "precisa da sua atenção",
       "back": "Voltar",
-      "next": "Seguinte",
       "steps": {
         "file": "O seu ficheiro",
         "account": "Conta",
@@ -419,7 +417,7 @@
         "amount": "Montante",
         "description": "Descrição",
         "extras": "Outros detalhes",
-        "preview": "Verificar"
+        "preview": "Verificar e importar"
       },
       "file": {
         "title": "Escolha um ficheiro do seu banco ou de outra app",
@@ -431,11 +429,12 @@
           "too_big": "Este ficheiro tem mais de 10 MB",
           "empty": "Este ficheiro está vazio",
           "unreadable": "Não foi possível ler este ficheiro como folha de cálculo (CSV)"
-        }
+        },
+        "none": "Ainda sem ficheiro"
       },
       "account": {
         "skipped": "{count} linha não tem nome de conta e será ignorada | {count} linhas não têm nome de conta e serão ignoradas",
-        "title": "De que conta é este extrato?",
+        "title": "De que conta são estas transações?",
         "new": "Uma conta nova",
         "existing": "Uma conta que já tenho",
         "column": "Cada linha indica a sua conta",
@@ -444,62 +443,62 @@
         "column_question": "Toque na coluna com o nome da conta",
         "found": "Contas neste ficheiro",
         "existing_name": "Conta existente",
-        "currency_of": "Moeda de {name}"
+        "currency_of": "Moeda de {name}",
+        "name_hint": "Pode mudar o nome mais tarde"
       },
       "date": {
-        "title": "Toque na coluna com a data",
+        "title": "Que coluna indica quando foi feito cada pagamento?",
         "question": "{example} é {dmy} ou {mdy}?",
-        "skipped": "{count} linha não tem uma data legível e será ignorada | {count} linhas não têm uma data legível e serão ignoradas"
+        "skipped": "{count} linha não tem uma data legível e será ignorada | {count} linhas não têm uma data legível e serão ignoradas",
+        "example": "«{value}» será lido como",
+        "not_a_date": "não é uma data"
       },
       "amount": {
-        "choosing": "Dinheiro que entra ou que sai",
-        "tap_in": "Toque na coluna do dinheiro que entra",
-        "tap_out": "Toque na coluna do dinheiro que sai",
         "none_in": "O ficheiro não tem coluna de dinheiro que entra",
         "none_out": "O ficheiro não tem coluna de dinheiro que sai",
-        "no_column": "não escolhida",
         "skipped": "{count} linha não tem um montante legível e será ignorada | {count} linhas não têm um montante legível e serão ignoradas",
-        "title": "Como mostra o ficheiro os montantes?",
-        "single": "Uma coluna com + e −",
-        "dual": "Colunas separadas para dinheiro que entra e dinheiro que sai",
-        "column": "Toque na coluna com o montante",
+        "title": "Que coluna tem o dinheiro?",
+        "single": "Uma coluna, menos para as despesas",
+        "dual": "Dinheiro que entra e dinheiro que sai",
         "money_in": "Dinheiro que entra",
         "money_out": "Dinheiro que sai",
         "separator_question": "Quanto é {example}?",
         "spending": "As despesas aparecem como: {example}",
-        "flip": "Inverter os sinais"
+        "flip": "Inverter os sinais",
+        "mode": "Como são mostrados os montantes",
+        "flip_hint": "Ative se o seu banco mostra os pagamentos sem sinal de menos",
+        "example_empty": "Escolha a coluna com o dinheiro para ver como ficarão os pagamentos.",
+        "example_label": "Assim ficarão os pagamentos"
       },
       "description": {
         "none": "O ficheiro não tem descrição",
-        "title": "Toque na coluna que descreve cada transação"
+        "title": "Que coluna indica para que foi cada pagamento?"
       },
       "extras": {
-        "hint": "Toque numa coluna para a trazer e depois escolha o que é",
-        "title": "Mais alguma coisa a trazer?",
-        "leave_out": "Deixar de fora",
+        "title": "Mais alguma coisa que valha a pena trazer?",
+        "leave_out": "Não trazer",
         "role": {
           "category": "Categoria",
           "payee": "Beneficiário",
           "tag": "Etiqueta de orçamento",
           "labels": "Etiquetas de relatório"
         },
-        "use_as": "Usar «{name}» como",
         "separator_question": "Várias etiquetas numa célula são separadas por",
         "tab": "Tabulação",
         "custom_separator": "Outro",
         "new_categories": "Será criada {count} nova categoria | Serão criadas {count} novas categorias",
-        "new_labels": "Será criada {count} nova etiqueta | Serão criadas {count} novas etiquetas"
+        "new_labels": "Será criada {count} nova etiqueta | Serão criadas {count} novas etiquetas",
+        "role_hint": {
+          "payee": "A quem pagou ou quem lhe pagou",
+          "category": "Supermercado, renda… as que ainda não tem são criadas",
+          "tag": "Um projeto ou uma viagem",
+          "labels": "Várias etiquetas numa célula não há problema"
+        }
       },
       "preview": {
-        "position_skipped": "Linha ignorada {n} de {total}",
-        "title": "Isto é o que será importado",
-        "totals": "{count} transação, de {first} a {last}. Entradas {in}, saídas {out}. | {count} transações, de {first} a {last}. Entradas {in}, saídas {out}.",
+        "title": "Isto é o que será adicionado",
         "nothing": "Por enquanto nada será importado.",
         "skipped": "{count} será ignorada | {count} serão ignoradas",
-        "position": "Transação {n} de {total}",
-        "previous": "Anterior",
-        "next": "Seguinte",
-        "next_problem": "Problema seguinte",
         "from_file": "Do ficheiro:",
         "looks_wrong": "Algo não está bem?",
         "skip_row": "Ignorar esta linha",
@@ -510,14 +509,40 @@
         "no_account": "Nenhuma conta escolhida",
         "import": "Importar {count} transação | Importar {count} transações",
         "importing": "A importar…",
-        "totals_no_money": "{count} transação, de {first} a {last}. | {count} transações, de {first} a {last}.",
-        "amount_unreadable": "Não é possível ler este montante"
+        "amount_unreadable": "Não é possível ler este montante",
+        "transactions": "Transações",
+        "range": "De {first} a {last}",
+        "left_out": "De fora",
+        "row": "Linha {n}",
+        "list": "Transações a adicionar",
+        "show_more": "Mostrar mais {count} linha | Mostrar mais {count} linhas"
       },
       "skipped": {
         "no_date": "Sem data legível",
         "no_amount": "Sem montante legível",
         "no_account": "Sem nome de conta",
         "user_skipped": "Ignorada por si"
+      },
+      "continue": "Continuar",
+      "step_of": "Passo {n} de {total} · {title}",
+      "list_hint": "Lemos o seu ficheiro e preenchemos o que conseguimos. Toque num passo para o alterar.",
+      "check_button": "Verificar {count} transação | Verificar {count} transações",
+      "ready": "{count} transação pronta · {skipped} de fora | {count} transações prontas · {skipped} de fora",
+      "rows": "{count} linha | {count} linhas",
+      "all_steps": "Todos os passos",
+      "column_empty": "vazia",
+      "more_columns": "Mostrar mais {count} coluna | Mostrar mais {count} colunas",
+      "now_used": "agora {role}",
+      "summary": {
+        "not_chosen": "Por escolher",
+        "new_account": "Nova: {name} · {currency}",
+        "each_row": "Cada linha: {column}",
+        "in_out": "Entra: {in} · Sai: {out}",
+        "flipped": "sinais invertidos",
+        "none": "Nenhuma",
+        "with": "Com {list}",
+        "nothing_extra": "Nada mais",
+        "check": "{count} a importar · {skipped} de fora | {count} a importar · {skipped} de fora"
       }
     },
     "import_result": {
@@ -1026,9 +1051,19 @@
       "header": "Importada de"
     },
     "rules": {
-      "field": { "external_payee": "Beneficiário", "description": "Descrição" },
-      "type": { "contains": "contém", "prefix": "começa com", "exact": "é exatamente" },
-      "action": { "classify": "Classificar", "skip": "Ignorar" },
+      "field": {
+        "external_payee": "Beneficiário",
+        "description": "Descrição"
+      },
+      "type": {
+        "contains": "contém",
+        "prefix": "começa com",
+        "exact": "é exatamente"
+      },
+      "action": {
+        "classify": "Classificar",
+        "skip": "Ignorar"
+      },
       "prompt": {
         "title": "Criar uma regra de importação",
         "changed_category": "Definiu a categoria como {name}. Criar uma regra para importações semelhantes?",
@@ -1097,7 +1132,12 @@
       "account": "Conta",
       "reimport": "Importar novamente",
       "reimport_hint": "Importe-a novamente para a voltar a adicionar, ou para a associar a uma transação que introduziu, como uma transferência.",
-      "reimported": { "created": "Importada novamente", "matched": "Associada a uma transação existente", "queued": "Importada novamente; está à espera na caixa de entrada", "skipped": "Não adicionada: corresponde a uma regra de exclusão ou a uma conta ignorada" }
+      "reimported": {
+        "created": "Importada novamente",
+        "matched": "Associada a uma transação existente",
+        "queued": "Importada novamente; está à espera na caixa de entrada",
+        "skipped": "Não adicionada: corresponde a uma regra de exclusão ou a uma conta ignorada"
+      }
     },
     "suggestions": {
       "dismiss": "Ignorar",

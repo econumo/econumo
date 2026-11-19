@@ -39,7 +39,7 @@ it('highlights the zone while a file is dragged over it', () => {
 it('a dropped CSV opens the import dialog with the file already parsed', async () => {
   const zone = renderStep()
   fireEvent.drop(zone, files(new File([CSV], 'bank.csv', { type: 'text/csv' })))
-  expect(await screen.findByRole('heading', { name: 'Which account is this statement from?' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Which account are these transactions from?' })).toBeInTheDocument()
 })
 
 it('ignores a dropped file that is not a CSV, with a hint', () => {
@@ -53,7 +53,7 @@ it('a click on the zone opens the dialog with the file picker', async () => {
   const zone = renderStep()
   await userEvent.setup().click(zone)
   expect(await screen.findByLabelText('Choose a file')).toBeInTheDocument()
-  expect(screen.queryByRole('heading', { name: 'Which account is this statement from?' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Which account are these transactions from?' })).not.toBeInTheDocument()
 })
 
 it('the footer has Skip on the left and "I don\'t have one" on the right, both skipping the step, and no Import button', async () => {

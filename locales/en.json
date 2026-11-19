@@ -405,13 +405,11 @@
       }
     },
     "import_wizard": {
-      "change_column": "{role} — tap to change",
       "column_n": "Column {n}",
       "title": "Import transactions",
       "steps_label": "Import steps",
       "needs_attention": "needs your attention",
       "back": "Back",
-      "next": "Next",
       "steps": {
         "file": "Your file",
         "account": "Account",
@@ -419,7 +417,7 @@
         "amount": "Amount",
         "description": "Description",
         "extras": "Extra details",
-        "preview": "Check"
+        "preview": "Check and import"
       },
       "file": {
         "title": "Choose a file from your bank or another app",
@@ -431,11 +429,12 @@
           "too_big": "This file is larger than 10 MB",
           "empty": "This file is empty",
           "unreadable": "This file couldn't be read as a spreadsheet (CSV)"
-        }
+        },
+        "none": "No file yet"
       },
       "account": {
         "skipped": "{count} row has no account name and will be skipped | {count} rows have no account name and will be skipped",
-        "title": "Which account is this statement from?",
+        "title": "Which account are these transactions from?",
         "new": "A new account",
         "existing": "An account I already have",
         "column": "Each row says which account",
@@ -444,62 +443,62 @@
         "column_question": "Tap the column with the account name",
         "found": "Accounts in this file",
         "existing_name": "Existing account",
-        "currency_of": "Currency for {name}"
+        "currency_of": "Currency for {name}",
+        "name_hint": "You can rename it later"
       },
       "date": {
-        "title": "Tap the column with the date",
+        "title": "Which column says when each payment happened?",
         "question": "Is {example} the {dmy} or {mdy}?",
-        "skipped": "{count} row has no readable date and will be skipped | {count} rows have no readable date and will be skipped"
+        "skipped": "{count} row has no readable date and will be skipped | {count} rows have no readable date and will be skipped",
+        "example": "“{value}” will be read as",
+        "not_a_date": "not a date"
       },
       "amount": {
-        "choosing": "Money in or money out",
-        "tap_in": "Tap the column with money in",
-        "tap_out": "Tap the column with money out",
         "none_in": "The file has no money-in column",
         "none_out": "The file has no money-out column",
-        "no_column": "not chosen",
         "skipped": "{count} row has no readable amount and will be skipped | {count} rows have no readable amount and will be skipped",
-        "title": "How does the file show amounts?",
-        "single": "One column with + and −",
-        "dual": "Separate columns for money in and money out",
-        "column": "Tap the column with the amount",
+        "title": "Which column has the money?",
+        "single": "One column, minus for spending",
+        "dual": "Money in and money out",
         "money_in": "Money in",
         "money_out": "Money out",
         "separator_question": "How much is {example}?",
         "spending": "Spending shows as: {example}",
-        "flip": "Flip the signs"
+        "flip": "Flip the signs",
+        "mode": "How amounts are shown",
+        "flip_hint": "Turn on if your bank lists payments without a minus",
+        "example_empty": "Pick the column with the money to see how payments will look.",
+        "example_label": "How payments will look"
       },
       "description": {
         "none": "The file has no description",
-        "title": "Tap the column that describes each transaction"
+        "title": "Which column says what each payment was for?"
       },
       "extras": {
-        "hint": "Tap a column to bring it over, then choose what it is",
-        "title": "Anything else to bring over?",
-        "leave_out": "Leave out",
+        "title": "Anything else worth bringing along?",
+        "leave_out": "Don’t bring it",
         "role": {
           "category": "Category",
           "payee": "Payee",
           "tag": "Budget tag",
           "labels": "Reporting tags"
         },
-        "use_as": "Use “{name}” as",
         "separator_question": "Several tags in one cell are separated by",
         "tab": "Tab",
         "custom_separator": "Something else",
         "new_categories": "{count} new category will be created | {count} new categories will be created",
-        "new_labels": "{count} new tag will be created | {count} new tags will be created"
+        "new_labels": "{count} new tag will be created | {count} new tags will be created",
+        "role_hint": {
+          "payee": "Who you paid or who paid you",
+          "category": "Groceries, rent… the ones you don’t have yet are created",
+          "tag": "A project or a trip",
+          "labels": "Several tags in one cell are fine"
+        }
       },
       "preview": {
-        "position_skipped": "Skipped row {n} of {total}",
-        "title": "Here's what will be imported",
-        "totals": "{count} transaction, {first} to {last}. Money in {in}, money out {out}. | {count} transactions, {first} to {last}. Money in {in}, money out {out}.",
+        "title": "Here is what will be added",
         "nothing": "Nothing will be imported yet.",
         "skipped": "{count} will be skipped",
-        "position": "Transaction {n} of {total}",
-        "previous": "Previous",
-        "next": "Next",
-        "next_problem": "Next problem",
         "from_file": "From the file:",
         "looks_wrong": "Something looks wrong?",
         "skip_row": "Skip this row",
@@ -510,14 +509,40 @@
         "no_account": "No account chosen",
         "import": "Import {count} transaction | Import {count} transactions",
         "importing": "Importing…",
-        "totals_no_money": "{count} transaction, {first} to {last}. | {count} transactions, {first} to {last}.",
-        "amount_unreadable": "Can't read this amount"
+        "amount_unreadable": "Can't read this amount",
+        "transactions": "Transactions",
+        "range": "{first} to {last}",
+        "left_out": "Left out",
+        "row": "Row {n}",
+        "list": "Transactions to add",
+        "show_more": "Show {count} more row | Show {count} more rows"
       },
       "skipped": {
         "no_date": "No readable date",
         "no_amount": "No readable amount",
         "no_account": "No account name",
         "user_skipped": "Skipped by you"
+      },
+      "continue": "Continue",
+      "step_of": "Step {n} of {total} · {title}",
+      "list_hint": "We read your file and filled in what we could. Tap a step to change it.",
+      "check_button": "Check {count} transaction | Check {count} transactions",
+      "ready": "{count} transaction ready · {skipped} left out | {count} transactions ready · {skipped} left out",
+      "rows": "{count} row | {count} rows",
+      "all_steps": "All steps",
+      "column_empty": "empty",
+      "more_columns": "Show {count} more column | Show {count} more columns",
+      "now_used": "now {role}",
+      "summary": {
+        "not_chosen": "Not chosen",
+        "new_account": "New: {name} · {currency}",
+        "each_row": "Each row: {column}",
+        "in_out": "In: {in} · Out: {out}",
+        "flipped": "signs flipped",
+        "none": "None",
+        "with": "With {list}",
+        "nothing_extra": "Nothing extra",
+        "check": "{count} to import · {skipped} left out | {count} to import · {skipped} left out"
       }
     },
     "import_result": {
@@ -1026,9 +1051,19 @@
       "header": "Imported from"
     },
     "rules": {
-      "field": { "external_payee": "Payee", "description": "Description" },
-      "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
-      "action": { "classify": "Classify", "skip": "Skip" },
+      "field": {
+        "external_payee": "Payee",
+        "description": "Description"
+      },
+      "type": {
+        "contains": "contains",
+        "prefix": "starts with",
+        "exact": "is exactly"
+      },
+      "action": {
+        "classify": "Classify",
+        "skip": "Skip"
+      },
       "prompt": {
         "title": "Create an import rule",
         "changed_category": "You set the category to {name}. Create a rule for similar imports?",
@@ -1097,7 +1132,12 @@
       "account": "Account",
       "reimport": "Import again",
       "reimport_hint": "Import it again to add it back, or to match a transaction you entered yourself, such as a transfer.",
-      "reimported": { "created": "Imported again", "matched": "Matched to an existing transaction", "queued": "Imported again; it is waiting in the Inbox", "skipped": "Not added: a skip rule or an ignored account matched it" }
+      "reimported": {
+        "created": "Imported again",
+        "matched": "Matched to an existing transaction",
+        "queued": "Imported again; it is waiting in the Inbox",
+        "skipped": "Not added: a skip rule or an ignored account matched it"
+      }
     },
     "suggestions": {
       "dismiss": "Dismiss",

@@ -1,141 +1,68 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { ReactNode, TouchEvent } from 'react'
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react'
+import { useId, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CardField, cardFieldControlClass } from '@/components/CardField'
-import { EntityIcon } from '@/components/EntityIcon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
-import { abs, isNegative } from '@/lib/decimal'
-import { moneyFormat, type CurrencyLike } from '@/lib/money'
+import { moneyFormat } from '@/lib/money'
 import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { cn } from '@/lib/utils'
+import { formatDay, formatShortDay, formatSigned, useAccountView, type AccountView } from '../accountView'
 import { parseAmountCell, type DecimalSeparator } from '../amounts'
-import { summarize, type PreparedRow, type RowFix, type StepId, type WizardAnswers } from '../prepare'
+import { summarize, type PreparedRow, type RowFix, type StepId } from '../prepare'
 import { nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 import { PerRowAccounts } from './AccountStep'
-import { StepTitle } from './StepTitle'
 
-interface AccountView {
-  name: string | null
-  icon: string
-  currency: (CurrencyLike & { id: string }) | null
-}
+// rows shown before "show more"; rows that will be left out are always shown, so none needs hunting for
+const PAGE = 100
 
-const SWIPE_MIN_PX = 50
+type SetFix = (update: (fix: RowFix | undefined) => RowFix | undefined) => void
 
-// arrow keys belong to the control that has focus when it uses them itself
-const ownsArrowKeys = (target: EventTarget | null) =>
-  target instanceof HTMLElement &&
-  (target.isContentEditable || target.matches('input, textarea, select, [role="combobox"], [role="radio"], [role="slider"], [role="listbox"], [role="option"]'))
-
-function useAccountView(answers: WizardAnswers): (row: PreparedRow) => AccountView {
-  const { data: user } = useUserData()
-  const { data: accounts = [] } = useAccounts()
-  const { data: currencies = [] } = useCurrencies()
-  const writable = useMemo(() => writableAccounts(accounts, user?.id), [accounts, user?.id])
-  const { account } = answers
-
-  return (row) => {
-    if (account?.kind === 'existing') {
-      const found = accounts.find((a) => a.id === account.accountId)
-      return { name: found?.name ?? null, icon: found?.icon || 'account_balance_wallet', currency: found?.currency ?? null }
-    }
-    if (account?.kind === 'new') {
-      return { name: account.name, icon: 'account_balance_wallet', currency: currencies.find((c) => c.id === account.currencyId) ?? null }
-    }
-    if (account?.kind === 'column' && row.account !== null) {
-      const key = nameKey(row.account)
-      const found = writable.find((a) => nameKey(a.name) === key)
-      if (found) return { name: found.name, icon: found.icon || 'account_balance_wallet', currency: found.currency }
-      const currencyId = Object.hasOwn(account.currencies, key) ? account.currencies[key] : userCurrencyId(user)
-      return { name: row.account, icon: 'account_balance_wallet', currency: currencies.find((c) => c.id === currencyId) ?? null }
-    }
-    return { name: null, icon: 'account_balance_wallet', currency: null }
-  }
-}
-
-// the date as the UI language writes it ("3 Nov 2026"); the stored value stays ISO
-function formatDay(date: string, language: string): string {
-  const [y, m, d] = date.split('-').map(Number)
-  if (!y || !m || !d) return date
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)))
-}
-
-function formatAmount(amount: string, currency: CurrencyLike | null): { sign: string; text: string } {
-  return {
-    sign: isNegative(amount) ? '−' : '+',
-    text: moneyFormat(abs(amount), currency, { showCurrency: false, useNativePrecision: false }),
-  }
-}
-
-/** a value on the card that opens the step that shapes it */
-function StepLink({ step, goTo, className = '', children }: { step: StepId; goTo: (step: StepId) => void; className?: string; children: ReactNode }) {
+/** a value in the list that opens the step that shapes it */
+function StepLink({ step, goTo, className, label, children }: { step: StepId; goTo: (step: StepId) => void; className?: string; label?: string; children: ReactNode }) {
   return (
-    <button type="button" onClick={() => goTo(step)} className={`min-w-0 cursor-pointer text-left underline-offset-2 hover:underline ${className}`}>
+    <button type="button" aria-label={label} onClick={() => goTo(step)} className={cn('min-w-0 cursor-pointer text-left underline-offset-2 hover:underline', className)}>
       {children}
     </button>
   )
 }
 
-function TransactionCard({ row, account, labelsSeparator, goTo }: { row: PreparedRow; account: AccountView; labelsSeparator: string; goTo: (step: StepId) => void }) {
+function TransactionRow({ row, account, perRow, labelsSeparator, goTo }: {
+  row: PreparedRow
+  account: AccountView
+  perRow: boolean
+  labelsSeparator: string
+  goTo: (step: StepId) => void
+}) {
   const { t, i18n } = useTranslation()
-  const amount = row.amount === null ? null : formatAmount(row.amount, account.currency)
+  const signed = row.amount === null ? null : formatSigned(row.amount, account.currency)
   const labels = row.labels === '' ? [] : row.labels.split(labelsSeparator).map((l) => l.trim()).filter((l) => l !== '')
+  const extras = [row.payee, row.category, row.tag, ...labels].filter((v) => v !== '')
+  const details = [...(perRow && account.name ? [account.name] : []), ...extras]
+  const fullDate = row.date === null ? '' : [formatDay(row.date, i18n.language), row.time].filter(Boolean).join(' ')
   return (
-    <div className="flex w-full items-start gap-4">
-      <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
-        <StepLink step="description" goTo={goTo} className="break-words text-base leading-6">
+    <li className="flex items-center gap-3 border-b border-border px-3 py-2.5 last:border-0" title={row.raw}>
+      <StepLink step="date" goTo={goTo} label={fullDate} className="w-14 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+        {row.date === null ? null : formatShortDay(row.date, i18n.language)}
+      </StepLink>
+      <div className="flex min-w-0 flex-1 flex-col items-start">
+        <StepLink step="description" goTo={goTo} className="max-w-full truncate text-sm">
           {row.description || <span className="text-muted-foreground">{t('transactions.import_wizard.preview.no_description')}</span>}
         </StepLink>
-        {row.category ? (
-          <StepLink step="extras" goTo={goTo} className="flex items-center gap-1 text-[13px] text-muted-foreground">
-            <EntityIcon name="category" className="shrink-0 text-sm" />
-            <span className="truncate">{row.category}</span>
+        {details.length > 0 ? (
+          <StepLink step={extras.length > 0 ? 'extras' : 'account'} goTo={goTo} className="max-w-full truncate text-xs text-muted-foreground">
+            {details.join(' · ')}
           </StepLink>
         ) : null}
-        {row.payee ? (
-          <StepLink step="extras" goTo={goTo} className="truncate text-[13px] text-muted-foreground">
-            {row.payee}
-          </StepLink>
-        ) : null}
-        {row.tag || labels.length > 0 ? (
-          <StepLink step="extras" goTo={goTo} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
-            {row.tag ? (
-              <span className="flex min-w-0 items-center gap-1">
-                <EntityIcon name="tag" className="shrink-0 text-sm" />
-                <span className="truncate">{row.tag}</span>
-              </span>
-            ) : null}
-            {labels.map((label, i) => (
-              <span key={i} className="flex min-w-0 items-center gap-1">
-                <EntityIcon name="label" className="shrink-0 text-sm" />
-                <span className="truncate">{label}</span>
-              </span>
-            ))}
-          </StepLink>
-        ) : null}
-      </span>
-      <span className="flex max-w-[45%] shrink-0 flex-col items-end gap-0.5 text-right">
-        {amount ? (
-          <StepLink step="amount" goTo={goTo} className={`text-sm leading-6 tabular-nums ${amount.sign === '+' ? 'text-income' : 'text-expense'}`}>
-            {amount.sign}
-            {amount.text}
-            {account.currency ? <span className="ml-1 text-muted-foreground">{account.currency.symbol}</span> : null}
-          </StepLink>
-        ) : null}
-        <StepLink step="account" goTo={goTo} className="flex max-w-full items-center gap-1 text-[13px] text-muted-foreground">
-          <EntityIcon name={account.icon} className="shrink-0 text-sm" />
-          <span className="truncate">{account.name ?? t('transactions.import_wizard.preview.no_account')}</span>
+      </div>
+      {signed ? (
+        <StepLink step="amount" goTo={goTo} className={cn('shrink-0 text-sm tabular-nums', signed.income && 'text-income')}>
+          {signed.text}
         </StepLink>
-        <StepLink step="date" goTo={goTo} className="text-[13px] tabular-nums text-muted-foreground">
-          {row.date === null ? null : [formatDay(row.date, i18n.language), row.time].filter(Boolean).join(' ')}
-        </StepLink>
-      </span>
-    </div>
+      ) : null}
+    </li>
   )
 }
 
@@ -143,33 +70,41 @@ function TransactionCard({ row, account, labelsSeparator, goTo }: { row: Prepare
 function AmountFix({ sep, onSave }: { sep: DecimalSeparator; onSave: (amount: string) => void }) {
   const { t } = useTranslation()
   const id = useId()
+  const errorId = useId()
   const [value, setValue] = useState('')
   const parsed = parseAmountCell(value, sep)
+  const unreadable = value.trim() !== '' && parsed === null
   const save = () => {
     if (parsed !== null) onSave(parsed)
   }
   return (
-    <CardField
-      label={t('transactions.import_wizard.preview.fix_amount')}
-      htmlFor={id}
-      error={value.trim() !== '' && parsed === null ? t('transactions.import_wizard.preview.amount_unreadable') : null}
-    >
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-xs text-muted-foreground">
+        {t('transactions.import_wizard.preview.fix_amount')}
+      </label>
       <Input
         id={id}
         inputMode="decimal"
-        className={cardFieldControlClass}
+        className="h-9 w-44 bg-background"
         value={value}
+        aria-invalid={unreadable || undefined}
+        aria-describedby={unreadable ? errorId : undefined}
         onChange={(e) => setValue(e.target.value)}
         onBlur={save}
         onKeyDown={(e) => {
           if (e.key === 'Enter') save()
         }}
       />
-    </CardField>
+      {unreadable ? (
+        <span id={errorId} className="text-xs text-destructive">
+          {t('transactions.import_wizard.preview.amount_unreadable')}
+        </span>
+      ) : null}
+    </div>
   )
 }
 
-function ProblemCard({ row, sep, setFix }: { row: PreparedRow; sep: DecimalSeparator; setFix: (update: (fix: RowFix | undefined) => RowFix | undefined) => void }) {
+function ProblemRow({ row, sep, setFix }: { row: PreparedRow; sep: DecimalSeparator; setFix: SetFix }) {
   const { t } = useTranslation()
   const dateId = useId()
   const typed = (patch: { date?: string; amount?: string }) =>
@@ -179,28 +114,46 @@ function ProblemCard({ row, sep, setFix }: { row: PreparedRow; sep: DecimalSepar
     })
   const canFix = row.reason === 'no_date' || row.reason === 'no_amount'
   return (
-    <div className="flex flex-col gap-3">
-      <p className="flex items-center gap-2 text-sm">
-        <Info className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        {t(`transactions.import_wizard.skipped.${row.reason ?? 'user_skipped'}`)}
-      </p>
-      {row.reason === 'no_date' ? (
-        <CardField label={t('transactions.import_wizard.preview.fix_date')} htmlFor={dateId}>
-          <Input id={dateId} type="date" className={cardFieldControlClass} onChange={(e) => typed({ date: e.target.value || undefined })} />
-        </CardField>
+    <li className="flex flex-col gap-2 border-b border-border bg-econumo-yellow/15 px-3 py-2.5 last:border-0">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0 rounded-md bg-econumo-yellow/40 px-1.5 text-xs text-econumo-yellow-text">
+          {t('transactions.import_wizard.preview.left_out')}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm">
+            {t('transactions.import_wizard.preview.row', { n: row.fileRow })}
+            {row.description ? `: ${row.description}` : null}
+          </div>
+          <div className="text-xs text-muted-foreground">{t(`transactions.import_wizard.skipped.${row.reason ?? 'user_skipped'}`)}</div>
+          <code className="mt-1 block font-mono text-xs break-all text-foreground/80">
+            <span className="sr-only">{t('transactions.import_wizard.preview.from_file')} </span>
+            {row.raw}
+          </code>
+        </div>
+      </div>
+      {canFix || row.reason === 'user_skipped' ? (
+        <div className="flex flex-wrap items-end gap-2 pl-0 sm:pl-[4.25rem]">
+          {row.reason === 'no_date' ? (
+            <div className="flex flex-col gap-1">
+              <label htmlFor={dateId} className="text-xs text-muted-foreground">
+                {t('transactions.import_wizard.preview.fix_date')}
+              </label>
+              <Input id={dateId} type="date" className="h-9 w-44 bg-background" onChange={(e) => typed({ date: e.target.value || undefined })} />
+            </div>
+          ) : null}
+          {row.reason === 'no_amount' ? <AmountFix sep={sep} onSave={(amount) => typed({ amount })} /> : null}
+          {canFix ? (
+            <Button type="button" variant="ghost" className="h-9" onClick={() => setFix(() => 'skip')}>
+              {t('transactions.import_wizard.preview.skip_row')}
+            </Button>
+          ) : (
+            <Button type="button" variant="ghost" className="h-9" onClick={() => setFix(() => undefined)}>
+              {t('transactions.import_wizard.preview.unskip_row')}
+            </Button>
+          )}
+        </div>
       ) : null}
-      {row.reason === 'no_amount' ? <AmountFix sep={sep} onSave={(amount) => typed({ amount })} /> : null}
-      {canFix ? (
-        <Button type="button" variant="secondary" className="self-start" onClick={() => setFix(() => 'skip')}>
-          {t('transactions.import_wizard.preview.skip_row')}
-        </Button>
-      ) : null}
-      {row.reason === 'user_skipped' ? (
-        <Button type="button" variant="secondary" className="self-start" onClick={() => setFix(() => undefined)}>
-          {t('transactions.import_wizard.preview.unskip_row')}
-        </Button>
-      ) : null}
-    </div>
+    </li>
   )
 }
 
@@ -211,6 +164,8 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
   const { rows, answers } = state
   const accountView = useAccountView(answers)
   const summary = useMemo(() => summarize(rows), [rows])
+  const [limit, setLimit] = useState(PAGE)
+  const perRow = answers.account?.kind === 'column'
   // one ok row per account name stands for all of that account's rows
   const perRowSamples = useMemo(() => {
     const byName = new Map<string, PreparedRow>()
@@ -219,60 +174,11 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
     }
     return [...byName.values()]
   }, [rows])
-  const [index, setIndex] = useState(0)
-  const current = Math.min(index, Math.max(rows.length - 1, 0))
-  const row = rows[current] as PreparedRow | undefined
-  const rootRef = useRef<HTMLDivElement>(null)
-  const touchStart = useRef<{ x: number; y: number } | null>(null)
-  const positionId = useId()
-
+  const visible = useMemo(() => rows.filter((row, i) => i < limit || row.status === 'skipped'), [rows, limit])
   const existingNames = useMemo(() => new Set(writableAccounts(accounts, user?.id).map((a) => nameKey(a.name))), [accounts, user?.id])
-  const hasProblems = summary.skipped > 0
   const count = summary.total - summary.skipped
 
-  // the counter agrees with the totals: transactions count among transactions, skipped rows among skipped ones
-  const positionAmong = (status: PreparedRow['status']) => rows.slice(0, current + 1).filter((r) => r.status === status).length
-  const move = (by: number) => setIndex(Math.min(Math.max(current + by, 0), rows.length - 1))
-  const nextProblem = () => {
-    for (let step = 1; step <= rows.length; step++) {
-      const at = (current + step) % rows.length
-      if (rows[at].status === 'skipped') {
-        setIndex(at)
-        return
-      }
-    }
-  }
-
-  const moveRef = useRef(move)
-  useEffect(() => {
-    moveRef.current = move
-  })
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-      const dialog = rootRef.current?.closest('[role="dialog"]')
-      if (!dialog || !(e.target instanceof Node) || !dialog.contains(e.target) || ownsArrowKeys(e.target)) return
-      e.preventDefault()
-      moveRef.current(e.key === 'ArrowRight' ? 1 : -1)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [])
-
-  const onTouchStart = (e: TouchEvent) => {
-    const touch = e.touches[0]
-    touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null
-  }
-  const onTouchEnd = (e: TouchEvent) => {
-    const start = touchStart.current
-    const touch = e.changedTouches[0]
-    touchStart.current = null
-    if (!start || !touch) return
-    const dx = touch.clientX - start.x
-    if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > Math.abs(touch.clientY - start.y)) move(dx < 0 ? 1 : -1)
-  }
-
-  const setFix = (fileRow: number) => (update: (fix: RowFix | undefined) => RowFix | undefined) =>
+  const setFix = (fileRow: number): SetFix => (update) =>
     setFixes((prev) => {
       const next = new Map(prev)
       const fix = update(prev.get(fileRow))
@@ -288,7 +194,7 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
 
   // money is added up only when every row lands in one currency; amounts in two can't be summed
   const currencies = new Map(
-    (answers.account?.kind === 'column' ? perRowSamples : rows.slice(0, 1)).map((r) => {
+    (perRow ? perRowSamples : rows.slice(0, 1)).map((r) => {
       const currency = accountView(r).currency
       return [currency?.id ?? null, currency] as const
     }),
@@ -299,27 +205,35 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
   const reasons = Object.entries(summary.byReason)
     .map(([reason, n]) => `${t(`transactions.import_wizard.skipped.${reason}`)}: ${n}`)
     .join(', ')
+  const tiles: { label: string; value: string; className?: string }[] = [
+    { label: t('transactions.import_wizard.preview.transactions'), value: String(count) },
+    ...(showMoney
+      ? [
+          { label: t('transactions.import_wizard.amount.money_in'), value: money(summary.moneyIn), className: 'text-income' },
+          { label: t('transactions.import_wizard.amount.money_out'), value: /^0(\.0+)?$/.test(summary.moneyOut) ? money(summary.moneyOut) : `−${money(summary.moneyOut)}` },
+        ]
+      : []),
+  ]
+  const hiddenCount = rows.length - visible.length
 
   return (
-    <div ref={rootRef} className="flex flex-col gap-3">
-      <StepTitle>{t('transactions.import_wizard.preview.title')}</StepTitle>
-      <div className="flex flex-col gap-1 text-sm">
+    <div className="flex flex-col gap-4">
+      <div className={cn('grid gap-2', showMoney ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-3')}>
+        {tiles.map((tile) => (
+          <div key={tile.label} className="min-w-0 rounded-xl bg-econumo-card px-3 py-2.5">
+            <div className="truncate text-xs text-muted-foreground">{tile.label}</div>
+            <div className={cn('mt-0.5 truncate text-base tabular-nums sm:text-lg', tile.className)}>{tile.value}</div>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
         <p>
           {count > 0 && summary.firstDate && summary.lastDate
-            ? pluralPick(
-                t(showMoney ? 'transactions.import_wizard.preview.totals' : 'transactions.import_wizard.preview.totals_no_money', {
-                  first: formatDay(summary.firstDate, i18n.language),
-                  last: formatDay(summary.lastDate, i18n.language),
-                  in: money(summary.moneyIn),
-                  out: money(summary.moneyOut),
-                }),
-                count,
-                i18n.language,
-              )
+            ? t('transactions.import_wizard.preview.range', { first: formatDay(summary.firstDate, i18n.language), last: formatDay(summary.lastDate, i18n.language) })
             : t('transactions.import_wizard.preview.nothing')}
         </p>
-        {hasProblems ? (
-          <p className="text-muted-foreground">
+        {summary.skipped > 0 ? (
+          <p>
             {pluralPick(t('transactions.import_wizard.preview.skipped'), summary.skipped, i18n.language)} ({reasons})
           </p>
         ) : null}
@@ -335,42 +249,28 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
         />
       ) : null}
 
-      {row ? (
-        <section aria-labelledby={positionId} className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 id={positionId} className="text-sm text-muted-foreground" aria-live="polite">
-              {row.status === 'ok'
-                ? t('transactions.import_wizard.preview.position', { n: positionAmong('ok'), total: count })
-                : t('transactions.import_wizard.preview.position_skipped', { n: positionAmong('skipped'), total: summary.skipped })}
-            </h4>
-            <div className="flex items-center gap-2">
-              {hasProblems ? (
-                <Button type="button" variant="ghost" size="sm" onClick={nextProblem}>
-                  {t('transactions.import_wizard.preview.next_problem')}
-                </Button>
-              ) : null}
-              <Button type="button" variant="secondary" size="sm" disabled={current === 0} onClick={() => move(-1)}>
-                <ChevronLeft className="size-4" aria-hidden />
-                {t('transactions.import_wizard.preview.previous')}
-              </Button>
-              <Button type="button" variant="secondary" size="sm" disabled={current >= rows.length - 1} onClick={() => move(1)}>
-                {t('transactions.import_wizard.preview.next')}
-                <ChevronRight className="size-4" aria-hidden />
-              </Button>
-            </div>
-          </div>
-          <div className="touch-pan-y rounded-lg bg-econumo-card p-3" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-            {row.status === 'ok' ? (
-              <TransactionCard row={row} account={accountView(row)} labelsSeparator={answers.extras.labelsSeparator || ';'} goTo={goTo} />
+      {visible.length > 0 ? (
+        <ul aria-label={t('transactions.import_wizard.preview.list')} className="overflow-hidden rounded-xl border border-border">
+          {visible.map((row) =>
+            row.status === 'ok' ? (
+              <TransactionRow
+                key={row.fileRow}
+                row={row}
+                account={accountView(row)}
+                perRow={perRow}
+                labelsSeparator={answers.extras.labelsSeparator || ';'}
+                goTo={goTo}
+              />
             ) : (
-              <ProblemCard key={row.fileRow} row={row} sep={answers.amount.sep} setFix={setFix(row.fileRow)} />
-            )}
-          </div>
-          <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-            <span>{t('transactions.import_wizard.preview.from_file')}</span>
-            <code className="break-all font-mono text-foreground">{row.raw}</code>
-          </div>
-        </section>
+              <ProblemRow key={row.fileRow} row={row} sep={answers.amount.sep} setFix={setFix(row.fileRow)} />
+            ),
+          )}
+        </ul>
+      ) : null}
+      {hiddenCount > 0 ? (
+        <button type="button" className="self-start text-sm text-primary underline-offset-2 hover:underline" onClick={() => setLimit((n) => n + PAGE * 5)}>
+          {pluralPick(t('transactions.import_wizard.preview.show_more'), hiddenCount, i18n.language)}
+        </button>
       ) : null}
 
       <button type="button" className="self-start text-sm text-primary underline-offset-2 hover:underline" onClick={looksWrong}>

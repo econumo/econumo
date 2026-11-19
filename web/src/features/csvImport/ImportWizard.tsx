@@ -4,7 +4,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { importTransactionList } from '@/api/transaction'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -18,18 +17,17 @@ import { profileColumns, type ColumnProfile } from './columns'
 import { applyAiGuess, guessAnswers, isEconumoExport, redetectFormats } from './guess'
 import { readCsvFile, type ParsedFile } from './parse'
 import { buildUpload, prepareRows, pruneFixes, type Role, type RowFix, type StepId, type WizardAnswers } from './prepare'
-import { StepBar } from './StepBar'
 import { ensureAccounts, mergeRetry, runChunks, type ImportResult } from './upload'
+import { stepSummary } from './stepSummary'
 import { useColumnGuess } from './useColumnGuess'
+import { WizardShell, type ShellStep } from './WizardShell'
 import {
-  STEP_ORDER,
   defaultAccountName,
   distinctNames,
   missingAnswer,
   nameKey,
   newAccountFolderId,
   releaseTakenExtras,
-  stepWarnings,
   visibleSteps,
   writableAccounts,
   type LoadedWizardState,
@@ -96,6 +94,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const [touched, setTouched] = useState<ReadonlySet<StepId>>(() => new Set())
   const [fixes, setFixes] = useState<ReadonlyMap<number, RowFix>>(() => new Map())
   const [step, setStep] = useState<StepId>('file')
+  // a phone shows the step list first; picking a step opens it over the list
+  const [phoneList, setPhoneList] = useState(false)
   const [aiRoles, setAiRoles] = useState<Partial<Record<Role, string>> | null>(null)
   const [importing, setImporting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
@@ -115,6 +115,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     setTouched(new Set())
     setFixes(new Map())
     setStep('file')
+    setPhoneList(false)
     setAiRoles(null)
     setImportError(null)
     setProgress(null)
@@ -155,7 +156,9 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       currencies: currenciesQuery.data ?? [],
     })
     setAnswersState(releaseTakenExtras(guessed))
-    setStep(isEconumoExport(loaded.file) ? 'preview' : 'account')
+    const exported = isEconumoExport(loaded.file)
+    setStep(exported ? 'preview' : 'account')
+    setPhoneList(!exported)
   }, [loaded, answers, ready, accountsQuery.data, currenciesQuery.data, user])
 
   const setAnswers = useCallback(
@@ -195,16 +198,21 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   }, [loaded, answers])
 
   const rows = useMemo(() => (loaded && answers ? prepareRows(loaded.file, answers, fixes) : []), [loaded, answers, fixes])
-  const warnings = useMemo(() => (answers ? stepWarnings(answers) : new Set<StepId>()), [answers])
   const steps = visibleSteps(answers, loaded?.profiles ?? [])
   const position = steps.indexOf(step)
+  const listed = steps.filter((s): s is Exclude<StepId, 'file'> => s !== 'file')
 
   const state: LoadedWizardState | null =
     loaded && answers ? { ...loaded, answers, touched, fixes, rows, isExport } : null
 
+  const openStep = (next: StepId) => {
+    setStep(next)
+    setPhoneList(false)
+  }
+
   const goNext = () => {
-    if (step === 'file' && isExport) setStep('preview')
-    else if (position < steps.length - 1) setStep(steps[position + 1])
+    if (step === 'file' && isExport) openStep('preview')
+    else if (position < steps.length - 1) openStep(steps[position + 1])
   }
 
   const dismiss = () => {
@@ -279,67 +287,94 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   }
 
   const Body = step === 'file' ? null : STEP_BODIES[step]
+  const okCount = importCount
+  const leftOut = rows.length - okCount
+  const currencies = currenciesQuery.data ?? []
+  const allAccounts = accountsQuery.data ?? []
+  const shellSteps: ShellStep[] = state
+    ? listed.map((id) => ({
+        id,
+        title: t(`transactions.import_wizard.steps.${id}`),
+        summary: stepSummary(id, {
+          answers: state.answers,
+          profiles: state.profiles,
+          rows,
+          account: (accountId) => {
+            const found = allAccounts.find((a) => a.id === accountId)
+            return found ? { name: found.name, code: found.currency.code } : null
+          },
+          currencyCode: (currencyId) => currencies.find((c) => c.id === currencyId)?.code ?? null,
+          t,
+          language: i18n.language,
+        }),
+        answered: id !== 'preview' && !missingAnswer(id, state.answers),
+        warning: missingAnswer(id, state.answers),
+      }))
+    : listed.map((id) => ({ id, title: t(`transactions.import_wizard.steps.${id}`), summary: '', answered: false, warning: false }))
+  const question = t(step === 'preview' ? 'transactions.import_wizard.preview.title' : `transactions.import_wizard.${step}.title`)
+  const at = listed.indexOf(step as Exclude<StepId, 'file'>)
 
   return (
-    <ResponsiveDialog
+    <WizardShell
       open={open}
-      onOpenChange={(o) => !o && dismiss()}
-      dismissible={!importing}
-      title={t('transactions.import_wizard.title')}
-      size="wide"
-      footer={
-        <div className={dialogActionsClass}>
-          {position > 0 ? (
-            <Button type="button" variant="secondary" disabled={importing} onClick={() => setStep(steps[position - 1])}>
+      onClose={dismiss}
+      closable={!importing}
+      file={loaded ? { name: loaded.fileName, rows: rows.length || loaded.file.rows.length } : null}
+      steps={shellSteps}
+      current={step}
+      onSelect={openStep}
+      locked={importing}
+      position={
+        at < 0
+          ? null
+          : t('transactions.import_wizard.step_of', { n: at + 1, total: listed.length, title: t(`transactions.import_wizard.steps.${step}`) })
+      }
+      question={question}
+      ready={state ? pluralPick(t('transactions.import_wizard.ready', { skipped: leftOut }), okCount, i18n.language) : null}
+      phoneList={phoneList}
+      onPhoneBack={() => setPhoneList(true)}
+      phoneCheck={state ? { label: pluralPick(t('transactions.import_wizard.check_button'), okCount, i18n.language), onClick: () => openStep('preview') } : null}
+      status={
+        <>
+          {importing && progress ? (
+            <Progress value={(progress.done / progress.total) * 100} aria-label={t('transactions.import_wizard.preview.importing')} />
+          ) : null}
+          {importError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {importError}
+            </p>
+          ) : null}
+        </>
+      }
+      actions={
+        <>
+          {position > 0 && steps[position - 1] !== 'file' ? (
+            <Button type="button" variant="ghost" className="h-10" disabled={importing} onClick={() => openStep(steps[position - 1])}>
               {t('transactions.import_wizard.back')}
             </Button>
-          ) : (
-            <Button type="button" variant="secondary" disabled={importing} onClick={dismiss}>
-              {t('common.button.cancel.label')}
-            </Button>
-          )}
+          ) : null}
+          <div className="ml-auto" />
           {step !== 'preview' ? (
-            <Button type="button" disabled={state === null} onClick={goNext}>
-              {t('transactions.import_wizard.next')}
+            <Button type="button" className="h-10 px-5" disabled={state === null} onClick={goNext}>
+              {t('transactions.import_wizard.continue')}
             </Button>
           ) : (
-            // a long count or language wraps to two lines instead of running out of a half-width button
-            <Button type="button" className="leading-tight whitespace-normal text-balance" disabled={!canImport} onClick={() => void startImport()}>
+            // a long count or language wraps to two lines instead of running out of the button
+            <Button type="button" className="h-auto min-h-10 px-5 leading-tight whitespace-normal text-balance" disabled={!canImport} onClick={() => void startImport()}>
               {pluralPick(t('transactions.import_wizard.preview.import'), importCount, i18n.language)}
             </Button>
           )}
-        </div>
+        </>
       }
     >
-      <div className="flex flex-col gap-4">
-        <StepBar
-          steps={STEP_ORDER.map((id) => ({
-            id,
-            label: t(`transactions.import_wizard.steps.${id}`),
-            warning: warnings.has(id),
-            hidden: !steps.includes(id),
-          }))}
-          current={step}
-          onSelect={setStep}
-          disabled={state === null || importing}
-        />
-        {Body && state ? (
-          // answers must not change between the upload and a retry of its failed chunks
-          <fieldset disabled={importing} className="contents">
-            <Body state={state} setAnswers={setAnswers} setFixes={setFixes} goTo={setStep} />
-          </fieldset>
-        ) : (
-          <FileStep fileName={loaded?.fileName ?? null} error={fileError} onFile={(f) => void handleFile(f)} />
-        )}
-        {importing && progress ? (
-          <Progress value={(progress.done / progress.total) * 100} aria-label={t('transactions.import_wizard.preview.importing')} />
-        ) : null}
-        {importError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {importError}
-          </p>
-        ) : null}
-      </div>
-    </ResponsiveDialog>
+      {Body && state ? (
+        // answers must not change between the upload and a retry of its failed chunks
+        <fieldset disabled={importing} className="contents">
+          <Body state={state} setAnswers={setAnswers} setFixes={setFixes} goTo={openStep} />
+        </fieldset>
+      ) : (
+        <FileStep fileName={loaded?.fileName ?? null} error={fileError} onFile={(f) => void handleFile(f)} />
+      )}
+    </WizardShell>
   )
 }

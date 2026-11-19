@@ -1,23 +1,21 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { Check } from 'lucide-react'
+import { EntityIcon } from '@/components/EntityIcon'
 import { Input } from '@/components/ui/input'
 import { useAccounts } from '@/features/accounts/queries'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { useCurrencies } from '@/features/currencies/queries'
-import { EntitySelect } from '@/features/transactions/EntitySelect'
-import { SelectCard } from '@/features/transactions/SelectCard'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { pluralPick } from '@/lib/plural'
-import { ChoiceCards } from '../ChoiceCards'
-import { columnMarks } from '../columnLabels'
-import { FileTable } from '../FileTable'
+import { cn } from '@/lib/utils'
+import { ColumnChoices } from '../ColumnChoices'
+import { columnTags } from '../columnLabels'
+import { Field, Segmented, SkippedNote } from '../controls'
 import { currencyColumn, fileCurrencyId, rowsCurrencyId } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice } from '../prepare'
-import { defaultAccountName, distinctNames, nameKey, skippedRows, writableAccounts, type StepBodyProps } from '../wizard'
-import { SkippedNote } from './SkippedNote'
-import { StepTitle } from './StepTitle'
+import { defaultAccountName, distinctNames, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 
 type Option = AccountChoice['kind']
 type NewAccount = Extract<AccountChoice, { kind: 'new' }>
@@ -37,18 +35,18 @@ function NewAccountFields({ account, onChange, onNameChange }: {
   const nameId = useId()
   const [name, setName] = useState(account.name)
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      <CardField label={t('transactions.import_wizard.account.name')} htmlFor={nameId}>
+    <div className="flex max-w-md flex-col gap-5">
+      <Field label={t('transactions.import_wizard.account.name')} hint={t('transactions.import_wizard.account.name_hint')} htmlFor={nameId}>
         <Input
           id={nameId}
-          className={cardFieldControlClass}
+          className="h-10"
           value={name}
           onChange={(e) => {
             setName(e.target.value)
             onNameChange({ ...account, name: e.target.value })
           }}
         />
-      </CardField>
+      </Field>
       <CurrencyField
         label={t('transactions.import_wizard.account.currency')}
         value={account.currencyId || null}
@@ -74,11 +72,11 @@ export function PerRowAccounts({ file, account, existing, fallbackCurrency, onCh
       <p id={headingId} className="text-sm">
         {t('transactions.import_wizard.account.found')}
       </p>
-      <ul aria-labelledby={headingId} className="flex flex-col gap-2">
+      <ul aria-labelledby={headingId} className="divide-y divide-border rounded-xl border border-border">
         {names.map((name) => {
           const key = nameKey(name)
           return (
-            <li key={key} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2">
+            <li key={key} className="grid grid-cols-1 items-center gap-2 px-3 py-2 sm:grid-cols-2">
               <span className="truncate text-sm">{name}</span>
               {existing.has(key) ? (
                 <span className="text-sm text-muted-foreground">{t('transactions.import_wizard.account.existing_name')}</span>
@@ -97,7 +95,40 @@ export function PerRowAccounts({ file, account, existing, fallbackCurrency, onCh
   )
 }
 
-export function AccountStep({ state, setAnswers, goTo }: StepBodyProps) {
+function AccountList({ accounts, selected, label, onSelect }: {
+  accounts: ReturnType<typeof writableAccounts>
+  selected: string | null
+  label: string
+  onSelect: (id: string) => void
+}) {
+  const name = useId()
+  return (
+    <div role="radiogroup" aria-label={label} className="grid gap-2">
+      {accounts.map((a) => {
+        const on = selected === a.id
+        return (
+          <label
+            key={a.id}
+            className={cn(
+              'flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-left has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/50',
+              on ? 'border-primary bg-econumo-magenta-light/25' : 'border-border hover:border-primary/40',
+            )}
+          >
+            <input type="radio" name={name} className="sr-only" checked={on} onChange={() => onSelect(a.id)} aria-label={a.name} />
+            <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-full bg-econumo-card text-lg text-entity-icon">
+              <EntityIcon name={a.icon || 'account_balance_wallet'} />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm">{a.name}</span>
+            <span className="text-xs text-muted-foreground">{a.currency.code}</span>
+            {on ? <Check aria-hidden className="size-4 text-primary" /> : null}
+          </label>
+        )
+      })}
+    </div>
+  )
+}
+
+export function AccountStep({ state, setAnswers }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -106,6 +137,7 @@ export function AccountStep({ state, setAnswers, goTo }: StepBodyProps) {
   const { data: currencies = [] } = useCurrencies()
   const currencyId = userCurrencyId(user) ?? ''
   const title = t('transactions.import_wizard.account.title')
+  const columnQuestion = t('transactions.import_wizard.account.column_question')
   const { account } = state.answers
 
   // An option can be picked before it has an answer (no account or column chosen
@@ -173,9 +205,8 @@ export function AccountStep({ state, setAnswers, goTo }: StepBodyProps) {
   const nameless = account?.kind === 'column' ? state.rows.filter((row) => row.reason === 'no_account').length : 0
 
   return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>{title}</StepTitle>
-      <ChoiceCards<Option>
+    <div className="flex flex-col gap-5">
+      <Segmented<Option>
         label={title}
         value={option}
         options={[
@@ -187,32 +218,25 @@ export function AccountStep({ state, setAnswers, goTo }: StepBodyProps) {
       />
       {option === 'new' && account?.kind === 'new' ? <NewAccountFields account={account} onChange={set} onNameChange={typeName} /> : null}
       {option === 'existing' ? (
-        <SelectCard label={accountLabel}>
-          <EntitySelect
-            aria-label={accountLabel}
-            value={account?.kind === 'existing' ? account.accountId : null}
-            onChange={(accountId) => set(accountId ? { kind: 'existing', accountId } : null)}
-            options={writable.map((a) => ({
-              value: a.id,
-              label: `${a.name} (${a.balance} ${a.currency.code})`,
-              icon: a.icon,
-              searchText: a.name,
-            }))}
-          />
-        </SelectCard>
+        <AccountList
+          accounts={writable}
+          label={accountLabel}
+          selected={account?.kind === 'existing' ? account.accountId : null}
+          onSelect={(accountId) => set({ kind: 'existing', accountId })}
+        />
       ) : null}
       {option === 'column' ? (
         <>
-          <p className="text-sm">{t('transactions.import_wizard.account.column_question')}</p>
-          <FileTable
-            file={state.file}
-            label={t('transactions.import_wizard.account.column_question')}
-            selected={account?.kind === 'column' ? account.column : null}
-            onSelect={chooseColumn}
-            {...columnMarks(state.answers, t, 'account', ['account'])}
-            onOpenStep={goTo}
-            mutedRows={skippedRows(state.rows, 'no_account')}
-          />
+          <Field label={columnQuestion}>
+            <ColumnChoices
+              profiles={state.profiles}
+              label={columnQuestion}
+              selected={account?.kind === 'column' ? account.column : null}
+              onSelect={chooseColumn}
+              fits={(type) => type === 'text'}
+              tags={columnTags(state.answers, t, i18n.language, ['account'])}
+            />
+          </Field>
           {nameless > 0 ? (
             <SkippedNote>{pluralPick(t('transactions.import_wizard.account.skipped'), nameless, i18n.language)}</SkippedNote>
           ) : null}

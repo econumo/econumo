@@ -1,18 +1,18 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Switch } from '@/components/ui/switch'
 import { isNegative } from '@/lib/decimal'
 import { pluralPick } from '@/lib/plural'
-import { ChoiceCards } from '../ChoiceCards'
-import { columnMarks } from '../columnLabels'
-import { FileTable } from '../FileTable'
+import { cn } from '@/lib/utils'
+import { formatSigned, useAccountView } from '../accountView'
+import { ColumnChoices } from '../ColumnChoices'
+import { columnTags } from '../columnLabels'
+import { Example, Field, Segmented, SkippedNote } from '../controls'
 import { detectDecimalSeparator, parseAmountCell, type DecimalSeparator } from '../amounts'
 import { columnValues } from '../guess'
 import type { ParsedFile } from '../parse'
 import type { WizardAnswers } from '../prepare'
-import { missingAnswer, skippedRows, type StepBodyProps } from '../wizard'
-import { SkippedNote } from './SkippedNote'
-import { StepTitle } from './StepTitle'
+import { missingAnswer, type StepBodyProps } from '../wizard'
 
 type Amount = WizardAnswers['amount']
 
@@ -52,44 +52,33 @@ function amountValues(file: ParsedFile, amount: Amount): string[] {
   return columns.flatMap((column) => columnValues(file, column))
 }
 
-export function AmountStep({ state, setAnswers, goTo }: StepBodyProps) {
+const EXAMPLE_ROWS = 4
+const isNumber = (type: string) => type === 'number'
+
+export function AmountStep({ state, setAnswers }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const flipId = useId()
   const title = t('transactions.import_wizard.amount.title')
   const { amount } = state.answers
   const set = (patch: Partial<Amount>) => setAnswers('amount', { amount: { ...amount, ...patch } })
-  // with two columns the table answers one side at a time
-  const [side, setSide] = useState<'in' | 'out'>('in')
+  const accountView = useAccountView(state.answers)
 
   const values = useMemo(() => amountValues(state.file, amount), [state.file, amount])
   const separator = useMemo(() => detectDecimalSeparator(values), [values])
   const spending = amount.mode === 'single' && amount.column !== null ? spendingExample(values, amount) : null
   const separatorExample = separator.ambiguous ? separator.example : null
+  const examples = state.rows.filter((row) => row.status === 'ok').slice(0, EXAMPLE_ROWS)
 
   const moneyIn = t('transactions.import_wizard.amount.money_in')
   const moneyOut = t('transactions.import_wizard.amount.money_out')
   const separatorQuestion = separatorExample ? t('transactions.import_wizard.amount.separator_question', { example: separatorExample }) : ''
   const missing = missingAnswer('amount', state.answers)
   const unreadable = state.rows.filter((row) => row.reason === 'no_amount').length
-  const mutedRows = skippedRows(state.rows, 'no_amount')
-  const headerOf = (column: number | null) =>
-    column === null ? t('transactions.import_wizard.amount.no_column') : state.file.header[column]?.trim() || t('transactions.import_wizard.column_n', { n: column + 1 })
-  const columnQuestion = t('transactions.import_wizard.amount.column')
-  const sideQuestion = t(side === 'in' ? 'transactions.import_wizard.amount.tap_in' : 'transactions.import_wizard.amount.tap_out')
-  const pickSide = (column: number | null) => {
-    if (side === 'in') {
-      set({ inColumn: column })
-      if (column !== null && amount.outColumn === null) setSide('out')
-    } else {
-      set({ outColumn: column })
-    }
-  }
 
   return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>{title}</StepTitle>
-      <ChoiceCards<Amount['mode']>
-        label={title}
+    <div className="flex flex-col gap-6">
+      <Segmented<Amount['mode']>
+        label={t('transactions.import_wizard.amount.mode')}
         value={amount.mode}
         options={[
           { value: 'single', label: t('transactions.import_wizard.amount.single') },
@@ -98,68 +87,83 @@ export function AmountStep({ state, setAnswers, goTo }: StepBodyProps) {
         onChange={(mode) => set({ mode })}
       />
       {amount.mode === 'single' ? (
-        <>
-          <p className="text-sm">{columnQuestion}</p>
-          <FileTable
-            file={state.file}
-            label={columnQuestion}
-            selected={amount.column}
-            onSelect={(column) => set({ column })}
-            {...columnMarks(state.answers, t, 'amount', ['amount'])}
-            onOpenStep={goTo}
-            mutedRows={mutedRows}
-          />
-        </>
+        <ColumnChoices
+          profiles={state.profiles}
+          label={title}
+          selected={amount.column}
+          onSelect={(column) => set({ column })}
+          fits={isNumber}
+          tags={columnTags(state.answers, t, i18n.language, ['amount'])}
+        />
       ) : (
-        <>
-          <ChoiceCards<'in' | 'out'>
-            label={t('transactions.import_wizard.amount.choosing')}
-            value={side}
-            options={[
-              { value: 'in', label: `${moneyIn}: ${headerOf(amount.inColumn)}` },
-              { value: 'out', label: `${moneyOut}: ${headerOf(amount.outColumn)}` },
-            ]}
-            onChange={setSide}
-          />
-          <p className="text-sm">{sideQuestion}</p>
-          <FileTable
-            file={state.file}
-            label={sideQuestion}
-            selected={side === 'in' ? amount.inColumn : amount.outColumn}
-            onSelect={pickSide}
-            {...columnMarks(state.answers, t, 'amount', [side === 'in' ? 'amountIn' : 'amountOut'])}
-            onOpenStep={goTo}
-            mutedRows={mutedRows}
-            noneLabel={t(side === 'in' ? 'transactions.import_wizard.amount.none_in' : 'transactions.import_wizard.amount.none_out')}
-          />
-        </>
+        <div className="flex flex-col gap-4">
+          <Field label={moneyIn}>
+            <ColumnChoices
+              profiles={state.profiles}
+              label={moneyIn}
+              selected={amount.inColumn}
+              onSelect={(inColumn) => set({ inColumn })}
+              fits={isNumber}
+              tags={columnTags(state.answers, t, i18n.language, ['amountIn'])}
+              noneLabel={t('transactions.import_wizard.amount.none_in')}
+            />
+          </Field>
+          <Field label={moneyOut}>
+            <ColumnChoices
+              profiles={state.profiles}
+              label={moneyOut}
+              selected={amount.outColumn}
+              onSelect={(outColumn) => set({ outColumn })}
+              fits={isNumber}
+              tags={columnTags(state.answers, t, i18n.language, ['amountOut'])}
+              noneLabel={t('transactions.import_wizard.amount.none_out')}
+            />
+          </Field>
+        </div>
       )}
       {unreadable > 0 && !missing ? (
         <SkippedNote>{pluralPick(t('transactions.import_wizard.amount.skipped'), unreadable, i18n.language)}</SkippedNote>
       ) : null}
-      {separatorExample ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm">{separatorQuestion}</p>
-          <ChoiceCards<DecimalSeparator>
-            label={separatorQuestion}
-            value={amount.sep}
-            options={[
-              { value: '.', label: readAs(separatorExample, '.', i18n.language) },
-              { value: ',', label: readAs(separatorExample, ',', i18n.language) },
-            ]}
-            onChange={(sep) => set({ sep })}
-          />
+      {separatorExample || spending !== null ? (
+        <div className="grid gap-5 sm:grid-cols-2">
+          {separatorExample ? (
+            <Field label={separatorQuestion}>
+              <Segmented<DecimalSeparator>
+                label={separatorQuestion}
+                value={amount.sep}
+                options={[
+                  { value: '.', label: readAs(separatorExample, '.', i18n.language) },
+                  { value: ',', label: readAs(separatorExample, ',', i18n.language) },
+                ]}
+                onChange={(sep) => set({ sep })}
+              />
+            </Field>
+          ) : null}
+          {spending !== null ? (
+            <Field label={t('transactions.import_wizard.amount.spending', { example: spending })} hint={t('transactions.import_wizard.amount.flip_hint')}>
+              <label htmlFor={flipId} className="flex items-center gap-2 text-sm">
+                <Switch id={flipId} checked={amount.flip} onCheckedChange={(flip) => set({ flip })} />
+                {t('transactions.import_wizard.amount.flip')}
+              </label>
+            </Field>
+          ) : null}
         </div>
       ) : null}
-      {spending !== null ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-          <span className="text-sm">{t('transactions.import_wizard.amount.spending', { example: spending })}</span>
-          <label htmlFor={flipId} className="flex items-center gap-2 text-sm">
-            {t('transactions.import_wizard.amount.flip')}
-            <Switch id={flipId} checked={amount.flip} onCheckedChange={(flip) => set({ flip })} />
-          </label>
-        </div>
-      ) : null}
+      {examples.length === 0 ? (
+        <Example>{t('transactions.import_wizard.amount.example_empty')}</Example>
+      ) : (
+        <ul aria-label={t('transactions.import_wizard.amount.example_label')} className="rounded-xl border border-border">
+          {examples.map((row) => {
+            const signed = formatSigned(row.amount ?? '0', accountView(row).currency)
+            return (
+              <li key={row.fileRow} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-sm last:border-0">
+                <span className="truncate text-muted-foreground">{row.description || '—'}</span>
+                <span className={cn('shrink-0 tabular-nums', signed.income && 'text-income')}>{signed.text}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }

@@ -1,25 +1,20 @@
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import { pluralPick } from '@/lib/plural'
 import type { ParsedFile } from '../parse'
-import type { WizardAnswers } from '../prepare'
-import type { StepBodyProps } from '../wizard'
-import { columnMarks } from '../columnLabels'
-import { FileTable } from '../FileTable'
-import { PillChoice } from './PillChoice'
-import { StepTitle } from './StepTitle'
+import { unusedColumns, type StepBodyProps } from '../wizard'
+import { columnName } from '../columnLabels'
+import { Field, Segmented } from '../controls'
 
 type Role = 'category' | 'payee' | 'tag' | 'labels'
-const ROLES: Role[] = ['category', 'payee', 'tag', 'labels']
+const ROLES: Role[] = ['payee', 'category', 'tag', 'labels']
 const SEPARATORS = [';', ',', '|', '\t']
 const DEFAULT_SEPARATOR = ';'
-
-const roleOf = (extras: WizardAnswers['extras'], column: number): Role | '' => ROLES.find((role) => extras[role] === column) ?? ''
 
 // names are matched trimmed and case-insensitively, as the server matches them
 const nameKey = (name: string) => name.trim().toLowerCase()
@@ -37,7 +32,7 @@ function distinctNew(file: ParsedFile, column: number | null, split: string | nu
   return found.size
 }
 
-export function ExtrasStep({ state, setAnswers, goTo }: StepBodyProps) {
+export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -61,70 +56,71 @@ export function ExtrasStep({ state, setAnswers, goTo }: StepBodyProps) {
   const newCategories = useMemo(() => distinctNew(state.file, extras.category, null, existingCategories), [state.file, extras.category, existingCategories])
   const newLabels = useMemo(() => distinctNew(state.file, extras.labels, separator, existingLabels), [state.file, extras.labels, separator, existingLabels])
 
-  // a role belongs to one column: giving it to another column takes it from the first
-  const assign = (column: number, role: Role | '') => {
+  // the main steps' columns are never offered; a column belongs to one role, so giving it to another takes it from the first
+  const offered = unusedColumns(state.answers, state.profiles)
+  const assign = (role: Role, column: number | null) => {
     const next = { ...extras }
-    for (const r of ROLES) if (next[r] === column) next[r] = null
-    if (role !== '') next[role] = column
+    for (const r of ROLES) if (column !== null && next[r] === column) next[r] = null
+    next[role] = column
     setAnswers('extras', { extras: next })
   }
 
   const setSeparator = (value: string) => setAnswers('extras', { extras: { ...extras, labelsSeparator: value } })
-
-  const title = t('transactions.import_wizard.extras.title')
-  const hint = t('transactions.import_wizard.extras.hint')
-  const [picked, setPicked] = useState<number | null>(null)
-  const pickedName = picked === null ? '' : state.file.header[picked]?.trim() || t('transactions.import_wizard.column_n', { n: picked + 1 })
+  const separatorQuestion = t('transactions.import_wizard.extras.separator_question')
 
   return (
-    <div className="flex flex-col gap-3">
-      <StepTitle>{title}</StepTitle>
-      <p className="text-sm text-muted-foreground">{hint}</p>
-      <FileTable
-        file={state.file}
-        label={hint}
-        selected={picked}
-        onSelect={setPicked}
-        {...columnMarks(state.answers, t, 'extras')}
-        onOpenStep={goTo}
-      />
-
-      {picked !== null ? (
-        <PillChoice<Role | ''>
-          label={t('transactions.import_wizard.extras.use_as', { name: pickedName })}
-          showLabel
-          value={roleOf(extras, picked)}
-          options={[
-            { value: '', label: t('transactions.import_wizard.extras.leave_out') },
-            ...ROLES.map((role) => ({ value: role, label: t(`transactions.import_wizard.extras.role.${role}`) })),
-          ]}
-          onChange={(role) => assign(picked, role)}
-        />
-      ) : null}
+    <div className="flex flex-col gap-5">
+      <div className="divide-y divide-border rounded-xl border border-border">
+        {ROLES.map((role) => {
+          const label = t(`transactions.import_wizard.extras.role.${role}`)
+          return (
+            <div key={role} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm">{label}</div>
+                <div className="text-xs text-muted-foreground">{t(`transactions.import_wizard.extras.role_hint.${role}`)}</div>
+              </div>
+              <NativeSelect
+                aria-label={label}
+                className="w-full sm:w-64"
+                value={extras[role] === null ? '' : String(extras[role])}
+                onChange={(e) => assign(role, e.target.value === '' ? null : Number(e.target.value))}
+              >
+                <NativeSelectOption value="">{t('transactions.import_wizard.extras.leave_out')}</NativeSelectOption>
+                {offered.map((p) => (
+                  <NativeSelectOption key={p.index} value={String(p.index)}>
+                    {p.samples.length > 0 ? `${columnName(p, t)} — ${p.samples.join(' · ')}` : columnName(p, t)}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </div>
+          )
+        })}
+      </div>
 
       {extras.labels !== null ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <PillChoice<string>
-            label={t('transactions.import_wizard.extras.separator_question')}
-            showLabel
-            value={SEPARATORS.includes(separator) && custom === '' ? separator : null}
-            options={SEPARATORS.map((value) => ({ value, label: value === '\t' ? t('transactions.import_wizard.extras.tab') : value }))}
-            onChange={(value) => {
-              setCustom('')
-              setSeparator(value)
-            }}
-          />
-          <CardField label={t('transactions.import_wizard.extras.custom_separator')} htmlFor={customId}>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label={separatorQuestion}>
+            <Segmented<string>
+              label={separatorQuestion}
+              value={SEPARATORS.includes(separator) && custom === '' ? separator : null}
+              options={SEPARATORS.map((value) => ({ value, label: value === '\t' ? t('transactions.import_wizard.extras.tab') : value }))}
+              onChange={(value) => {
+                setCustom('')
+                setSeparator(value)
+              }}
+            />
+          </Field>
+          <Field label={t('transactions.import_wizard.extras.custom_separator')} htmlFor={customId}>
             <Input
               id={customId}
-              className={cardFieldControlClass}
+              className="h-9 w-32"
               value={custom}
               onChange={(e) => {
                 setCustom(e.target.value)
                 setSeparator(e.target.value)
               }}
             />
-          </CardField>
+          </Field>
         </div>
       ) : null}
 

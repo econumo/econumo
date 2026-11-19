@@ -16,8 +16,9 @@ import { DateStep } from './DateStep'
 
 const csv = (text: string, name = 'statement.csv') => new File([text], name, { type: 'text/csv' })
 
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
 function withQueries(node: React.ReactNode) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>
 }
 
@@ -41,7 +42,7 @@ function StepHarness({ text, Step, onSet }: { text: string; Step: ComponentType<
       return redetectFormats(next, file, 'en-GB', { date: next.date.column !== prev.date.column && next.date.order === prev.date.order })
     })
   }
-  return (
+  return withQueries(
     <>
       <Step
         state={{ file, fileName: 'statement.csv', profiles, answers, touched: new Set(), fixes: new Map(), rows, isExport: false }}
@@ -50,11 +51,12 @@ function StepHarness({ text, Step, onSet }: { text: string; Step: ComponentType<
         goTo={() => {}}
       />
       <output aria-label="first row date">{rows[0]?.date ?? ''}</output>
-    </>
+    </>,
   )
 }
 
 beforeEach(() => {
+  queryClient.clear()
   localStorage.clear()
   window.econumoConfig = {}
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -66,7 +68,7 @@ beforeEach(() => {
 it('with no accounts, the Account step starts on a new account in the user’s currency', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('radio', { name: 'A new account' })).toBeChecked()
   expect(screen.queryByRole('radio', { name: 'An account I already have' })).not.toBeInTheDocument()
   expect(screen.getByLabelText('Account name')).toHaveValue('statement')
@@ -76,7 +78,7 @@ it('with no accounts, the Account step starts on a new account in the user’s c
 it('a typed account name is saved after a pause in typing', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   fireEvent.change(screen.getByLabelText('Account name'), { target: { value: '' } })
   expect(screen.getByRole('button', { name: 'Account' })).toBeInTheDocument()
   expect(await screen.findByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
@@ -85,12 +87,12 @@ it('a typed account name is saved after a pause in typing', async () => {
 it('a typed account name is kept when the step is left before the pause, with the field still focused', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   const name = screen.getByLabelText('Account name')
   name.focus()
   fireEvent.change(name, { target: { value: 'Travel card' } })
   fireEvent.click(screen.getByRole('button', { name: /^Date/ }))
-  expect(screen.getByRole('heading', { name: 'Tap the column with the date' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Which column says when each payment happened?' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /^Account/ }))
   expect(screen.getByLabelText('Account name')).toHaveValue('Travel card')
 })
@@ -98,28 +100,28 @@ it('a typed account name is kept when the step is left before the pause, with th
 it('a new account takes the currency the file names', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,eur\n2026-01-03,1.00,EUR\n')
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('EUR, €, Euro')
 })
 
 it('a file naming two currencies leaves a new account in the user’s currency', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,EUR\n2026-01-03,1.00,USD\n')
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
 })
 
 it('with accounts, the Account step offers the account picker first', async () => {
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('radio', { name: 'An account I already have' })).toBeChecked()
-  expect(screen.getByRole('combobox', { name: 'Account' })).toBeInTheDocument()
+  expect(within(screen.getByRole('radiogroup', { name: 'Account' })).getAllByRole('radio').length).toBeGreaterThan(0)
 })
 
 it('lists the accounts a per-row column names, with a currency only for the new ones', async () => {
   renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Cash\n2026-01-03,7.00,Travel card\n2026-01-04,1.00, cash \n')
   const user = userEvent.setup()
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
   await user.click(screen.getByRole('radio', { name: /^Wallet/ }))
   const list = screen.getByRole('list', { name: 'Accounts in this file' })
@@ -133,7 +135,7 @@ it('lists the accounts a per-row column names, with a currency only for the new 
 it('per-row accounts take the currency their own rows name, the user’s otherwise', async () => {
   renderWizard('Date,Amount,Wallet,Cur\n2026-01-02,-5.50,Trip,EUR\n2026-01-03,7.00,Trip,EUR\n2026-01-04,1.00,Home,USD\n2026-01-05,1.00,Mixed,EUR\n2026-01-06,1.00,Mixed,USD\n')
   const user = userEvent.setup()
-  await screen.findByRole('heading', { name: 'Which account is this statement from?' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
   await user.click(screen.getByRole('radio', { name: 'Wallet' }))
   expect(screen.getByRole('combobox', { name: 'Currency for Trip' })).toHaveValue('EUR, €, Euro')
@@ -141,15 +143,26 @@ it('per-row accounts take the currency their own rows name, the user’s otherwi
   expect(screen.getByRole('combobox', { name: 'Currency for Mixed' })).toHaveValue('USD, $, US Dollar')
 })
 
-it('tapping a cell of another column makes it the date and marks the Date step as answered', async () => {
+it('choosing another column makes it the date and marks the Date step as answered', async () => {
   const onSet = vi.fn()
   render(<StepHarness text={'Date,Valued,Amount\n2026-01-02,2026-01-05,-5\n'} Step={DateStep} onSet={onSet} />)
   const user = userEvent.setup()
   expect(screen.getByRole('radio', { name: /^Date/ })).toBeChecked()
-  await user.click(screen.getByRole('cell', { name: '2026-01-05' }))
+  expect(screen.getByRole('radio', { name: 'Valued' })).toHaveAccessibleDescription('2026-01-05')
+  await user.click(screen.getByRole('radio', { name: 'Valued' }))
   expect(onSet).toHaveBeenCalledWith('date', { date: expect.objectContaining({ column: 1 }) })
   expect(screen.getByRole('radio', { name: /^Valued/ })).toBeChecked()
   expect(screen.getByRole('status', { name: 'first row date' })).toHaveTextContent('2026-01-05')
+  expect(screen.getByText('“2026-01-05” will be read as')).toHaveTextContent('“2026-01-05” will be read as January 5, 2026')
+})
+
+it('a column of a kind that cannot answer waits behind “more columns”, unless it is the one chosen', async () => {
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,lunch\n'} Step={DateStep} onSet={vi.fn()} />)
+  const user = userEvent.setup()
+  expect(screen.queryByRole('radio', { name: 'Amount' })).not.toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'Memo' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Show 1 more column' }))
+  expect(screen.getByRole('radio', { name: 'Amount' })).toHaveAccessibleDescription('now amount -5')
 })
 
 it('asks how to read an ambiguous date, and the answer changes how the first row reads', async () => {
@@ -173,25 +186,36 @@ it('one amount column shows how spending looks with a switch to flip it; separat
   expect(screen.getByText('Spending shows as: -4.50')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
   expect(screen.getByText('Spending shows as: 4.50')).toBeInTheDocument()
-  await user.click(screen.getByRole('radio', { name: 'Separate columns for money in and money out' }))
+  await user.click(screen.getByRole('radio', { name: 'Money in and money out' }))
   expect(screen.queryByRole('switch', { name: 'Flip the signs' })).not.toBeInTheDocument()
-  expect(screen.getByRole('radiogroup', { name: 'Tap the column with money in' })).toBeInTheDocument()
+  expect(screen.getByRole('radiogroup', { name: 'Money in' })).toBeInTheDocument()
+  expect(screen.getByRole('radiogroup', { name: 'Money out' })).toBeInTheDocument()
 })
 
-it('with separate columns, tapping money in moves on to money out, and either side can be left without a column', async () => {
+it('with separate columns, each side picks its own column, and either side can be left without one', async () => {
   const onSet = vi.fn()
   render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n2026-01-03,,7.00,\n'} Step={AmountStep} onSet={onSet} />)
   const user = userEvent.setup()
-  await user.click(screen.getByRole('radio', { name: 'Separate columns for money in and money out' }))
-  await user.click(screen.getByRole('radio', { name: 'In' }))
-  expect(screen.getByRole('radio', { name: 'Money in: In' })).not.toBeChecked()
-  expect(screen.getByRole('radio', { name: 'Money out: not chosen' })).toBeChecked()
-  expect(screen.getByRole('radiogroup', { name: 'Tap the column with money out' })).toBeInTheDocument()
-  expect(screen.getByText('Money in', { selector: 'span' })).toBeInTheDocument()
-  await user.click(screen.getByRole('radio', { name: 'Out' }))
-  expect(screen.getByRole('radio', { name: 'Money out: Out' })).toBeChecked()
-  await user.click(screen.getByRole('radio', { name: 'The file has no money-out column' }))
+  await user.click(screen.getByRole('radio', { name: 'Money in and money out' }))
+  const moneyIn = () => within(screen.getByRole('radiogroup', { name: 'Money in' }))
+  const moneyOut = () => within(screen.getByRole('radiogroup', { name: 'Money out' }))
+  await user.click(moneyIn().getByRole('radio', { name: 'In' }))
+  expect(moneyIn().getByRole('radio', { name: 'In' })).toBeChecked()
+  await user.click(moneyOut().getByRole('radio', { name: 'Out' }))
+  expect(moneyOut().getByRole('radio', { name: 'Out' })).toBeChecked()
+  expect(moneyIn().getByRole('radio', { name: 'Out' })).toHaveAccessibleDescription('now money out 4.50')
+  await user.click(moneyOut().getByRole('radio', { name: 'The file has no money-out column' }))
   expect(onSet).toHaveBeenLastCalledWith('amount', { amount: expect.objectContaining({ inColumn: 2, outColumn: null }) })
+})
+
+it('the amount step shows the first transactions as they will be added', () => {
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-4.50,Coffee\n2026-01-03,100,Salary\n'} Step={AmountStep} onSet={vi.fn()} />)
+  const items = within(screen.getByRole('list', { name: 'How payments will look' })).getAllByRole('listitem')
+  expect(items).toHaveLength(2)
+  expect(items[0]).toHaveTextContent(/^Coffee−4\.5/)
+  expect(items[1]).toHaveTextContent(/^Salary\+100/)
+  expect(within(items[1]).getByText(/^\+100/)).toHaveClass('text-income')
+  expect(within(items[0]).getByText(/^−4\.5/)).not.toHaveClass('text-income')
 })
 
 it('rows whose amount cannot be read are a quiet note, not a warning', () => {
