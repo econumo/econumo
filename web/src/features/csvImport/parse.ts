@@ -5,6 +5,8 @@ export interface ParsedFile {
   rows: string[][]
   delimiter: CsvDelimiter
   rawLines: string[]
+  // the line of the file each row starts on (header = 1), past blank lines and multi-line cells
+  rowLines: number[]
 }
 
 export const MAX_FILE_SIZE = 10485760
@@ -15,6 +17,7 @@ const SNIFF_LINES = 20
 interface RawRecord {
   cells: string[]
   raw: string
+  line: number
 }
 
 // A quote opens a quoted cell only at the start of a cell (`55" TV` keeps its quote);
@@ -26,6 +29,8 @@ function splitRecords(text: string, delimiter: string): { records: RawRecord[]; 
   let cellStarted = false
   let inQuotes = false
   let start = 0
+  let line = 1
+  let startLine = 1
 
   const endCell = () => {
     cells.push(current)
@@ -36,7 +41,7 @@ function splitRecords(text: string, delimiter: string): { records: RawRecord[]; 
     endCell()
     const raw = text.slice(start, end)
     if (cells.length > 1 || cells[0].trim() !== '') {
-      records.push({ cells, raw })
+      records.push({ cells, raw, line: startLine })
     }
     cells = []
   }
@@ -52,6 +57,7 @@ function splitRecords(text: string, delimiter: string): { records: RawRecord[]; 
           inQuotes = false
         }
       } else {
+        if (char === '\n' || (char === '\r' && text[i + 1] !== '\n')) line++
         current += char
       }
     } else if (char === '"' && !cellStarted) {
@@ -63,6 +69,8 @@ function splitRecords(text: string, delimiter: string): { records: RawRecord[]; 
       finish(i)
       if (char === '\r' && text[i + 1] === '\n') i++
       start = i + 1
+      line++
+      startLine = line
     } else {
       current += char
       cellStarted = true
@@ -124,7 +132,7 @@ function parse(text: string): { file: ParsedFile; unterminated: boolean } {
   const delimiter = sniffDelimiter(clean)
   const { records, unterminated } = splitRecords(clean, delimiter)
   if (records.length === 0) {
-    return { file: { header: [], rows: [], delimiter, rawLines: [] }, unterminated }
+    return { file: { header: [], rows: [], delimiter, rawLines: [], rowLines: [] }, unterminated }
   }
   return {
     file: {
@@ -132,6 +140,7 @@ function parse(text: string): { file: ParsedFile; unterminated: boolean } {
       rows: records.slice(1).map((r) => r.cells),
       delimiter,
       rawLines: records.slice(1).map((r) => r.raw),
+      rowLines: records.slice(1).map((r) => r.line),
     },
     unterminated,
   }

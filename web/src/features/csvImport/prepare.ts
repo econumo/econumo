@@ -40,7 +40,7 @@ export type RowFix = { date?: string; amount?: string } | 'skip'
 export type StepId = 'file' | 'account' | 'date' | 'amount' | 'description' | 'extras' | 'preview'
 
 export interface PreparedRow {
-  // the row number counting the header as row 1 (first data row = 2), as the server numbers rows
+  // the line of the file the row starts on, header = 1: what the user finds in their editor
   fileRow: number
   raw: string
   status: 'ok' | 'skipped'
@@ -90,13 +90,15 @@ function readRow(row: string[], answers: WizardAnswers): { date: ParsedDate | nu
   return { date, amount, account: accountName }
 }
 
+const fileRowOf = (file: ParsedFile, index: number) => file.rowLines[index] ?? index + 2
+
 export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: ReadonlyMap<number, RowFix>): PreparedRow[] {
   const { account } = answers
   const result: PreparedRow[] = []
 
   file.rows.forEach((row, i) => {
     if (row.every((c) => c.trim() === '')) return
-    const fileRow = i + 2
+    const fileRow = fileRowOf(file, i)
     const fix = fixes.get(fileRow)
     const typed = fix === 'skip' ? undefined : fix
 
@@ -136,8 +138,10 @@ export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: Rea
     Returns `fixes` itself when nothing is stale. */
 export function pruneFixes(file: ParsedFile, answers: WizardAnswers, fixes: ReadonlyMap<number, RowFix>): ReadonlyMap<number, RowFix> {
   let pruned: Map<number, RowFix> | null = null
+  let indexOf: Map<number, number> | null = null
   for (const [fileRow, fix] of fixes) {
-    const row = file.rows[fileRow - 2]
+    indexOf ??= new Map(file.rows.map((_, i) => [fileRowOf(file, i), i]))
+    const row = file.rows[indexOf.get(fileRow) ?? -1]
     if (!row) continue
     const own = readRow(row, answers)
     let kept: RowFix | null = fix

@@ -1,5 +1,5 @@
 import type { WizardAnswers } from './prepare'
-import { newAccountFolderId, releaseTakenExtras } from './wizard'
+import { newAccountFolderId, releaseTakenExtras, visibleSteps } from './wizard'
 
 const answers = (patch: Partial<WizardAnswers>): WizardAnswers => ({
   account: { kind: 'existing', accountId: 'a1' },
@@ -30,4 +30,10 @@ it('a new account goes to the first visible folder, a hidden one only when all a
   expect(newAccountFolderId([{ id: 'b', name: 'B', position: 1, isVisible: 1 }, { id: 'a', name: 'A', position: 0, isVisible: 1 }])).toBe('a')
   expect(newAccountFolderId([{ id: 'h', name: 'H', position: 0, isVisible: 0 }])).toBe('h')
   expect(newAccountFolderId([])).toBeNull()
+})
+
+it('Extra details stays listed while it is open, even with no free column left', () => {
+  const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [] }))
+  expect(visibleSteps(answers({}), profiles)).not.toContain('extras')
+  expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'description', 'extras', 'preview'])
 })

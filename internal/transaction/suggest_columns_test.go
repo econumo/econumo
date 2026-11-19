@@ -153,6 +153,24 @@ func TestSuggestImportColumnsDropsUnknownRolesAndDuplicates(t *testing.T) {
 	}
 }
 
+func TestSuggestImportColumnsRejectsRolesTheColumnTypeCannotHold(t *testing.T) {
+	c := &columnsCompleter{reply: `{"date":"Betrag","amount":"Verwendungszweck","amountIn":"Leer","description":"Buchungstag","payee":"Verwendungszweck","category":"Saldo","tag":"Leer"}`}
+	svc := columnsService(c, apptransaction.AIFactsInfo{Language: "de"}, columnsLimiter{})
+	req := germanColumns()
+	req.Columns = append(req.Columns,
+		model.ImportColumnFact{Name: "Leer", Type: "empty"},
+		model.ImportColumnFact{Name: "Saldo", Type: "number"},
+	)
+	res, err := svc.SuggestImportColumns(context.Background(), columnsUser, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"payee": "Verwendungszweck", "category": "Saldo"}
+	if !reflect.DeepEqual(res.Roles, want) {
+		t.Fatalf("roles = %v, want %v", res.Roles, want)
+	}
+}
+
 func TestSuggestImportColumnsNullNeverNamesABlankHeader(t *testing.T) {
 	c := &columnsCompleter{reply: `{"date":"Buchungstag","amount":"Betrag","description":null,"payee":""}`}
 	svc := columnsService(c, apptransaction.AIFactsInfo{}, columnsLimiter{})

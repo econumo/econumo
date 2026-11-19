@@ -854,7 +854,10 @@ navigation (single-pane vs sidebar).
       dev tools): "Try the rest again" after a chunk's response was lost imports
       none of its rows twice and counts that chunk as imported; pressing Import
       again after a lost create-account response uses the account already made
-      instead of creating a second one.
+      instead of creating a second one. For a user with no folders and "Each
+      row says which account" naming two new accounts, a lost response to the
+      first create still lets the second land in the "General" folder the
+      first made.
 - [ ] Account step: "An account I already have" (the default when the user
       can write to an account; with exactly one such account it is already
       chosen and Account carries no warning) lists only accounts the user owns or may edit;
@@ -868,7 +871,9 @@ navigation (single-pane vs sidebar).
       (in the user's first visible folder, never a hidden one, or "General"
       for a user with none) and
       puts each row in its account. Pressing Import again after an error
-      never creates an account twice.
+      never creates an account twice, also after choosing the file again or
+      closing and reopening the dialog: an account the failed Import made is
+      then listed as "Existing account".
 - [ ] Econumo export: export transactions (§ CSV export) and import that file,
       with the UI in English and in another language: the wizard skips
       straight to Check, with "Accounts in this file" listing each account; a
@@ -897,7 +902,13 @@ navigation (single-pane vs sidebar).
       the server log shows `outcome=suggested`. Without AI (`outcome=no_ai`)
       or with the switch off (`outcome=opted_out`) the wizard keeps its
       built-in guesses and shows no message. An Econumo export sends no such
-      request.
+      request, and neither does a file whose first row is a transaction (no
+      header row), even one whose first row does not parse (e.g.
+      `someday,n/a,medical memo` over dated rows): the request goes out only
+      when a date or money column is headed by a word for it (`Date`,
+      `Buchungstag`, `Betrag (EUR)`, `Debit`). A suggested column whose type
+      cannot hold the role (a text column as Amount, an empty column) is
+      ignored.
 - [ ] Non-UTF-8 file: a cp1251 statement (`Дата;Сумма;Описание`, saved in
       Windows-1251) shows readable Cyrillic headers and descriptions on every
       step and imports them readable, with the UI and the browser in English
@@ -906,7 +917,9 @@ navigation (single-pane vs sidebar).
       BOM reads the same as without.
 - [ ] Import with a broken row (bad date/amount) → Check counts it as skipped
       with the reason, the good rows import, and the result dialog lists the
-      skipped rows by reason and original row number.
+      skipped rows by reason and original row number: the line the row starts
+      on in the file, also with blank lines or a multi-line quoted cell above
+      it.
 - [ ] Category type guard: a category only goes on a transaction of its own
       type. CSV: an income row (positive amount) whose category cell names an
       expense category ("Food") gets a new income category "Food" (a second

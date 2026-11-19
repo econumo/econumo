@@ -89,10 +89,12 @@ export function newAccountFolderId(folders: FolderDto[] | undefined): string | n
   return (ordered.find((f) => f.isVisible === 1) ?? ordered[0]).id
 }
 
-export function visibleSteps(answers: WizardAnswers | null, profiles: ColumnProfile[]): StepId[] {
+// The open step stays listed: Extra details losing its last free column while it is open
+// (an AI reply landing) must not leave the wizard on a step that has no place in the list.
+export function visibleSteps(answers: WizardAnswers | null, profiles: ColumnProfile[], open?: StepId): StepId[] {
   if (answers === null) return STEP_ORDER
   const hasExtras = unusedColumns(answers, profiles).length > 0
-  return STEP_ORDER.filter((step) => step !== 'extras' || hasExtras)
+  return STEP_ORDER.filter((step) => step !== 'extras' || hasExtras || open === 'extras')
 }
 
 export function defaultAccountName(fileName: string): string {

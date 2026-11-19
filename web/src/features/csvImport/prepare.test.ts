@@ -141,6 +141,23 @@ function row(overrides: Partial<PreparedRow>): PreparedRow {
   }
 }
 
+describe('row numbers', () => {
+  const FILE = 'Datum;Betrag;Text\n\n04.03.2026;-4,50;"zwei\nZeilen"\nirgendwann;12,00;Miete\n'
+
+  it('name the line the row starts on, past blank lines and multi-line cells', () => {
+    const rows = prepareRows(parseCsvText(FILE), answers(), noFixes)
+    expect(rows.map((r) => r.fileRow)).toEqual([3, 5])
+  })
+
+  it('key fixes, and pruning finds the row by its line', () => {
+    const file = parseCsvText(FILE)
+    expect(prepareRows(file, answers(), new Map([[5, { date: '2026-03-05' }]]))[1]).toMatchObject({ status: 'ok', date: '2026-03-05' })
+    const fixes = new Map<number, RowFix>([[5, { date: '2026-03-05' }], [3, { date: '2026-01-01' }]])
+    const pruned = pruneFixes(file, answers(), fixes)
+    expect([...pruned.entries()]).toEqual([[5, { date: '2026-03-05' }]])
+  })
+})
+
 describe('pruneFixes', () => {
   // Betrag2 holds a readable amount where Betrag has none
   const file = parseCsvText('Datum;Betrag;Text;Betrag2;Konto\n04.03.2026;n/a;Kaffee;-5,00;\nirgendwann;n/a;Miete;-7,00;Bar\n')

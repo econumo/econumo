@@ -257,3 +257,27 @@ it('Import waits until the user’s folders are known', async () => {
   await toCheckWithNewAccount(user)
   expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeDisabled()
 })
+
+// a new file or a reopened dialog forgets the accounts this one made, so the lists must know them
+it('a failed account create reads the accounts and folders again', async () => {
+  const reads = { accounts: 0, folders: 0 }
+  const count = ({ request }: { request: Request }) => {
+    if (request.url.includes('/get-account-list')) reads.accounts++
+    if (request.url.includes('/get-folder-list')) reads.folders++
+  }
+  server.events.on('request:start', count)
+  onTestFinished(() => server.events.removeListener('request:start', count))
+  server.use(
+    http.post('*/api/v1/account/create-account', () =>
+      HttpResponse.json({ success: false, message: 'Nope', code: 400, errors: {} }, { status: 400 }),
+    ),
+  )
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await toCheckWithNewAccount(user)
+  const before = { ...reads }
+  await user.click(await screen.findByRole('button', { name: 'Import 2 transactions' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Nope')
+  expect(reads.accounts).toBeGreaterThan(before.accounts)
+  expect(reads.folders).toBeGreaterThan(before.folders)
+})

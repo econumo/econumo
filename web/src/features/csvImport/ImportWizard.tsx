@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { importTransactionList } from '@/api/transaction'
+import { queryKeys } from '@/app/queryKeys'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { finishImportStep, scheduleAiRefresh } from '@/features/onboarding/finishImport'
@@ -198,7 +199,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   }, [loaded, answers])
 
   const rows = useMemo(() => (loaded && answers ? prepareRows(loaded.file, answers, fixes) : []), [loaded, answers, fixes])
-  const steps = visibleSteps(answers, loaded?.profiles ?? [])
+  const steps = visibleSteps(answers, loaded?.profiles ?? [], step)
   const position = steps.indexOf(step)
   const listed = steps.filter((s): s is Exclude<StepId, 'file'> => s !== 'file')
 
@@ -267,6 +268,12 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     } catch (error) {
       trackEvent(METRICS.TRANSACTION_IMPORT_FAIL, { failed: importCount })
       setImportError(apiErrorMessage(error))
+      // accounts (and the folder the server made for the first) may have landed before the
+      // failure; a new file or a reopened dialog forgets `created`, so they must be in the lists
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.folders }),
+      ]).catch(() => undefined)
       setImporting(false)
       return
     }

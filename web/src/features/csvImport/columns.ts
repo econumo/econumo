@@ -1,5 +1,6 @@
 import { parseAmountCell } from './amounts'
 import { parseDateCell } from './dates'
+import { SYNONYMS } from './guess'
 import type { ParsedFile } from './parse'
 
 export type ColumnType = 'date' | 'number' | 'text' | 'empty'
@@ -57,8 +58,27 @@ export function profileColumns(file: ParsedFile): ColumnProfile[] {
   })
 }
 
+const HAN = /\p{Script=Han}/u
+const words = (s: string) => ' ' + s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ') + ' '
+
+// Whole words, so "Date (UTC)" names a date and "update fee" does not; Chinese has no spaces.
+const names = (header: string, synonym: string) =>
+  HAN.test(synonym) ? header.toLowerCase().includes(synonym) : words(header).includes(words(synonym))
+
+const DATE_NAMES = SYNONYMS.date
+const MONEY_NAMES = [...SYNONYMS.amount, ...SYNONYMS.amountIn, ...SYNONYMS.amountOut]
+
 // A file with no header row has its first transaction read as the header; those names are
-// cell values, which never go to the AI.
+// cell values, which never go to the AI. A row that only fails to parse ("someday,n/a,medical
+// memo") looks like headers too, so this fails closed: the header row counts as one only when
+// a date column or a money column is headed by a word that names it, which a transaction's own
+// cell in that column practically never is.
 export function headerLooksLikeData(profiles: ColumnProfile[]): boolean {
-  return profiles.some(({ name }) => isDate(name) || isNumber(name))
+  if (profiles.some(({ name }) => isDate(name) || isNumber(name))) return true
+  const named = profiles.some(
+    ({ name, type }) =>
+      (type === 'date' && DATE_NAMES.some((s) => names(name, s))) ||
+      (type === 'number' && MONEY_NAMES.some((s) => names(name, s))),
+  )
+  return !named
 }

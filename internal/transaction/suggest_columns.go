@@ -86,18 +86,35 @@ type columnsReplyError struct{}
 
 func (columnsReplyError) Error() string { return "unusable AI reply" }
 
-// askColumns keeps a role only when its value is a header from the request,
-// so a model cannot invent a column the wizard does not have.
+// roleFits is the prompt's type rule, enforced: a date role needs a date column,
+// the amounts need number columns, and an empty column fits no role. The text
+// roles take number columns too (account or category codes), never dates.
+func roleFits(role, columnType string) bool {
+	switch role {
+	case "date":
+		return columnType == "date"
+	case "amount", "amountIn", "amountOut":
+		return columnType == "number"
+	default:
+		return columnType == "text" || columnType == "number"
+	}
+}
+
+// askColumns keeps a role only when its value is a header from the request
+// whose type fits the role, so a model cannot invent a column the wizard does
+// not have or replace a sound built-in guess with a column that cannot hold it.
 func (s *Service) askColumns(ctx context.Context, userID vo.Id, language string, columns []model.ImportColumnFact) (map[string]string, error) {
 	if language == "" {
 		language = "en"
 	}
 	sent := make([]model.ImportColumnFact, len(columns))
-	headers := make(map[string]bool, len(columns))
+	types := make(map[string]string, len(columns))
 	for i, c := range columns {
 		name := strings.TrimSpace(c.Name)
 		sent[i] = model.ImportColumnFact{Name: name, Type: c.Type, Negatives: c.Negatives}
-		headers[name] = true
+		if _, dup := types[name]; !dup {
+			types[name] = c.Type
+		}
 	}
 	payload, err := json.Marshal(struct {
 		Language string                   `json:"language"`
@@ -129,7 +146,8 @@ func (s *Service) askColumns(ctx context.Context, userID vo.Id, language string,
 		}
 		header = strings.TrimSpace(header)
 		// null decodes to "", which would otherwise name a blank header
-		if header == "" || !headers[header] || taken[header] {
+		columnType, known := types[header]
+		if header == "" || !known || taken[header] || !roleFits(role, columnType) {
 			continue
 		}
 		roles[role] = header

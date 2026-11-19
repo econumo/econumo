@@ -1,12 +1,13 @@
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
-import { createAccount } from '@/api/account'
+import { createAccount, getFolderList } from '@/api/account'
 import type { WriteOptions } from '@/api/client'
 import type { ImportResultDto } from '@/api/transaction'
 import { apiErrorMessage } from '@/lib/apiError'
 import { buildCsvText, chunkRows } from '@/lib/csv'
 import { defaultAccountIcon } from '@/lib/icons'
 import type { PreparedRow, WizardAnswers, buildUpload } from './prepare'
+import { newAccountFolderId } from './wizard'
 
 export const CHUNK_SIZE = 500
 
@@ -153,7 +154,9 @@ function attemptsOf(created: Map<string, string>) {
 // was lost is answered with its id instead of being made again.
 // `names` gives a per-row account its name as the file writes it; the answers key it lowercased.
 // `folderId` is the user's first folder: the server invents one only for a user who has none
-// and refuses a blank folder otherwise, so later accounts follow the first into its folder.
+// and refuses a blank folder otherwise, so later accounts follow the first into its folder. With
+// no folder known once an account exists (its create was replayed, or a stale folder list from
+// an earlier attempt), the folder the server made is read back before the next create.
 export async function ensureAccounts(
   answers: WizardAnswers,
   created: Map<string, string>,
@@ -168,6 +171,7 @@ export async function ensureAccounts(
     if (existing) return existing
     const attempt = attempts.get(key) ?? { requestId: uuidv7(), idempotencyKey: uuidv7() }
     attempts.set(key, attempt)
+    if (folder === null && created.size > 0) folder = newAccountFolderId(await getFolderList())
     let id: string
     try {
       // the request id only guards the operation; the server mints the account's own id

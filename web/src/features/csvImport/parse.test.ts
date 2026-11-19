@@ -29,12 +29,19 @@ describe('parseCsvText', () => {
     const p = parseCsvText('a,b\n"line1\nline2",2\n3,4\n')
     expect(p.rows).toEqual([['line1\nline2', '2'], ['3', '4']])
     expect(p.rawLines).toEqual(['"line1\nline2",2', '3,4'])
+    expect(p.rowLines).toEqual([2, 4])
   })
 
   it('skips blank lines and handles a missing trailing newline', () => {
     const p = parseCsvText('a,b\n\n1,2\n\n3,4')
     expect(p.rows).toEqual([['1', '2'], ['3', '4']])
     expect(p.rawLines).toEqual(['1,2', '3,4'])
+    expect(p.rowLines).toEqual([3, 5])
+  })
+
+  it('counts CRLF and lone CR line ends, inside quoted cells too', () => {
+    expect(parseCsvText('a,b\r\n\r\n"x\r\ny",1\r\n2,3\r\n').rowLines).toEqual([3, 5])
+    expect(parseCsvText('a,b\r"x\ry",1\r2,3').rowLines).toEqual([2, 4])
   })
 
   it('keeps a quote inside an unquoted cell as text', () => {

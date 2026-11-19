@@ -1,11 +1,14 @@
 import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAccount } from '@/api/account'
+import { createAccount, getFolderList } from '@/api/account'
 import { ensureAccounts, mergeRetry, runChunks, type ImportPoster } from './upload'
 import type { ImportResultDto } from '@/api/transaction'
 import type { PreparedRow, WizardAnswers } from './prepare'
 
-vi.mock('@/api/account', () => ({ createAccount: vi.fn(async () => ({ item: { id: 'server-id', folderId: 'general' }, transaction: null })) }))
+vi.mock('@/api/account', () => ({
+  createAccount: vi.fn(async () => ({ item: { id: 'server-id', folderId: 'general' }, transaction: null })),
+  getFolderList: vi.fn(async () => [{ id: 'made-by-server', name: 'General', position: 0, isVisible: 1 }]),
+}))
 
 // what the server answers a key it has already seen
 function replay(resourceId?: string) {
@@ -126,7 +129,10 @@ describe('runChunks', () => {
 })
 
 describe('ensureAccounts', () => {
-  beforeEach(() => vi.mocked(createAccount).mockClear())
+  beforeEach(() => {
+    vi.mocked(createAccount).mockClear()
+    vi.mocked(getFolderList).mockClear()
+  })
 
   const answers = (account: WizardAnswers['account']) => ({ account }) as WizardAnswers
 
@@ -199,6 +205,23 @@ describe('ensureAccounts', () => {
     const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1' } })
     await ensureAccounts(a, new Map(), new Set(), undefined, null)
     expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'general'])
+  })
+
+  it('reads back the folder the server made when the first create was replayed', async () => {
+    vi.mocked(createAccount).mockRejectedValueOnce(replay('first-id'))
+    const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1' } })
+    await ensureAccounts(a, new Map(), new Set(), undefined, null)
+    expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'made-by-server'])
+  })
+
+  it('reads back the folder when an earlier attempt made an account and the folder list is stale', async () => {
+    const created = new Map<string, string>()
+    vi.mocked(createAccount).mockResolvedValueOnce({ item: { id: 'a-id', folderId: 'general' }, transaction: null } as never)
+    vi.mocked(createAccount).mockRejectedValueOnce(new Error('timeout'))
+    const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1' } })
+    await expect(ensureAccounts(a, created, new Set(), undefined, null)).rejects.toThrow('timeout')
+    await ensureAccounts(a, created, new Set(), undefined, null)
+    expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'general', 'made-by-server'])
   })
 
   it('names a column account as the file writes it', async () => {
