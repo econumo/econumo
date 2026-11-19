@@ -1,7 +1,15 @@
 // View-row and import/export shapes the transaction service's port interfaces
 // exchange with their adapters (not wire DTOs unless noted — no JSON tags,
-// except ImportResult which is the import-transaction-list response body).
+// except ImportResult which is the import-transaction-list response body, and
+// the suggest-import-columns request and result).
 package model
+
+import (
+	"strings"
+	"unicode/utf8"
+
+	"github.com/econumo/econumo/internal/shared/errs"
+)
 
 // ExportAccount is one accessible account in the CSV export universe: id,
 // name, and currency code.
@@ -78,4 +86,58 @@ type ImportResult struct {
 	Imported int              `json:"imported"`
 	Skipped  int              `json:"skipped"`
 	Errors   map[string][]int `json:"errors"`
+}
+
+const (
+	MaxImportColumns          = 60
+	MaxImportColumnNameLength = 100
+)
+
+// ImportColumnFact is what the browser tells the column guesser about one CSV
+// column: its header and a type computed from its cells. No cell value ever
+// leaves the browser, so none can reach the AI.
+type ImportColumnFact struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Negatives bool   `json:"negatives"`
+}
+
+// SuggestImportColumnsRequest is the decoded `columns` query parameter of
+// suggest-import-columns, in file order.
+type SuggestImportColumnsRequest struct {
+	Columns []ImportColumnFact
+}
+
+func (r SuggestImportColumnsRequest) Validate() error {
+	invalid := func(msg, code string) error {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "columns", Message: msg, Code: code})
+	}
+	if len(r.Columns) == 0 {
+		return invalid("This value should not be blank.", errs.CodeIsBlank)
+	}
+	if len(r.Columns) > MaxImportColumns {
+		return invalid("This value is too long.", errs.CodeTooLong)
+	}
+	for _, c := range r.Columns {
+		name := strings.TrimSpace(c.Name)
+		if name == "" {
+			return invalid("This value should not be blank.", errs.CodeIsBlank)
+		}
+		if utf8.RuneCountInString(name) > MaxImportColumnNameLength {
+			return invalid("This value is too long.", errs.CodeTooLong)
+		}
+		switch c.Type {
+		case "date", "number", "text", "empty":
+		default:
+			return invalid("The value you selected is not a valid choice.", errs.CodeInvalidChoice)
+		}
+	}
+	return nil
+}
+
+// SuggestImportColumnsResult maps a role (date, amount, amountIn, amountOut,
+// description, payee, category, tag, labels, account) to the header the AI
+// picked for it; empty when there is no suggestion.
+type SuggestImportColumnsResult struct {
+	Roles map[string]string `json:"roles"`
 }

@@ -603,7 +603,7 @@ func TestImportLabelIdsOverrideDedupesRepeatedIds(t *testing.T) {
 // call at the end is the actual regression guard — pre-fix it 400s.
 func TestImport_RowMappedSharedAccount_LabelsOwnedByAccountOwner(t *testing.T) {
 	h := newHarness(t)
-	h.shareAccount(t, roleUser, true)
+	h.shareAccount(t, roleAdmin, true)
 	tok := h.token(t)
 
 	csv := "Account,Date,Amount,Labels\n" +
@@ -647,6 +647,110 @@ func TestImport_RowMappedSharedAccount_LabelsOwnedByAccountOwner(t *testing.T) {
 	status2, env2 := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", ownerTwoID, updateReq)
 	if status2 != http.StatusOK {
 		t.Fatalf("account owner's update-transaction echoing labelIds: status=%d want 200; body=%s", status2, env2.raw)
+	}
+}
+
+// The accountId override takes what the wizard offers: a shared account with a
+// write grant imports, a guest grant is refused.
+func TestImport_OverrideIntoSharedAccount(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		role     int
+		imported int
+	}{{"write grant", roleUser, 1}, {"guest grant", roleGuest, 0}} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.shareAccount(t, tc.role, true)
+			tok := h.token(t)
+			status, env := h.doImport(t, tok, "Date,Amount\n2024-03-01,-10\n", `{"date":"Date","amount":"Amount"}`, map[string]string{"accountId": sharedAcctID})
+			if status != http.StatusOK {
+				t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+			}
+			res := mustUnmarshal[importResult](t, env.Data)
+			if res.Imported != tc.imported {
+				t.Fatalf("imported=%d want %d; errors=%v", res.Imported, tc.imported, res.Errors)
+			}
+			if tc.imported == 0 {
+				if _, ok := res.Errors["Account not found for provided accountId"]; !ok {
+					t.Fatalf("errors=%v, want the accountId refusal", res.Errors)
+				}
+			}
+		})
+	}
+}
+
+// Only the account's owner or an admin of it grows the owner's lists on an
+// import; a user-role member's rows use the owner's existing names and leave
+// a new name out, the row still importing.
+func TestImport_IntoSharedAccount_OnlyAdminsCreateInTheOwnersLists(t *testing.T) {
+	csv := "Date,Amount,Category,Payee,Tag,Labels\n" +
+		"2024-03-01,-10,Owner Food,Owner Market,,\n" +
+		"2024-03-02,-20,Gadgets,New Shop,Trip,Fresh\n"
+	mapping := `{"date":"Date","amount":"Amount","category":"Category","payee":"Payee","tag":"Tag","labels":"Labels"}`
+	count := func(t *testing.T, h *harness, table, name string) int {
+		t.Helper()
+		var n int
+		if err := h.db.QueryRow(`SELECT COUNT(*) FROM `+table+` WHERE user_id = ? AND name = ?`, ownerTwoID, name).Scan(&n); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		return n
+	}
+	for _, tc := range []struct {
+		name    string
+		role    int
+		created int
+	}{{"admin", roleAdmin, 1}, {"user", roleUser, 0}} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.shareAccount(t, tc.role, true)
+			tok := h.token(t)
+			status, env := h.doImport(t, tok, csv, mapping, map[string]string{"accountId": sharedAcctID})
+			if status != http.StatusOK {
+				t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+			}
+			res := mustUnmarshal[importResult](t, env.Data)
+			if res.Imported != 2 || res.Skipped != 0 {
+				t.Fatalf("imported=%d skipped=%d want 2/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+			}
+			for table, name := range map[string]string{"categories": "Gadgets", "payees": "New Shop", "tags": "Trip", "labels": "Fresh"} {
+				if got := count(t, h, table, name); got != tc.created {
+					t.Fatalf("%s %q in the owner's list: %d, want %d", table, name, got, tc.created)
+				}
+			}
+			var withOwnerFood, uncategorized int
+			if err := h.db.QueryRow(`SELECT COUNT(*) FROM transactions WHERE account_id = ? AND category_id = ? AND payee_id = ?`, sharedAcctID, ownerCatID, ownerPayeeID).Scan(&withOwnerFood); err != nil {
+				t.Fatal(err)
+			}
+			if withOwnerFood != 1 {
+				t.Fatalf("rows on the owner's existing category and payee = %d, want 1", withOwnerFood)
+			}
+			if err := h.db.QueryRow(`SELECT COUNT(*) FROM transactions WHERE account_id = ? AND category_id IS NULL`, sharedAcctID).Scan(&uncategorized); err != nil {
+				t.Fatal(err)
+			}
+			if want := 1 - tc.created; uncategorized != want {
+				t.Fatalf("uncategorized rows = %d, want %d", uncategorized, want)
+			}
+		})
+	}
+}
+
+func TestImport_RowMappedSharedAccount_UserRoleCreatesNoLabelForTheOwner(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, roleUser, true)
+	tok := h.token(t)
+	status, env := h.doImport(t, tok, "Account,Date,Amount,Labels\nShared,2024-03-01,-10,New Label\n", `{"account":"Account","date":"Date","amount":"Amount","labels":"Labels"}`, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	if res := mustUnmarshal[importResult](t, env.Data); res.Imported != 1 {
+		t.Fatalf("imported=%d want 1; errors=%v", res.Imported, res.Errors)
+	}
+	var n int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM labels WHERE name = ?`, "New Label").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("labels named New Label = %d, want 0", n)
 	}
 }
 

@@ -22,10 +22,11 @@ func load(name string) string {
 }
 
 var (
-	Suggest   = load("suggest.md")
-	Payee     = load("payee.md")
-	MatchText = load("match_text.md")
-	Savings   = load("savings.md")
+	Suggest       = load("suggest.md")
+	Payee         = load("payee.md")
+	MatchText     = load("match_text.md")
+	Savings       = load("savings.md")
+	ImportColumns = load("import_columns.md")
 
 	iconRules = strings.NewReplacer("{{icons}}", strings.Join(icons.Names, ", ")).Replace(load("icon_rules.md"))
 

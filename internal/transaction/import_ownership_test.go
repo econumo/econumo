@@ -22,6 +22,8 @@ import (
 // set flowing back into the labelIds belongs-to check.
 type stubImportLabelOwner struct {
 	account *model.ImportAccount
+	// admin: the caller may grow the account owner's lists
+	admin bool
 
 	labelsByOwner      map[string][]model.ImportNamed
 	labelsByOwnerCalls []vo.Id
@@ -48,6 +50,10 @@ func (s *stubImportLabelOwner) AccountByID(ctx context.Context, userID vo.Id, id
 
 func (s *stubImportLabelOwner) CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error) {
 	return true, nil
+}
+
+func (s *stubImportLabelOwner) CanCreateForAccountOwner(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error) {
+	return s.admin, nil
 }
 
 func (s *stubImportLabelOwner) CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error) {
@@ -166,6 +172,7 @@ func TestImportRow_LabelAutoCreate_ScopesToAccountOwnerNotCaller(t *testing.T) {
 		account:       &model.ImportAccount{ID: acctID.String(), Name: "Shared", OwnerID: ownerID.String()},
 		labelsByOwner: map[string][]model.ImportNamed{}, // no existing labels anywhere -> forces auto-create
 		nextLabelID:   vo.NewId(),
+		admin:         true,
 	}
 	svc := &Service{importer: imp, repo: &stubImportRepo{}, tx: passthroughTx{}, clock: fixedClock{now: time.Now()}}
 

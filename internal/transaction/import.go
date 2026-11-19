@@ -248,13 +248,15 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 		}
 	}
 
+	rights := &createRights{userID: userID, imp: imp, byAccount: map[string]bool{}}
+
 	// Rows are read top-down, so names a row creates take the file's first
 	// spelling, but saved bottom-up: each new row lands on top of its day, so
 	// this leaves a day's rows in file order.
 	var pending []*model.Transaction
 	for i, row := range records {
 		rowNumber := i + 2
-		if rerr := s.importRow(ctx, userID, accountOwnerID, req, dualMode, row, rowNumber,
+		if rerr := s.importRow(ctx, userID, accountOwnerID, rights, req, dualMode, row, rowNumber,
 			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideLabelIDs, overrideDescription, labelsSeparator,
 			accountByName, categoryByKind, payeeByName, tagByName, labelCaches, result, &pending); rerr != nil {
 			// Row-level error: record + skip, continue.
@@ -286,7 +288,7 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 // internally (missing required field) — those paths record the error + increment
 // skipped here and return nil so the import continues to the next row.
 func (s *Service) importRow(
-	ctx context.Context, userID, accountOwnerID vo.Id, req model.ImportRequest, dualMode bool,
+	ctx context.Context, userID, accountOwnerID vo.Id, rights *createRights, req model.ImportRequest, dualMode bool,
 	row map[string]string, rowNumber int,
 	overrideAccount *model.ImportAccount, overrideDate *time.Time,
 	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideLabelIDs []vo.Id, overrideDescription *string,
@@ -357,7 +359,13 @@ func (s *Service) importRow(
 
 	income := !amount.IsNegative()
 
-	// category / payee / tag (override or find-or-create by mapped name).
+	// category / payee / tag (override or find-or-create by mapped name). A
+	// name missing from the owner's lists is created only when the caller may
+	// grow them; otherwise the row imports without it.
+	mayCreate, err := rights.allowed(ctx, accountOwnerID, account.ID)
+	if err != nil {
+		return err
+	}
 	var categoryID, payeeID, tagID *vo.Id
 	if overrideCategory != nil {
 		// one category for every row: the rows of the other kind import
@@ -367,7 +375,7 @@ func (s *Service) importRow(
 			categoryID = &id
 		}
 	} else if name := fieldValue(row, req.Mapping.Category); name != "" {
-		c, err := s.findOrCreateNamed(ctx, name, categoryByKind[income], func(ctx context.Context) (model.ImportNamed, error) {
+		c, err := s.findOrMaybeCreate(ctx, name, categoryByKind[income], mayCreate, func(ctx context.Context) (model.ImportNamed, error) {
 			c, err := imp.CreateCategory(ctx, accountOwnerID, name, income)
 			if err == nil {
 				noteCreated(ctx, c.ID, false)
@@ -377,34 +385,31 @@ func (s *Service) importRow(
 		if err != nil {
 			return err
 		}
-		id, _ := vo.ParseId(c.ID)
-		categoryID = &id
+		categoryID = namedID(c)
 	}
 	if overridePayee != nil {
 		id, _ := vo.ParseId(overridePayee.ID)
 		payeeID = &id
 	} else if name := fieldValue(row, req.Mapping.Payee); name != "" {
-		p, err := s.findOrCreateNamed(ctx, name, payeeByName, func(ctx context.Context) (model.ImportNamed, error) {
+		p, err := s.findOrMaybeCreate(ctx, name, payeeByName, mayCreate, func(ctx context.Context) (model.ImportNamed, error) {
 			return imp.CreatePayee(ctx, accountOwnerID, name)
 		})
 		if err != nil {
 			return err
 		}
-		id, _ := vo.ParseId(p.ID)
-		payeeID = &id
+		payeeID = namedID(p)
 	}
 	if overrideTag != nil {
 		id, _ := vo.ParseId(overrideTag.ID)
 		tagID = &id
 	} else if name := fieldValue(row, req.Mapping.Tag); name != "" {
-		tg, err := s.findOrCreateNamed(ctx, name, tagByName, func(ctx context.Context) (model.ImportNamed, error) {
+		tg, err := s.findOrMaybeCreate(ctx, name, tagByName, mayCreate, func(ctx context.Context) (model.ImportNamed, error) {
 			return imp.CreateTag(ctx, accountOwnerID, name)
 		})
 		if err != nil {
 			return err
 		}
-		id, _ := vo.ParseId(tg.ID)
-		tagID = &id
+		tagID = namedID(tg)
 	}
 
 	// labels (override applies to every row; otherwise the mapped cell is
@@ -442,9 +447,13 @@ func (s *Service) importRow(
 			if cerr != nil {
 				return cerr
 			}
+			mayCreateLabel, rerr := rights.allowed(ctx, labelOwnerID, account.ID)
+			if rerr != nil {
+				return rerr
+			}
 			labelIDs = make([]vo.Id, 0, len(names))
 			for _, name := range names {
-				lb, err := s.findOrCreateNamed(ctx, name, labelByName, func(ctx context.Context) (model.ImportNamed, error) {
+				lb, err := s.findOrMaybeCreate(ctx, name, labelByName, mayCreateLabel, func(ctx context.Context) (model.ImportNamed, error) {
 					id, cerr := imp.CreateLabel(ctx, labelOwnerID, name)
 					if cerr != nil {
 						return model.ImportNamed{}, cerr
@@ -454,8 +463,9 @@ func (s *Service) importRow(
 				if err != nil {
 					return err
 				}
-				id, _ := vo.ParseId(lb.ID)
-				labelIDs = append(labelIDs, id)
+				if id := namedID(lb); id != nil {
+					labelIDs = append(labelIDs, *id)
+				}
 			}
 		}
 	}
@@ -510,6 +520,60 @@ func (s *Service) findOrCreateNamed(ctx context.Context, name string, cache *nam
 	}
 	cache.put(created.Name, created)
 	return created, nil
+}
+
+// findOrMaybeCreate is findOrCreateNamed for a list the caller may only read
+// when mayCreate is false: a missing name then resolves to nil.
+func (s *Service) findOrMaybeCreate(ctx context.Context, name string, cache *nameCache, mayCreate bool, create func(ctx context.Context) (model.ImportNamed, error)) (*model.ImportNamed, error) {
+	if v, ok := cache.get(name); ok {
+		n := v.(model.ImportNamed)
+		return &n, nil
+	}
+	if !mayCreate {
+		return nil, nil
+	}
+	n, err := s.findOrCreateNamed(ctx, name, cache, create)
+	if err != nil {
+		return nil, err
+	}
+	return &n, nil
+}
+
+func namedID(n *model.ImportNamed) *vo.Id {
+	if n == nil {
+		return nil
+	}
+	id, _ := vo.ParseId(n.ID)
+	return &id
+}
+
+// createRights answers, per account, whether this import may add categories,
+// payees, tags and labels to a list owned by someone other than the caller:
+// only the account's owner or an admin of it may; a user-role member uses the
+// owner's existing names and leaves new ones out.
+type createRights struct {
+	userID    vo.Id
+	imp       Importer
+	byAccount map[string]bool
+}
+
+func (c *createRights) allowed(ctx context.Context, ownerID vo.Id, accountID string) (bool, error) {
+	if ownerID.Equal(c.userID) {
+		return true, nil
+	}
+	if can, ok := c.byAccount[accountID]; ok {
+		return can, nil
+	}
+	id, err := vo.ParseId(accountID)
+	if err != nil {
+		return false, nil
+	}
+	can, err := c.imp.CanCreateForAccountOwner(ctx, c.userID, id)
+	if err != nil {
+		return false, err
+	}
+	c.byAccount[accountID] = can
+	return can, nil
 }
 
 // labelCacheForOwner returns the cached name->label lookup for ownerID,

@@ -97,14 +97,8 @@
       "back": {
         "label": "Terug"
       },
-      "import": {
-        "label": "Importeren"
-      },
       "export": {
         "label": "Exporteren"
-      },
-      "change": {
-        "label": "Wijzigen"
       }
     },
     "date": {
@@ -410,44 +404,149 @@
         }
       }
     },
-    "import_csv": {
-      "header": "CSV importeren",
-      "none": "Geen",
-      "file": {
-        "label": "CSV-bestand",
-        "hint": "Maximale bestandsgrootte: 10 MB"
-      },
-      "mapping": {
-        "description": "Koppel de kolommen uit uw CSV-bestand aan de transactievelden. Verplichte velden zijn gemarkeerd met een sterretje (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Overschakelen naar één bedragkolom",
-        "switch_to_dual": "Splitsen in kolommen voor bij- en afschrijvingen"
-      },
-      "switch_to_manual": "Handmatig een waarde invoeren",
-      "switch_to_csv": "Een CSV-kolom gebruiken",
-      "fields": {
+    "import_wizard": {
+      "column_n": "Kolom {n}",
+      "title": "Transacties importeren",
+      "steps_label": "Importstappen",
+      "needs_attention": "vraagt uw aandacht",
+      "back": "Terug",
+      "steps": {
+        "file": "Uw bestand",
         "account": "Rekening",
         "date": "Datum",
         "amount": "Bedrag",
-        "amount_inflow": "Bedrag (bijschrijving)",
-        "amount_outflow": "Bedrag (afschrijving)",
-        "category": "Categorie",
         "description": "Omschrijving",
-        "description_placeholder": "Voer een omschrijving in voor alle transacties",
-        "payee": "Begunstigde",
-        "tag": "Budgettag",
-        "labels": "Rapportagetags"
+        "extras": "Extra gegevens",
+        "preview": "Controleren en importeren"
       },
-      "labels_separator": {
-        "button": "Scheidingsteken voor tags wijzigen",
-        "title": "Scheidingsteken voor tags",
+      "file": {
+        "title": "Kies een bestand van uw bank of een andere app",
+        "choose": "Kies een bestand",
+        "choose_another": "Kies een ander bestand",
+        "drop_here": "of sleep het hierheen",
+        "hint": "Een spreadsheetbestand (CSV), tot 10 MB",
+        "error": {
+          "too_big": "Dit bestand is groter dan 10 MB",
+          "empty": "Dit bestand is leeg",
+          "unreadable": "Dit bestand kon niet als spreadsheet (CSV) worden gelezen"
+        },
+        "none": "Nog geen bestand"
+      },
+      "account": {
+        "skipped": "{count} regel heeft geen rekeningnaam en wordt overgeslagen | {count} regels hebben geen rekeningnaam en worden overgeslagen",
+        "title": "Van welke rekening zijn deze transacties?",
+        "new": "Een nieuwe rekening",
+        "existing": "Een rekening die ik al heb",
+        "column": "Elke regel vermeldt de rekening",
+        "name": "Naam van de rekening",
+        "currency": "Valuta",
+        "column_question": "Kies de kolom met de naam van de rekening",
+        "found": "Rekeningen in dit bestand",
+        "existing_name": "Bestaande rekening",
+        "currency_of": "Valuta voor {name}",
+        "name_hint": "U kunt de naam later wijzigen"
+      },
+      "date": {
+        "title": "Welke kolom zegt wanneer elke betaling plaatsvond?",
+        "question": "Is {example} {dmy} of {mdy}?",
+        "skipped": "{count} regel heeft geen leesbare datum en wordt overgeslagen | {count} regels hebben geen leesbare datum en worden overgeslagen",
+        "example": "‘{value}’ wordt gelezen als",
+        "not_a_date": "geen datum"
+      },
+      "amount": {
+        "none_in": "Het bestand heeft geen kolom voor geld erin",
+        "none_out": "Het bestand heeft geen kolom voor geld eruit",
+        "skipped": "{count} regel heeft geen leesbaar bedrag en wordt overgeslagen | {count} regels hebben geen leesbaar bedrag en worden overgeslagen",
+        "title": "Welke kolom bevat het geld?",
+        "single": "Eén kolom, min voor uitgaven",
+        "dual": "Geld erin en geld eruit",
+        "money_in": "Geld erin",
+        "money_out": "Geld eruit",
+        "separator_question": "Hoeveel is {example}?",
+        "spending": "Uitgaven staan er als: {example}",
+        "flip": "Tekens omdraaien",
+        "mode": "Hoe bedragen worden weergegeven",
+        "flip_hint": "Zet aan als uw bank betalingen zonder min toont",
+        "example_empty": "Kies de kolom met het geld om te zien hoe betalingen eruitzien.",
+        "example_label": "Zo zien betalingen eruit"
+      },
+      "description": {
+        "none": "Het bestand heeft geen omschrijving",
+        "title": "Welke kolom zegt waarvoor elke betaling was?"
+      },
+      "extras": {
+        "title": "Wilt u nog iets meenemen?",
+        "leave_out": "Niet meenemen",
+        "role": {
+          "category": "Categorie",
+          "payee": "Begunstigde",
+          "tag": "Budgettag",
+          "labels": "Rapportagetags"
+        },
+        "separator_question": "Meerdere tags in één cel worden gescheiden door",
         "tab": "Tab",
         "newline": "Nieuwe regel",
-        "custom_label": "Eigen scheidingsteken"
+        "custom_separator": "Iets anders",
+        "shared_owner_lists": "Categorieën, begunstigden en tags die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen.",
+        "new_categories": "{count} nieuwe categorie wordt aangemaakt | {count} nieuwe categorieën worden aangemaakt",
+        "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt",
+        "role_hint": {
+          "payee": "Wie u betaalde of wie u betaalde",
+          "category": "Boodschappen, huur… ontbrekende worden aangemaakt",
+          "tag": "Een project of een reis",
+          "labels": "Meerdere tags in één cel kan"
+        }
       },
-      "tag_hint": "Een transactie kan maar één budgettag hebben. Gebruik voor meerdere tags Rapportagetags.",
-      "new_labels_count": "Deze import maakt {count} nieuwe tag aan | Deze import maakt {count} nieuwe tags aan"
+      "preview": {
+        "title": "Dit wordt toegevoegd",
+        "nothing": "Er wordt nog niets geïmporteerd.",
+        "skipped": "{count} wordt overgeslagen | {count} worden overgeslagen",
+        "from_file": "Uit het bestand:",
+        "looks_wrong": "Klopt er iets niet?",
+        "skip_row": "Deze regel overslaan",
+        "unskip_row": "Niet overslaan",
+        "fix_date": "Datum voor deze regel",
+        "fix_amount": "Bedrag voor deze regel",
+        "no_description": "Geen omschrijving",
+        "no_account": "Geen rekening gekozen",
+        "import": "{count} transactie importeren | {count} transacties importeren",
+        "importing": "Bezig met importeren…",
+        "amount_unreadable": "Dit bedrag is niet leesbaar",
+        "transactions": "Transacties",
+        "range": "{first} tot {last}",
+        "left_out": "Weggelaten",
+        "row": "Regel {n}",
+        "list": "Toe te voegen transacties",
+        "show_more": "Nog {count} regel tonen | Nog {count} regels tonen"
+      },
+      "skipped": {
+        "no_date": "Geen leesbare datum",
+        "no_amount": "Geen leesbaar bedrag",
+        "no_account": "Geen rekeningnaam",
+        "user_skipped": "Door u overgeslagen",
+        "unconfirmed": "Verstuurd, maar het antwoord ging verloren: controleer de rekening"
+      },
+      "continue": "Doorgaan",
+      "step_of": "Stap {n} van {total} · {title}",
+      "list_hint": "We hebben uw bestand gelezen en ingevuld wat we konden. Tik op een stap om die te wijzigen.",
+      "check_button": "{count} transactie controleren | {count} transacties controleren",
+      "ready": "{count} transactie klaar · {skipped} weggelaten | {count} transacties klaar · {skipped} weggelaten",
+      "rows": "{count} regel | {count} regels",
+      "all_steps": "Alle stappen",
+      "column_empty": "leeg",
+      "more_columns": "Nog {count} kolom tonen | Nog {count} kolommen tonen",
+      "now_used": "nu {role}",
+      "summary": {
+        "not_chosen": "Niet gekozen",
+        "new_account": "Nieuw: {name} · {currency}",
+        "each_row": "Elke regel: {column}",
+        "in_out": "Erin: {in} · Eruit: {out}",
+        "flipped": "tekens omgedraaid",
+        "none": "Geen",
+        "with": "Met {list}",
+        "nothing_extra": "Verder niets",
+        "check": "{count} te importeren · {skipped} weggelaten | {count} te importeren · {skipped} weggelaten"
+      }
     },
     "import_result": {
       "success_title": "Import voltooid",
@@ -455,11 +554,13 @@
       "error_title": "Import mislukt",
       "imported": "{count} transactie geïmporteerd | {count} transacties geïmporteerd",
       "failed": "{count} transactie mislukt | {count} transacties mislukt",
+      "unconfirmed": "{count} transactie is verstuurd, maar het antwoord ging verloren: controleer de rekening | {count} transacties zijn verstuurd, maar het antwoord ging verloren: controleer de rekening",
       "errors_detail": "Foutdetails",
       "row": "Rij",
       "rows": "Rijen",
       "more": "meer",
-      "and_more": "en nog {count} fout(en)"
+      "and_more": "en nog {count} fout(en)",
+      "retry": "De rest opnieuw proberen"
     },
     "export_csv": {
       "export_csv_form": {
@@ -954,9 +1055,19 @@
       "header": "Geïmporteerd uit"
     },
     "rules": {
-      "field": { "external_payee": "Begunstigde", "description": "Omschrijving" },
-      "type": { "contains": "bevat", "prefix": "begint met", "exact": "is precies" },
-      "action": { "classify": "Classificeren", "skip": "Overslaan" },
+      "field": {
+        "external_payee": "Begunstigde",
+        "description": "Omschrijving"
+      },
+      "type": {
+        "contains": "bevat",
+        "prefix": "begint met",
+        "exact": "is precies"
+      },
+      "action": {
+        "classify": "Classificeren",
+        "skip": "Overslaan"
+      },
       "prompt": {
         "title": "Importregel maken",
         "changed_category": "U hebt de categorie ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
@@ -1025,7 +1136,12 @@
       "account": "Rekening",
       "reimport": "Opnieuw importeren",
       "reimport_hint": "Importeer haar opnieuw om haar terug te zetten, of om haar te koppelen aan een transactie die u zelf hebt ingevoerd, zoals een overboeking.",
-      "reimported": { "created": "Opnieuw geïmporteerd", "matched": "Gekoppeld aan een bestaande transactie", "queued": "Opnieuw geïmporteerd; ze wacht in de inbox", "skipped": "Niet toegevoegd: een overslaanregel of een genegeerde rekening is van toepassing" }
+      "reimported": {
+        "created": "Opnieuw geïmporteerd",
+        "matched": "Gekoppeld aan een bestaande transactie",
+        "queued": "Opnieuw geïmporteerd; ze wacht in de inbox",
+        "skipped": "Niet toegevoegd: een overslaanregel of een genegeerde rekening is van toepassing"
+      }
     },
     "suggestions": {
       "dismiss": "Negeren",

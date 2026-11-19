@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { OfflineNotice } from '@/components/OfflineNotice'
 import { useOnline } from '@/hooks/useOnline'
 import { useCompleteOnboarding, useUserData } from '@/features/user/queries'
+import type { RetryFailedChunks } from '@/features/csvImport/ImportWizard'
+import type { ImportResult } from '@/features/csvImport/upload'
+import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -28,6 +31,8 @@ export interface StepBodyProps {
   coreStepsDone?: boolean
   // skips every open step but `doneKey` (marked done), completes onboarding and lands on `to`
   onCompleteSetup?: (to: string, doneKey?: OnboardingStepKey) => Promise<void>
+  // an import that left rows out; shown here because the step it came from may already be done
+  onImportResult?: (result: ImportResult, retry?: RetryFailedChunks) => void
 }
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
@@ -55,6 +60,7 @@ export function OnboardingPage() {
   const userId = user?.id
   const [selected, setSelected] = useState<OnboardingStepKey | null>(null)
   const [skippingAll, setSkippingAll] = useState(false)
+  const [importResult, setImportResult] = useState<{ result: ImportResult; retry?: RetryFailedChunks } | null>(null)
   const completing = useRef(false)
   const autoCompleted = useRef(false)
   // where a completion lands, kept so the Finish retry after a failure goes there too
@@ -164,7 +170,20 @@ export function OnboardingPage() {
           ) : null}
         </div>
       ) : null}
-      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} />}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} onImportResult={(result, retry) => setImportResult({ result, retry })} />}
+      <ImportResultDialog
+        open={importResult !== null}
+        result={importResult?.result ?? null}
+        onClose={() => setImportResult(null)}
+        onRetry={
+          importResult?.retry
+            ? async () => {
+                const retry = importResult.retry
+                if (retry) setImportResult({ result: await retry(), retry })
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }

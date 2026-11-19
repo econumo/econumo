@@ -3,7 +3,7 @@ import type { DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
+import { ImportWizard } from '@/features/csvImport/ImportWizard'
 import { apiErrorMessage } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
 import type { StepBodyProps } from './OnboardingPage'
@@ -12,7 +12,7 @@ import { StepFooter } from './StepFooter'
 
 const isCsv = (file: File) => file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv'
 
-export function ImportStep({ onDone, onSkip }: StepBodyProps) {
+export function ImportStep({ onDone, onSkip, onImportResult }: StepBodyProps) {
   const { t } = useTranslation()
   const day0 = useDay0()
   const [open, setOpen] = useState(false)
@@ -108,11 +108,12 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
           {t('onboarding.import_step.no_file')}
         </Button>
       </StepFooter>
-      <ImportCsvDialog
+      <ImportWizard
         open={open}
         initialFile={dropped}
         onClose={() => setOpen(false)}
-        onComplete={(result) => {
+        onComplete={(result, retry) => {
+          if (result.failed > 0 || (result.unconfirmed ?? 0) > 0) onImportResult?.(result, retry)
           if (result.imported > 0) finish()
         }}
       />

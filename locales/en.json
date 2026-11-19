@@ -97,14 +97,8 @@
       "back": {
         "label": "Back"
       },
-      "import": {
-        "label": "Import"
-      },
       "export": {
         "label": "Export"
-      },
-      "change": {
-        "label": "Change"
       }
     },
     "date": {
@@ -410,44 +404,149 @@
         }
       }
     },
-    "import_csv": {
-      "header": "Import CSV",
-      "none": "None",
-      "file": {
-        "label": "CSV File",
-        "hint": "Maximum file size: 10 MB"
-      },
-      "mapping": {
-        "description": "Map the columns from your CSV file to the transaction fields. Required fields are marked with an asterisk (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Switch to a single amount column",
-        "switch_to_dual": "Split into inflow/outflow columns"
-      },
-      "switch_to_manual": "Enter a value manually",
-      "switch_to_csv": "Use a CSV column",
-      "fields": {
+    "import_wizard": {
+      "column_n": "Column {n}",
+      "title": "Import transactions",
+      "steps_label": "Import steps",
+      "needs_attention": "needs your attention",
+      "back": "Back",
+      "steps": {
+        "file": "Your file",
         "account": "Account",
         "date": "Date",
         "amount": "Amount",
-        "amount_inflow": "Amount (Inflow)",
-        "amount_outflow": "Amount (Outflow)",
-        "category": "Category",
         "description": "Description",
-        "description_placeholder": "Enter description for all transactions",
-        "payee": "Payee",
-        "tag": "Budget tag",
-        "labels": "Reporting tags"
+        "extras": "Extra details",
+        "preview": "Check and import"
       },
-      "labels_separator": {
-        "button": "Change the tag separator",
-        "title": "Tag separator",
+      "file": {
+        "title": "Choose a file from your bank or another app",
+        "choose": "Choose a file",
+        "choose_another": "Choose another file",
+        "drop_here": "or drop it here",
+        "hint": "A spreadsheet file (CSV), up to 10 MB",
+        "error": {
+          "too_big": "This file is larger than 10 MB",
+          "empty": "This file is empty",
+          "unreadable": "This file couldn't be read as a spreadsheet (CSV)"
+        },
+        "none": "No file yet"
+      },
+      "account": {
+        "skipped": "{count} row has no account name and will be skipped | {count} rows have no account name and will be skipped",
+        "title": "Which account are these transactions from?",
+        "new": "A new account",
+        "existing": "An account I already have",
+        "column": "Each row says which account",
+        "name": "Account name",
+        "currency": "Currency",
+        "column_question": "Tap the column with the account name",
+        "found": "Accounts in this file",
+        "existing_name": "Existing account",
+        "currency_of": "Currency for {name}",
+        "name_hint": "You can rename it later"
+      },
+      "date": {
+        "title": "Which column says when each payment happened?",
+        "question": "Is {example} the {dmy} or {mdy}?",
+        "skipped": "{count} row has no readable date and will be skipped | {count} rows have no readable date and will be skipped",
+        "example": "“{value}” will be read as",
+        "not_a_date": "not a date"
+      },
+      "amount": {
+        "none_in": "The file has no money-in column",
+        "none_out": "The file has no money-out column",
+        "skipped": "{count} row has no readable amount and will be skipped | {count} rows have no readable amount and will be skipped",
+        "title": "Which column has the money?",
+        "single": "One column, minus for spending",
+        "dual": "Money in and money out",
+        "money_in": "Money in",
+        "money_out": "Money out",
+        "separator_question": "How much is {example}?",
+        "spending": "Spending shows as: {example}",
+        "flip": "Flip the signs",
+        "mode": "How amounts are shown",
+        "flip_hint": "Turn on if your bank lists payments without a minus",
+        "example_empty": "Pick the column with the money to see how payments will look.",
+        "example_label": "How payments will look"
+      },
+      "description": {
+        "none": "The file has no description",
+        "title": "Which column says what each payment was for?"
+      },
+      "extras": {
+        "title": "Anything else worth bringing along?",
+        "leave_out": "Don’t bring it",
+        "role": {
+          "category": "Category",
+          "payee": "Payee",
+          "tag": "Budget tag",
+          "labels": "Reporting tags"
+        },
+        "separator_question": "Several tags in one cell are separated by",
         "tab": "Tab",
         "newline": "New line",
-        "custom_label": "Custom separator"
+        "custom_separator": "Something else",
+        "shared_owner_lists": "Categories, payees and tags this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.",
+        "new_categories": "{count} new category will be created | {count} new categories will be created",
+        "new_labels": "{count} new tag will be created | {count} new tags will be created",
+        "role_hint": {
+          "payee": "Who you paid or who paid you",
+          "category": "Groceries, rent… the ones you don’t have yet are created",
+          "tag": "A project or a trip",
+          "labels": "Several tags in one cell are fine"
+        }
       },
-      "tag_hint": "A transaction can have only one budget tag. For several, use Reporting tags.",
-      "new_labels_count": "This import will create {count} new tag | This import will create {count} new tags"
+      "preview": {
+        "title": "Here is what will be added",
+        "nothing": "Nothing will be imported yet.",
+        "skipped": "{count} will be skipped",
+        "from_file": "From the file:",
+        "looks_wrong": "Something looks wrong?",
+        "skip_row": "Skip this row",
+        "unskip_row": "Don't skip",
+        "fix_date": "Date for this row",
+        "fix_amount": "Amount for this row",
+        "no_description": "No description",
+        "no_account": "No account chosen",
+        "import": "Import {count} transaction | Import {count} transactions",
+        "importing": "Importing…",
+        "amount_unreadable": "Can't read this amount",
+        "transactions": "Transactions",
+        "range": "{first} to {last}",
+        "left_out": "Left out",
+        "row": "Row {n}",
+        "list": "Transactions to add",
+        "show_more": "Show {count} more row | Show {count} more rows"
+      },
+      "skipped": {
+        "no_date": "No readable date",
+        "no_amount": "No readable amount",
+        "no_account": "No account name",
+        "user_skipped": "Skipped by you",
+        "unconfirmed": "Sent, but the answer was lost: check the account"
+      },
+      "continue": "Continue",
+      "step_of": "Step {n} of {total} · {title}",
+      "list_hint": "We read your file and filled in what we could. Tap a step to change it.",
+      "check_button": "Check {count} transaction | Check {count} transactions",
+      "ready": "{count} transaction ready · {skipped} left out | {count} transactions ready · {skipped} left out",
+      "rows": "{count} row | {count} rows",
+      "all_steps": "All steps",
+      "column_empty": "empty",
+      "more_columns": "Show {count} more column | Show {count} more columns",
+      "now_used": "now {role}",
+      "summary": {
+        "not_chosen": "Not chosen",
+        "new_account": "New: {name} · {currency}",
+        "each_row": "Each row: {column}",
+        "in_out": "In: {in} · Out: {out}",
+        "flipped": "signs flipped",
+        "none": "None",
+        "with": "With {list}",
+        "nothing_extra": "Nothing extra",
+        "check": "{count} to import · {skipped} left out | {count} to import · {skipped} left out"
+      }
     },
     "import_result": {
       "success_title": "Import complete",
@@ -455,11 +554,13 @@
       "error_title": "Import failed",
       "imported": "{count} transaction imported | {count} transactions imported",
       "failed": "{count} transaction failed | {count} transactions failed",
+      "unconfirmed": "{count} transaction was sent, but the answer was lost: check the account | {count} transactions were sent, but the answer was lost: check the account",
       "errors_detail": "Error details",
       "row": "Row",
       "rows": "Rows",
       "more": "more",
-      "and_more": "and {count} more error(s)"
+      "and_more": "and {count} more error(s)",
+      "retry": "Try the rest again"
     },
     "export_csv": {
       "export_csv_form": {
@@ -954,9 +1055,19 @@
       "header": "Imported from"
     },
     "rules": {
-      "field": { "external_payee": "Payee", "description": "Description" },
-      "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
-      "action": { "classify": "Classify", "skip": "Skip" },
+      "field": {
+        "external_payee": "Payee",
+        "description": "Description"
+      },
+      "type": {
+        "contains": "contains",
+        "prefix": "starts with",
+        "exact": "is exactly"
+      },
+      "action": {
+        "classify": "Classify",
+        "skip": "Skip"
+      },
       "prompt": {
         "title": "Create an import rule",
         "changed_category": "You set the category to {name}. Create a rule for similar imports?",
@@ -1025,7 +1136,12 @@
       "account": "Account",
       "reimport": "Import again",
       "reimport_hint": "Import it again to add it back, or to match a transaction you entered yourself, such as a transfer.",
-      "reimported": { "created": "Imported again", "matched": "Matched to an existing transaction", "queued": "Imported again; it is waiting in the Inbox", "skipped": "Not added: a skip rule or an ignored account matched it" }
+      "reimported": {
+        "created": "Imported again",
+        "matched": "Matched to an existing transaction",
+        "queued": "Imported again; it is waiting in the Inbox",
+        "skipped": "Not added: a skip rule or an ignored account matched it"
+      }
     },
     "suggestions": {
       "dismiss": "Dismiss",

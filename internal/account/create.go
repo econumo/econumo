@@ -9,6 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -129,6 +130,11 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 		if merr := s.ops.MarkHandled(ctx, opID, now); merr != nil {
 			return merr
 		}
+		// A client whose response was lost resends the same Idempotency-Key and learns
+		// the account's id from the replay; pinned because the reads below can still fail
+		// after the account is committed.
+		reqctx.SetIdempotencyResource(ctx, id.String())
+		reqctx.PinIdempotency(ctx)
 		created = acct
 		return nil
 	}); err != nil {
