@@ -1492,6 +1492,11 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
+- [ ] MCP `get_budget` Available: with 160 planned and 159.55 spent in a budget's first month, the app
+      shows 0.45 under Available while `get_budget` returns `available` -159.55 and `budgeted` 160. The
+      tool description (`tools/list`) and the budget prompts' glossary both say that the money left is
+      `available + budgeted` and that a savings row's `available` is already `budgeted - spent`; asked
+      "how much is left in Outings?", an MCP client answers 0.45.
 - [ ] Plan grid: a tag with spending in the window expands like in the Budget
       view, one read-only line per category its transactions carry
       (Uncategorized for tagged rows without a category), each with that

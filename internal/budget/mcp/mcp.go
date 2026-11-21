@@ -165,7 +165,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 		}
 
 		sdk.AddTool(s, webmcp.ReadOnlyTool("get_budget", "Get monthly budget",
-			"Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. A category or envelope tracking a loan carries a debt object (the debt in force that month); its payments stay in its spent. When the budget's period_start_day is not 1, a month runs from that day to the day before it in the following month and is named after the month it starts in; filters.periodStart/periodEnd carry the real window."),
+			"Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. An element's available leaves out its own budgeted amount for the month: the money left in it (the Available the app shows) is available + budgeted, so available = -159.55 with budgeted = 160 means 0.45 left, not an overspend. A savings row's available is already budgeted - spent. A category or envelope tracking a loan carries a debt object (the debt in force that month); its payments stay in its spent. When the budget's period_start_day is not 1, a month runs from that day to the day before it in the following month and is named after the month it starts in; filters.periodStart/periodEnd carry the real window."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetInput) (*sdk.CallToolResult, model.GetBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_budget")
 				userID, err := webmcp.UserID(ctx)

@@ -10,14 +10,20 @@ import (
 )
 
 // budgetFieldGlossary explains the get_budget fields a model otherwise mis-reads:
-// the cumulative carryover, the per-currency vs budget-currency spent, the
-// account balances block, and the multi-user attribution.
+// available leaving out the month's own limit, the per-currency vs
+// budget-currency spent, the account balances block, and the multi-user
+// attribution.
 func budgetFieldGlossary() string {
 	return `Reading get_budget — what the numbers mean:
-- available: a CUMULATIVE carryover, not this month's leftover. It is every prior
-  month's limit minus all spending from the budget's start through the end of the
-  selected month, in the element's own currency. Negative = the element is behind
-  overall; positive = banked room. Do NOT read it as "limit minus spent this month".
+- available: a CUMULATIVE figure that leaves out THIS month's limit. It is every
+  prior month's limit minus all spending from the budget's start through the end
+  of the selected month, in the element's own currency. The money left in the
+  element (what the app shows as Available) is available + budgeted: negative =
+  the element is behind overall, positive = room left. Never report the raw
+  available as what is left: budgeted 160 with available -159.55 is 0.45 left,
+  not an overspend.
+- savings rows (structure.savings) carry no carryover: their available is
+  already budgeted - spent for the month.
 - budgeted: THIS month's limit only.
 - spent: this month's spending in the ELEMENT's own currency (its currencyId).
 - budgetSpent: the same spending converted to the BUDGET's base currency
@@ -137,8 +143,9 @@ Work in this order:
    the default (ungrouped) area is empty — every envelope, tag and standalone
    category sits in a named folder.
 7. Call get_budget and confirm the result: folders, envelopes, tags, limits, and
-   the base-vs-additional totals. On a brand-new budget "available" is ~0 for
-   everything — that is expected. Flag anything I should revisit.
+   the base-vs-additional totals. On a brand-new budget nothing carries over, so
+   each element's money left (available + budgeted) is just its limit minus this
+   month's spending — that is expected. Flag anything I should revisit.
 
 Ask me before guessing on anything that changes the structure. Reply in my language.`,
 			name, budgetFieldGlossary())
@@ -223,8 +230,8 @@ Follow these steps:
 3. Compare limits against spending per envelope/category. Use budgetSpent (budget
    currency) for the comparison, not spent, so mixed-currency elements are fair.
    Flag two things separately: THIS month's overspend (budgetSpent > budgeted) and
-   anything above 90%% of its monthly limit; and CUMULATIVE trouble (available < 0),
-   which means the element is behind across the whole budget so far.
+   anything above 90%% of its monthly limit; and CUMULATIVE trouble (available +
+   budgeted < 0), which means the element is behind across the whole budget so far.
 4. If something looks unusual, sample the underlying activity with
    list_transactions. In a shared budget, note who owns the element (ownerUserId).
 5. Reply with a short structured review in my language: overall position, top
