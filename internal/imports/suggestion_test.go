@@ -936,6 +936,26 @@ func TestRuleSuggestionDropsDisagreeingFilledRow(t *testing.T) {
 	wantNotFound(t, err)
 }
 
+// Fill in wrote a different category and the payee is empty again: the row
+// still wants the payee, but the category it took counts against the rule.
+func TestRuleSuggestionDropsFilledRowDisagreeingWhileAFieldIsEmpty(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	restaurants := h.category(t, userA, "Restaurants")
+	s, links := seedSuggestion(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
+	h.setTxSuggestion(t, links[0].ID, "category_id", restaurants)
+	fillIn(t, h, links[0].ID)
+	if _, err := h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE transactions SET payee_id = NULL WHERE id = ?`), links[0].TransactionID.String()); err != nil {
+		t.Fatal(err)
+	}
+
+	items := suggestionList(t, h, userA)
+	if len(items) != 1 || items[0].Id != s.ID.String() || len(items[0].Transactions) != 1 || items[0].Transactions[0].TransactionId != links[1].TransactionID.String() {
+		t.Fatalf("list = %+v", items)
+	}
+}
+
 func TestRuleSuggestionDropsHandEditedRow(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")

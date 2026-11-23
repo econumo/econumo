@@ -160,13 +160,16 @@ type suggestionLookup struct {
 // the caller owns, still of the suggestion's type (an edit can change it) and
 // still empty in a field the suggestion would set. A row filled through Fill
 // in also stays while it carries every value the suggestion sets: taking the
-// AI's values confirms the guess, so the rule is still worth offering.
+// AI's values confirms the guess, so the rule is still worth offering. A
+// filled row that carries a different value than the suggestion sets counts
+// against it and goes, even with another field still empty.
 func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
 	type pending struct {
 		live *model.Transaction
 		link *model.ImportTransactionLink
 	}
-	var kept, agreeing []pending
+	// agreeing rows stay only when filled; disputed ones only when not filled
+	var kept, agreeing, disputed []pending
 	for _, linkID := range sg.LinkIDs {
 		l, live, err := s.suggestionTargetCached(ctx, userID, linkID, look.owned)
 		if err != nil {
@@ -175,20 +178,22 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		if live == nil || live.Type != sg.Type {
 			continue
 		}
+		p := pending{live: live, link: l}
 		wantsCategory := sg.CategoryID != nil && live.CategoryID == nil && categoryFits(*sg.CategoryID, income, live.Type)
 		wantsPayee := sg.PayeeID != nil && live.PayeeID == nil
-		if wantsCategory || wantsPayee {
-			kept = append(kept, pending{live: live, link: l})
-			continue
-		}
-		if agrees(sg.CategoryID, live.CategoryID) && agrees(sg.PayeeID, live.PayeeID) {
-			agreeing = append(agreeing, pending{live: live, link: l})
+		switch {
+		case (wantsCategory || wantsPayee) && carriedAgrees(sg.CategoryID, live.CategoryID) && carriedAgrees(sg.PayeeID, live.PayeeID):
+			kept = append(kept, p)
+		case wantsCategory || wantsPayee:
+			disputed = append(disputed, p)
+		case agrees(sg.CategoryID, live.CategoryID) && agrees(sg.PayeeID, live.PayeeID):
+			agreeing = append(agreeing, p)
 		}
 	}
-	if len(agreeing) > 0 {
-		ids := make([]vo.Id, len(agreeing))
-		for i, p := range agreeing {
-			ids[i] = p.link.ID
+	if len(agreeing)+len(disputed) > 0 {
+		ids := make([]vo.Id, 0, len(agreeing)+len(disputed))
+		for _, p := range append(append([]pending{}, agreeing...), disputed...) {
+			ids = append(ids, p.link.ID)
 		}
 		filled, err := s.repo.FilledTransactionSuggestionLinks(ctx, ids)
 		if err != nil {
@@ -196,6 +201,11 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		}
 		for _, p := range agreeing {
 			if filled[p.link.ID] {
+				kept = append(kept, p)
+			}
+		}
+		for _, p := range disputed {
+			if !filled[p.link.ID] {
 				kept = append(kept, p)
 			}
 		}
@@ -231,6 +241,11 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 // agrees: a field the suggestion does not set agrees with any value.
 func agrees(want, have *vo.Id) bool {
 	return want == nil || (have != nil && *have == *want)
+}
+
+// carriedAgrees: an empty field does not disagree.
+func carriedAgrees(want, have *vo.Id) bool {
+	return have == nil || agrees(want, have)
 }
 
 // suggestionTarget resolves a suggestion's link to its live transaction, or
