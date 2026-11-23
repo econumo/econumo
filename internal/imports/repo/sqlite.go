@@ -258,3 +258,31 @@ func (sqliteQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db
 func (sqliteQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteImportSuggestion(ctx, id)
 }
+
+func (sqliteQuerier) InsertImportTransactionSuggestion(ctx context.Context, db backend.DBTX, p insertTxSuggestionParams) error {
+	return sqlitegen.New(db).InsertImportTransactionSuggestion(ctx, p)
+}
+
+func (sqliteQuerier) ListOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]txSuggestionRow, error) {
+	return sqlitegen.New(db).ListOpenImportTransactionSuggestionsByUser(ctx, userID)
+}
+
+func (sqliteQuerier) GetImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (txSuggestionRow, error) {
+	return sqlitegen.New(db).GetImportTransactionSuggestion(ctx, linkID)
+}
+
+func (sqliteQuerier) LockImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (int64, error) {
+	return sqlitegen.New(db).LockImportTransactionSuggestion(ctx, linkID)
+}
+
+func (sqliteQuerier) MarkImportTransactionSuggestionFilled(ctx context.Context, db backend.DBTX, p markTxSuggestionFilledPs) error {
+	return sqlitegen.New(db).MarkImportTransactionSuggestionFilled(ctx, p)
+}
+
+func (sqliteQuerier) DeleteImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) error {
+	return sqlitegen.New(db).DeleteImportTransactionSuggestion(ctx, linkID)
+}
+
+func (sqliteQuerier) DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).DeleteOpenImportTransactionSuggestionsByUser(ctx, userID)
+}

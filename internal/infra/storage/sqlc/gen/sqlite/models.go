@@ -368,6 +368,17 @@ type ImportTransactionLink struct {
 	ImportedAt            time.Time
 }
 
+type ImportTransactionSuggestion struct {
+	LinkID          string
+	UserID          string
+	CategoryID      *string
+	PayeeID         *string
+	TransactionType string
+	Status          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type Label struct {
 	ID         string
 	UserID     string

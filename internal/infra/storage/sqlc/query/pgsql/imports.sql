@@ -309,3 +309,31 @@ DELETE FROM import_suggestion_links WHERE suggestion_id = $1 AND link_id = $2;
 
 -- name: DeleteImportSuggestion :exec
 DELETE FROM import_suggestions WHERE id = $1;
+
+-- name: InsertImportTransactionSuggestion :exec
+INSERT INTO import_transaction_suggestions (link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (link_id) DO NOTHING;
+
+-- name: ListOpenImportTransactionSuggestionsByUser :many
+SELECT link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at
+FROM import_transaction_suggestions
+WHERE user_id = $1 AND status = 'open'
+ORDER BY created_at, link_id;
+
+-- name: GetImportTransactionSuggestion :one
+SELECT link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at
+FROM import_transaction_suggestions
+WHERE link_id = $1;
+
+-- name: LockImportTransactionSuggestion :execrows
+UPDATE import_transaction_suggestions SET status = status WHERE link_id = $1;
+
+-- name: MarkImportTransactionSuggestionFilled :exec
+UPDATE import_transaction_suggestions SET status = 'filled', updated_at = $1 WHERE link_id = $2;
+
+-- name: DeleteImportTransactionSuggestion :exec
+DELETE FROM import_transaction_suggestions WHERE link_id = $1;
+
+-- name: DeleteOpenImportTransactionSuggestionsByUser :exec
+DELETE FROM import_transaction_suggestions WHERE user_id = $1 AND status = 'open';

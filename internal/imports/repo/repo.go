@@ -53,6 +53,9 @@ type (
 	insertSuggestionLinkPs    = sqlitegen.InsertImportSuggestionLinkParams
 	touchSuggestionParams     = sqlitegen.TouchOpenImportSuggestionParams
 	deleteSuggestionLinkPs    = sqlitegen.DeleteImportSuggestionLinkParams
+	txSuggestionRow           = sqlitegen.ImportTransactionSuggestion
+	insertTxSuggestionParams  = sqlitegen.InsertImportTransactionSuggestionParams
+	markTxSuggestionFilledPs  = sqlitegen.MarkImportTransactionSuggestionFilledParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -119,6 +122,13 @@ type querier interface {
 	ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error)
 	ListOpenImportSuggestionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionLinkRow, error)
 	DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error
+	InsertImportTransactionSuggestion(ctx context.Context, db backend.DBTX, p insertTxSuggestionParams) error
+	ListOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]txSuggestionRow, error)
+	GetImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (txSuggestionRow, error)
+	LockImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (int64, error)
+	MarkImportTransactionSuggestionFilled(ctx context.Context, db backend.DBTX, p markTxSuggestionFilledPs) error
+	DeleteImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) error
+	DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error
 	ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 }

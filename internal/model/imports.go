@@ -275,3 +275,21 @@ type ImportSuggestion struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
+
+const (
+	ImportTransactionSuggestionStatusOpen   = "open"
+	ImportTransactionSuggestionStatusFilled = "filled"
+)
+
+// ImportTransactionSuggestion is a category/payee proposal for one imported
+// transaction, keyed by its ledger link.
+type ImportTransactionSuggestion struct {
+	LinkID     vo.Id
+	UserID     vo.Id // the account owner
+	CategoryID *vo.Id
+	PayeeID    *vo.Id
+	Type       TransactionType
+	Status     string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}

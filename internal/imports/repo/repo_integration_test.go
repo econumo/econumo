@@ -882,3 +882,90 @@ func TestExistingLinkIDs(t *testing.T) {
 		t.Fatalf("empty = %v, %v", got, err)
 	}
 }
+
+func TestTransactionSuggestionRepo(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	_, links := seedSuggestionWithLinks(t, repo, db, 3)
+	catA, catB := vo.NewId(), vo.NewId()
+	mk := func(l *model.ImportTransactionLink, user string, cat vo.Id) model.ImportTransactionSuggestion {
+		return model.ImportTransactionSuggestion{
+			LinkID: l.ID, UserID: vo.MustParseId(user), CategoryID: &cat, Type: model.TransactionTypeExpense,
+			Status: model.ImportTransactionSuggestionStatusOpen, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		}
+	}
+	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[0], userA, catA), mk(links[1], userA, catA)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[0], userA, catB)}); err != nil {
+		t.Fatal(err)
+	}
+	open, err := repo.ListOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA))
+	if err != nil || len(open) != 2 || *open[0].CategoryID != catA || open[0].PayeeID != nil || open[0].Type != model.TransactionTypeExpense {
+		t.Fatalf("a repeated insert keeps the first row: %+v, %v", open, err)
+	}
+	if other, err := repo.ListOpenTransactionSuggestionsByUser(ctx, vo.NewId()); err != nil || len(other) != 0 {
+		t.Fatalf("other user's list = %+v, %v", other, err)
+	}
+
+	locked, err := repo.LockTransactionSuggestion(ctx, links[0].ID)
+	if err != nil || locked.LinkID != links[0].ID || locked.Status != model.ImportTransactionSuggestionStatusOpen {
+		t.Fatalf("lock = %+v, %v", locked, err)
+	}
+	if _, err := repo.LockTransactionSuggestion(ctx, vo.NewId()); err == nil {
+		t.Fatal("missing row: want not found")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("missing row: err = %v", err)
+	}
+
+	if err := repo.MarkTransactionSuggestionFilled(ctx, links[0].ID, fixedTime.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if open, _ = repo.ListOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA)); len(open) != 1 || open[0].LinkID != links[1].ID {
+		t.Fatalf("filled row stays out of the open list: %+v", open)
+	}
+	filled, err := repo.FilledTransactionSuggestionLinks(ctx, []vo.Id{links[0].ID, links[1].ID, links[2].ID})
+	if err != nil || len(filled) != 1 || !filled[links[0].ID] {
+		t.Fatalf("filled = %v, %v", filled, err)
+	}
+	if got, err := repo.FilledTransactionSuggestionLinks(ctx, nil); err != nil || len(got) != 0 {
+		t.Fatalf("empty input = %v, %v", got, err)
+	}
+
+	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[2], userA, catA)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.DeleteOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA)); err != nil {
+		t.Fatal(err)
+	}
+	if filled, _ = repo.FilledTransactionSuggestionLinks(ctx, []vo.Id{links[0].ID}); !filled[links[0].ID] {
+		t.Fatal("deleting a user's open rows keeps the filled one")
+	}
+	if open, _ = repo.ListOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA)); len(open) != 0 {
+		t.Fatalf("open rows left: %+v", open)
+	}
+
+	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[1], userA, catA), mk(links[2], userA, catA)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.DeleteTransactionSuggestionsByLinks(ctx, []vo.Id{links[1].ID, vo.NewId()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.DeleteTransactionSuggestionsByLinks(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if open, _ = repo.ListOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA)); len(open) != 1 || open[0].LinkID != links[2].ID {
+		t.Fatalf("delete by links: %+v", open)
+	}
+	if err := repo.DeleteTransactionSuggestion(ctx, links[2].ID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[2], userA, catA)}); err != nil {
+		t.Fatal(err)
+	}
+	db.Exec(t, db.Rebind(`DELETE FROM import_transaction_links WHERE id = ?`), links[2].ID.String())
+	if open, _ = repo.ListOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA)); len(open) != 0 {
+		t.Fatalf("deleting the ledger link cascades: %+v", open)
+	}
+}

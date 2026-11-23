@@ -83,6 +83,7 @@ type Querier interface {
 	DeleteImportSuggestion(ctx context.Context, id string) error
 	DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error
 	DeleteImportTransactionLink(ctx context.Context, id string) error
+	DeleteImportTransactionSuggestion(ctx context.Context, linkID string) error
 	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
 	// unlike tags there is no SET NULL, because the link is a join table.
 	DeleteLabel(ctx context.Context, id string) error
@@ -92,6 +93,7 @@ type Querier interface {
 	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
+	DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
@@ -268,6 +270,7 @@ type Querier interface {
 	// folds case; external_transaction_id stays exact.
 	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
 	GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error)
+	GetImportTransactionSuggestion(ctx context.Context, linkID string) (ImportTransactionSuggestion, error)
 	// Write-side queries for the label module. The read-side query lives in
 	// label_read.sql to keep the CQRS boundary visible (matching tags.sql vs
 	// tag_read.sql). Unlike tags, a label's icon IS persisted from the start.
@@ -433,6 +436,7 @@ type Querier interface {
 	InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error
 	InsertImportSuggestionLink(ctx context.Context, arg InsertImportSuggestionLinkParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
+	InsertImportTransactionSuggestion(ctx context.Context, arg InsertImportTransactionSuggestionParams) error
 	// Same generation fence as InsertAccessTokenIfGeneration, for tokens minted
 	// by the MCP OAuth server; grant_id lets a grant revoke drop them all.
 	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)
@@ -586,6 +590,7 @@ type Querier interface {
 	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
 	ListOpenImportSuggestionLinksByUser(ctx context.Context, userID string) ([]ImportSuggestionLink, error)
 	ListOpenImportSuggestionsByUser(ctx context.Context, userID string) ([]ImportSuggestion, error)
+	ListOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) ([]ImportTransactionSuggestion, error)
 	// The owner's payees ordered by sort key; used by move-payee (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
@@ -622,6 +627,7 @@ type Querier interface {
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
 	LockImportSuggestion(ctx context.Context, id string) (int64, error)
+	LockImportTransactionSuggestion(ctx context.Context, linkID string) (int64, error)
 	// A no-op UPDATE so the operator transaction takes the write lock before it
 	// reads: a read first would leave it holding SHARED while a token exchange
 	// holds RESERVED, and neither could commit (database is locked).
@@ -637,6 +643,7 @@ type Querier interface {
 	// uses SELECT ... FOR NO KEY UPDATE instead, see the pgsql query).
 	LockUserRow(ctx context.Context, id string) error
 	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
+	MarkImportTransactionSuggestionFilled(ctx context.Context, arg MarkImportTransactionSuggestionFilledParams) error
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error
