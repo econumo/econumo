@@ -444,7 +444,8 @@
         "found": "Cuentas en este archivo",
         "existing_name": "Cuenta existente",
         "currency_of": "Moneda de {name}",
-        "name_hint": "Puedes cambiarle el nombre más tarde"
+        "name_hint": "Puedes cambiarle el nombre más tarde",
+        "currency_unknown": "El archivo indica {code}, que no está configurada aquí. Puedes añadirla en Ajustes."
       },
       "date": {
         "title": "¿Qué columna indica cuándo se hizo cada pago?",

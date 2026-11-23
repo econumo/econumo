@@ -444,7 +444,8 @@
         "found": "Konten in dieser Datei",
         "existing_name": "Vorhandenes Konto",
         "currency_of": "Währung für {name}",
-        "name_hint": "Sie können es später umbenennen"
+        "name_hint": "Sie können es später umbenennen",
+        "currency_unknown": "Die Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen."
       },
       "date": {
         "title": "Welche Spalte sagt, wann eine Zahlung erfolgte?",

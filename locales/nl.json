@@ -444,7 +444,8 @@
         "found": "Rekeningen in dit bestand",
         "existing_name": "Bestaande rekening",
         "currency_of": "Valuta voor {name}",
-        "name_hint": "U kunt de naam later wijzigen"
+        "name_hint": "U kunt de naam later wijzigen",
+        "currency_unknown": "Het bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen."
       },
       "date": {
         "title": "Welke kolom zegt wanneer elke betaling plaatsvond?",

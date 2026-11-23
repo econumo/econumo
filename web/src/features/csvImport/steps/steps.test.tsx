@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureEur, fixtureUsd } from '@/test/fixtures'
 import { ImportWizard } from '../ImportWizard'
 import { profileColumns } from '../columns'
 import { guessAnswers, redetectFormats } from '../guess'
@@ -149,6 +149,49 @@ it('per-row accounts take the currency their own rows name, the user’s otherwi
   expect(screen.getByRole('combobox', { name: 'Currency for Trip' })).toHaveValue('EUR, €, Euro')
   expect(screen.getByRole('combobox', { name: 'Currency for Home' })).toHaveValue('USD, $, US Dollar')
   expect(screen.getByRole('combobox', { name: 'Currency for Mixed' })).toHaveValue('USD, $, US Dollar')
+})
+
+const WS_EXPORT =
+  'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
+  'a1,WS Cash,CAD,Interest,Transfer of 1 CAD,,,WealthSimple,-4.5,2026-11-08 14:05:09\n' +
+  'a2,WS Cash,CAD,Strata,,,,ICBC,100,2026-11-07 09:00:00\n'
+const fixtureCad = { ...fixtureUsd, id: 'cur-cad', code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' }
+
+// an export opens on the Check step; the Account step is one tap away in the step list
+async function openExportAccountStep(user: ReturnType<typeof userEvent.setup>) {
+  renderWizard(WS_EXPORT)
+  await user.click(await screen.findByRole('button', { name: /^Account/ }))
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+}
+
+it('an Econumo export prefills a per-row account’s currency from account_currency', async () => {
+  server.use(...coreHandlers({ currencies: [fixtureUsd, fixtureEur, fixtureCad] }))
+  const user = userEvent.setup()
+  await openExportAccountStep(user)
+  expect(screen.getByRole('radio', { name: 'Each row says which account' })).toBeChecked()
+  expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
+  expect(screen.queryByText(/The file says CAD/)).not.toBeInTheDocument()
+  // choosing the account column again reads the currency from the file the same way
+  await user.click(screen.getByRole('radio', { name: 'payee' }))
+  expect(screen.queryByRole('combobox', { name: 'Currency for WS Cash' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'account_name' }))
+  expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
+})
+
+it('a per-row account whose file currency is not set up here keeps the user’s currency, with a note', async () => {
+  await openExportAccountStep(userEvent.setup())
+  const row = within(screen.getByRole('list', { name: 'Accounts in this file' })).getByRole('listitem')
+  expect(within(row).getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('USD, $, US Dollar')
+  expect(row).toHaveTextContent("The file says CAD, which isn't set up here. You can add it in Settings.")
+})
+
+it('a new account for a file in a currency not set up here says so under its currency', async () => {
+  renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,CAD\n2026-01-03,7.00,CAD\n')
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'A new account' }))
+  expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
+  expect(screen.getByText("The file says CAD, which isn't set up here. You can add it in Settings.")).toBeInTheDocument()
 })
 
 it('choosing another column makes it the date and marks the Date step as answered', async () => {

@@ -444,7 +444,8 @@
         "found": "此文件中的账户",
         "existing_name": "已有账户",
         "currency_of": "{name} 的货币",
-        "name_hint": "以后可以改名"
+        "name_hint": "以后可以改名",
+        "currency_unknown": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。"
       },
       "date": {
         "title": "哪一列表示每笔付款的时间？",

@@ -759,10 +759,14 @@ navigation (single-pane vs sidebar).
       is empty", a non-CSV one "This file couldn't be read as a spreadsheet
       (CSV)", and each stays on Your file. No screen uses the words "mapping",
       "field" or "CSV column". Every "which column" question ("Which column
-      says when each payment happened?") is a list of radio options, two per
-      row on a desktop, one per row on a phone: each shows the header and its
-      first values on one line ("02.10.2026 · 03.10.2026 · 05.10.2026"), the
-      guessed one is already chosen, and a column another step uses carries a
+      says when each payment happened?") is ONE rounded list with thin lines
+      between rows (no grid of cards), on Account's per-row option, Date,
+      Amount (both lists of "Money in and money out", one under the other) and
+      Description: each row is a radio, the header and its first values
+      ("02.10.2026 · 03.10.2026 · 05.10.2026") in smaller grey text, beside the
+      header on a desktop and under it on a 390 px phone; the whole row is
+      tappable, the chosen one is tinted, arrow keys move the choice, a
+      "no column" answer is the list's last row, the guessed one is already chosen, and a column another step uses carries a
       small grey tag ("now payee", "now description"). Columns of a kind that
       cannot answer (numbers on Date, text on Amount) wait behind "Show N more
       columns". No table, no dropdowns of bare header names.
@@ -879,11 +883,15 @@ navigation (single-pane vs sidebar).
       the owner's lists as for the owner;
       "A new account" asks a name and a currency (pre-filled from a currency
       column when every row names the same code the app knows, e.g. `EUR`;
-      the user's currency otherwise, always changeable); "Each row says which
+      the user's currency otherwise, always changeable; when that code is one
+      the app has no currency for, e.g. `CAD`, the user's currency is
+      pre-filled and a grey note under the picker reads "The file says CAD,
+      which isn't set up here. You can add it in Settings."); "Each row says which
       account" asks for the column, then lists the names found: one matching
       a writable account (any letter case) reads "Existing account", every
       other gets its own currency picker, pre-filled with the currency its own
-      rows name when they name exactly one. Import creates the new accounts
+      rows name when they name exactly one (an unknown code gets the same
+      grey note under that account's picker). Import creates the new accounts
       (in the user's first visible folder, never a hidden one, or "General"
       for a user with none) and
       puts each row in its account; a name found only on rows that will be
@@ -895,8 +903,10 @@ navigation (single-pane vs sidebar).
       with the UI in English and in another language: the wizard skips
       straight to Check, with "Accounts in this file" listing each account; a
       new one has a currency picker prefilled from the file's
-      `account_currency` (EUR stays EUR when the instance has EUR; otherwise
-      the user's currency). Every column is used by itself, the tags column
+      `account_currency` (CAD stays CAD when the instance has CAD, also for a
+      user whose currency is USD; otherwise the user's currency with the note
+      "The file says CAD, which isn't set up here. You can add it in
+      Settings."). Every column is used by itself, the tags column
       included, and the imported rows keep their account, category, payee,
       budget tag and reporting tags, also on a transaction with more than 10
       reporting tags (the limit is 50, as when entering a transaction). The

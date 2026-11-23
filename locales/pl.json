@@ -444,7 +444,8 @@
         "found": "Konta w tym pliku",
         "existing_name": "Istniejące konto",
         "currency_of": "Waluta dla {name}",
-        "name_hint": "Nazwę możesz zmienić później"
+        "name_hint": "Nazwę możesz zmienić później",
+        "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach."
       },
       "date": {
         "title": "Która kolumna mówi, kiedy była każda płatność?",

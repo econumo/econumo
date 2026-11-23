@@ -444,7 +444,8 @@
         "found": "Conti in questo file",
         "existing_name": "Conto esistente",
         "currency_of": "Valuta di {name}",
-        "name_hint": "Puoi rinominarlo più tardi"
+        "name_hint": "Puoi rinominarlo più tardi",
+        "currency_unknown": "Il file indica {code}, che qui non è configurata. Puoi aggiungerla nelle Impostazioni."
       },
       "date": {
         "title": "Quale colonna indica quando è avvenuto ogni pagamento?",

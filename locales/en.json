@@ -444,7 +444,8 @@
         "found": "Accounts in this file",
         "existing_name": "Existing account",
         "currency_of": "Currency for {name}",
-        "name_hint": "You can rename it later"
+        "name_hint": "You can rename it later",
+        "currency_unknown": "The file says {code}, which isn't set up here. You can add it in Settings."
       },
       "date": {
         "title": "Which column says when each payment happened?",

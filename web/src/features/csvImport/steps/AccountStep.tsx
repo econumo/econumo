@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags } from '../columnLabels'
 import { Field, Segmented, SkippedNote } from '../controls'
-import { currencyColumn, fileCurrencyId, rowsCurrencyId } from '../fileCurrency'
+import { currencyColumn, fileCurrencyId, rowsCurrencyId, unknownRowsCurrency } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice } from '../prepare'
 import { defaultAccountName, distinctNames, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
@@ -26,8 +26,19 @@ const ownCurrency = (currencies: Record<string, string>, key: string) => (Object
 
 const NAME_DELAY_MS = 300
 
-function NewAccountFields({ account, onChange, onNameChange }: {
+// The fallback currency stays; the note says why it is not the file's own.
+function UnknownCurrencyNote({ code }: { code: string }) {
+  const { t } = useTranslation()
+  return (
+    <p className="text-xs text-muted-foreground">
+      {t('transactions.import_wizard.account.currency_unknown', { code })}
+    </p>
+  )
+}
+
+function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
   account: NewAccount
+  unknownCode: string | null
   onChange: (account: NewAccount) => void
   onNameChange: (account: NewAccount) => void
 }) {
@@ -47,11 +58,14 @@ function NewAccountFields({ account, onChange, onNameChange }: {
           }}
         />
       </Field>
-      <CurrencyField
-        label={t('transactions.import_wizard.account.currency')}
-        value={account.currencyId || null}
-        onChange={(currencyId) => onChange({ ...account, name, currencyId })}
-      />
+      <div className="flex flex-col gap-1.5">
+        <CurrencyField
+          label={t('transactions.import_wizard.account.currency')}
+          value={account.currencyId || null}
+          onChange={(currencyId) => onChange({ ...account, name, currencyId })}
+        />
+        {unknownCode ? <UnknownCurrencyNote code={unknownCode} /> : null}
+      </div>
     </div>
   )
 }
@@ -65,7 +79,20 @@ export function PerRowAccounts({ file, account, existing, fallbackCurrency, onCh
 }) {
   const { t } = useTranslation()
   const headingId = useId()
+  const { data: currencies = [] } = useCurrencies()
   const names = useMemo(() => distinctNames(file, account.column), [file, account.column])
+  // what each account's own rows say, when it is a code this instance has no currency for
+  const unknownCodes = useMemo(() => {
+    const codes = currencyColumn(file, currencies)
+    const found = new Map<string, string>()
+    if (codes === null) return found
+    for (const name of names) {
+      const key = nameKey(name)
+      const code = unknownRowsCurrency(file.rows.filter((row) => nameKey(row[account.column] ?? '') === key), codes, currencies)
+      if (code !== null) found.set(key, code)
+    }
+    return found
+  }, [file, account.column, names, currencies])
   if (names.length === 0) return null
   return (
     <div className="flex flex-col gap-2">
@@ -75,17 +102,21 @@ export function PerRowAccounts({ file, account, existing, fallbackCurrency, onCh
       <ul aria-labelledby={headingId} className="divide-y divide-border rounded-xl border border-border">
         {names.map((name) => {
           const key = nameKey(name)
+          const unknownCode = unknownCodes.get(key)
           return (
             <li key={key} className="grid grid-cols-1 items-center gap-2 px-3 py-2 sm:grid-cols-2">
               <span className="truncate text-sm">{name}</span>
               {existing.has(key) ? (
                 <span className="text-sm text-muted-foreground">{t('transactions.import_wizard.account.existing_name')}</span>
               ) : (
-                <CurrencyField
-                  label={t('transactions.import_wizard.account.currency_of', { name })}
-                  value={ownCurrency(account.currencies, key) ?? fallbackCurrency}
-                  onChange={(currencyId) => onChange({ ...account, currencies: { ...account.currencies, [key]: currencyId } })}
-                />
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <CurrencyField
+                    label={t('transactions.import_wizard.account.currency_of', { name })}
+                    value={ownCurrency(account.currencies, key) ?? fallbackCurrency}
+                    onChange={(currencyId) => onChange({ ...account, currencies: { ...account.currencies, [key]: currencyId } })}
+                  />
+                  {unknownCode ? <UnknownCurrencyNote code={unknownCode} /> : null}
+                </div>
               )}
             </li>
           )
@@ -136,6 +167,7 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
   const existing = useMemo(() => new Set(writable.map((a) => nameKey(a.name))), [writable])
   const { data: currencies = [] } = useCurrencies()
   const currencyId = userCurrencyId(user) ?? ''
+  const fileUnknownCode = useMemo(() => unknownRowsCurrency(state.file.rows, currencyColumn(state.file, currencies), currencies), [state.file, currencies])
   const title = t('transactions.import_wizard.account.title')
   const columnQuestion = t('transactions.import_wizard.account.column_question')
   const { account } = state.answers
@@ -216,7 +248,14 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
         ]}
         onChange={choose}
       />
-      {option === 'new' && account?.kind === 'new' ? <NewAccountFields account={account} onChange={set} onNameChange={typeName} /> : null}
+      {option === 'new' && account?.kind === 'new' ? (
+        <NewAccountFields
+          account={account}
+          unknownCode={fileUnknownCode}
+          onChange={set}
+          onNameChange={typeName}
+        />
+      ) : null}
       {option === 'existing' ? (
         <AccountList
           accounts={writable}

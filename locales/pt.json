@@ -444,7 +444,8 @@
         "found": "Contas neste ficheiro",
         "existing_name": "Conta existente",
         "currency_of": "Moeda de {name}",
-        "name_hint": "Pode mudar o nome mais tarde"
+        "name_hint": "Pode mudar o nome mais tarde",
+        "currency_unknown": "O ficheiro indica {code}, que não está configurada aqui. Pode adicioná-la nas Definições."
       },
       "date": {
         "title": "Que coluna indica quando foi feito cada pagamento?",
