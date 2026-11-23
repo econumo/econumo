@@ -206,13 +206,16 @@ function withOption(user: CurrentUserDto, name: UserOptions, value: string): Cur
 const updateAiSuggestionsKey = ['user', 'update-ai-suggestions'] as const
 
 // Each switch posts both values, taking the other from the cached user, so the cache changes at
-// once: a second toggle before the first answer must read the first one's value.
+// once (onMutate runs at the click, even for a queued write): a second toggle before the first
+// answer must read the first one's value. The writes are queued in one scope so the server
+// commits them in click order and the latest toggle wins.
 export function useUpdateAiSuggestions() {
   const queryClient = useQueryClient()
-  // the mutation calling this still counts itself
-  const othersInFlight = () => queryClient.isMutating({ mutationKey: updateAiSuggestionsKey }) > 1
+  // the mutation calling this still counts itself; a queued one counts too
+  const othersPending = () => queryClient.isMutating({ mutationKey: updateAiSuggestionsKey }) > 1
   return useMutation({
     mutationKey: updateAiSuggestionsKey,
+    scope: { id: 'user-update-ai-suggestions' },
     mutationFn: (body: { suggestRules: boolean; suggestFill: boolean }) => userApi.updateAiSuggestions(body),
     onMutate: async ({ suggestRules, suggestFill }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.user })
@@ -223,14 +226,14 @@ export function useUpdateAiSuggestions() {
       }
       return { previous }
     },
+    // While a later toggle is queued, its answer settles the cache: it carries the full state.
     onError: (_err, _vars, context) => {
-      // a later toggle still in flight carries its own values; its answer or the refetch settles them
-      if (context?.previous && !othersInFlight()) queryClient.setQueryData(queryKeys.user, context.previous)
+      if (othersPending()) return
+      if (context?.previous) queryClient.setQueryData(queryKeys.user, context.previous)
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
     },
     onSuccess: (user, { suggestRules, suggestFill }) => {
-      // an earlier answer would put back the switch a later toggle already changed
-      if (!othersInFlight()) queryClient.setQueryData(queryKeys.user, user)
+      if (!othersPending()) queryClient.setQueryData(queryKeys.user, user)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       trackEvent(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: suggestRules, fill: suggestFill })
