@@ -380,7 +380,7 @@ global app and prints its secret once. CLI-created users never get a trial.
   the six public `oauth` routes.
 - **Read-only access**: a `readonly` caller gets HTTP 402 on any `POST` outside the
   middleware's allowlist (account security actions, `update-analytics`, `update-ai`,
-  `update-last-seen-version`, declining or approving a `read` authorization). `GET` is never
+  `update-ai-suggestions`, `update-last-seen-version`, declining or approving a `read` authorization). `GET` is never
   restricted.
 - **`Idempotency-Key`** (`internal/web/middleware/idempotency.go`): the SPA sends a UUIDv7 on
   every `POST`. The server checks the table BEFORE the handler and records the key inside the
@@ -518,7 +518,7 @@ Specs: `2026-11-13-debts-on-elements-design.md` (the current model),
 
 ### Transaction import (`internal/imports`)
 
-Spec `2026-08-15-transaction-import-design.md`. 33 routes under `/api/v1/import/`; no MCP
+Spec `2026-08-15-transaction-import-design.md`. 36 routes under `/api/v1/import/`; no MCP
 surface.
 
 - One `import_sources` row per user per provider. Apple Wallet is a push provider (scope
@@ -535,7 +535,12 @@ surface.
 - **AI rule suggestions** (spec `2026-11-11-ai-import-rule-suggestions-design.md`): after a
   live import leaves rows unclassified, a background job proposes a rule, landing in the
   owner's Inbox. One open suggestion per (owner, merchant, type); one owner's jobs run one at
-  a time.
+  a time. The same AI pass also proposes a category and payee per transaction
+  (`import_transaction_suggestions`, Inbox "Imported transactions", Fill in writes only empty
+  fields and reads as a hand edit to apply-rule; spec
+  `2026-11-22-ai-import-suggestion-settings-design.md`). The user options `ai_suggest_rules`
+  and `ai_suggest_fill` (`update-ai-suggestions`, absent = on) switch each kind; both off = no
+  AI call.
 
 ### AI integration (`internal/infra/ai`)
 

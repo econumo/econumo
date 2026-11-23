@@ -1,6 +1,6 @@
 # AI import suggestions: settings and per-transaction suggestions
 
-Date: 2026-11-22. Status: draft, awaiting approval.
+Date: 2026-11-22. Status: approved, implemented (PR #501).
 
 Builds on `2026-11-11-ai-import-rule-suggestions-design.md` (the AI rule suggestions job,
 #473). Everything that spec says still holds unless this one changes it.
