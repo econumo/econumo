@@ -66,7 +66,8 @@ export function AmountStep({ state, setAnswers, choosing, choose, next }: StepBo
   const separator = useMemo(() => detectDecimalSeparator(values), [values])
   const spending = amount.mode === 'single' && amount.column !== null ? spendingExample(values, amount) : null
   const separatorExample = separator.ambiguous ? separator.example : null
-  const readable = state.rows.filter((row) => row.status === 'ok')
+  // every row whose amount reads, also one left out for its date: hasGuess counts the same rows
+  const readable = state.rows.filter((row) => row.amount !== null)
   const examples = readable.slice(0, EXAMPLE_ROWS)
   const guessed = hasGuess('amount', state)
   const open = choosing || !guessed

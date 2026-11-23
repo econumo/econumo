@@ -62,6 +62,11 @@ it('offers each detail what the earlier steps left free, values first', () => {
   expect(screen.getByRole('combobox', { name: 'Reporting tags' })).toHaveValue('')
 })
 
+it('ids are not offered as a detail', () => {
+  renderStep('Date,Amount,Ref,Memo\n2026-01-02,-5,01a1be03-f8df-7603-b2b1-2c3d4e5f6a7b,lunch\n')
+  expect(optionsOf('Payee')).toEqual(['Don’t bring it', 'lunch — from “Memo”'])
+})
+
 it('choosing a column for a detail brings it over', async () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
   const user = userEvent.setup()

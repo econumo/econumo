@@ -123,6 +123,17 @@ it('marks an unanswered account and a date column that leaves rows unread', asyn
   expect(screen.getByRole('button', { name: 'Amount' })).toBeInTheDocument()
 })
 
+it('with no date chosen yet, Amount still answers with the amounts the file reads', async () => {
+  renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,1.00,x\n') })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(screen.getByRole('button', { name: 'Amount' })).toHaveAccessibleDescription('−5.50 · +1.00')
+  await user.click(screen.getByRole('button', { name: 'Amount' }))
+  const items = screen.getAllByRole('listitem')
+  expect(items.map((item) => item.textContent)).toEqual(expect.arrayContaining([expect.stringMatching(/^−5\.5/), expect.stringMatching(/^\+1/)]))
+  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+})
+
 it('choosing a different date column on its step clears the warning', async () => {
   renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,1.00,x\n') })
   const user = userEvent.setup()

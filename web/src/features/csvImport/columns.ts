@@ -38,13 +38,14 @@ const isNumber = (v: string) => parseAmountCell(v, '.') !== null || parseAmountC
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const CODE = /^[A-Za-z0-9_\-./]{10,}$/
+// a run of digits, not digits spread out: "02-Jan-2026" or "2026.01.02." is a date the reader missed
+const DIGIT_RUN = /\d{6,}/
 const LONG_INTEGER = /^\d{9,}$/
-const DIGITS = /\d/g
 
 function looksInternal(type: ColumnType, values: string[]): boolean {
   if (values.length === 0 || type === 'date' || type === 'empty') return false
   if (type === 'number') return values.every((v) => LONG_INTEGER.test(v))
-  return values.every((v) => UUID.test(v) || (CODE.test(v) && (v.match(DIGITS)?.length ?? 0) >= 6))
+  return values.every((v) => UUID.test(v) || (CODE.test(v) && DIGIT_RUN.test(v)))
 }
 
 export function profileColumns(file: ParsedFile): ColumnProfile[] {

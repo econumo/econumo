@@ -33,7 +33,7 @@ export function stepSummary(step: Exclude<StepId, 'file'>, ctx: SummaryContext):
       }
       if (account?.kind === 'column') {
         const names = new Map<string, string>()
-        for (const row of rows) if (row.status === 'ok' && row.account !== null && !names.has(nameKey(row.account))) names.set(nameKey(row.account), row.account.trim())
+        for (const row of rows) if (row.account !== null && !names.has(nameKey(row.account))) names.set(nameKey(row.account), row.account.trim())
         const [first] = names.values()
         if (first === undefined) return k('not_chosen')
         return names.size === 1 ? k('from_account', { name: first }) : pluralPick(k('from_accounts', { name: first }), names.size - 1, language)
@@ -49,7 +49,7 @@ export function stepSummary(step: Exclude<StepId, 'file'>, ctx: SummaryContext):
       if (missingAnswer('amount', answers)) return k('not_chosen')
       const format = new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 20 })
       const amounts = rows
-        .filter((row) => row.status === 'ok' && row.amount !== null)
+        .filter((row) => row.amount !== null)
         .slice(0, SUMMARY_AMOUNTS)
         .map((row) => `${isNegative(row.amount as string) ? '−' : '+'}${format.format(Number(abs(row.amount as string)))}`)
       return amounts.length > 0 ? amounts.join(' · ') : k('not_chosen')

@@ -223,7 +223,7 @@ it('choosing another column makes it the date and marks the Date step as answere
   expect(screen.getByText('(from “Valued”)').parentElement).toHaveTextContent('Jan 5, 2026 (from “Valued”)')
 })
 
-it('a column of a kind that cannot answer waits behind “more columns”, unless it is the one chosen', async () => {
+it('a column of a kind that cannot answer waits behind “Show N more”, unless it is the one chosen', async () => {
   render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,lunch\n'} Step={DateStep} onSet={vi.fn()} />)
   const user = userEvent.setup()
   expect(screen.queryByRole('radio', { name: /from “Amount”/ })).not.toBeInTheDocument()

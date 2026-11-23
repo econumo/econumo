@@ -43,4 +43,9 @@ describe('profileColumns', () => {
     )
     expect(profileColumns(p).map((c) => c.internal)).toEqual([true, true, true, false, false, false, false])
   })
+
+  it('never marks a date the reader could not parse as internal', () => {
+    const p = parseCsvText('when;also\n02-Jan-2026;2026.01.02.\n03-Jan-2026;2026.01.03.\n')
+    expect(profileColumns(p).map((c) => c.internal)).toEqual([false, false])
+  })
 })

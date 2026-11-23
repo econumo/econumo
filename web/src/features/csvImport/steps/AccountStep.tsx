@@ -73,7 +73,7 @@ function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
 
 export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency, onChange, heading }: {
   file: ParsedFile
-  /** the prepared rows: each account says how many of them it gets */
+  /** the prepared rows: each account says how many of them name it */
   rows?: PreparedRow[]
   account: PerRow
   existing: ReadonlySet<string>
@@ -100,7 +100,7 @@ export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency
   const counts = useMemo(() => {
     const found = new Map<string, number>()
     for (const row of rows ?? []) {
-      if (row.status !== 'ok' || row.account === null) continue
+      if (row.account === null) continue
       const key = nameKey(row.account)
       found.set(key, (found.get(key) ?? 0) + 1)
     }

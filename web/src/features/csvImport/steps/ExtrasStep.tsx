@@ -134,7 +134,7 @@ export function ExtrasStep({ state, setAnswers, choosing, choose, next }: StepBo
                   onChange={(e) => assign(role, e.target.value === '' ? null : Number(e.target.value))}
                 >
                   <NativeSelectOption value="">{t('transactions.import_wizard.extras.leave_out')}</NativeSelectOption>
-                  {offered.map((p) => (
+                  {offered.filter((p) => !p.internal || p.index === extras[role]).map((p) => (
                     <NativeSelectOption key={p.index} value={String(p.index)}>
                       {option(p)}
                     </NativeSelectOption>
