@@ -11,8 +11,10 @@ import { guessAnswers, redetectFormats } from '../guess'
 import { parseCsvText } from '../parse'
 import { prepareRows, type StepId, type WizardAnswers } from '../prepare'
 import type { StepBodyProps } from '../wizard'
+import { ColumnChoices } from '../ColumnChoices'
 import { AmountStep } from './AmountStep'
 import { DateStep } from './DateStep'
+import { DescriptionStep } from './DescriptionStep'
 
 const csv = (text: string, name = 'statement.csv') => new File([text], name, { type: 'text/csv' })
 
@@ -28,8 +30,16 @@ function renderWizard(text: string) {
 
 // A step on its own, with answers kept the way the wizard keeps them; the first
 // prepared row is what the Check step's first card shows.
-function StepHarness({ text, Step, onSet }: { text: string; Step: ComponentType<StepBodyProps>; onSet: (step: StepId, patch: Partial<WizardAnswers>) => void }) {
+function StepHarness({ text, Step, onSet, open = true, onNext = () => {} }: {
+  text: string
+  Step: ComponentType<StepBodyProps>
+  onSet: (step: StepId, patch: Partial<WizardAnswers>) => void
+  /** the list of choices starts open, as after "Not right? Choose differently" */
+  open?: boolean
+  onNext?: () => void
+}) {
   const [file] = useState(() => parseCsvText(text))
+  const [choosing, setChoosing] = useState(open)
   const [profiles] = useState(() => profileColumns(file))
   const [answers, setAnswersState] = useState(() =>
     guessAnswers(file, profiles, { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB', defaultAccountName: 'statement' }),
@@ -49,6 +59,9 @@ function StepHarness({ text, Step, onSet }: { text: string; Step: ComponentType<
         setAnswers={setAnswers}
         setFixes={() => {}}
         goTo={() => {}}
+        choosing={choosing}
+        choose={() => setChoosing(true)}
+        next={onNext}
       />
       <output aria-label="first row date">{rows[0]?.date ?? ''}</output>
     </>,
@@ -92,7 +105,7 @@ it('a typed account name is kept when the step is left before the pause, with th
   name.focus()
   fireEvent.change(name, { target: { value: 'Travel card' } })
   fireEvent.click(screen.getByRole('button', { name: /^Date/ }))
-  expect(screen.getByRole('heading', { name: 'Which column says when each payment happened?' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'When did each payment happen?' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /^Account/ }))
   expect(screen.getByLabelText('Account name')).toHaveValue('Travel card')
 })
@@ -123,11 +136,11 @@ it('lists the accounts a per-row column names, with a currency only for the new 
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
-  await user.click(screen.getByRole('radio', { name: /^Wallet/ }))
-  const list = screen.getByRole('list', { name: 'Accounts in this file' })
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  const list = screen.getByRole('list', { name: /^Your file names the account for each transaction:/ })
   const rows = within(list).getAllByRole('listitem')
   expect(rows).toHaveLength(2)
-  expect(rows[0]).toHaveTextContent('CashExisting account')
+  expect(rows[0]).toHaveTextContent('Cash · 2 transactionsExisting account')
   expect(within(rows[0]).queryByRole('combobox')).not.toBeInTheDocument()
   expect(within(rows[1]).getByRole('combobox', { name: 'Currency for Travel card' })).toHaveValue('USD, $, US Dollar')
 })
@@ -145,7 +158,7 @@ it('per-row accounts take the currency their own rows name, the user’s otherwi
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
-  await user.click(screen.getByRole('radio', { name: 'Wallet' }))
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
   expect(screen.getByRole('combobox', { name: 'Currency for Trip' })).toHaveValue('EUR, €, Euro')
   expect(screen.getByRole('combobox', { name: 'Currency for Home' })).toHaveValue('USD, $, US Dollar')
   expect(screen.getByRole('combobox', { name: 'Currency for Mixed' })).toHaveValue('USD, $, US Dollar')
@@ -172,15 +185,16 @@ it('an Econumo export prefills a per-row account’s currency from account_curre
   expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
   expect(screen.queryByText(/The file says CAD/)).not.toBeInTheDocument()
   // choosing the account column again reads the currency from the file the same way
-  await user.click(screen.getByRole('radio', { name: 'payee' }))
+  await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
+  await user.click(screen.getByRole('radio', { name: /from “payee”/ }))
   expect(screen.queryByRole('combobox', { name: 'Currency for WS Cash' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('radio', { name: 'account_name' }))
+  await user.click(screen.getByRole('radio', { name: /from “account_name”/ }))
   expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
 })
 
 it('a per-row account whose file currency is not set up here keeps the user’s currency, with a note', async () => {
   await openExportAccountStep(userEvent.setup())
-  const row = within(screen.getByRole('list', { name: 'Accounts in this file' })).getByRole('listitem')
+  const row = within(screen.getByRole('list', { name: /^Your file names the account for each transaction:/ })).getByRole('listitem')
   expect(within(row).getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('USD, $, US Dollar')
   expect(row).toHaveTextContent("The file says CAD, which isn't set up here. You can add it in Settings.")
 })
@@ -198,22 +212,25 @@ it('choosing another column makes it the date and marks the Date step as answere
   const onSet = vi.fn()
   render(<StepHarness text={'Date,Valued,Amount\n2026-01-02,2026-01-05,-5\n'} Step={DateStep} onSet={onSet} />)
   const user = userEvent.setup()
-  expect(screen.getByRole('radio', { name: /^Date/ })).toBeChecked()
-  expect(screen.getByRole('radio', { name: 'Valued' })).toHaveAccessibleDescription('2026-01-05')
-  await user.click(screen.getByRole('radio', { name: 'Valued' }))
+  expect(screen.getByRole('radio', { name: /from “Date”/ })).toBeChecked()
+  // values come first, written as dates; the file's own name follows
+  expect(screen.getByRole('radio', { name: /from “Valued”/ })).toHaveAccessibleName('Jan 5, 2026 from “Valued”')
+  await user.click(screen.getByRole('radio', { name: /from “Valued”/ }))
   expect(onSet).toHaveBeenCalledWith('date', { date: expect.objectContaining({ column: 1 }) })
-  expect(screen.getByRole('radio', { name: /^Valued/ })).toBeChecked()
+  expect(screen.getByRole('radio', { name: /from “Valued”/ })).toBeChecked()
   expect(screen.getByRole('status', { name: 'first row date' })).toHaveTextContent('2026-01-05')
-  expect(screen.getByText('“2026-01-05” will be read as')).toHaveTextContent('“2026-01-05” will be read as January 5, 2026')
+  // the answer reads the chosen values as dates
+  expect(screen.getByText('(from “Valued”)').parentElement).toHaveTextContent('Jan 5, 2026 (from “Valued”)')
 })
 
 it('a column of a kind that cannot answer waits behind “more columns”, unless it is the one chosen', async () => {
   render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,lunch\n'} Step={DateStep} onSet={vi.fn()} />)
   const user = userEvent.setup()
-  expect(screen.queryByRole('radio', { name: 'Amount' })).not.toBeInTheDocument()
-  expect(screen.getByRole('radio', { name: 'Memo' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Show 1 more column' }))
-  expect(screen.getByRole('radio', { name: 'Amount' })).toHaveAccessibleDescription('now amount -5')
+  expect(screen.queryByRole('radio', { name: /from “Amount”/ })).not.toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'lunch from “Memo”' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Show 1 more' }))
+  expect(screen.getByRole('radio', { name: /from “Amount”/ })).toHaveAccessibleName('-5.00 from “Amount”')
+  expect(screen.getByRole('radio', { name: /from “Amount”/ })).toHaveAccessibleDescription('used for amount')
 })
 
 it('asks how to read an ambiguous date, and the answer changes how the first row reads', async () => {
@@ -239,8 +256,8 @@ it('one amount column shows how spending looks with a switch to flip it; separat
   expect(screen.getByText('Spending shows as: 4.50')).toBeInTheDocument()
   await user.click(screen.getByRole('radio', { name: 'Money in and money out' }))
   expect(screen.queryByRole('switch', { name: 'Flip the signs' })).not.toBeInTheDocument()
-  expect(screen.getByRole('radiogroup', { name: 'Money in' })).toBeInTheDocument()
-  expect(screen.getByRole('radiogroup', { name: 'Money out' })).toBeInTheDocument()
+  expect(screen.getByRole('radiogroup', { name: 'Which of these is money in?' })).toBeInTheDocument()
+  expect(screen.getByRole('radiogroup', { name: 'Which of these is money out?' })).toBeInTheDocument()
 })
 
 it('with separate columns, each side picks its own column, and either side can be left without one', async () => {
@@ -248,25 +265,25 @@ it('with separate columns, each side picks its own column, and either side can b
   render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n2026-01-03,,7.00,\n'} Step={AmountStep} onSet={onSet} />)
   const user = userEvent.setup()
   await user.click(screen.getByRole('radio', { name: 'Money in and money out' }))
-  const moneyIn = () => within(screen.getByRole('radiogroup', { name: 'Money in' }))
-  const moneyOut = () => within(screen.getByRole('radiogroup', { name: 'Money out' }))
-  await user.click(moneyIn().getByRole('radio', { name: 'In' }))
-  expect(moneyIn().getByRole('radio', { name: 'In' })).toBeChecked()
-  await user.click(moneyOut().getByRole('radio', { name: 'Out' }))
-  expect(moneyOut().getByRole('radio', { name: 'Out' })).toBeChecked()
-  expect(moneyIn().getByRole('radio', { name: 'Out' })).toHaveAccessibleDescription('now money out 4.50')
-  await user.click(moneyOut().getByRole('radio', { name: 'The file has no money-out column' }))
+  const moneyIn = () => within(screen.getByRole('radiogroup', { name: 'Which of these is money in?' }))
+  const moneyOut = () => within(screen.getByRole('radiogroup', { name: 'Which of these is money out?' }))
+  await user.click(moneyIn().getByRole('radio', { name: /from “In”/ }))
+  expect(moneyIn().getByRole('radio', { name: /from “In”/ })).toBeChecked()
+  await user.click(moneyOut().getByRole('radio', { name: /from “Out”/ }))
+  expect(moneyOut().getByRole('radio', { name: /from “Out”/ })).toBeChecked()
+  expect(moneyIn().getByRole('radio', { name: /from “Out”/ })).toHaveAccessibleDescription('used for money out')
+  await user.click(moneyOut().getByRole('radio', { name: 'None of these is money out' }))
   expect(onSet).toHaveBeenLastCalledWith('amount', { amount: expect.objectContaining({ inColumn: 2, outColumn: null }) })
 })
 
-it('the amount step shows the first transactions as they will be added', () => {
-  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-4.50,Coffee\n2026-01-03,100,Salary\n'} Step={AmountStep} onSet={vi.fn()} />)
+it('the amount step answers with the first amounts as they will be added', () => {
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-4.50,Coffee\n2026-01-03,100,Salary\n'} Step={AmountStep} onSet={vi.fn()} open={false} />)
   const items = within(screen.getByRole('list', { name: 'How payments will look' })).getAllByRole('listitem')
   expect(items).toHaveLength(2)
-  expect(items[0]).toHaveTextContent(/^Coffee−4\.5/)
-  expect(items[1]).toHaveTextContent(/^Salary\+100/)
-  expect(within(items[1]).getByText(/^\+100/)).toHaveClass('text-income')
-  expect(within(items[0]).getByText(/^−4\.5/)).not.toHaveClass('text-income')
+  expect(items[0]).toHaveTextContent(/^−4\.5/)
+  expect(items[1]).toHaveTextContent(/^\+100/)
+  expect(items[1]).toHaveClass('text-income')
+  expect(items[0]).not.toHaveClass('text-income')
 })
 
 it('rows whose amount cannot be read are a quiet note, not a warning', () => {
@@ -296,4 +313,45 @@ it('with no negative amount, spending is shown with the file’s first amount, a
   expect(screen.getByText('Spending shows as: 12.00')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
   expect(screen.getByText('Spending shows as: -12.00')).toBeInTheDocument()
+})
+
+it('a guessed answer shows no choices; Looks right goes on and Choose differently opens them, neither answering anything', async () => {
+  const onSet = vi.fn()
+  const onNext = vi.fn()
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,Gehalt\n'} Step={DescriptionStep} onSet={onSet} open={false} onNext={onNext} />)
+  const user = userEvent.setup()
+  expect(screen.getByText('(from “Memo”)').parentElement).toHaveTextContent('REWE Markt · Gehalt (from “Memo”)')
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  expect(onNext).toHaveBeenCalledOnce()
+  await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
+  expect(screen.getByRole('radiogroup', { name: 'Which of these says what it was for?' })).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'REWE Markt · Gehalt from “Memo”' })).toBeChecked()
+  expect(onSet).not.toHaveBeenCalled()
+})
+
+it('ids and reference numbers wait behind “Show N more”, unless one is the chosen answer', async () => {
+  const text =
+    'Date,Amount,Ref,Memo\n' +
+    '2026-01-02,-5,01a1be03-f8df-7603-b2b1-2c3d4e5f6a7b,Coffee\n' +
+    '2026-01-03,7,b298d99e-4fb1-42ca-97a2-9f00d01aeb19,Salary\n'
+  const file = parseCsvText(text)
+  const profiles = profileColumns(file)
+  const onSelect = vi.fn()
+  const { rerender } = render(<ColumnChoices profiles={profiles} label="Which?" selected={3} onSelect={onSelect} fits={(type) => type === 'text'} />)
+  const user = userEvent.setup()
+  expect(screen.queryByRole('radio', { name: /from “Ref”/ })).not.toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'Coffee · Salary from “Memo”' })).toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'Show 3 more' }))
+  expect(screen.getByRole('radio', { name: /from “Ref”/ })).toBeInTheDocument()
+  rerender(<ColumnChoices key="fresh" profiles={profiles} label="Which?" selected={2} onSelect={onSelect} fits={(type) => type === 'text'} />)
+  expect(screen.getByRole('radio', { name: /from “Ref”/ })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'Show 2 more' })).toBeInTheDocument()
+})
+
+it('a file without a header row shows its values with no names beside them', () => {
+  const file = parseCsvText('2026-01-01,-1,Tea\n2026-01-02,-5,Coffee\n2026-01-03,7,Salary\n')
+  render(<ColumnChoices profiles={profileColumns(file)} label="Which?" selected={2} onSelect={vi.fn()} />)
+  expect(screen.getByRole('radio', { name: 'Coffee · Salary' })).toBeChecked()
+  expect(screen.queryByText(/from “/)).not.toBeInTheDocument()
 })

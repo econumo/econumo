@@ -405,7 +405,6 @@
       }
     },
     "import_wizard": {
-      "column_n": "Colonna {n}",
       "title": "Importa transazioni",
       "steps_label": "Passaggi dell’importazione",
       "needs_attention": "da controllare",
@@ -440,26 +439,27 @@
         "column": "Ogni riga indica il suo conto",
         "name": "Nome del conto",
         "currency": "Valuta",
-        "column_question": "Tocca la colonna con il nome del conto",
+        "column_question": "Quale di questi è il conto?",
         "found": "Conti in questo file",
         "existing_name": "Conto esistente",
         "currency_of": "Valuta di {name}",
         "name_hint": "Puoi rinominarlo più tardi",
-        "currency_unknown": "Il file indica {code}, che qui non è configurata. Puoi aggiungerla nelle Impostazioni."
+        "currency_unknown": "Il file indica {code}, che qui non è configurata. Puoi aggiungerla nelle Impostazioni.",
+        "per_row": "Il tuo file indica il conto di ogni movimento:",
+        "transactions": "{count} movimento | {count} movimenti"
       },
       "date": {
-        "title": "Quale colonna indica quando è avvenuto ogni pagamento?",
+        "title": "Quando è avvenuto ogni pagamento?",
         "question": "{example} è il {dmy} o il {mdy}?",
         "skipped": "{count} riga non ha una data leggibile e verrà saltata | {count} righe non hanno una data leggibile e verranno saltate",
-        "example": "«{value}» verrà letto come",
-        "not_a_date": "non è una data"
+        "choose": "Quale di questi è la data?"
       },
       "amount": {
-        "none_in": "Il file non ha una colonna delle entrate",
-        "none_out": "Il file non ha una colonna delle uscite",
+        "none_in": "Nessuno di questi sono entrate",
+        "none_out": "Nessuno di questi sono uscite",
         "skipped": "{count} riga non ha un importo leggibile e verrà saltata | {count} righe non hanno un importo leggibile e verranno saltate",
-        "title": "Quale colonna contiene il denaro?",
-        "single": "Una colonna, meno per le spese",
+        "title": "Quanto è stato ogni pagamento?",
+        "single": "Un importo, meno per le spese",
         "dual": "Entrate e uscite",
         "money_in": "Entrate",
         "money_out": "Uscite",
@@ -468,12 +468,15 @@
         "flip": "Inverti i segni",
         "mode": "Come sono indicati gli importi",
         "flip_hint": "Attivalo se la tua banca mostra i pagamenti senza segno meno",
-        "example_empty": "Scegli la colonna con il denaro per vedere come appariranno i pagamenti.",
-        "example_label": "Come appariranno i pagamenti"
+        "example_label": "Come appariranno i pagamenti",
+        "choose": "Quale di questi è l’importo?",
+        "choose_in": "Quale di questi sono le entrate?",
+        "choose_out": "Quale di questi sono le uscite?"
       },
       "description": {
         "none": "Il file non ha una descrizione",
-        "title": "Quale colonna indica a cosa serviva ogni pagamento?"
+        "title": "A cosa serviva ogni pagamento?",
+        "choose": "Quale di questi dice a cosa serviva?"
       },
       "extras": {
         "title": "Altro che valga la pena portare?",
@@ -484,7 +487,7 @@
           "tag": "Tag di budget",
           "labels": "Tag per i report"
         },
-        "separator_question": "Più tag in una cella sono separati da",
+        "separator_question": "Quando ci sono più tag, sono separati da",
         "tab": "Tabulazione",
         "newline": "A capo",
         "custom_separator": "Altro",
@@ -495,8 +498,9 @@
           "payee": "Chi hai pagato o chi ti ha pagato",
           "category": "Spesa, affitto… quelle che non hai ancora vengono create",
           "tag": "Un progetto o un viaggio",
-          "labels": "Più etichette in una cella vanno bene"
-        }
+          "labels": "Anche più di uno alla volta"
+        },
+        "answer": "Porteremo anche:"
       },
       "preview": {
         "title": "Ecco cosa verrà aggiunto",
@@ -535,19 +539,21 @@
       "rows": "{count} riga | {count} righe",
       "all_steps": "Tutti i passi",
       "column_empty": "vuota",
-      "more_columns": "Mostra {count} altra colonna | Mostra altre {count} colonne",
-      "now_used": "ora {role}",
+      "more_columns": "Mostra altri {count} | Mostra altri {count}",
+      "now_used": "usato per {role}",
       "summary": {
         "not_chosen": "Non scelto",
         "new_account": "Nuovo: {name} · {currency}",
-        "each_row": "Ogni riga: {column}",
-        "in_out": "Entrate: {in} · Uscite: {out}",
-        "flipped": "segni invertiti",
-        "none": "Nessuna",
+        "none": "Nessuna descrizione",
         "with": "Con {list}",
         "nothing_extra": "Nient’altro",
-        "check": "{count} da importare · {skipped} escluse | {count} da importare · {skipped} escluse"
-      }
+        "check": "{count} da importare · {skipped} escluse | {count} da importare · {skipped} escluse",
+        "from_account": "Da {name}",
+        "from_accounts": "Da {name} e {count} altro conto | Da {name} e altri {count} conti"
+      },
+      "from": "da «{name}»",
+      "looks_right": "Va bene",
+      "choose_differently": "Non è giusto? Scegli altro"
     },
     "import_result": {
       "success_title": "Importazione completata",

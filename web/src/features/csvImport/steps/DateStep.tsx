@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { pluralPick } from '@/lib/plural'
+import { formatDay } from '../accountView'
 import { ColumnChoices } from '../ColumnChoices'
-import { columnTags } from '../columnLabels'
-import { Example, Field, Segmented, SkippedNote } from '../controls'
+import { columnTags, fromName } from '../columnLabels'
+import { Answer, AnswerActions, Field, Segmented, SkippedNote } from '../controls'
 import { detectDateOrder, parseDateCell, type DateOrder } from '../dates'
 import { columnValues } from '../guess'
-import type { StepBodyProps } from '../wizard'
+import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
 
 function longDate(value: string, order: DateOrder, language: string): string | null {
   const parsed = parseDateCell(value, order)
@@ -17,9 +18,8 @@ function longDate(value: string, order: DateOrder, language: string): string | n
   )
 }
 
-export function DateStep({ state, setAnswers }: StepBodyProps) {
+export function DateStep({ state, setAnswers, choosing, choose, next }: StepBodyProps) {
   const { t, i18n } = useTranslation()
-  const title = t('transactions.import_wizard.date.title')
   const { date } = state.answers
   const values = useMemo(() => (date.column === null ? [] : columnValues(state.file, date.column)), [state.file, date.column])
   const detected = useMemo(() => (date.column === null ? null : detectDateOrder(values, navigator.language)), [values, date.column])
@@ -30,19 +30,28 @@ export function DateStep({ state, setAnswers }: StepBodyProps) {
   const dmy = ambiguous ? (longDate(ambiguous, 'dmy', i18n.language) ?? ambiguous) : ''
   const mdy = ambiguous ? (longDate(ambiguous, 'mdy', i18n.language) ?? ambiguous) : ''
   const question = ambiguous ? t('transactions.import_wizard.date.question', { example: ambiguous, dmy, mdy }) : ''
-  const sample = values[0] ?? null
-  const read = sample === null ? null : longDate(sample, date.order, i18n.language)
+  const guessed = hasGuess('date', state)
+  const open = choosing || !guessed
+  const days = firstDistinct(state.rows, (row) => row.date)
 
   return (
     <div className="flex flex-col gap-6">
-      <ColumnChoices
-        profiles={state.profiles}
-        label={title}
-        selected={date.column}
-        onSelect={(column) => setAnswers('date', { date: { ...date, column } })}
-        fits={(type) => type === 'date' || type === 'text'}
-        tags={columnTags(state.answers, t, i18n.language, ['date'])}
-      />
+      {guessed ? (
+        <Answer from={date.column === null ? null : fromName(state.profiles[date.column], state.profiles, t)}>
+          {days.values.map((day) => formatDay(day, i18n.language)).join(' · ')}
+          {days.more ? ' …' : ''}
+        </Answer>
+      ) : null}
+      {open ? (
+        <ColumnChoices
+          profiles={state.profiles}
+          label={t('transactions.import_wizard.date.choose')}
+          selected={date.column}
+          onSelect={(column) => setAnswers('date', { date: { ...date, column } })}
+          fits={(type) => type === 'date' || type === 'text'}
+          tags={columnTags(state.answers, t, i18n.language, ['date'])}
+        />
+      ) : null}
       {ambiguous ? (
         <Field label={question}>
           <Segmented<DateOrder>
@@ -56,13 +65,8 @@ export function DateStep({ state, setAnswers }: StepBodyProps) {
           />
         </Field>
       ) : null}
-      {sample !== null ? (
-        <Example>
-          {t('transactions.import_wizard.date.example', { value: sample })}{' '}
-          <span className="text-foreground">{read ?? t('transactions.import_wizard.date.not_a_date')}</span>
-        </Example>
-      ) : null}
       {unreadable > 0 ? <SkippedNote>{pluralPick(t('transactions.import_wizard.date.skipped'), unreadable, i18n.language)}</SkippedNote> : null}
+      {open ? null : <AnswerActions onConfirm={next} onChoose={choose} />}
     </div>
   )
 }

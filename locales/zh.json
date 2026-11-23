@@ -405,7 +405,6 @@
       }
     },
     "import_wizard": {
-      "column_n": "第 {n} 列",
       "title": "导入交易",
       "steps_label": "导入步骤",
       "needs_attention": "需要你留意",
@@ -440,26 +439,27 @@
         "column": "每一行写明了所属账户",
         "name": "账户名称",
         "currency": "货币",
-        "column_question": "点选账户名称所在的列",
+        "column_question": "哪一项是账户？",
         "found": "此文件中的账户",
         "existing_name": "已有账户",
         "currency_of": "{name} 的货币",
         "name_hint": "以后可以改名",
-        "currency_unknown": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。"
+        "currency_unknown": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。",
+        "per_row": "您的文件为每笔交易写明了账户：",
+        "transactions": "{count} 笔交易"
       },
       "date": {
-        "title": "哪一列表示每笔付款的时间？",
+        "title": "每笔付款是什么时候发生的？",
         "question": "{example} 是 {dmy} 还是 {mdy}？",
         "skipped": "{count} 行没有可识别的日期，将被跳过",
-        "example": "“{value}”将读作",
-        "not_a_date": "不是日期"
+        "choose": "哪一项是日期？"
       },
       "amount": {
-        "none_in": "文件中没有收入列",
-        "none_out": "文件中没有支出列",
+        "none_in": "这里没有收入",
+        "none_out": "这里没有支出",
         "skipped": "{count} 行没有可识别的金额，将被跳过",
-        "title": "哪一列是金额？",
-        "single": "一列，支出用负号",
+        "title": "每笔付款是多少钱？",
+        "single": "一个金额，支出用负号",
         "dual": "收入和支出",
         "money_in": "收入",
         "money_out": "支出",
@@ -468,12 +468,15 @@
         "flip": "反转正负号",
         "mode": "金额的表示方式",
         "flip_hint": "如果你的银行列出付款时不带负号，请打开",
-        "example_empty": "选择含金额的列，即可看到付款的样子。",
-        "example_label": "付款将显示为"
+        "example_label": "付款将显示为",
+        "choose": "哪一项是金额？",
+        "choose_in": "哪一项是收入？",
+        "choose_out": "哪一项是支出？"
       },
       "description": {
         "none": "文件中没有描述",
-        "title": "哪一列说明每笔付款的用途？"
+        "title": "每笔付款是用来做什么的？",
+        "choose": "哪一项说明了用途？"
       },
       "extras": {
         "title": "还有其他值得带过来的吗？",
@@ -484,7 +487,7 @@
           "tag": "预算标签",
           "labels": "统计标签"
         },
-        "separator_question": "一个单元格中的多个标签用以下符号分隔",
+        "separator_question": "有多个标签时，它们之间用以下符号分隔",
         "tab": "制表符",
         "newline": "换行",
         "custom_separator": "其他",
@@ -495,8 +498,9 @@
           "payee": "你付款给谁或谁付款给你",
           "category": "买菜、房租……没有的会自动创建",
           "tag": "一个项目或一次旅行",
-          "labels": "一个单元格里可以有多个标签"
-        }
+          "labels": "可以同时有多个"
+        },
+        "answer": "还会一起带过来："
       },
       "preview": {
         "title": "以下内容将被添加",
@@ -535,19 +539,21 @@
       "rows": "{count} 行",
       "all_steps": "全部步骤",
       "column_empty": "空",
-      "more_columns": "再显示 {count} 列",
+      "more_columns": "再显示 {count} 项",
       "now_used": "已用作{role}",
       "summary": {
         "not_chosen": "未选择",
         "new_account": "新建：{name} · {currency}",
-        "each_row": "每行注明：{column}",
-        "in_out": "收入：{in} · 支出：{out}",
-        "flipped": "正负号已反转",
-        "none": "无",
+        "none": "无描述",
         "with": "包括{list}",
         "nothing_extra": "无其他",
-        "check": "{count} 笔待导入 · {skipped} 笔不导入"
-      }
+        "check": "{count} 笔待导入 · {skipped} 笔不导入",
+        "from_account": "来自 {name}",
+        "from_accounts": "来自 {name} 和另外 {count} 个账户"
+      },
+      "from": "来自“{name}”",
+      "looks_right": "没问题",
+      "choose_differently": "不对？重新选择"
     },
     "import_result": {
       "success_title": "导入完成",

@@ -23,6 +23,12 @@ export interface StepBodyProps {
   setAnswers: (step: StepId, patch: Partial<WizardAnswers>) => void
   setFixes: (update: (prev: ReadonlyMap<number, RowFix>) => ReadonlyMap<number, RowFix>) => void
   goTo: (step: StepId) => void
+  /** the step's list of choices was opened ("Not right? Choose differently") */
+  choosing: boolean
+  /** opens the step's list of choices; it answers nothing, so the step stays open to later guesses */
+  choose: () => void
+  /** "Looks right": the next step, answering nothing */
+  next: () => void
 }
 
 // accounts I can write transactions into, as the import checks it: mine, or shared to me with
@@ -63,6 +69,40 @@ export function missingAnswer(step: StepId, answers: WizardAnswers): boolean {
       return answers.amount.mode === 'single'
         ? answers.amount.column === null
         : answers.amount.inColumn === null && answers.amount.outColumn === null
+    default:
+      return false
+  }
+}
+
+const ANSWER_EXAMPLES = 3
+
+/** the first few different values `pick` reads from the rows, and whether there are more */
+export function firstDistinct<T>(items: T[], pick: (item: T) => string | null, count = ANSWER_EXAMPLES): { values: string[]; more: boolean } {
+  const found = new Set<string>()
+  for (const item of items) {
+    const value = pick(item)?.trim()
+    if (!value || found.has(value)) continue
+    if (found.size === count) return { values: [...found], more: true }
+    found.add(value)
+  }
+  return { values: [...found], more: false }
+}
+
+/** The step has an answer worth showing as a sentence: a guess, or a choice, that reads real
+    values. Without one the step opens on its list of choices. */
+export function hasGuess(step: StepId, state: Pick<LoadedWizardState, 'answers' | 'rows'>): boolean {
+  const { answers, rows } = state
+  switch (step) {
+    case 'account':
+      return answers.account?.kind === 'column' && rows.some((row) => row.account !== null)
+    case 'date':
+      return answers.date.column !== null && rows.some((row) => row.date !== null)
+    case 'amount':
+      return !missingAnswer('amount', answers) && rows.some((row) => row.amount !== null)
+    case 'description':
+      return answers.description !== null && rows.some((row) => row.description !== '')
+    case 'extras':
+      return (['payee', 'category', 'tag', 'labels'] as const).some((role) => answers.extras[role] !== null)
     default:
       return false
   }

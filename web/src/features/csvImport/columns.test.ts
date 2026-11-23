@@ -34,4 +34,13 @@ describe('profileColumns', () => {
     expect(profileColumns(parseCsvText('d;x\n20260201;1\n20260215;2\n'))[0].type).toBe('date')
     expect(profileColumns(parseCsvText('d;x\n12345678;1\n12345679;2\n'))[0].type).toBe('number')
   })
+
+  it('marks ids, long codes and long reference numbers as internal, and nothing a person would pick', () => {
+    const p = parseCsvText(
+      'id;ref;code;memo;amount;date;mixed\n' +
+        '01a1be03-f8df-7603-b2b1-2c3d4e5f6a7b;123456789012;TXN-2026-000123;Coffee;-4.50;2026-01-02;REF123456789\n' +
+        'b298d99e-4fb1-42ca-97a2-9f00d01aeb19;123456789013;TXN-2026-000124;Rent;-900;2026-01-03;Lunch\n',
+    )
+    expect(profileColumns(p).map((c) => c.internal)).toEqual([true, true, true, false, false, false, false])
+  })
 })

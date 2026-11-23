@@ -25,6 +25,7 @@ import { WizardShell, type ShellStep } from './WizardShell'
 import {
   defaultAccountName,
   distinctNames,
+  hasGuess,
   missingAnswer,
   nameKey,
   newAccountFolderId,
@@ -93,6 +94,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const [fileError, setFileError] = useState<FileError | null>(null)
   const [answers, setAnswersState] = useState<WizardAnswers | null>(null)
   const [touched, setTouched] = useState<ReadonlySet<StepId>>(() => new Set())
+  // steps whose list of choices was opened; not "touched": opening it answers nothing
+  const [choosing, setChoosing] = useState<ReadonlySet<StepId>>(() => new Set())
   const [fixes, setFixes] = useState<ReadonlyMap<number, RowFix>>(() => new Map())
   const [step, setStep] = useState<StepId>('file')
   // a phone shows the step list first; picking a step opens it over the list
@@ -114,6 +117,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     setFileError(null)
     setAnswersState(null)
     setTouched(new Set())
+    setChoosing(new Set())
     setFixes(new Map())
     setStep('file')
     setPhoneList(false)
@@ -297,6 +301,19 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     }
   }
 
+  const chooseStep = () => {
+    if (choosing.has(step)) return
+    setChoosing((prev) => new Set(prev).add(step))
+    trackEvent(METRICS.TRANSACTION_IMPORT_CHOOSE_DIFFERENTLY, { step })
+  }
+  // A step that opens on its list of choices keeps it open: picking an answer there must not
+  // fold the list away under the pointer. Set during render, so the list never flickers shut.
+  if (state !== null && step !== 'file' && step !== 'preview' && !choosing.has(step) && !hasGuess(step, state)) {
+    setChoosing((prev) => new Set(prev).add(step))
+  }
+  // a guessed answer has its own "Looks right" under it, so the footer has no second Continue
+  const guessShown = state !== null && !choosing.has(step) && hasGuess(step, state)
+
   const Body = step === 'file' ? null : STEP_BODIES[step]
   const okCount = importCount
   const leftOut = rows.length - okCount
@@ -308,7 +325,6 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
         title: t(`transactions.import_wizard.steps.${id}`),
         summary: stepSummary(id, {
           answers: state.answers,
-          profiles: state.profiles,
           rows,
           account: (accountId) => {
             const found = allAccounts.find((a) => a.id === accountId)
@@ -365,7 +381,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
             </Button>
           ) : null}
           <div className="ml-auto" />
-          {step !== 'preview' ? (
+          {guessShown ? null : step !== 'preview' ? (
             <Button type="button" className="h-10 px-5" disabled={state === null} onClick={goNext}>
               {t('transactions.import_wizard.continue')}
             </Button>
@@ -381,7 +397,15 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       {Body && state ? (
         // answers must not change between the upload and a retry of its failed chunks
         <fieldset disabled={importing} className="contents">
-          <Body state={state} setAnswers={setAnswers} setFixes={setFixes} goTo={openStep} />
+          <Body
+            state={state}
+            setAnswers={setAnswers}
+            setFixes={setFixes}
+            goTo={openStep}
+            choosing={choosing.has(step)}
+            choose={chooseStep}
+            next={goNext}
+          />
         </fieldset>
       ) : (
         <FileStep fileName={loaded?.fileName ?? null} error={fileError} onFile={(f) => void handleFile(f)} />

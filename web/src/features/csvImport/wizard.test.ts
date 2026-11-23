@@ -1,6 +1,6 @@
-import type { WizardAnswers } from './prepare'
+import type { PreparedRow, WizardAnswers } from './prepare'
 import type { AccountDto } from '@/api/dto/account'
-import { newAccountFolderId, releaseTakenExtras, visibleSteps, writableAccounts } from './wizard'
+import { firstDistinct, hasGuess, newAccountFolderId, releaseTakenExtras, visibleSteps, writableAccounts } from './wizard'
 
 const answers = (patch: Partial<WizardAnswers>): WizardAnswers => ({
   account: { kind: 'existing', accountId: 'a1' },
@@ -34,7 +34,7 @@ it('a new account goes to the first visible folder, a hidden one only when all a
 })
 
 it('Extra details stays listed while it is open, even with no free column left', () => {
-  const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [] }))
+  const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [], internal: false }))
   expect(visibleSteps(answers({}), profiles)).not.toContain('extras')
   expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'description', 'extras', 'preview'])
 })
@@ -51,4 +51,26 @@ it('offers the accounts the import accepts: mine, or shared with an accepted adm
     account('other', 'o'),
   ]
   expect(writableAccounts(accounts, 'me').map((a) => a.id)).toEqual(['mine', 'user', 'admin'])
+})
+
+const row = (patch: Partial<PreparedRow>): PreparedRow => ({
+  fileRow: 2, raw: '', status: 'ok', reason: null, date: '2026-01-02', time: null, amount: '-5', account: null,
+  description: 'Coffee', payee: '', category: '', tag: '', labels: '', ...patch,
+})
+
+it('a step shows its answer first only when the answer reads real values', () => {
+  const rows = [row({})]
+  expect(hasGuess('date', { answers: answers({}), rows })).toBe(true)
+  expect(hasGuess('date', { answers: answers({ date: { column: null, order: 'ymd' } }), rows })).toBe(false)
+  expect(hasGuess('date', { answers: answers({}), rows: [row({ date: null, status: 'skipped', reason: 'no_date' })] })).toBe(false)
+  expect(hasGuess('description', { answers: answers({ description: null }), rows })).toBe(false)
+  expect(hasGuess('account', { answers: answers({}), rows })).toBe(false)
+  expect(hasGuess('account', { answers: answers({ account: { kind: 'column', column: 3, currencies: {} } }), rows: [row({ account: 'Cash' })] })).toBe(true)
+  expect(hasGuess('extras', { answers: answers({}), rows })).toBe(false)
+  expect(hasGuess('extras', { answers: answers({ extras: { payee: 3, category: null, tag: null, labels: null, labelsSeparator: ';' } }), rows })).toBe(true)
+})
+
+it('firstDistinct takes the first few different values and says whether there are more', () => {
+  expect(firstDistinct(['a', '', 'a', 'b', 'c'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: false })
+  expect(firstDistinct(['a', 'b', 'c', 'd'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: true })
 })

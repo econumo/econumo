@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -10,12 +11,12 @@ import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { pluralPick } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { ColumnChoices } from '../ColumnChoices'
-import { columnTags } from '../columnLabels'
-import { Field, Segmented, SkippedNote } from '../controls'
+import { columnTags, fromName } from '../columnLabels'
+import { Answer, AnswerActions, Field, Segmented, SkippedNote } from '../controls'
 import { currencyColumn, fileCurrencyId, rowsCurrencyId, unknownRowsCurrency } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
-import type { AccountChoice } from '../prepare'
-import { defaultAccountName, distinctNames, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
+import type { AccountChoice, PreparedRow } from '../prepare'
+import { defaultAccountName, distinctNames, hasGuess, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 
 type Option = AccountChoice['kind']
 type NewAccount = Extract<AccountChoice, { kind: 'new' }>
@@ -70,14 +71,17 @@ function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
   )
 }
 
-export function PerRowAccounts({ file, account, existing, fallbackCurrency, onChange }: {
+export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency, onChange, heading }: {
   file: ParsedFile
+  /** the prepared rows: each account says how many of them it gets */
+  rows?: PreparedRow[]
   account: PerRow
   existing: ReadonlySet<string>
   fallbackCurrency: string
   onChange: (account: PerRow) => void
+  heading?: ReactNode
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const headingId = useId()
   const { data: currencies = [] } = useCurrencies()
   const names = useMemo(() => distinctNames(file, account.column), [file, account.column])
@@ -93,19 +97,36 @@ export function PerRowAccounts({ file, account, existing, fallbackCurrency, onCh
     }
     return found
   }, [file, account.column, names, currencies])
+  const counts = useMemo(() => {
+    const found = new Map<string, number>()
+    for (const row of rows ?? []) {
+      if (row.status !== 'ok' || row.account === null) continue
+      const key = nameKey(row.account)
+      found.set(key, (found.get(key) ?? 0) + 1)
+    }
+    return found
+  }, [rows])
   if (names.length === 0) return null
   return (
     <div className="flex flex-col gap-2">
-      <p id={headingId} className="text-sm">
-        {t('transactions.import_wizard.account.found')}
-      </p>
+      <div id={headingId} className="text-sm">
+        {heading ?? t('transactions.import_wizard.account.found')}
+      </div>
       <ul aria-labelledby={headingId} className="divide-y divide-border rounded-xl border border-border">
         {names.map((name) => {
           const key = nameKey(name)
           const unknownCode = unknownCodes.get(key)
           return (
             <li key={key} className="grid grid-cols-1 items-center gap-2 px-3 py-2 sm:grid-cols-2">
-              <span className="truncate text-sm">{name}</span>
+              <span className="min-w-0 truncate text-sm">
+                {name}
+                {rows ? (
+                  <span className="text-muted-foreground">
+                    {' · '}
+                    {pluralPick(t('transactions.import_wizard.account.transactions'), counts.get(key) ?? 0, i18n.language)}
+                  </span>
+                ) : null}
+              </span>
               {existing.has(key) ? (
                 <span className="text-sm text-muted-foreground">{t('transactions.import_wizard.account.existing_name')}</span>
               ) : (
@@ -159,7 +180,7 @@ function AccountList({ accounts, selected, label, onSelect }: {
   )
 }
 
-export function AccountStep({ state, setAnswers }: StepBodyProps) {
+export function AccountStep({ state, setAnswers, choosing, choose: openChoices, next }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -170,6 +191,8 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
   const fileUnknownCode = useMemo(() => unknownRowsCurrency(state.file.rows, currencyColumn(state.file, currencies), currencies), [state.file, currencies])
   const title = t('transactions.import_wizard.account.title')
   const columnQuestion = t('transactions.import_wizard.account.column_question')
+  const guessed = hasGuess('account', state)
+  const open = choosing || !guessed
   const { account } = state.answers
 
   // An option can be picked before it has an answer (no account or column chosen
@@ -266,7 +289,18 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
       ) : null}
       {option === 'column' ? (
         <>
-          <Field label={columnQuestion}>
+          {account?.kind === 'column' && guessed ? (
+            <PerRowAccounts
+              file={state.file}
+              rows={state.rows}
+              account={account}
+              existing={existing}
+              fallbackCurrency={currencyId}
+              onChange={set}
+              heading={<Answer from={fromName(state.profiles[account.column], state.profiles, t)}>{t('transactions.import_wizard.account.per_row')}</Answer>}
+            />
+          ) : null}
+          {open ? (
             <ColumnChoices
               profiles={state.profiles}
               label={columnQuestion}
@@ -275,13 +309,11 @@ export function AccountStep({ state, setAnswers }: StepBodyProps) {
               fits={(type) => type === 'text'}
               tags={columnTags(state.answers, t, i18n.language, ['account'])}
             />
-          </Field>
+          ) : null}
           {nameless > 0 ? (
             <SkippedNote>{pluralPick(t('transactions.import_wizard.account.skipped'), nameless, i18n.language)}</SkippedNote>
           ) : null}
-          {account?.kind === 'column' ? (
-            <PerRowAccounts file={state.file} account={account} existing={existing} fallbackCurrency={currencyId} onChange={set} />
-          ) : null}
+          {open ? null : <AnswerActions onConfirm={next} onChoose={openChoices} />}
         </>
       ) : null}
     </div>

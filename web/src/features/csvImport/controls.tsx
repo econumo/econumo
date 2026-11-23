@@ -1,6 +1,8 @@
 import { useId } from 'react'
 import type { ReactNode } from 'react'
-import { Info } from 'lucide-react'
+import { Check, Info } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface SegmentedProps<T extends string> {
@@ -59,12 +61,35 @@ export function Field({ label, hint, htmlFor, children }: { label: string; hint?
   )
 }
 
-/** how the current answers read a real value of the file */
-export function Example({ children }: { children: ReactNode }) {
+/** the current answer as a sentence about the user's money, with where in the file it comes from */
+export function Answer({ id, from, children }: { id?: string; from?: string | null; children: ReactNode }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl bg-avatar-sky-tint px-3 py-2.5 text-sm text-avatar-sky">
-      <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <div className="min-w-0">{children}</div>
+    <div id={id} className="flex items-start gap-2 text-base">
+      <Check aria-hidden className="mt-1 size-4 shrink-0 text-income" />
+      <p className="min-w-0 break-words">
+        {children}
+        {from ? (
+          <>
+            {' '}
+            <span className="ml-1 text-sm whitespace-nowrap text-muted-foreground">({from})</span>
+          </>
+        ) : null}
+      </p>
+    </div>
+  )
+}
+
+/** under a guessed answer: accept it and go on, or open the list of choices */
+export function AnswerActions({ onConfirm, onChoose }: { onConfirm: () => void; onChoose: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+      <Button type="button" className="h-10 px-5" onClick={onConfirm}>
+        {t('transactions.import_wizard.looks_right')}
+      </Button>
+      <button type="button" className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={onChoose}>
+        {t('transactions.import_wizard.choose_differently')}
+      </button>
     </div>
   )
 }

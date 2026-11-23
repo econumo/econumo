@@ -188,7 +188,7 @@ it('Something looks wrong? goes back to the Date step', async () => {
   const user = userEvent.setup()
   await openCheck(user)
   await user.click(screen.getByRole('button', { name: 'Something looks wrong?' }))
-  expect(await screen.findByRole('heading', { name: 'Which column says when each payment happened?' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'When did each payment happen?' })).toBeInTheDocument()
   expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_LOOKS_WRONG)
 })
 
@@ -197,7 +197,7 @@ it('a value in the list opens its step', async () => {
   const user = userEvent.setup()
   await openCheck(user)
   await user.click(screen.getByRole('button', { name: /^−5\.50/ }))
-  expect(await screen.findByRole('heading', { name: 'Which column has the money?' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'How much was each payment?' })).toBeInTheDocument()
 })
 
 it('importing into a new account creates it once, then imports into it', async () => {
@@ -321,12 +321,14 @@ it('an AI guess fills a step the user left alone but never one they answered', a
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
-  await user.click(screen.getByRole('radio', { name: /^Value date/ }))
+  // opening the choices answers nothing; picking one does
+  await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
+  await user.click(screen.getByRole('radio', { name: /from “Value date”/ }))
   release()
   await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_AI_GUESS))
-  expect(screen.getByRole('radio', { name: /^Value date/ })).toBeChecked()
+  expect(screen.getByRole('radio', { name: /from “Value date”/ })).toBeChecked()
   await user.click(screen.getByRole('button', { name: 'Description' }))
-  expect(screen.getByRole('radio', { name: /^Info/ })).toBeChecked()
+  expect(screen.getByText('(from “Info”)').parentElement).toHaveTextContent('Coffee · Salary (from “Info”)')
   expect(asked).toEqual([
     { name: 'Booking date', type: 'date', negatives: false },
     { name: 'Value date', type: 'date', negatives: false },

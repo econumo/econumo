@@ -9,9 +9,9 @@ import { pluralPick } from '@/lib/plural'
 import type { CategoryType } from '@/api/dto/category'
 import { isNegative } from '@/lib/decimal'
 import type { PreparedRow } from '../prepare'
-import { unusedColumns, type StepBodyProps } from '../wizard'
-import { columnName } from '../columnLabels'
-import { Field, Segmented } from '../controls'
+import { firstDistinct, hasGuess, unusedColumns, type StepBodyProps } from '../wizard'
+import { displaySamples, fromName } from '../columnLabels'
+import { Answer, AnswerActions, Field, Segmented } from '../controls'
 
 type Role = 'category' | 'payee' | 'tag' | 'labels'
 const ROLES: Role[] = ['payee', 'category', 'tag', 'labels']
@@ -45,7 +45,7 @@ function distinctNew(rows: PreparedRow[], role: 'category' | 'labels', split: st
   return found.size
 }
 
-export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
+export function ExtrasStep({ state, setAnswers, choosing, choose, next }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -86,35 +86,65 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
 
   const setSeparator = (value: string) => setAnswers('extras', { extras: { ...extras, labelsSeparator: value } })
   const separatorQuestion = t('transactions.import_wizard.extras.separator_question')
+  const guessed = hasGuess('extras', state)
+  const open = choosing || !guessed
+  const option = (p: (typeof offered)[number]) => {
+    const values = displaySamples(p, i18n.language)
+    const shown = values.length > 0 ? values.join(' · ') : t('transactions.import_wizard.column_empty')
+    const from = fromName(p, state.profiles, t)
+    return from ? `${shown} — ${from}` : shown
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="divide-y divide-border rounded-xl border border-border">
-        {ROLES.map((role) => {
-          const label = t(`transactions.import_wizard.extras.role.${role}`)
-          return (
-            <div key={role} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
-                <div className="text-sm">{label}</div>
-                <div className="text-xs text-muted-foreground">{t(`transactions.import_wizard.extras.role_hint.${role}`)}</div>
+      {guessed ? (
+        <div className="flex flex-col gap-2">
+          <Answer>{t('transactions.import_wizard.extras.answer')}</Answer>
+          <ul aria-label={t('transactions.import_wizard.extras.answer')} className="flex flex-col gap-1.5 pl-6 text-sm">
+            {ROLES.filter((role) => extras[role] !== null).map((role) => {
+              const column = extras[role] as number
+              const examples = firstDistinct(state.rows, (row) => row[role])
+              const from = fromName(state.profiles[column], state.profiles, t)
+              return (
+                <li key={role} className="min-w-0 break-words">
+                  <span className="text-muted-foreground">{t(`transactions.import_wizard.extras.role.${role}`)}: </span>
+                  {examples.values.length > 0 ? examples.values.join(' · ') : t('transactions.import_wizard.column_empty')}
+                  {examples.more ? ' …' : ''}
+                  {from ? <span className="whitespace-nowrap text-muted-foreground"> ({from})</span> : null}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
+      {open ? (
+        <div className="divide-y divide-border rounded-xl border border-border">
+          {ROLES.map((role) => {
+            const label = t(`transactions.import_wizard.extras.role.${role}`)
+            return (
+              <div key={role} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm">{label}</div>
+                  <div className="text-xs text-muted-foreground">{t(`transactions.import_wizard.extras.role_hint.${role}`)}</div>
+                </div>
+                <NativeSelect
+                  aria-label={label}
+                  className="w-full sm:w-64"
+                  value={extras[role] === null ? '' : String(extras[role])}
+                  onChange={(e) => assign(role, e.target.value === '' ? null : Number(e.target.value))}
+                >
+                  <NativeSelectOption value="">{t('transactions.import_wizard.extras.leave_out')}</NativeSelectOption>
+                  {offered.map((p) => (
+                    <NativeSelectOption key={p.index} value={String(p.index)}>
+                      {option(p)}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
               </div>
-              <NativeSelect
-                aria-label={label}
-                className="w-full sm:w-64"
-                value={extras[role] === null ? '' : String(extras[role])}
-                onChange={(e) => assign(role, e.target.value === '' ? null : Number(e.target.value))}
-              >
-                <NativeSelectOption value="">{t('transactions.import_wizard.extras.leave_out')}</NativeSelectOption>
-                {offered.map((p) => (
-                  <NativeSelectOption key={p.index} value={String(p.index)}>
-                    {p.samples.length > 0 ? `${columnName(p, t)} — ${p.samples.join(' · ')}` : columnName(p, t)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      ) : null}
 
       {extras.labels !== null ? (
         <div className="flex flex-wrap items-end gap-3">
@@ -158,6 +188,7 @@ export function ExtrasStep({ state, setAnswers }: StepBodyProps) {
           {pluralPick(t('transactions.import_wizard.extras.new_labels'), newLabels, i18n.language)}
         </p>
       ) : null}
+      {open ? null : <AnswerActions onConfirm={next} onChoose={choose} />}
     </div>
   )
 }

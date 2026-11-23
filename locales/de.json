@@ -405,7 +405,6 @@
       }
     },
     "import_wizard": {
-      "column_n": "Spalte {n}",
       "title": "Buchungen importieren",
       "steps_label": "Importschritte",
       "needs_attention": "bitte prüfen",
@@ -440,26 +439,27 @@
         "column": "Jede Zeile nennt ihr Konto",
         "name": "Kontoname",
         "currency": "Währung",
-        "column_question": "Wählen Sie die Spalte mit dem Kontonamen",
+        "column_question": "Welches davon ist das Konto?",
         "found": "Konten in dieser Datei",
         "existing_name": "Vorhandenes Konto",
         "currency_of": "Währung für {name}",
         "name_hint": "Sie können es später umbenennen",
-        "currency_unknown": "Die Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen."
+        "currency_unknown": "Die Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen.",
+        "per_row": "Ihre Datei nennt zu jeder Buchung das Konto:",
+        "transactions": "{count} Buchung | {count} Buchungen"
       },
       "date": {
-        "title": "Welche Spalte sagt, wann eine Zahlung erfolgte?",
+        "title": "Wann fand jede Zahlung statt?",
         "question": "Ist {example} der {dmy} oder der {mdy}?",
         "skipped": "{count} Zeile hat kein lesbares Datum und wird übersprungen | {count} Zeilen haben kein lesbares Datum und werden übersprungen",
-        "example": "„{value}“ wird gelesen als",
-        "not_a_date": "kein Datum"
+        "choose": "Welches davon ist das Datum?"
       },
       "amount": {
-        "none_in": "Die Datei hat keine Spalte für Eingänge",
-        "none_out": "Die Datei hat keine Spalte für Ausgänge",
+        "none_in": "Nichts davon sind Eingänge",
+        "none_out": "Nichts davon sind Ausgänge",
         "skipped": "{count} Zeile hat keinen lesbaren Betrag und wird übersprungen | {count} Zeilen haben keinen lesbaren Betrag und werden übersprungen",
-        "title": "Welche Spalte enthält das Geld?",
-        "single": "Eine Spalte, Minus für Ausgaben",
+        "title": "Wie hoch war jede Zahlung?",
+        "single": "Ein Betrag, Minus für Ausgaben",
         "dual": "Eingänge und Ausgänge",
         "money_in": "Eingänge",
         "money_out": "Ausgänge",
@@ -468,12 +468,15 @@
         "flip": "Vorzeichen umkehren",
         "mode": "Wie Beträge dargestellt sind",
         "flip_hint": "Einschalten, wenn Ihre Bank Zahlungen ohne Minus aufführt",
-        "example_empty": "Wählen Sie die Spalte mit dem Geld, um zu sehen, wie Zahlungen aussehen.",
-        "example_label": "So sehen Zahlungen aus"
+        "example_label": "So sehen Zahlungen aus",
+        "choose": "Welches davon ist der Betrag?",
+        "choose_in": "Welches davon sind Eingänge?",
+        "choose_out": "Welches davon sind Ausgänge?"
       },
       "description": {
         "none": "Die Datei hat keine Beschreibung",
-        "title": "Welche Spalte sagt, wofür eine Zahlung war?"
+        "title": "Wofür war jede Zahlung?",
+        "choose": "Welches davon sagt, wofür sie war?"
       },
       "extras": {
         "title": "Möchten Sie noch etwas mitnehmen?",
@@ -484,7 +487,7 @@
           "tag": "Budget-Tag",
           "labels": "Auswertungs-Tags"
         },
-        "separator_question": "Mehrere Tags in einer Zelle sind getrennt durch",
+        "separator_question": "Mehrere Tags sind getrennt durch",
         "tab": "Tabulator",
         "newline": "Zeilenumbruch",
         "custom_separator": "Etwas anderes",
@@ -495,8 +498,9 @@
           "payee": "Wen Sie bezahlt haben oder wer Sie bezahlt hat",
           "category": "Lebensmittel, Miete… fehlende werden angelegt",
           "tag": "Ein Projekt oder eine Reise",
-          "labels": "Mehrere Tags in einer Zelle sind möglich"
-        }
+          "labels": "Mehrere auf einmal sind möglich"
+        },
+        "answer": "Außerdem übernehmen wir:"
       },
       "preview": {
         "title": "Das wird hinzugefügt",
@@ -535,19 +539,21 @@
       "rows": "{count} Zeile | {count} Zeilen",
       "all_steps": "Alle Schritte",
       "column_empty": "leer",
-      "more_columns": "{count} weitere Spalte zeigen | {count} weitere Spalten zeigen",
-      "now_used": "jetzt {role}",
+      "more_columns": "{count} weitere zeigen | {count} weitere zeigen",
+      "now_used": "verwendet für {role}",
       "summary": {
         "not_chosen": "Nicht gewählt",
         "new_account": "Neu: {name} · {currency}",
-        "each_row": "Jede Zeile: {column}",
-        "in_out": "Ein: {in} · Aus: {out}",
-        "flipped": "Vorzeichen umgekehrt",
-        "none": "Keine",
+        "none": "Keine Beschreibung",
         "with": "Mit {list}",
         "nothing_extra": "Nichts weiter",
-        "check": "{count} zu importieren · {skipped} weggelassen | {count} zu importieren · {skipped} weggelassen"
-      }
+        "check": "{count} zu importieren · {skipped} weggelassen | {count} zu importieren · {skipped} weggelassen",
+        "from_account": "Aus {name}",
+        "from_accounts": "Aus {name} und {count} weiteren Konto | Aus {name} und {count} weiteren Konten"
+      },
+      "from": "aus „{name}“",
+      "looks_right": "Stimmt so",
+      "choose_differently": "Nicht richtig? Anders wählen"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",

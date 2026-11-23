@@ -1,4 +1,8 @@
 import type { TFunction } from 'i18next'
+import { formatDay } from './accountView'
+import { detectDecimalSeparator, parseAmountCell } from './amounts'
+import { headerHasValues, type ColumnProfile } from './columns'
+import { detectDateOrder, parseDateCell } from './dates'
 import type { Role, WizardAnswers } from './prepare'
 
 const ROLE_KEYS: Record<Role, string> = {
@@ -34,19 +38,52 @@ export function columnRoles(answers: WizardAnswers): [Role, number][] {
   return roles.filter((entry): entry is [Role, number] => entry[1] !== null)
 }
 
-/** a column's header, or "Column 3" when the file left it blank */
-export function columnName(profile: { index: number; name: string }, t: TFunction): string {
-  return profile.name.trim() || t('transactions.import_wizard.column_n', { n: profile.index + 1 })
+/** The file's own name for a part of it, or null when it has none worth showing: a blank
+    header (parse.ts names it "Column 3" in English) or a first row that is a transaction. */
+export function sourceName(profile: ColumnProfile, profiles: ColumnProfile[]): string | null {
+  const name = profile.name.trim()
+  if (name === '' || name === `Column ${profile.index + 1}` || headerHasValues(profiles)) return null
+  return name
+}
+
+/** "from “Buchungstag”", or null when the file gave it no name */
+export function fromName(profile: ColumnProfile | undefined, profiles: ColumnProfile[], t: TFunction): string | null {
+  const name = profile ? sourceName(profile, profiles) : null
+  return name === null ? null : t('transactions.import_wizard.from', { name })
+}
+
+// A sample as a person reads it: a date in the UI language, an amount with its decimals.
+// A date whose day and month could swap, or a separator the samples do not settle, stays as written.
+export function displaySamples(profile: ColumnProfile, language: string): string[] {
+  const { samples, type } = profile
+  if (type === 'date') {
+    const { order, ambiguous } = detectDateOrder(samples, navigator.language)
+    if (ambiguous) return samples
+    return samples.map((v) => {
+      const parsed = parseDateCell(v, order)
+      return parsed ? formatDay(parsed.date, language) : v
+    })
+  }
+  if (type === 'number' && !profile.internal) {
+    const { sep, ambiguous } = detectDecimalSeparator(samples)
+    if (ambiguous) return samples
+    const format = new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 20 })
+    return samples.map((v) => {
+      const parsed = parseAmountCell(v, sep)
+      return parsed === null ? v : format.format(Number(parsed))
+    })
+  }
+  return samples
 }
 
 export function roleLabel(role: Role, t: TFunction): string {
   return t(ROLE_KEYS[role])
 }
 
-// a role named inside a phrase ("now payee", "with payee, category"); German nouns keep their capital
+// a role named inside a phrase ("used for payee", "with payee, category"); German nouns keep their capital
 export const inPhrase = (text: string, language: string) => (language.startsWith('de') ? text : text.toLocaleLowerCase(language))
 
-/** the small "now payee" tag of each column another role already reads */
+/** the small "used for payee" tag of each part of the file another role already reads */
 export function columnTags(answers: WizardAnswers, t: TFunction, language: string, omit: Role[] = []): Record<number, string> {
   const names: Record<number, string[]> = {}
   for (const [role, column] of columnRoles(answers)) {

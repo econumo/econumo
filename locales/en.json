@@ -405,7 +405,6 @@
       }
     },
     "import_wizard": {
-      "column_n": "Column {n}",
       "title": "Import transactions",
       "steps_label": "Import steps",
       "needs_attention": "needs your attention",
@@ -440,26 +439,27 @@
         "column": "Each row says which account",
         "name": "Account name",
         "currency": "Currency",
-        "column_question": "Tap the column with the account name",
+        "column_question": "Which of these is the account?",
         "found": "Accounts in this file",
         "existing_name": "Existing account",
         "currency_of": "Currency for {name}",
         "name_hint": "You can rename it later",
-        "currency_unknown": "The file says {code}, which isn't set up here. You can add it in Settings."
+        "currency_unknown": "The file says {code}, which isn't set up here. You can add it in Settings.",
+        "per_row": "Your file names the account for each transaction:",
+        "transactions": "{count} transaction | {count} transactions"
       },
       "date": {
-        "title": "Which column says when each payment happened?",
+        "title": "When did each payment happen?",
         "question": "Is {example} the {dmy} or {mdy}?",
         "skipped": "{count} row has no readable date and will be skipped | {count} rows have no readable date and will be skipped",
-        "example": "“{value}” will be read as",
-        "not_a_date": "not a date"
+        "choose": "Which of these is the date?"
       },
       "amount": {
-        "none_in": "The file has no money-in column",
-        "none_out": "The file has no money-out column",
+        "none_in": "None of these is money in",
+        "none_out": "None of these is money out",
         "skipped": "{count} row has no readable amount and will be skipped | {count} rows have no readable amount and will be skipped",
-        "title": "Which column has the money?",
-        "single": "One column, minus for spending",
+        "title": "How much was each payment?",
+        "single": "One amount, minus for spending",
         "dual": "Money in and money out",
         "money_in": "Money in",
         "money_out": "Money out",
@@ -468,12 +468,15 @@
         "flip": "Flip the signs",
         "mode": "How amounts are shown",
         "flip_hint": "Turn on if your bank lists payments without a minus",
-        "example_empty": "Pick the column with the money to see how payments will look.",
-        "example_label": "How payments will look"
+        "example_label": "How payments will look",
+        "choose": "Which of these is the amount?",
+        "choose_in": "Which of these is money in?",
+        "choose_out": "Which of these is money out?"
       },
       "description": {
         "none": "The file has no description",
-        "title": "Which column says what each payment was for?"
+        "title": "What was each payment for?",
+        "choose": "Which of these says what it was for?"
       },
       "extras": {
         "title": "Anything else worth bringing along?",
@@ -484,7 +487,7 @@
           "tag": "Budget tag",
           "labels": "Reporting tags"
         },
-        "separator_question": "Several tags in one cell are separated by",
+        "separator_question": "When there are several tags, they are separated by",
         "tab": "Tab",
         "newline": "New line",
         "custom_separator": "Something else",
@@ -495,8 +498,9 @@
           "payee": "Who you paid or who paid you",
           "category": "Groceries, rent… the ones you don’t have yet are created",
           "tag": "A project or a trip",
-          "labels": "Several tags in one cell are fine"
-        }
+          "labels": "Several at once are fine"
+        },
+        "answer": "We’ll also bring along:"
       },
       "preview": {
         "title": "Here is what will be added",
@@ -535,19 +539,21 @@
       "rows": "{count} row | {count} rows",
       "all_steps": "All steps",
       "column_empty": "empty",
-      "more_columns": "Show {count} more column | Show {count} more columns",
-      "now_used": "now {role}",
+      "more_columns": "Show {count} more | Show {count} more",
+      "now_used": "used for {role}",
       "summary": {
         "not_chosen": "Not chosen",
         "new_account": "New: {name} · {currency}",
-        "each_row": "Each row: {column}",
-        "in_out": "In: {in} · Out: {out}",
-        "flipped": "signs flipped",
-        "none": "None",
+        "none": "No description",
         "with": "With {list}",
         "nothing_extra": "Nothing extra",
-        "check": "{count} to import · {skipped} left out | {count} to import · {skipped} left out"
-      }
+        "check": "{count} to import · {skipped} left out | {count} to import · {skipped} left out",
+        "from_account": "From {name}",
+        "from_accounts": "From {name} and {count} more account | From {name} and {count} more accounts"
+      },
+      "from": "from “{name}”",
+      "looks_right": "Looks right",
+      "choose_differently": "Not right? Choose differently"
     },
     "import_result": {
       "success_title": "Import complete",

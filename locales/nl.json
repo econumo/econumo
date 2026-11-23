@@ -405,7 +405,6 @@
       }
     },
     "import_wizard": {
-      "column_n": "Kolom {n}",
       "title": "Transacties importeren",
       "steps_label": "Importstappen",
       "needs_attention": "vraagt uw aandacht",
@@ -440,26 +439,27 @@
         "column": "Elke regel vermeldt de rekening",
         "name": "Naam van de rekening",
         "currency": "Valuta",
-        "column_question": "Kies de kolom met de naam van de rekening",
+        "column_question": "Welke hiervan is de rekening?",
         "found": "Rekeningen in dit bestand",
         "existing_name": "Bestaande rekening",
         "currency_of": "Valuta voor {name}",
         "name_hint": "U kunt de naam later wijzigen",
-        "currency_unknown": "Het bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen."
+        "currency_unknown": "Het bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen.",
+        "per_row": "Uw bestand vermeldt bij elke transactie de rekening:",
+        "transactions": "{count} transactie | {count} transacties"
       },
       "date": {
-        "title": "Welke kolom zegt wanneer elke betaling plaatsvond?",
+        "title": "Wanneer vond elke betaling plaats?",
         "question": "Is {example} {dmy} of {mdy}?",
         "skipped": "{count} regel heeft geen leesbare datum en wordt overgeslagen | {count} regels hebben geen leesbare datum en worden overgeslagen",
-        "example": "‘{value}’ wordt gelezen als",
-        "not_a_date": "geen datum"
+        "choose": "Welke hiervan is de datum?"
       },
       "amount": {
-        "none_in": "Het bestand heeft geen kolom voor geld erin",
-        "none_out": "Het bestand heeft geen kolom voor geld eruit",
+        "none_in": "Geen hiervan is geld erin",
+        "none_out": "Geen hiervan is geld eruit",
         "skipped": "{count} regel heeft geen leesbaar bedrag en wordt overgeslagen | {count} regels hebben geen leesbaar bedrag en worden overgeslagen",
-        "title": "Welke kolom bevat het geld?",
-        "single": "Eén kolom, min voor uitgaven",
+        "title": "Hoeveel was elke betaling?",
+        "single": "Eén bedrag, min voor uitgaven",
         "dual": "Geld erin en geld eruit",
         "money_in": "Geld erin",
         "money_out": "Geld eruit",
@@ -468,12 +468,15 @@
         "flip": "Tekens omdraaien",
         "mode": "Hoe bedragen worden weergegeven",
         "flip_hint": "Zet aan als uw bank betalingen zonder min toont",
-        "example_empty": "Kies de kolom met het geld om te zien hoe betalingen eruitzien.",
-        "example_label": "Zo zien betalingen eruit"
+        "example_label": "Zo zien betalingen eruit",
+        "choose": "Welke hiervan is het bedrag?",
+        "choose_in": "Welke hiervan is geld erin?",
+        "choose_out": "Welke hiervan is geld eruit?"
       },
       "description": {
         "none": "Het bestand heeft geen omschrijving",
-        "title": "Welke kolom zegt waarvoor elke betaling was?"
+        "title": "Waarvoor was elke betaling?",
+        "choose": "Welke hiervan zegt waarvoor het was?"
       },
       "extras": {
         "title": "Wilt u nog iets meenemen?",
@@ -484,7 +487,7 @@
           "tag": "Budgettag",
           "labels": "Rapportagetags"
         },
-        "separator_question": "Meerdere tags in één cel worden gescheiden door",
+        "separator_question": "Als er meerdere tags zijn, worden ze gescheiden door",
         "tab": "Tab",
         "newline": "Nieuwe regel",
         "custom_separator": "Iets anders",
@@ -495,8 +498,9 @@
           "payee": "Wie u betaalde of wie u betaalde",
           "category": "Boodschappen, huur… ontbrekende worden aangemaakt",
           "tag": "Een project of een reis",
-          "labels": "Meerdere tags in één cel kan"
-        }
+          "labels": "Meerdere tegelijk kan"
+        },
+        "answer": "We nemen ook mee:"
       },
       "preview": {
         "title": "Dit wordt toegevoegd",
@@ -535,19 +539,21 @@
       "rows": "{count} regel | {count} regels",
       "all_steps": "Alle stappen",
       "column_empty": "leeg",
-      "more_columns": "Nog {count} kolom tonen | Nog {count} kolommen tonen",
-      "now_used": "nu {role}",
+      "more_columns": "Nog {count} tonen | Nog {count} tonen",
+      "now_used": "gebruikt voor {role}",
       "summary": {
         "not_chosen": "Niet gekozen",
         "new_account": "Nieuw: {name} · {currency}",
-        "each_row": "Elke regel: {column}",
-        "in_out": "Erin: {in} · Eruit: {out}",
-        "flipped": "tekens omgedraaid",
-        "none": "Geen",
+        "none": "Geen omschrijving",
         "with": "Met {list}",
         "nothing_extra": "Verder niets",
-        "check": "{count} te importeren · {skipped} weggelaten | {count} te importeren · {skipped} weggelaten"
-      }
+        "check": "{count} te importeren · {skipped} weggelaten | {count} te importeren · {skipped} weggelaten",
+        "from_account": "Van {name}",
+        "from_accounts": "Van {name} en nog {count} rekening | Van {name} en nog {count} rekeningen"
+      },
+      "from": "uit ‘{name}’",
+      "looks_right": "Klopt",
+      "choose_differently": "Klopt het niet? Kies iets anders"
     },
     "import_result": {
       "success_title": "Import voltooid",

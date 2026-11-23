@@ -29,6 +29,9 @@ function Harness({ text, extras = noExtras, account = { kind: 'new', name: 'Main
         setAnswers={(_step, patch) => setAnswersState((prev) => ({ ...prev, ...patch }))}
         setFixes={() => {}}
         goTo={() => {}}
+        choosing
+        choose={() => {}}
+        next={() => {}}
       />
       <output aria-label="extras">{JSON.stringify(answers.extras)}</output>
     </>
@@ -52,9 +55,9 @@ beforeEach(() => {
 
 const optionsOf = (role: string) => within(screen.getByRole('combobox', { name: role })).getAllByRole('option').map((o) => o.textContent)
 
-it('offers each detail the columns the earlier steps left free, with their values', () => {
+it('offers each detail what the earlier steps left free, values first', () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
-  expect(optionsOf('Payee')).toEqual(['Don’t bring it', 'Memo — lunch', 'Group — Food'])
+  expect(optionsOf('Payee')).toEqual(['Don’t bring it', 'lunch — from “Memo”', 'Food — from “Group”'])
   expect(optionsOf('Category')).toEqual(optionsOf('Payee'))
   expect(screen.getByRole('combobox', { name: 'Reporting tags' })).toHaveValue('')
 })
@@ -62,7 +65,7 @@ it('offers each detail the columns the earlier steps left free, with their value
 it('choosing a column for a detail brings it over', async () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
   const user = userEvent.setup()
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'Group — Food')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'Food — from “Group”')
   expect(extrasOf().category).toBe(3)
   await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'Don’t bring it')
   expect(extrasOf().category).toBeNull()
@@ -71,9 +74,9 @@ it('choosing a column for a detail brings it over', async () => {
 it('a column belongs to one detail: giving it to a second takes it from the first', async () => {
   renderStep('Date,Amount,One,Two\n2026-01-02,-5,a,b\n')
   const user = userEvent.setup()
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'One — a')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'a — from “One”')
   expect(extrasOf().category).toBe(2)
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Payee' }), 'One — a')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Payee' }), 'a — from “One”')
   expect(extrasOf()).toMatchObject({ payee: 2, category: null })
   expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('')
 })
@@ -95,7 +98,7 @@ it('offers the separator only for a labels column and keeps a custom one', async
   renderStep('Date,Amount,Marks\n2026-01-02,-5,a/b\n')
   const user = userEvent.setup()
   expect(screen.queryByRole('radiogroup', { name: /separated by/ })).not.toBeInTheDocument()
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Reporting tags' }), 'Marks — a/b')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Reporting tags' }), 'a/b — from “Marks”')
   expect(screen.getByRole('radio', { name: ';' })).toBeChecked()
   await user.type(screen.getByLabelText('Something else'), '/')
   expect(extrasOf().labelsSeparator).toBe('/')

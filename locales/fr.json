@@ -405,7 +405,6 @@
       }
     },
     "import_wizard": {
-      "column_n": "Colonne {n}",
       "title": "Importer des transactions",
       "steps_label": "Étapes de l’import",
       "needs_attention": "à vérifier",
@@ -440,26 +439,27 @@
         "column": "Chaque ligne indique son compte",
         "name": "Nom du compte",
         "currency": "Devise",
-        "column_question": "Choisissez la colonne avec le nom du compte",
+        "column_question": "Lequel de ces éléments est le compte ?",
         "found": "Comptes dans ce fichier",
         "existing_name": "Compte existant",
         "currency_of": "Devise de {name}",
         "name_hint": "Vous pourrez le renommer plus tard",
-        "currency_unknown": "Le fichier indique {code}, qui n'est pas configurée ici. Vous pouvez l'ajouter dans les Paramètres."
+        "currency_unknown": "Le fichier indique {code}, qui n'est pas configurée ici. Vous pouvez l'ajouter dans les Paramètres.",
+        "per_row": "Votre fichier indique le compte de chaque opération :",
+        "transactions": "{count} opération | {count} opérations"
       },
       "date": {
-        "title": "Quelle colonne indique quand chaque paiement a eu lieu ?",
+        "title": "Quand chaque paiement a-t-il eu lieu ?",
         "question": "{example}, est-ce le {dmy} ou le {mdy} ?",
         "skipped": "{count} ligne n’a pas de date lisible et sera ignorée | {count} lignes n’ont pas de date lisible et seront ignorées",
-        "example": "« {value} » sera lu comme",
-        "not_a_date": "pas une date"
+        "choose": "Lequel de ces éléments est la date ?"
       },
       "amount": {
-        "none_in": "Le fichier n’a pas de colonne d’entrées",
-        "none_out": "Le fichier n’a pas de colonne de sorties",
+        "none_in": "Aucun ne correspond aux entrées",
+        "none_out": "Aucun ne correspond aux sorties",
         "skipped": "{count} ligne n’a pas de montant lisible et sera ignorée | {count} lignes n’ont pas de montant lisible et seront ignorées",
-        "title": "Quelle colonne contient l’argent ?",
-        "single": "Une colonne, moins pour les dépenses",
+        "title": "Quel était le montant de chaque paiement ?",
+        "single": "Un montant, moins pour les dépenses",
         "dual": "Entrées et sorties d’argent",
         "money_in": "Entrées d’argent",
         "money_out": "Sorties d’argent",
@@ -468,12 +468,15 @@
         "flip": "Inverser les signes",
         "mode": "Comment les montants sont présentés",
         "flip_hint": "Activez-le si votre banque affiche les paiements sans signe moins",
-        "example_empty": "Choisissez la colonne avec l’argent pour voir à quoi ressembleront les paiements.",
-        "example_label": "Aperçu des paiements"
+        "example_label": "Aperçu des paiements",
+        "choose": "Lequel de ces éléments est le montant ?",
+        "choose_in": "Lequel de ces éléments correspond aux entrées ?",
+        "choose_out": "Lequel de ces éléments correspond aux sorties ?"
       },
       "description": {
         "none": "Le fichier n’a pas de description",
-        "title": "Quelle colonne indique à quoi servait chaque paiement ?"
+        "title": "À quoi servait chaque paiement ?",
+        "choose": "Lequel de ces éléments dit à quoi il servait ?"
       },
       "extras": {
         "title": "Autre chose à reprendre ?",
@@ -484,7 +487,7 @@
           "tag": "Tag budgétaire",
           "labels": "Tags de rapport"
         },
-        "separator_question": "Plusieurs tags dans une cellule sont séparés par",
+        "separator_question": "Quand il y a plusieurs tags, ils sont séparés par",
         "tab": "Tabulation",
         "newline": "Saut de ligne",
         "custom_separator": "Autre chose",
@@ -495,8 +498,9 @@
           "payee": "Qui vous avez payé ou qui vous a payé",
           "category": "Courses, loyer… celles qui manquent sont créées",
           "tag": "Un projet ou un voyage",
-          "labels": "Plusieurs étiquettes dans une cellule, c’est possible"
-        }
+          "labels": "Plusieurs à la fois, c’est possible"
+        },
+        "answer": "Nous reprendrons aussi :"
       },
       "preview": {
         "title": "Voici ce qui sera ajouté",
@@ -535,19 +539,21 @@
       "rows": "{count} ligne | {count} lignes",
       "all_steps": "Toutes les étapes",
       "column_empty": "vide",
-      "more_columns": "Afficher {count} autre colonne | Afficher {count} autres colonnes",
-      "now_used": "déjà : {role}",
+      "more_columns": "Afficher {count} de plus | Afficher {count} de plus",
+      "now_used": "utilisé pour : {role}",
       "summary": {
         "not_chosen": "Non choisi",
         "new_account": "Nouveau : {name} · {currency}",
-        "each_row": "Chaque ligne : {column}",
-        "in_out": "Entrées : {in} · Sorties : {out}",
-        "flipped": "signes inversés",
-        "none": "Aucune",
+        "none": "Pas de description",
         "with": "Avec {list}",
         "nothing_extra": "Rien de plus",
-        "check": "{count} à importer · {skipped} écartée(s) | {count} à importer · {skipped} écartée(s)"
-      }
+        "check": "{count} à importer · {skipped} écartée(s) | {count} à importer · {skipped} écartée(s)",
+        "from_account": "De {name}",
+        "from_accounts": "De {name} et {count} autre compte | De {name} et {count} autres comptes"
+      },
+      "from": "de « {name} »",
+      "looks_right": "C’est bon",
+      "choose_differently": "Pas correct ? Choisir autre chose"
     },
     "import_result": {
       "success_title": "Import terminé",

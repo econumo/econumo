@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react'
+import { Fragment, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Switch } from '@/components/ui/switch'
 import { isNegative } from '@/lib/decimal'
@@ -6,13 +6,13 @@ import { pluralPick } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { formatSigned, useAccountView } from '../accountView'
 import { ColumnChoices } from '../ColumnChoices'
-import { columnTags } from '../columnLabels'
-import { Example, Field, Segmented, SkippedNote } from '../controls'
+import { columnTags, fromName } from '../columnLabels'
+import { Answer, AnswerActions, Field, Segmented, SkippedNote } from '../controls'
 import { detectDecimalSeparator, parseAmountCell, type DecimalSeparator } from '../amounts'
 import { columnValues } from '../guess'
 import type { ParsedFile } from '../parse'
 import type { WizardAnswers } from '../prepare'
-import { missingAnswer, type StepBodyProps } from '../wizard'
+import { hasGuess, missingAnswer, type StepBodyProps } from '../wizard'
 
 type Amount = WizardAnswers['amount']
 
@@ -52,13 +52,12 @@ function amountValues(file: ParsedFile, amount: Amount): string[] {
   return columns.flatMap((column) => columnValues(file, column))
 }
 
-const EXAMPLE_ROWS = 4
+const EXAMPLE_ROWS = 3
 const isNumber = (type: string) => type === 'number'
 
-export function AmountStep({ state, setAnswers }: StepBodyProps) {
+export function AmountStep({ state, setAnswers, choosing, choose, next }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const flipId = useId()
-  const title = t('transactions.import_wizard.amount.title')
   const { amount } = state.answers
   const set = (patch: Partial<Amount>) => setAnswers('amount', { amount: { ...amount, ...patch } })
   const accountView = useAccountView(state.answers)
@@ -67,60 +66,86 @@ export function AmountStep({ state, setAnswers }: StepBodyProps) {
   const separator = useMemo(() => detectDecimalSeparator(values), [values])
   const spending = amount.mode === 'single' && amount.column !== null ? spendingExample(values, amount) : null
   const separatorExample = separator.ambiguous ? separator.example : null
-  const examples = state.rows.filter((row) => row.status === 'ok').slice(0, EXAMPLE_ROWS)
+  const readable = state.rows.filter((row) => row.status === 'ok')
+  const examples = readable.slice(0, EXAMPLE_ROWS)
+  const guessed = hasGuess('amount', state)
+  const open = choosing || !guessed
+  const nameOf = (column: number | null) => (column === null ? null : fromName(state.profiles[column], state.profiles, t))
+  const from =
+    amount.mode === 'single'
+      ? nameOf(amount.column)
+      : [nameOf(amount.inColumn), nameOf(amount.outColumn)].filter((name) => name !== null).join(' · ') || null
 
-  const moneyIn = t('transactions.import_wizard.amount.money_in')
-  const moneyOut = t('transactions.import_wizard.amount.money_out')
+  const moneyIn = t('transactions.import_wizard.amount.choose_in')
+  const moneyOut = t('transactions.import_wizard.amount.choose_out')
   const separatorQuestion = separatorExample ? t('transactions.import_wizard.amount.separator_question', { example: separatorExample }) : ''
   const missing = missingAnswer('amount', state.answers)
   const unreadable = state.rows.filter((row) => row.reason === 'no_amount').length
 
   return (
     <div className="flex flex-col gap-6">
-      <Segmented<Amount['mode']>
-        label={t('transactions.import_wizard.amount.mode')}
-        value={amount.mode}
-        options={[
-          { value: 'single', label: t('transactions.import_wizard.amount.single') },
-          { value: 'dual', label: t('transactions.import_wizard.amount.dual') },
-        ]}
-        onChange={(mode) => set({ mode })}
-      />
-      {amount.mode === 'single' ? (
-        <ColumnChoices
-          profiles={state.profiles}
-          label={title}
-          selected={amount.column}
-          onSelect={(column) => set({ column })}
-          fits={isNumber}
-          tags={columnTags(state.answers, t, i18n.language, ['amount'])}
-        />
-      ) : (
+      {guessed ? (
+        <Answer from={from}>
+          <span aria-label={t('transactions.import_wizard.amount.example_label')} role="list" className="inline">
+            {examples.map((row, i) => {
+              const signed = formatSigned(row.amount ?? '0', accountView(row).currency)
+              return (
+                <Fragment key={row.fileRow}>
+                  {i > 0 ? <span aria-hidden> · </span> : null}
+                  <span role="listitem" className={cn('tabular-nums whitespace-nowrap', signed.income && 'text-income')}>
+                    {signed.text}
+                  </span>
+                </Fragment>
+              )
+            })}
+          </span>
+          {readable.length > examples.length ? ' …' : ''}
+        </Answer>
+      ) : null}
+      {open ? (
         <div className="flex flex-col gap-4">
-          <Field label={moneyIn}>
+          <Segmented<Amount['mode']>
+            label={t('transactions.import_wizard.amount.mode')}
+            value={amount.mode}
+            options={[
+              { value: 'single', label: t('transactions.import_wizard.amount.single') },
+              { value: 'dual', label: t('transactions.import_wizard.amount.dual') },
+            ]}
+            onChange={(mode) => set({ mode })}
+          />
+          {amount.mode === 'single' ? (
             <ColumnChoices
               profiles={state.profiles}
-              label={moneyIn}
-              selected={amount.inColumn}
-              onSelect={(inColumn) => set({ inColumn })}
+              label={t('transactions.import_wizard.amount.choose')}
+              selected={amount.column}
+              onSelect={(column) => set({ column })}
               fits={isNumber}
-              tags={columnTags(state.answers, t, i18n.language, ['amountIn'])}
-              noneLabel={t('transactions.import_wizard.amount.none_in')}
+              tags={columnTags(state.answers, t, i18n.language, ['amount'])}
             />
-          </Field>
-          <Field label={moneyOut}>
-            <ColumnChoices
-              profiles={state.profiles}
-              label={moneyOut}
-              selected={amount.outColumn}
-              onSelect={(outColumn) => set({ outColumn })}
-              fits={isNumber}
-              tags={columnTags(state.answers, t, i18n.language, ['amountOut'])}
-              noneLabel={t('transactions.import_wizard.amount.none_out')}
-            />
-          </Field>
+          ) : (
+            <>
+              <ColumnChoices
+                profiles={state.profiles}
+                label={moneyIn}
+                selected={amount.inColumn}
+                onSelect={(inColumn) => set({ inColumn })}
+                fits={isNumber}
+                tags={columnTags(state.answers, t, i18n.language, ['amountIn'])}
+                noneLabel={t('transactions.import_wizard.amount.none_in')}
+              />
+              <ColumnChoices
+                profiles={state.profiles}
+                label={moneyOut}
+                selected={amount.outColumn}
+                onSelect={(outColumn) => set({ outColumn })}
+                fits={isNumber}
+                tags={columnTags(state.answers, t, i18n.language, ['amountOut'])}
+                noneLabel={t('transactions.import_wizard.amount.none_out')}
+              />
+            </>
+          )}
         </div>
-      )}
+      ) : null}
       {unreadable > 0 && !missing ? (
         <SkippedNote>{pluralPick(t('transactions.import_wizard.amount.skipped'), unreadable, i18n.language)}</SkippedNote>
       ) : null}
@@ -149,21 +174,7 @@ export function AmountStep({ state, setAnswers }: StepBodyProps) {
           ) : null}
         </div>
       ) : null}
-      {examples.length === 0 ? (
-        <Example>{t('transactions.import_wizard.amount.example_empty')}</Example>
-      ) : (
-        <ul aria-label={t('transactions.import_wizard.amount.example_label')} className="rounded-xl border border-border">
-          {examples.map((row) => {
-            const signed = formatSigned(row.amount ?? '0', accountView(row).currency)
-            return (
-              <li key={row.fileRow} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-sm last:border-0">
-                <span className="truncate text-muted-foreground">{row.description || '—'}</span>
-                <span className={cn('shrink-0 tabular-nums', signed.income && 'text-income')}>{signed.text}</span>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      {open ? null : <AnswerActions onConfirm={next} onChoose={choose} />}
     </div>
   )
 }

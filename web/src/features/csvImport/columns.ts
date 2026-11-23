@@ -11,6 +11,8 @@ export interface ColumnProfile {
   type: ColumnType
   negatives: boolean
   samples: string[]
+  /** every value reads like a bank's own reference (a UUID, a long code or number), not anything a person would pick */
+  internal: boolean
 }
 
 const TYPE_SAMPLE = 500
@@ -34,6 +36,17 @@ const isDate = (v: string) => {
 }
 const isNumber = (v: string) => parseAmountCell(v, '.') !== null || parseAmountCell(v, ',') !== null
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const CODE = /^[A-Za-z0-9_\-./]{10,}$/
+const LONG_INTEGER = /^\d{9,}$/
+const DIGITS = /\d/g
+
+function looksInternal(type: ColumnType, values: string[]): boolean {
+  if (values.length === 0 || type === 'date' || type === 'empty') return false
+  if (type === 'number') return values.every((v) => LONG_INTEGER.test(v))
+  return values.every((v) => UUID.test(v) || (CODE.test(v) && (v.match(DIGITS)?.length ?? 0) >= 6))
+}
+
 export function profileColumns(file: ParsedFile): ColumnProfile[] {
   return file.header.map((name, index) => {
     const values: string[] = []
@@ -54,7 +67,7 @@ export function profileColumns(file: ParsedFile): ColumnProfile[] {
       .slice(0, SAMPLE_COUNT)
       .map((v) => (v.length > SAMPLE_MAX ? `${v.slice(0, SAMPLE_MAX)}…` : v))
     const negatives = type === 'number' && typed.some((v) => /^[-−(]/.test(v) || /-$/.test(v))
-    return { index, name, type, negatives, samples }
+    return { index, name, type, negatives, samples, internal: looksInternal(type, typed) }
   })
 }
 
@@ -80,8 +93,13 @@ const MONEY_NAMES = [...SYNONYMS.amount, ...SYNONYMS.amountIn, ...SYNONYMS.amoun
 // word check.
 const HAS_LETTER = /\p{L}/u
 
+/** some header is itself a date or a number: the file has no header row, its first transaction stands in */
+export function headerHasValues(profiles: ColumnProfile[]): boolean {
+  return profiles.some(({ name }) => isDate(name) || (!HAS_LETTER.test(name) && isNumber(name)))
+}
+
 export function headerLooksLikeData(profiles: ColumnProfile[]): boolean {
-  if (profiles.some(({ name }) => isDate(name) || (!HAS_LETTER.test(name) && isNumber(name)))) return true
+  if (headerHasValues(profiles)) return true
   const kinds = [
     { type: 'date', words: DATE_NAMES },
     { type: 'number', words: MONEY_NAMES },

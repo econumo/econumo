@@ -405,7 +405,6 @@
       }
     },
     "import_wizard": {
-      "column_n": "Kolumna {n}",
       "title": "Importuj transakcje",
       "steps_label": "Kroki importu",
       "needs_attention": "wymaga uwagi",
@@ -440,26 +439,27 @@
         "column": "Każdy wiersz podaje swoje konto",
         "name": "Nazwa konta",
         "currency": "Waluta",
-        "column_question": "Wybierz kolumnę z nazwą konta",
+        "column_question": "Które z nich to konto?",
         "found": "Konta w tym pliku",
         "existing_name": "Istniejące konto",
         "currency_of": "Waluta dla {name}",
         "name_hint": "Nazwę możesz zmienić później",
-        "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach."
+        "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
+        "per_row": "Twój plik podaje konto każdej transakcji:",
+        "transactions": "{count} transakcja | {count} transakcje | {count} transakcji"
       },
       "date": {
-        "title": "Która kolumna mówi, kiedy była każda płatność?",
+        "title": "Kiedy była każda płatność?",
         "question": "Czy {example} to {dmy}, czy {mdy}?",
         "skipped": "{count} wiersz nie ma czytelnej daty i zostanie pominięty | {count} wiersze nie mają czytelnej daty i zostaną pominięte | {count} wierszy nie ma czytelnej daty i zostanie pominiętych",
-        "example": "„{value}” zostanie odczytane jako",
-        "not_a_date": "to nie data"
+        "choose": "Które z nich to data?"
       },
       "amount": {
-        "none_in": "Plik nie ma kolumny z wpływami",
-        "none_out": "Plik nie ma kolumny z wydatkami",
+        "none_in": "Żadne z nich to nie wpływy",
+        "none_out": "Żadne z nich to nie wydatki",
         "skipped": "{count} wiersz nie ma czytelnej kwoty i zostanie pominięty | {count} wiersze nie mają czytelnej kwoty i zostaną pominięte | {count} wierszy nie ma czytelnej kwoty i zostanie pominiętych",
-        "title": "Która kolumna zawiera pieniądze?",
-        "single": "Jedna kolumna, minus dla wydatków",
+        "title": "Ile wyniosła każda płatność?",
+        "single": "Jedna kwota, minus dla wydatków",
         "dual": "Wpływy i wydatki",
         "money_in": "Wpływy",
         "money_out": "Wydatki",
@@ -468,12 +468,15 @@
         "flip": "Odwróć znaki",
         "mode": "Jak pokazane są kwoty",
         "flip_hint": "Włącz, jeśli bank pokazuje płatności bez minusa",
-        "example_empty": "Wybierz kolumnę z pieniędzmi, aby zobaczyć, jak będą wyglądać płatności.",
-        "example_label": "Tak będą wyglądać płatności"
+        "example_label": "Tak będą wyglądać płatności",
+        "choose": "Które z nich to kwota?",
+        "choose_in": "Które z nich to wpływy?",
+        "choose_out": "Które z nich to wydatki?"
       },
       "description": {
         "none": "Plik nie ma opisu",
-        "title": "Która kolumna mówi, za co była każda płatność?"
+        "title": "Za co była każda płatność?",
+        "choose": "Które z nich mówi, za co była?"
       },
       "extras": {
         "title": "Coś jeszcze warto przenieść?",
@@ -484,7 +487,7 @@
           "tag": "Tag budżetowy",
           "labels": "Tagi raportowe"
         },
-        "separator_question": "Kilka tagów w jednej komórce oddzielają",
+        "separator_question": "Gdy tagów jest kilka, oddziela je",
         "tab": "Tabulator",
         "newline": "Nowa linia",
         "custom_separator": "Inny znak",
@@ -495,8 +498,9 @@
           "payee": "Komu zapłaciłeś lub kto zapłacił tobie",
           "category": "Zakupy, czynsz… brakujące zostaną utworzone",
           "tag": "Projekt lub podróż",
-          "labels": "Kilka tagów w jednej komórce to nie problem"
-        }
+          "labels": "Kilka naraz to nie problem"
+        },
+        "answer": "Przeniesiemy też:"
       },
       "preview": {
         "title": "Oto, co zostanie dodane",
@@ -535,19 +539,21 @@
       "rows": "{count} wiersz | {count} wiersze | {count} wierszy",
       "all_steps": "Wszystkie kroki",
       "column_empty": "pusta",
-      "more_columns": "Pokaż jeszcze {count} kolumnę | Pokaż jeszcze {count} kolumny | Pokaż jeszcze {count} kolumn",
-      "now_used": "teraz: {role}",
+      "more_columns": "Pokaż jeszcze {count} | Pokaż jeszcze {count} | Pokaż jeszcze {count}",
+      "now_used": "używane jako: {role}",
       "summary": {
         "not_chosen": "Nie wybrano",
         "new_account": "Nowe: {name} · {currency}",
-        "each_row": "Każdy wiersz: {column}",
-        "in_out": "Wpływy: {in} · Wydatki: {out}",
-        "flipped": "znaki odwrócone",
-        "none": "Brak",
+        "none": "Bez opisu",
         "with": "Z: {list}",
         "nothing_extra": "Nic więcej",
-        "check": "Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped}"
-      }
+        "check": "Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped}",
+        "from_account": "Konto {name}",
+        "from_accounts": "{name} i jeszcze {count} konto | {name} i jeszcze {count} konta | {name} i jeszcze {count} kont"
+      },
+      "from": "z „{name}”",
+      "looks_right": "Zgadza się",
+      "choose_differently": "Nie tak? Wybierz inaczej"
     },
     "import_result": {
       "success_title": "Import zakończony",
