@@ -33,16 +33,7 @@ function suggestedTransaction(item: ImportTransactionSuggestionDto, stored: Tran
     recurringId: null,
     isImported: 1 as const,
   }
-  return enrichTransaction(
-    {
-      ...base,
-      categoryId: item.categoryId ?? base.categoryId,
-      payeeId: item.payeeId ?? base.payeeId,
-      // the bank's text names the merchant on a row with nothing else to go by
-      description: base.description || item.externalPayee,
-    },
-    lookups,
-  )
+  return enrichTransaction({ ...base, categoryId: item.categoryId ?? base.categoryId, payeeId: item.payeeId ?? base.payeeId }, lookups)
 }
 
 export function ImportedTransactionsSection({ items }: { items: ImportTransactionSuggestionDto[] }) {
@@ -59,6 +50,12 @@ export function ImportedTransactionsSection({ items }: { items: ImportTransactio
 
   const asTransaction = (item: ImportTransactionSuggestionDto) =>
     suggestedTransaction(item, transactions?.find((tx) => tx.id === item.transactionId), lookups)
+  // Only on the row: the bank's text names the merchant where nothing else would. The sheet shows
+  // the stored description, and the bank's text in its import card.
+  const asRow = (item: ImportTransactionSuggestionDto) => {
+    const tx = asTransaction(item)
+    return { ...tx, description: tx.description || item.externalPayee }
+  }
   const onError = (err: unknown) => toast.error(apiErrorMessage(err))
   const close = () => setPreviewId(null)
 
@@ -73,7 +70,7 @@ export function ImportedTransactionsSection({ items }: { items: ImportTransactio
           onClick={() => setPreviewId(item.id)}
         >
           {/* no pageAccount: the cross-account form names the account, which a list mixing accounts needs */}
-          <TransactionRow transaction={asTransaction(item)} titleNote={t('imports.transaction_suggestions.suggested')} />
+          <TransactionRow transaction={asRow(item)} titleNote={t('imports.transaction_suggestions.suggested')} />
         </button>
       ))}
 

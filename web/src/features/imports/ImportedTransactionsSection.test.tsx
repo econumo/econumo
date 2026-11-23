@@ -106,27 +106,43 @@ it('✕ posts dismiss and closes the sheet', async () => {
   expect(screen.getByTestId('tx-t2')).toBeInTheDocument()
 })
 
-it('a suggestion already gone (404) counts as done: the sheet closes and the list refetches', async () => {
+const notFound = () => HttpResponse.json({ success: false, message: 'Import transaction suggestion not found', code: 0, errors: {} }, { status: 400 })
+
+it.each([
+  ['fill', 'fill-transaction-suggestion', 'Fill in', METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL],
+  ['dismiss', 'dismiss-transaction-suggestion', 'Dismiss', METRICS.IMPORT_TRANSACTION_SUGGESTION_DISMISS],
+])('a %s refused for a suggestion no longer listed counts as done: the sheet closes, no error', async (_name, route, button, metric) => {
   let gone = false
   renderSection([notLocal])
   server.use(
-    http.post('*/api/v1/import/fill-transaction-suggestion', () => {
+    http.post(`*/api/v1/import/${route}`, () => {
       gone = true
-      return HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })
+      return notFound()
     }),
     listAfter(() => (gone ? [] : [notLocal])),
   )
   const user = userEvent.setup()
   await user.click(await screen.findByTestId('tx-t9'))
   const dialog = await screen.findByRole('dialog')
-  await user.click(within(dialog).getByRole('button', { name: 'Fill in' }))
+  await user.click(within(dialog).getByRole('button', { name: button }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await waitFor(() => expect(screen.queryByTestId('tx-t9')).not.toBeInTheDocument())
   expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
-  expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL)
+  expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(metric)
 })
 
-it('a refused fill shows the error and keeps the sheet open', async () => {
+it('a refused dismiss whose suggestion is still listed shows the error and keeps the sheet open', async () => {
+  renderSection([notLocal])
+  server.use(http.post('*/api/v1/import/dismiss-transaction-suggestion', notFound))
+  const user = userEvent.setup()
+  await user.click(await screen.findByTestId('tx-t9'))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: 'Dismiss' }))
+  await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Import transaction suggestion not found'))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
+
+it('a refused fill whose suggestion is still listed shows the error and keeps the sheet open', async () => {
   renderSection([notLocal])
   server.use(http.post('*/api/v1/import/fill-transaction-suggestion', () =>
     HttpResponse.json({ success: false, message: 'Category is archived', code: 400, errors: {} }, { status: 400 })))

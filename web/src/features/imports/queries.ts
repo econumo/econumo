@@ -147,13 +147,16 @@ export function useImportTransactionSuggestions() {
   })
 }
 
-// A 404 is a suggestion already filled, dismissed or cleared (another device, a lost answer):
-// there is nothing left to do, so it reads as done.
-async function unlessGone<T>(request: Promise<T>): Promise<T | 'gone'> {
+// A refusal (the server answers an unknown, filled or dismissed suggestion with a 400) whose
+// suggestion is no longer listed was handled elsewhere: another device, a double tap, a retry
+// after a lost answer. There is nothing left to do, so it reads as done.
+async function unlessGone<T>(id: Id, request: Promise<T>): Promise<T | 'gone'> {
   try {
     return await request
   } catch (err) {
-    if (isAxiosError(err) && err.response?.status === 404) return 'gone'
+    if (!isAxiosError(err) || err.response === undefined || err.response.status >= 500) throw err
+    const items = await importsApi.getImportTransactionSuggestionList().catch(() => undefined)
+    if (items !== undefined && !items.some((s) => s.id === id)) return 'gone'
     throw err
   }
 }
@@ -171,11 +174,11 @@ export function useFillImportTransactionSuggestion() {
   const drop = useDropTransactionSuggestion()
   return useMutation({
     meta: { handlesOwnErrors: true },
-    mutationFn: (id: Id) => unlessGone(importsApi.fillImportTransactionSuggestion(id)),
+    mutationFn: (id: Id) => unlessGone(id, importsApi.fillImportTransactionSuggestion(id)),
     onSuccess: (result, id) => {
       drop(id)
       // the revision sync reads the cached account list, so it is refetched with the transactions
-      for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions, queryKeys.debts]) {
+      for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions, queryKeys.debts]) {
         void queryClient.invalidateQueries({ queryKey })
       }
       if (result !== 'gone') trackEvent(METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL)
@@ -187,7 +190,7 @@ export function useDismissImportTransactionSuggestion() {
   const drop = useDropTransactionSuggestion()
   return useMutation({
     meta: { handlesOwnErrors: true },
-    mutationFn: (id: Id) => unlessGone(importsApi.dismissImportTransactionSuggestion(id)),
+    mutationFn: (id: Id) => unlessGone(id, importsApi.dismissImportTransactionSuggestion(id)),
     // never the answer's list, as with the rule suggestions: answers out of order would bring a row back
     onSuccess: (result, id) => {
       drop(id)

@@ -224,7 +224,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         <span className="mt-1 max-w-full truncate text-base font-medium" title={heroName}>
           {heroName}
         </span>
-        {suggested?.category && !isTransfer ? suggestedNote : null}
+        {suggested?.category && tx.category && !isTransfer ? suggestedNote : null}
         {/* Whatever sits beside the amount, an equal-width spacer opposite keeps
             the amount optically centred. The two are mutually exclusive: only a
             hand-entered transaction offers the action, only a posted one carries
