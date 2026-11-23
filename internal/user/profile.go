@@ -115,6 +115,24 @@ func (s *Service) UpdateAI(ctx context.Context, userID vo.Id, req model.UpdateAI
 	return &model.UpdateAIResult{User: cur}, nil
 }
 
+// UpdateAISuggestions writes the caller's two AI import suggestion switches and
+// returns the refreshed current user. Turning one off deletes nothing: the
+// suggestions are only hidden.
+func (s *Service) UpdateAISuggestions(ctx context.Context, userID vo.Id, req model.UpdateAISuggestionsRequest) (*model.UpdateAISuggestionsResult, error) {
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.SetAISuggestions(*req.SuggestRules, *req.SuggestFill, s.repo.NextIdentity(), s.repo.NextIdentity(), now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateAISuggestionsResult{User: cur}, nil
+}
+
 // UpdateOnboarding stores the step states of the caller's onboarding and
 // returns the refreshed current user. Once onboarding is completed the write is
 // a no-op: completion is terminal, so a late write from another tab cannot

@@ -30,6 +30,10 @@ const (
 	// OptionAI is the user's consent to AI features ("0" off, "1" on); absent
 	// reads as on, so no backfill is needed.
 	OptionAI = "ai"
+	// OptionAISuggestRules and OptionAISuggestFill switch the two kinds of AI
+	// import suggestion ("0" off, "1" on); absent reads as on.
+	OptionAISuggestRules = "ai_suggest_rules"
+	OptionAISuggestFill  = "ai_suggest_fill"
 	// OptionLastSeenVersion is the newest release whose "what's new" notice the
 	// user has seen (a vX.Y.Z string); absent for users predating it.
 	OptionLastSeenVersion = "last_seen_version"
@@ -210,6 +214,21 @@ func (u *User) AIEnabled() bool {
 	return *o.Value != "0"
 }
 
+// AISuggestRules reports whether AI may propose import rules for the user.
+func (u *User) AISuggestRules() bool { return u.optionOnByDefault(OptionAISuggestRules) }
+
+// AISuggestFill reports whether AI may propose values for blank fields of
+// imported transactions.
+func (u *User) AISuggestFill() bool { return u.optionOnByDefault(OptionAISuggestFill) }
+
+func (u *User) optionOnByDefault(name string) bool {
+	o := u.Option(name)
+	if o == nil || o.Value == nil || *o.Value == "" {
+		return true
+	}
+	return *o.Value != "0"
+}
+
 // AIActive is whether AI may run on the user's data right now: consent given
 // and full access. A read-only account is treated as AI off without touching
 // the stored preference, so restoring access brings AI back.
@@ -320,6 +339,25 @@ func (u *User) SetAI(enabled bool, id vo.Id, now time.Time) {
 		return
 	}
 	u.Options = append(u.Options, NewUserOption(id, OptionAI, &v, now))
+}
+
+// SetAISuggestions writes both suggestion switches, appending the option rows
+// that are absent (rulesID and fillID name the new rows).
+func (u *User) SetAISuggestions(rules, fill bool, rulesID, fillID vo.Id, now time.Time) {
+	u.setBoolOption(OptionAISuggestRules, rules, rulesID, now)
+	u.setBoolOption(OptionAISuggestFill, fill, fillID, now)
+}
+
+func (u *User) setBoolOption(name string, on bool, id vo.Id, now time.Time) {
+	v := "0"
+	if on {
+		v = "1"
+	}
+	if o := u.Option(name); o != nil {
+		o.setValue(&v, now)
+		return
+	}
+	u.Options = append(u.Options, NewUserOption(id, name, &v, now))
 }
 
 // SetOnboardingProgress stores the step states of an onboarding still in

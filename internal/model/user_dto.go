@@ -262,6 +262,36 @@ type UpdateAIResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-ai-suggestions
+// ---------------------------------------------------------------------------
+
+// UpdateAISuggestionsRequest is the update-ai-suggestions request body; both
+// switches are required.
+type UpdateAISuggestionsRequest struct {
+	SuggestRules *bool `json:"suggestRules"`
+	SuggestFill  *bool `json:"suggestFill"`
+}
+
+func (r UpdateAISuggestionsRequest) Validate() error {
+	var fields []errs.FieldError
+	if r.SuggestRules == nil {
+		fields = append(fields, errs.FieldError{Key: "suggestRules", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if r.SuggestFill == nil {
+		fields = append(fields, errs.FieldError{Key: "suggestFill", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// UpdateAISuggestionsResult is the update-ai-suggestions response.
+type UpdateAISuggestionsResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // update-onboarding
 // ---------------------------------------------------------------------------
 

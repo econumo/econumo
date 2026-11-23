@@ -364,6 +364,13 @@ func TestImportsOwnerFacts(t *testing.T) {
 	if o, err := facts.OwnerFacts(ctx, vo.MustParseId(optedOut)); err != nil || !o.AIOff {
 		t.Fatalf("opted out = %+v %v", o, err)
 	}
+	if o, _ := facts.OwnerFacts(ctx, vo.MustParseId(active)); !o.SuggestRules || !o.SuggestFill {
+		t.Fatalf("default suggestion switches = %+v", o)
+	}
+	f.Option(optedOut, model.OptionAISuggestRules, &off)
+	if o, err := facts.OwnerFacts(ctx, vo.MustParseId(optedOut)); err != nil || o.SuggestRules || !o.SuggestFill {
+		t.Fatalf("switches = %+v %v", o, err)
+	}
 }
 
 type fixedImportsClock struct{ t time.Time }

@@ -81,9 +81,12 @@ type OwnerFacts interface {
 // OwnerInfo: the stored language and timezone ("" when unknown) for the
 // prompt; Readonly when the effective access level is readonly and AIOff when
 // the user opted out of AI. Either one means no AI call with their data.
+// SuggestRules and SuggestFill are the user's two suggestion switches.
 type OwnerInfo struct {
 	Language, Timezone string
 	Readonly, AIOff    bool
+	SuggestRules       bool
+	SuggestFill        bool
 }
 
 // AttemptLimiter caps the unbounded import endpoints per user; every request

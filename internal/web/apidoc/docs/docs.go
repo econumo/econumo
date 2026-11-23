@@ -14255,6 +14255,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/update-ai-suggestions": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Turns AI rule suggestions and AI suggestions for blank fields of imported transactions on or off for the authenticated user (nothing is deleted when one is turned off) and returns the refreshed user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update AI import suggestion switches",
+                "parameters": [
+                    {
+                        "description": "Update AI suggestions request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateAISuggestionsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UpdateAISuggestionsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/update-analytics": {
             "post": {
                 "security": [
@@ -20454,6 +20523,25 @@ const docTemplate = `{
             }
         },
         "model.UpdateAIResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateAISuggestionsRequest": {
+            "type": "object",
+            "properties": {
+                "suggestFill": {
+                    "type": "boolean"
+                },
+                "suggestRules": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.UpdateAISuggestionsResult": {
             "type": "object",
             "properties": {
                 "user": {
