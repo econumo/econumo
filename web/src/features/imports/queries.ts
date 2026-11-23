@@ -147,15 +147,16 @@ export function useImportTransactionSuggestions() {
   })
 }
 
-// The server's not-found answer: a 400 with no field errors. Anything else (402 readonly,
-// a field-validation 400, 409) is a real refusal, and the list cannot tell it apart: it is empty
-// for a readonly user or one whose switch is off.
+// The server's not-found answer: a 400 with code 0 and no field errors. Anything else (402
+// readonly, a coded refusal, a field-validation 400, 409) is a real refusal, and the list cannot
+// tell it apart: it is empty for a readonly user or one whose switch is off.
 function isNotFoundAnswer(err: unknown): boolean {
   if (!isAxiosError(err) || err.response === undefined) return false
   const { status, data } = err.response
   if (status !== 400 && status !== 404) return false
-  const errors = (data as { errors?: unknown } | undefined)?.errors
-  return errors === undefined || (typeof errors === 'object' && errors !== null && !Array.isArray(errors) && Object.keys(errors).length === 0)
+  const body = data as { code?: unknown; errors?: unknown } | undefined
+  const errors = body?.errors
+  return body?.code === 0 && typeof errors === 'object' && errors !== null && !Array.isArray(errors) && Object.keys(errors).length === 0
 }
 
 // A not-found refusal whose suggestion is no longer listed was handled elsewhere: another
@@ -192,7 +193,8 @@ export function useFillImportTransactionSuggestion() {
       for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions, queryKeys.debts]) {
         void queryClient.invalidateQueries({ queryKey })
       }
-      if (result !== 'gone') trackEvent(METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL)
+      // updated 0: the server found nothing left to fill and dropped the suggestion
+      if (result !== 'gone' && result.updated === 1) trackEvent(METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL)
     },
   })
 }

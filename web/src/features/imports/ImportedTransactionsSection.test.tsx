@@ -193,6 +193,25 @@ it.each([
   expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(metric)
 })
 
+it('a fill refused with a coded fieldless 400 is an error even when the list no longer has the suggestion', async () => {
+  let refused = false
+  renderSection([notLocal])
+  server.use(
+    http.post('*/api/v1/import/fill-transaction-suggestion', () => {
+      refused = true
+      return HttpResponse.json({ success: false, message: 'Transaction is not available', code: 400, errors: {} }, { status: 400 })
+    }),
+    listAfter(() => (refused ? [] : [notLocal])),
+  )
+  const user = userEvent.setup()
+  await user.click(await screen.findByTestId('tx-t9'))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: 'Fill in' }))
+  await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Transaction is not available'))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL)
+})
+
 it('buttons disabled offline', async () => {
   renderSection([notLocal])
   const user = userEvent.setup()
