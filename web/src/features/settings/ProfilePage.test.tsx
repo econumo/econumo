@@ -571,6 +571,45 @@ it.each([
   await waitFor(() => expect(rules).toBeChecked())
 })
 
+it('a late suggestion switch answer does not revert the main AI switch changed meanwhile', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  vi.mocked(trackEvent).mockClear()
+  let release: () => void = () => {}
+  let answered = false
+  server.use(
+    http.post('*/api/v1/user/update-ai-suggestions', async () => {
+      await new Promise<void>((resolve) => { release = resolve })
+      answered = true
+      // the user as this write saw it: main switch still on
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai_suggest_rules', value: '0' }, { name: 'ai_suggest_fill', value: '1' }] } },
+      })
+    }),
+    http.post('*/api/v1/user/update-ai', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } },
+      })),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('switch', { name: 'Suggest rules' }))
+  const main = within(dialog).getByRole('switch', { name: /use ai features/i })
+  await user.click(main)
+  await waitFor(() => expect(main).not.toBeChecked())
+
+  release()
+  await waitFor(() => expect(answered).toBe(true))
+  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: true }))
+  expect(main).not.toBeChecked()
+  const options = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)?.options ?? []
+  expect(options).toContainEqual({ name: 'ai', value: '0' })
+  expect(options).toContainEqual({ name: 'ai_suggest_rules', value: '0' })
+})
+
 it('disables the import suggestion switches offline', async () => {
   window.econumoConfig = { AI_ENABLED: true }
   const user = userEvent.setup()

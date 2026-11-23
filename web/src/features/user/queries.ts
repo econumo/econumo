@@ -204,6 +204,19 @@ function withOption(user: CurrentUserDto, name: UserOptions, value: string): Cur
   return { ...user, options }
 }
 
+const aiSuggestionOptions = [UserOptions.AI_SUGGEST_RULES, UserOptions.AI_SUGGEST_FILL]
+
+// Only the two switch rows: a whole user from this write could revert another write in between,
+// such as the main AI switch.
+function withAiSuggestionOptions(current: CurrentUserDto | undefined, from: CurrentUserDto): CurrentUserDto {
+  if (!current) return from
+  return aiSuggestionOptions.reduce((user, name) => {
+    const value = userOption(from, name)
+    // absent reads as on, like the row it replaces
+    return value === null ? { ...user, options: user.options.filter((o) => o.name !== name) } : withOption(user, name, value)
+  }, current)
+}
+
 const updateAiSuggestionsKey = ['user', 'update-ai-suggestions'] as const
 
 // Each switch posts both values, taking the other from the cached user, so the cache changes at
@@ -232,12 +245,13 @@ export function useUpdateAiSuggestions() {
     // flips back, which must not happen silently.
     onError: (err, _vars, context) => {
       if (othersPending()) return
-      if (context?.previous) queryClient.setQueryData(queryKeys.user, context.previous)
+      const previous = context?.previous
+      if (previous) queryClient.setQueryData<CurrentUserDto>(queryKeys.user, (current) => withAiSuggestionOptions(current, previous))
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
       toastWriteError(err)
     },
     onSuccess: (user, { suggestRules, suggestFill }) => {
-      if (!othersPending()) queryClient.setQueryData(queryKeys.user, user)
+      if (!othersPending()) queryClient.setQueryData<CurrentUserDto>(queryKeys.user, (current) => withAiSuggestionOptions(current, user))
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       trackEvent(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: suggestRules, fill: suggestFill })
