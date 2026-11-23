@@ -9,6 +9,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { getBillingUrl } from '@/lib/config'
 import { accessDaysLeft, deriveAccessState } from '@/lib/access'
+import { toastWriteError } from '@/lib/apiError'
 import type { AccessState } from '@/lib/access'
 
 export function useUserData() {
@@ -227,10 +228,13 @@ export function useUpdateAiSuggestions() {
       return { previous }
     },
     // While a later toggle is queued, its answer settles the cache: it carries the full state.
-    onError: (_err, _vars, context) => {
+    // Having an onError of its own, this write gets no global no-response toast: the switch
+    // flips back, which must not happen silently.
+    onError: (err, _vars, context) => {
       if (othersPending()) return
       if (context?.previous) queryClient.setQueryData(queryKeys.user, context.previous)
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      toastWriteError(err)
     },
     onSuccess: (user, { suggestRules, suggestFill }) => {
       if (!othersPending()) queryClient.setQueryData(queryKeys.user, user)

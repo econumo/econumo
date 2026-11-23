@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react
 import { act } from 'react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
@@ -545,6 +546,29 @@ it('suggestion toggles are sent one at a time, so the latest toggle wins on the 
   ])
   expect(rules).not.toBeChecked()
   expect(fill).not.toBeChecked()
+})
+
+it.each([
+  ['a refusal', () => HttpResponse.json({ success: false, message: 'Not allowed', code: 0, errors: {} }, { status: 400 }), ['Not allowed']],
+  ['no response', () => HttpResponse.error(), [expect.any(String), { id: 'no-response' }]],
+  // the API client's own readonly toast, not a second one
+  ['402 readonly', () => HttpResponse.json({ success: false, message: 'Read-only access', code: 0, errors: {} }, { status: 402 }), [expect.any(String), { id: 'subscription-readonly' }]],
+])('a failed suggestion switch change (%s) flips back with one error toast', async (_name, respond, args) => {
+  window.econumoConfig = { AI_ENABLED: true }
+  const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
+  onTestFinished(() => toastError.mockRestore())
+  server.use(http.post('*/api/v1/user/update-ai-suggestions', respond))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
+
+  await user.click(rules)
+
+  await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
+  expect(toastError).toHaveBeenCalledWith(...args)
+  await waitFor(() => expect(rules).toBeChecked())
 })
 
 it('disables the import suggestion switches offline', async () => {

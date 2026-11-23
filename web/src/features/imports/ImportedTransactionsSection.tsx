@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import type { ImportTransactionSuggestionDto } from '@/api/dto/imports'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { Button } from '@/components/ui/button'
@@ -10,7 +9,7 @@ import { useTransactions } from '@/features/transactions/queries'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { enrichTransaction, useTransactionLookups, type TransactionLookups, type ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
-import { apiErrorMessage } from '@/lib/apiError'
+import { toastWriteError } from '@/lib/apiError'
 import { useDismissImportTransactionSuggestion, useFillImportTransactionSuggestion } from './queries'
 
 // The transaction as Fill in would leave it: the suggested values over the transaction's own, read
@@ -55,7 +54,7 @@ export function ImportedTransactionsSection({ items }: { items: ImportTransactio
     const tx = asTransaction(item)
     return { ...tx, description: tx.description || item.externalPayee }
   }
-  const onError = (err: unknown) => toast.error(apiErrorMessage(err))
+  const onError = toastWriteError
   const close = () => setPreviewId(null)
 
   return (

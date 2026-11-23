@@ -173,7 +173,7 @@ it('a refused fill whose suggestion is still listed shows the error and keeps th
 it.each([
   ['fill', 'fill-transaction-suggestion', 'Fill in', METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL],
   ['dismiss', 'dismiss-transaction-suggestion', 'Dismiss', METRICS.IMPORT_TRANSACTION_SUGGESTION_DISMISS],
-])('a %s refused with 402 shows the error and keeps the sheet open, even though the list is empty', async (_name, route, button, metric) => {
+])('a %s refused with 402 shows the readonly toast once and keeps the sheet open, even though the list is empty', async (_name, route, button, metric) => {
   let refused = false
   renderSection([notLocal])
   server.use(
@@ -188,7 +188,9 @@ it.each([
   await user.click(await screen.findByTestId('tx-t9'))
   const dialog = await screen.findByRole('dialog')
   await user.click(within(dialog).getByRole('button', { name: button }))
-  await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Read-only access'))
+  // one toast: the API client's readonly one
+  await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith(expect.any(String), { id: 'subscription-readonly' }))
+  expect(vi.mocked(toast.error)).toHaveBeenCalledTimes(1)
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(metric)
 })
