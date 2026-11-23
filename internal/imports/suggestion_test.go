@@ -879,3 +879,109 @@ func releaseInTx(t *testing.T, h *harness, id vo.Id, links []vo.Id) {
 		t.Fatal(err)
 	}
 }
+
+func (h *harness) setTxSuggestion(t *testing.T, linkID vo.Id, column, value string) {
+	t.Helper()
+	if _, err := h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE import_transaction_suggestions SET `+column+` = ? WHERE link_id = ?`), value, linkID.String()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func fillIn(t *testing.T, h *harness, linkID vo.Id) {
+	t.Helper()
+	res, err := fillTxSuggestion(h, userA, linkID)
+	if err != nil || res.Updated != 1 {
+		t.Fatalf("fill = %+v, %v", res, err)
+	}
+}
+
+// Taking the AI's values with Fill in confirms its guess, so the rule
+// suggestion keeps offering the row while the transaction agrees with it.
+func TestRuleSuggestionKeepsAgreeingFilledRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	s, links := seedSuggestion(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
+	fillIn(t, h, links[0].ID)
+
+	items := suggestionList(t, h, userA)
+	if len(items) != 1 || items[0].Id != s.ID.String() || len(items[0].Transactions) != 2 {
+		t.Fatalf("list = %+v", items)
+	}
+
+	// a later hand change that disagrees counts against the rule suggestion
+	other := h.payee(t, userA, "My Cafe")
+	h.setTx(t, links[0].TransactionID, "payee_id", other)
+	items = suggestionList(t, h, userA)
+	if len(items) != 1 || len(items[0].Transactions) != 1 || items[0].Transactions[0].TransactionId != links[1].TransactionID.String() {
+		t.Fatalf("list after a hand change = %+v", items)
+	}
+}
+
+func TestRuleSuggestionDropsDisagreeingFilledRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	restaurants := h.category(t, userA, "Restaurants")
+	s, links := seedSuggestion(t, h, c, cat, "")
+	h.setTxSuggestion(t, links[0].ID, "category_id", restaurants)
+	fillIn(t, h, links[0].ID)
+	if tx, err := h.txns.GetByID(context.Background(), *links[0].TransactionID); err != nil || tx.CategoryID == nil || tx.CategoryID.String() != restaurants {
+		t.Fatalf("filled transaction = %+v, %v", tx, err)
+	}
+
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("list = %+v", items)
+	}
+	_, err := h.repo.GetSuggestion(context.Background(), s.ID)
+	wantNotFound(t, err)
+}
+
+func TestRuleSuggestionDropsHandEditedRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, links := seedSuggestion(t, h, c, cat, "")
+	h.setTx(t, links[0].TransactionID, "category_id", cat)
+
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("list = %+v", items)
+	}
+	_, err := h.repo.GetSuggestion(context.Background(), s.ID)
+	wantNotFound(t, err)
+}
+
+func TestRuleSuggestionListHiddenWhenRulesOff(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	seedSuggestion(t, h, c, cat, "")
+	facts[userA] = ownerFact{language: "en", rulesOff: true}
+	if got := suggestionList(t, h, userA); len(got) != 0 {
+		t.Fatalf("list = %+v", got)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 {
+		t.Fatalf("rules off hides, never deletes: %+v", got)
+	}
+	facts[userA] = ownerFact{language: "en"}
+	if got := suggestionList(t, h, userA); len(got) != 1 {
+		t.Fatalf("list after switching rules back on = %+v", got)
+	}
+}
+
+// A filled row has nothing left for the rule to write: accept still walks and
+// releases it, without counting it as updated.
+func TestRuleSuggestionAcceptReleasesAgreeingFilledRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, links := seedSuggestion(t, h, c, cat, "")
+	fillIn(t, h, links[0].ID)
+	rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat})
+
+	res, err := h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})
+	if err != nil || res.Updated != 0 {
+		t.Fatalf("accept = %+v, %v", res, err)
+	}
+	_, err = h.repo.GetSuggestion(context.Background(), s.ID)
+	wantNotFound(t, err)
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("list = %+v", items)
+	}
+}

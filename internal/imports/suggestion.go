@@ -38,8 +38,8 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 			s.dropSuggestions(ctx, userID, open)
 			return out, nil
 		}
-		// hidden, not dropped: restoring access brings them back
-		if facts.Readonly {
+		// hidden, not dropped: restoring access or the switch brings them back
+		if facts.Readonly || !facts.SuggestRules {
 			return out, nil
 		}
 	}
@@ -158,13 +158,15 @@ type suggestionLookup struct {
 
 // pendingSuggestionRows keeps a transaction while it is live, on an account
 // the caller owns, still of the suggestion's type (an edit can change it) and
-// still empty in a field the suggestion would set.
+// still empty in a field the suggestion would set. A row filled through Fill
+// in also stays while it carries every value the suggestion sets: taking the
+// AI's values confirms the guess, so the rule is still worth offering.
 func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
 	type pending struct {
 		live *model.Transaction
 		link *model.ImportTransactionLink
 	}
-	var kept []pending
+	var kept, agreeing []pending
 	for _, linkID := range sg.LinkIDs {
 		l, live, err := s.suggestionTargetCached(ctx, userID, linkID, look.owned)
 		if err != nil {
@@ -177,6 +179,25 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		wantsPayee := sg.PayeeID != nil && live.PayeeID == nil
 		if wantsCategory || wantsPayee {
 			kept = append(kept, pending{live: live, link: l})
+			continue
+		}
+		if agrees(sg.CategoryID, live.CategoryID) && agrees(sg.PayeeID, live.PayeeID) {
+			agreeing = append(agreeing, pending{live: live, link: l})
+		}
+	}
+	if len(agreeing) > 0 {
+		ids := make([]vo.Id, len(agreeing))
+		for i, p := range agreeing {
+			ids[i] = p.link.ID
+		}
+		filled, err := s.repo.FilledTransactionSuggestionLinks(ctx, ids)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range agreeing {
+			if filled[p.link.ID] {
+				kept = append(kept, p)
+			}
 		}
 	}
 	if len(kept) == 0 {
@@ -205,6 +226,11 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		})
 	}
 	return rows, nil
+}
+
+// agrees: a field the suggestion does not set agrees with any value.
+func agrees(want, have *vo.Id) bool {
+	return want == nil || (have != nil && *have == *want)
 }
 
 // suggestionTarget resolves a suggestion's link to its live transaction, or
