@@ -30,13 +30,12 @@ function renderWizard(text: string) {
 
 // A step on its own, with answers kept the way the wizard keeps them; the first
 // prepared row is what the Check step's first card shows.
-function StepHarness({ text, Step, onSet, open = true, onNext = () => {} }: {
+function StepHarness({ text, Step, onSet, open = true }: {
   text: string
   Step: ComponentType<StepBodyProps>
   onSet: (step: StepId, patch: Partial<WizardAnswers>) => void
   /** the list of choices starts open, as after "Not right? Choose differently" */
   open?: boolean
-  onNext?: () => void
 }) {
   const [file] = useState(() => parseCsvText(text))
   const [choosing, setChoosing] = useState(open)
@@ -61,7 +60,6 @@ function StepHarness({ text, Step, onSet, open = true, onNext = () => {} }: {
         goTo={() => {}}
         choosing={choosing}
         choose={() => setChoosing(true)}
-        next={onNext}
       />
       <output aria-label="first row date">{rows[0]?.date ?? ''}</output>
     </>,
@@ -236,7 +234,7 @@ it('a column of a kind that cannot answer waits behind “Show N more”, unless
 it('asks how to read an ambiguous date, and the answer changes how the first row reads', async () => {
   render(<StepHarness text={'Date,Amount\n03/04/2026,-5\n05/06/2026,1\n'} Step={DateStep} onSet={vi.fn()} />)
   const user = userEvent.setup()
-  expect(screen.getByText('Is 03/04/2026 the April 3, 2026 or March 4, 2026?')).toBeInTheDocument()
+  expect(screen.getByText('Is 03/04/2026 April 3 or March 4?')).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: 'April 3, 2026' })).toBeChecked()
   expect(screen.getByRole('status', { name: 'first row date' })).toHaveTextContent('2026-04-03')
   await user.click(screen.getByRole('radio', { name: 'March 4, 2026' }))
@@ -315,15 +313,12 @@ it('with no negative amount, spending is shown with the file’s first amount, a
   expect(screen.getByText('Spending shows as: -12.00')).toBeInTheDocument()
 })
 
-it('a guessed answer shows no choices; Looks right goes on and Choose differently opens them, neither answering anything', async () => {
+it('a guessed answer shows no choices; Choose differently opens them without answering anything', async () => {
   const onSet = vi.fn()
-  const onNext = vi.fn()
-  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,Gehalt\n'} Step={DescriptionStep} onSet={onSet} open={false} onNext={onNext} />)
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,Gehalt\n'} Step={DescriptionStep} onSet={onSet} open={false} />)
   const user = userEvent.setup()
   expect(screen.getByText('(from “Memo”)').parentElement).toHaveTextContent('REWE Markt · Gehalt (from “Memo”)')
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Looks right' }))
-  expect(onNext).toHaveBeenCalledOnce()
   await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
   expect(screen.getByRole('radiogroup', { name: 'Which of these says what it was for?' })).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: 'REWE Markt · Gehalt from “Memo”' })).toBeChecked()

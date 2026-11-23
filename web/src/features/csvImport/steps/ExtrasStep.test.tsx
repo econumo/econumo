@@ -31,7 +31,6 @@ function Harness({ text, extras = noExtras, account = { kind: 'new', name: 'Main
         goTo={() => {}}
         choosing
         choose={() => {}}
-        next={() => {}}
       />
       <output aria-label="extras">{JSON.stringify(answers.extras)}</output>
     </>

@@ -180,7 +180,7 @@ function AccountList({ accounts, selected, label, onSelect }: {
   )
 }
 
-export function AccountStep({ state, setAnswers, choosing, choose: openChoices, next }: StepBodyProps) {
+export function AccountStep({ state, setAnswers, choosing, choose: openChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -313,7 +313,7 @@ export function AccountStep({ state, setAnswers, choosing, choose: openChoices, 
           {nameless > 0 ? (
             <SkippedNote>{pluralPick(t('transactions.import_wizard.account.skipped'), nameless, i18n.language)}</SkippedNote>
           ) : null}
-          {open ? null : <AnswerActions onConfirm={next} onChoose={openChoices} />}
+          {open ? null : <AnswerActions onChoose={openChoices} />}
         </>
       ) : null}
     </div>

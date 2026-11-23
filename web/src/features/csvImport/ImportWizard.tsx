@@ -311,7 +311,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   if (state !== null && step !== 'file' && step !== 'preview' && !choosing.has(step) && !hasGuess(step, state)) {
     setChoosing((prev) => new Set(prev).add(step))
   }
-  // a guessed answer has its own "Looks right" under it, so the footer has no second Continue
+  // over a guessed answer the footer's primary button accepts it: "Looks right" instead of Continue
   const guessShown = state !== null && !choosing.has(step) && hasGuess(step, state)
 
   const Body = step === 'file' ? null : STEP_BODIES[step]
@@ -381,9 +381,9 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
             </Button>
           ) : null}
           <div className="ml-auto" />
-          {guessShown ? null : step !== 'preview' ? (
+          {step !== 'preview' ? (
             <Button type="button" className="h-10 px-5" disabled={state === null} onClick={goNext}>
-              {t('transactions.import_wizard.continue')}
+              {t(guessShown ? 'transactions.import_wizard.looks_right' : 'transactions.import_wizard.continue')}
             </Button>
           ) : (
             // a long count or language wraps to two lines instead of running out of the button
@@ -404,7 +404,6 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
             goTo={openStep}
             choosing={choosing.has(step)}
             choose={chooseStep}
-            next={goNext}
           />
         </fieldset>
       ) : (

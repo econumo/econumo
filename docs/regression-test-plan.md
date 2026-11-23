@@ -769,13 +769,14 @@ navigation (single-pane vs sidebar).
       account for each transaction:" with one line per account ("WS Cash · 572
       transactions" and its currency picker or "Existing account"), Extra
       details "We’ll also bring along:" with "Payee: … (from “payee”)" lines —
-      and under it a primary "Looks right" (goes to the next step; the footer
-      then has no Continue) and a quiet "Not right? Choose differently". Open
+      the footer's primary button reads "Looks right" instead of Continue
+      (goes to the next step; never an empty footer, also on Account), with a
+      quiet "Not right? Choose differently" under the answer. Open
       questions (date order, decimal separator, "Spending shows as" with Flip
       the signs, Reporting tags' separator) and the grey skipped-rows notes
       stay visible under the guess. "Looks right" and opening the choices
       change no answer: an AI reply landing later still fills the step.
-      "Choose differently" opens the choices (and brings Continue back), and
+      "Choose differently" opens the choices (the footer button reads Continue again), and
       they stay open when the step is left and opened again; a step with
       nothing to show (no guess, or values that read as nothing) opens on its
       choices, which stay open after one is picked. The choices ("Which of
@@ -810,7 +811,7 @@ navigation (single-pane vs sidebar).
       first screen, with "We read your file and filled in what we could. Tap a
       step to change it." and a "Check N transactions" button; tapping a step
       opens it full screen with ← (back to the list), the question and Back /
-      Continue at the bottom (no Continue while a guess with "Looks right" is
+      Continue at the bottom ("Looks right" in its place while a guess is
       shown). Before a file is read the phone shows Your file
       with ✕.
 - [ ] Bank statement (`Buchungstag;Betrag;Verwendungszweck`, decimal comma,
@@ -820,10 +821,13 @@ navigation (single-pane vs sidebar).
       for `2.500,00`, dated as in the file. Same in a file with Spanish
       (Fecha, Importe) or Russian (Дата, Сумма, Описание) headers.
 - [ ] Ambiguous dates (every date like `03/04/2026`, no day above 12): Date
-      asks "Is 03/04/2026 the … or …?" with a value from the file and both
-      readings written out as dates in the UI language, preselected by the
-      browser's language (English US: month first; Russian, German: day
-      first) as two side-by-side choices; switching the answer moves every date
+      asks "Is 03/04/2026 April 3 or March 4?" (day and month in the UI
+      language, no article in English) with a value from the file, and both
+      readings as full dates ("April 3, 2026" / "March 4, 2026") as two
+      side-by-side choices, preselected by the browser's language for slash
+      or dash dates (English US: month first; Russian, German: day first);
+      dotted dates (`03.11.2026`) are preselected day first in every browser
+      language, English US included ("Nov 3, 2026"); switching the answer moves every date
       on Check and in the ✓ answer above it. Unreadable dates are counted in grey ("1 row has
       no readable date and will be skipped"); unreadable amounts likewise on
       Amount, rows with no account name on Account's per-row option.

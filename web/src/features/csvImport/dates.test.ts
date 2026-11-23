@@ -60,6 +60,11 @@ describe('detectDateOrder', () => {
   it('falls back to the locale and flags ambiguity', () => {
     expect(detectDateOrder(['03/04/2026'], 'en-US')).toEqual({ order: 'mdy', ambiguous: true, example: '03/04/2026' })
     expect(detectDateOrder(['03/04/2026'], 'en-GB')).toEqual({ order: 'dmy', ambiguous: true, example: '03/04/2026' })
+    expect(detectDateOrder(['03-04-2026'], 'en-US')).toEqual({ order: 'mdy', ambiguous: true, example: '03-04-2026' })
+  })
+
+  it('reads dotted dates day first whatever the browser language, still asking', () => {
+    expect(detectDateOrder(['03.11.2026', '05.11.2026'], 'en-US')).toEqual({ order: 'dmy', ambiguous: true, example: '03.11.2026' })
   })
 
   it('is not ambiguous without day/month shaped values', () => {

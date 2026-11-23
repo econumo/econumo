@@ -9,16 +9,17 @@ import { detectDateOrder, parseDateCell, type DateOrder } from '../dates'
 import { columnValues } from '../guess'
 import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
 
-function longDate(value: string, order: DateOrder, language: string): string | null {
+// "3 November 2026", or "3 November" without the year for the question itself
+function longDate(value: string, order: DateOrder, language: string, withYear = true): string | null {
   const parsed = parseDateCell(value, order)
   if (!parsed) return null
   const [y, m, d] = parsed.date.split('-').map(Number)
-  return new Intl.DateTimeFormat(language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+  return new Intl.DateTimeFormat(language, { day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'UTC' }).format(
     new Date(Date.UTC(y, m - 1, d)),
   )
 }
 
-export function DateStep({ state, setAnswers, choosing, choose, next }: StepBodyProps) {
+export function DateStep({ state, setAnswers, choosing, choose }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { date } = state.answers
   const values = useMemo(() => (date.column === null ? [] : columnValues(state.file, date.column)), [state.file, date.column])
@@ -29,7 +30,13 @@ export function DateStep({ state, setAnswers, choosing, choose, next }: StepBody
 
   const dmy = ambiguous ? (longDate(ambiguous, 'dmy', i18n.language) ?? ambiguous) : ''
   const mdy = ambiguous ? (longDate(ambiguous, 'mdy', i18n.language) ?? ambiguous) : ''
-  const question = ambiguous ? t('transactions.import_wizard.date.question', { example: ambiguous, dmy, mdy }) : ''
+  const question = ambiguous
+    ? t('transactions.import_wizard.date.question', {
+        example: ambiguous,
+        dmy: longDate(ambiguous, 'dmy', i18n.language, false) ?? ambiguous,
+        mdy: longDate(ambiguous, 'mdy', i18n.language, false) ?? ambiguous,
+      })
+    : ''
   const guessed = hasGuess('date', state)
   const open = choosing || !guessed
   const days = firstDistinct(state.rows, (row) => row.date)
@@ -66,7 +73,7 @@ export function DateStep({ state, setAnswers, choosing, choose, next }: StepBody
         </Field>
       ) : null}
       {unreadable > 0 ? <SkippedNote>{pluralPick(t('transactions.import_wizard.date.skipped'), unreadable, i18n.language)}</SkippedNote> : null}
-      {open ? null : <AnswerActions onConfirm={next} onChoose={choose} />}
+      {open ? null : <AnswerActions onChoose={choose} />}
     </div>
   )
 }

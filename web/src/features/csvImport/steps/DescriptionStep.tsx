@@ -4,7 +4,7 @@ import { columnTags, fromName } from '../columnLabels'
 import { Answer, AnswerActions } from '../controls'
 import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
 
-export function DescriptionStep({ state, setAnswers, choosing, choose, next }: StepBodyProps) {
+export function DescriptionStep({ state, setAnswers, choosing, choose }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { description } = state.answers
   const guessed = hasGuess('description', state)
@@ -29,7 +29,7 @@ export function DescriptionStep({ state, setAnswers, choosing, choose, next }: S
           noneLabel={t('transactions.import_wizard.description.none')}
         />
       ) : (
-        <AnswerActions onConfirm={next} onChoose={choose} />
+        <AnswerActions onChoose={choose} />
       )}
     </div>
   )

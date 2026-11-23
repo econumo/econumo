@@ -450,7 +450,7 @@
       },
       "date": {
         "title": "When did each payment happen?",
-        "question": "Is {example} the {dmy} or {mdy}?",
+        "question": "Is {example} {dmy} or {mdy}?",
         "skipped": "{count} row has no readable date and will be skipped | {count} rows have no readable date and will be skipped",
         "choose": "Which of these is the date?"
       },

@@ -2,7 +2,6 @@ import { useId } from 'react'
 import type { ReactNode } from 'react'
 import { Check, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface SegmentedProps<T extends string> {
@@ -79,18 +78,13 @@ export function Answer({ id, from, children }: { id?: string; from?: string | nu
   )
 }
 
-/** under a guessed answer: accept it and go on, or open the list of choices */
-export function AnswerActions({ onConfirm, onChoose }: { onConfirm: () => void; onChoose: () => void }) {
+/** under a guessed answer, the quiet way to the list of choices; "Looks right" is the footer's primary button */
+export function AnswerActions({ onChoose }: { onChoose: () => void }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-      <Button type="button" className="h-10 px-5" onClick={onConfirm}>
-        {t('transactions.import_wizard.looks_right')}
-      </Button>
-      <button type="button" className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={onChoose}>
-        {t('transactions.import_wizard.choose_differently')}
-      </button>
-    </div>
+    <button type="button" className="self-start text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={onChoose}>
+      {t('transactions.import_wizard.choose_differently')}
+    </button>
   )
 }
 

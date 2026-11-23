@@ -45,7 +45,7 @@ function distinctNew(rows: PreparedRow[], role: 'category' | 'labels', split: st
   return found.size
 }
 
-export function ExtrasStep({ state, setAnswers, choosing, choose, next }: StepBodyProps) {
+export function ExtrasStep({ state, setAnswers, choosing, choose }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -188,7 +188,7 @@ export function ExtrasStep({ state, setAnswers, choosing, choose, next }: StepBo
           {pluralPick(t('transactions.import_wizard.extras.new_labels'), newLabels, i18n.language)}
         </p>
       ) : null}
-      {open ? null : <AnswerActions onConfirm={next} onChoose={choose} />}
+      {open ? null : <AnswerActions onChoose={choose} />}
     </div>
   )
 }

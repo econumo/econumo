@@ -85,5 +85,7 @@ export function detectDateOrder(
 
   if (firstOver12) return { order: 'dmy', ambiguous: false, example: null }
   if (secondOver12) return { order: 'mdy', ambiguous: false, example: null }
-  return { order: fallback, ambiguous: example !== null, example }
+  // month-first dates are written with slashes or dashes, never dots: 03.11.2026 is 3 November anywhere
+  const order = example !== null && example.includes('.') ? 'dmy' : fallback
+  return { order, ambiguous: example !== null, example }
 }

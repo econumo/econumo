@@ -55,7 +55,7 @@ function amountValues(file: ParsedFile, amount: Amount): string[] {
 const EXAMPLE_ROWS = 3
 const isNumber = (type: string) => type === 'number'
 
-export function AmountStep({ state, setAnswers, choosing, choose, next }: StepBodyProps) {
+export function AmountStep({ state, setAnswers, choosing, choose }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const flipId = useId()
   const { amount } = state.answers
@@ -175,7 +175,7 @@ export function AmountStep({ state, setAnswers, choosing, choose, next }: StepBo
           ) : null}
         </div>
       ) : null}
-      {open ? null : <AnswerActions onConfirm={next} onChoose={choose} />}
+      {open ? null : <AnswerActions onChoose={choose} />}
     </div>
   )
 }

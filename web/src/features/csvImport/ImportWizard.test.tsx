@@ -72,14 +72,16 @@ it('any step opens from the step list, and Back and Looks right walk the steps i
   expect(screen.getByRole('heading', { name: 'What was each payment for?' })).toBeInTheDocument()
 })
 
-it('a guessed step opens on its answer with one way on; Choose differently opens the choices and brings Continue back', async () => {
+it('a guessed step opens on its answer with Looks right in the footer; Choose differently opens the choices and brings Continue back', async () => {
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: 'Date' }))
   expect(screen.getByText('(from “Booking date”)').parentElement).toHaveTextContent('Jan 2, 2026 · Jan 3, 2026 (from “Booking date”)')
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  // the footer's primary button accepts the guess
   expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
   expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_CHOOSE_DIFFERENTLY, { step: 'date' })
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()

@@ -27,8 +27,6 @@ export interface StepBodyProps {
   choosing: boolean
   /** opens the step's list of choices; it answers nothing, so the step stays open to later guesses */
   choose: () => void
-  /** "Looks right": the next step, answering nothing */
-  next: () => void
 }
 
 // accounts I can write transactions into, as the import checks it: mine, or shared to me with
