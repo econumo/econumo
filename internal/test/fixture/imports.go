@@ -278,3 +278,26 @@ func (b *Builder) ImportSuggestion(s ImportSuggestion) string {
 	}
 	return id
 }
+
+type ImportTransactionSuggestion struct {
+	LinkID     string
+	UserID     string
+	CategoryID string // "" -> NULL
+	PayeeID    string
+	Type       string // default expense
+	Status     string // default open
+}
+
+func (b *Builder) ImportTransactionSuggestion(s ImportTransactionSuggestion) {
+	b.t.Helper()
+	if s.Status == "" {
+		s.Status = "open"
+	}
+	if s.Type == "" {
+		s.Type = "expense"
+	}
+	now := b.now()
+	b.insert(`INSERT INTO import_transaction_suggestions (link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.LinkID, s.UserID, nullable(s.CategoryID), nullable(s.PayeeID), s.Type, s.Status, now, now)
+}

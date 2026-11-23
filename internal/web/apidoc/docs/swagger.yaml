@@ -1563,6 +1563,11 @@ definitions:
       id:
         type: string
     type: object
+  model.DismissImportTransactionSuggestionRequest:
+    properties:
+      id:
+        type: string
+    type: object
   model.ElementDebtResult:
     properties:
       baseOverpaymentLeft:
@@ -1613,6 +1618,16 @@ definitions:
         type: string
       state:
         type: string
+    type: object
+  model.FillImportTransactionSuggestionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.FillImportTransactionSuggestionResult:
+    properties:
+      updated:
+        type: integer
     type: object
   model.FiltersResult:
     properties:
@@ -1796,6 +1811,14 @@ definitions:
         description: oldest first, so the Inbox order is stable
         items:
           $ref: '#/definitions/model.ImportSuggestionResult'
+        type: array
+    type: object
+  model.GetImportTransactionSuggestionListResult:
+    properties:
+      items:
+        description: newest transaction first
+        items:
+          $ref: '#/definitions/model.ImportTransactionSuggestionResult'
         type: array
     type: object
   model.GetLabelListResult:
@@ -2163,6 +2186,35 @@ definitions:
       externalPayee:
         type: string
       transactionId:
+        type: string
+    type: object
+  model.ImportTransactionSuggestionResult:
+    properties:
+      accountId:
+        type: string
+      amount:
+        type: string
+      categoryId:
+        description: only a field Fill in would write; null otherwise
+        type: string
+      currency:
+        description: the account's currency code
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      externalPayee:
+        type: string
+      id:
+        description: the ledger link id
+        type: string
+      payeeId:
+        type: string
+      transactionId:
+        type: string
+      type:
+        description: '"income" | "expense"'
         type: string
     type: object
   model.IngestEventResult:
@@ -8480,6 +8532,100 @@ paths:
       summary: Dismiss an import rule suggestion
       tags:
       - Import
+  /api/v1/import/dismiss-transaction-suggestion:
+    post:
+      consumes:
+      - application/json
+      description: Deletes the suggestion without changing the transaction and returns
+        the remaining list.
+      parameters:
+      - description: Dismiss transaction suggestion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DismissImportTransactionSuggestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportTransactionSuggestionListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Dismiss a per-transaction import suggestion
+      tags:
+      - Import
+  /api/v1/import/fill-transaction-suggestion:
+    post:
+      consumes:
+      - application/json
+      description: Writes the suggested category and payee into the transaction's
+        empty fields, never overwriting one, and settles the suggestion. A later apply-rule
+        treats the filled values as a hand edit. updated is 0 when nothing was left
+        to fill.
+      parameters:
+      - description: Fill transaction suggestion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.FillImportTransactionSuggestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.FillImportTransactionSuggestionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Fill in a per-transaction import suggestion
+      tags:
+      - Import
   /api/v1/import/get-credential-key:
     get:
       description: Returns the caller's passphrase-wrapped data key and KDF parameters.
@@ -8790,6 +8936,37 @@ paths:
       security:
       - Bearer: []
       summary: Get a transaction's import provenance
+      tags:
+      - Import
+  /api/v1/import/get-transaction-suggestion-list:
+    get:
+      description: Returns the caller's open AI suggestions for single imported transactions,
+        newest transaction first. Each carries only the category and payee Fill in
+        would still write into an empty field. Empty while AI is off, the caller is
+        read-only or category and payee suggestions are switched off.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportTransactionSuggestionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List per-transaction import suggestions
       tags:
       - Import
   /api/v1/import/ignore-account:

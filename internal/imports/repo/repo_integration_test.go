@@ -948,8 +948,11 @@ func TestTransactionSuggestionRepo(t *testing.T) {
 	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[1], userA, catA), mk(links[2], userA, catA)}); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.DeleteTransactionSuggestionsByLinks(ctx, []vo.Id{links[1].ID, vo.NewId()}); err != nil {
+	if err := repo.DeleteTransactionSuggestionsByLinks(ctx, []vo.Id{links[0].ID, links[1].ID, vo.NewId()}); err != nil {
 		t.Fatal(err)
+	}
+	if filled, _ = repo.FilledTransactionSuggestionLinks(ctx, []vo.Id{links[0].ID}); !filled[links[0].ID] {
+		t.Fatal("delete by links keeps a filled row")
 	}
 	if err := repo.DeleteTransactionSuggestionsByLinks(ctx, nil); err != nil {
 		t.Fatal(err)

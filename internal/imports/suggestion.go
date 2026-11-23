@@ -43,43 +43,22 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 			return out, nil
 		}
 	}
-	categories, err := s.entities.CategoriesByOwner(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	payees, err := s.entities.PayeesByOwner(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	activeCategories, income := map[vo.Id]bool{}, map[vo.Id]bool{}
-	for _, c := range categories {
-		id, perr := vo.ParseId(c.ID)
-		if perr != nil {
-			continue
-		}
-		if !c.Archived {
-			activeCategories[id] = true
-		}
-		if c.Income {
-			income[id] = true
-		}
-	}
-	activePayees, err := idSet(activeNamed(payees), nil)
+	vocab, err := s.activeEntities(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	look := &suggestionLookup{codes: map[vo.Id]string{}, owned: map[vo.Id]bool{}}
 	for i := range open {
 		sg := &open[i]
-		if sg.CategoryID != nil && !activeCategories[*sg.CategoryID] {
+		if sg.CategoryID != nil && !vocab.categories[*sg.CategoryID] {
 			sg.CategoryID = nil
 		}
-		if sg.PayeeID != nil && !activePayees[*sg.PayeeID] {
+		if sg.PayeeID != nil && !vocab.payees[*sg.PayeeID] {
 			sg.PayeeID = nil
 		}
 		var rows []model.ImportSuggestionTransactionResult
 		if sg.CategoryID != nil || sg.PayeeID != nil {
-			rows, err = s.pendingSuggestionRows(ctx, userID, sg, income, look)
+			rows, err = s.pendingSuggestionRows(ctx, userID, sg, vocab.income, look)
 			if err != nil {
 				return nil, err
 			}
@@ -106,34 +85,68 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 }
 
 // dropSuggestions deletes the open suggestions of a user who opted out of AI,
-// best effort: they are hidden either way and the next read retries.
+// both kinds, best effort: they are hidden either way and the next read retries.
 func (s *Service) dropSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) {
-	if err := s.deleteSuggestions(ctx, open); err != nil {
+	if err := s.deleteSuggestions(ctx, userID, open); err != nil {
 		slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 	}
 }
 
-// ClearSuggestions deletes the user's open suggestions: they turned AI off.
+// ClearSuggestions deletes the user's open suggestions of both kinds: they
+// turned AI off.
 func (s *Service) ClearSuggestions(ctx context.Context, userID vo.Id) error {
 	open, err := s.repo.ListOpenSuggestionsByUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-	return s.deleteSuggestions(ctx, open)
+	return s.deleteSuggestions(ctx, userID, open)
 }
 
-func (s *Service) deleteSuggestions(ctx context.Context, open []model.ImportSuggestion) error {
-	if len(open) == 0 {
-		return nil
-	}
+// deleteSuggestions keeps filled transaction suggestions: they are what the
+// rule-suggestion list reads to tell a Fill in from a hand edit.
+func (s *Service) deleteSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) error {
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, sg := range open {
 			if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
 				return err
 			}
 		}
-		return nil
+		return s.repo.DeleteOpenTransactionSuggestionsByUser(ctx, userID)
 	})
+}
+
+// activeIDs is the caller's non-archived categories and payees, as
+// a suggestion may name them, plus which categories are income ones.
+type activeIDs struct {
+	categories, payees, income map[vo.Id]bool
+}
+
+func (s *Service) activeEntities(ctx context.Context, userID vo.Id) (activeIDs, error) {
+	categories, err := s.entities.CategoriesByOwner(ctx, userID)
+	if err != nil {
+		return activeIDs{}, err
+	}
+	payees, err := s.entities.PayeesByOwner(ctx, userID)
+	if err != nil {
+		return activeIDs{}, err
+	}
+	v := activeIDs{categories: map[vo.Id]bool{}, income: map[vo.Id]bool{}}
+	for _, c := range categories {
+		id, perr := vo.ParseId(c.ID)
+		if perr != nil {
+			continue
+		}
+		if !c.Archived {
+			v.categories[id] = true
+		}
+		if c.Income {
+			v.income[id] = true
+		}
+	}
+	if v.payees, err = idSet(activeNamed(payees), nil); err != nil {
+		return activeIDs{}, err
+	}
+	return v, nil
 }
 
 // suggestionLookup caches per-account answers within one list read: many

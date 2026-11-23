@@ -7120,6 +7120,156 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/dismiss-transaction-suggestion": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes the suggestion without changing the transaction and returns the remaining list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Dismiss a per-transaction import suggestion",
+                "parameters": [
+                    {
+                        "description": "Dismiss transaction suggestion request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DismissImportTransactionSuggestionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportTransactionSuggestionListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/fill-transaction-suggestion": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Writes the suggested category and payee into the transaction's empty fields, never overwriting one, and settles the suggestion. A later apply-rule treats the filled values as a hand edit. updated is 0 when nothing was left to fill.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Fill in a per-transaction import suggestion",
+                "parameters": [
+                    {
+                        "description": "Fill transaction suggestion request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.FillImportTransactionSuggestionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.FillImportTransactionSuggestionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/get-credential-key": {
             "get": {
                 "security": [
@@ -7615,6 +7765,55 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/get-transaction-suggestion-list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the caller's open AI suggestions for single imported transactions, newest transaction first. Each carries only the category and payee Fill in would still write into an empty field. Empty while AI is off, the caller is read-only or category and payee suggestions are switched off.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "List per-transaction import suggestions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportTransactionSuggestionListResult"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
@@ -17364,6 +17563,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.DismissImportTransactionSuggestionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ElementDebtResult": {
             "type": "object",
             "properties": {
@@ -17439,6 +17646,22 @@ const docTemplate = `{
                 },
                 "state": {
                     "type": "string"
+                }
+            }
+        },
+        "model.FillImportTransactionSuggestionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.FillImportTransactionSuggestionResult": {
+            "type": "object",
+            "properties": {
+                "updated": {
+                    "type": "integer"
                 }
             }
         },
@@ -17724,6 +17947,18 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.ImportSuggestionResult"
+                    }
+                }
+            }
+        },
+        "model.GetImportTransactionSuggestionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "newest transaction first",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportTransactionSuggestionResult"
                     }
                 }
             }
@@ -18288,6 +18523,48 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transactionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportTransactionSuggestionResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "description": "only a field Fill in would write; null otherwise",
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "the account's currency code",
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "externalPayee": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "the ledger link id",
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "transactionId": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"income\" | \"expense\"",
                     "type": "string"
                 }
             }

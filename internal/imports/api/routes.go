@@ -45,6 +45,9 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, providers Pro
 		mux.Handle("GET /api/v1/import/get-suggestion-list", auth(h.GetSuggestionList))
 		mux.Handle("POST /api/v1/import/accept-suggestion", auth(h.AcceptSuggestion))
 		mux.Handle("POST /api/v1/import/dismiss-suggestion", auth(h.DismissSuggestion))
+		mux.Handle("GET /api/v1/import/get-transaction-suggestion-list", auth(h.GetTransactionSuggestionList))
+		mux.Handle("POST /api/v1/import/fill-transaction-suggestion", auth(h.FillTransactionSuggestion))
+		mux.Handle("POST /api/v1/import/dismiss-transaction-suggestion", auth(h.DismissTransactionSuggestion))
 		mux.Handle("POST /api/v1/import/suggest-match-text", auth(h.SuggestMatchText))
 		// The only route an ingest-scoped PAT may call (middleware.IngestPathPrefix).
 		mux.Handle("POST /api/v1/import/ingest-apple-wallet-event", auth(h.IngestAppleWalletEvent))

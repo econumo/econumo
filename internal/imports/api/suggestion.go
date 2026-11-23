@@ -79,3 +79,56 @@ func (h *Handlers) DismissSuggestion(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) SuggestMatchText(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.SuggestMatchText)
 }
+
+// GetTransactionSuggestionList handles GET /api/v1/import/get-transaction-suggestion-list (auth).
+//
+// @Summary     List per-transaction import suggestions
+// @Description Returns the caller's open AI suggestions for single imported transactions, newest transaction first. Each carries only the category and payee Fill in would still write into an empty field. Empty while AI is off, the caller is read-only or category and payee suggestions are switched off.
+// @Tags        Import
+// @Produce     json
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetImportTransactionSuggestionListResult}
+// @Failure     401 {object} apidoc.JsonResponseUnauthorized
+// @Failure     500 {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/import/get-transaction-suggestion-list [get]
+func (h *Handlers) GetTransactionSuggestionList(w http.ResponseWriter, r *http.Request) {
+	endpoint.HandleNoBody(w, r, h.svc.GetTransactionSuggestionList)
+}
+
+// FillTransactionSuggestion handles POST /api/v1/import/fill-transaction-suggestion (auth).
+//
+// @Summary     Fill in a per-transaction import suggestion
+// @Description Writes the suggested category and payee into the transaction's empty fields, never overwriting one, and settles the suggestion. A later apply-rule treats the filled values as a hand edit. updated is 0 when nothing was left to fill.
+// @Tags        Import
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.FillImportTransactionSuggestionRequest true "Fill transaction suggestion request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.FillImportTransactionSuggestionResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/import/fill-transaction-suggestion [post]
+func (h *Handlers) FillTransactionSuggestion(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.FillTransactionSuggestion)
+}
+
+// DismissTransactionSuggestion handles POST /api/v1/import/dismiss-transaction-suggestion (auth).
+//
+// @Summary     Dismiss a per-transaction import suggestion
+// @Description Deletes the suggestion without changing the transaction and returns the remaining list.
+// @Tags        Import
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.DismissImportTransactionSuggestionRequest true "Dismiss transaction suggestion request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.GetImportTransactionSuggestionListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/import/dismiss-transaction-suggestion [post]
+func (h *Handlers) DismissTransactionSuggestion(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.DismissTransactionSuggestion)
+}

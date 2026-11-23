@@ -87,6 +87,7 @@ type Repository interface {
 	MarkTransactionSuggestionFilled(ctx context.Context, linkID vo.Id, now time.Time) error
 	DeleteTransactionSuggestion(ctx context.Context, linkID vo.Id) error
 	DeleteOpenTransactionSuggestionsByUser(ctx context.Context, userID vo.Id) error
+	// DeleteTransactionSuggestionsByLinks deletes open rows only.
 	DeleteTransactionSuggestionsByLinks(ctx context.Context, linkIDs []vo.Id) error
 	FilledTransactionSuggestionLinks(ctx context.Context, linkIDs []vo.Id) (map[vo.Id]bool, error)
 	// scope=all for preview/apply

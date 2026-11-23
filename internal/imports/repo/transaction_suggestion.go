@@ -76,13 +76,15 @@ func (r *Repo) DeleteOpenTransactionSuggestionsByUser(ctx context.Context, userI
 	return r.q.DeleteOpenImportTransactionSuggestionsByUser(ctx, r.db(ctx), userID.String())
 }
 
-// DeleteTransactionSuggestionsByLinks and FilledTransactionSuggestionLinks take
-// a variadic IN list, which sqlc cannot express on both engines.
+// DeleteTransactionSuggestionsByLinks deletes only open rows: a row the user
+// filled meanwhile must survive a cleanup that read it while still open.
+// It and FilledTransactionSuggestionLinks take a variadic IN list, which sqlc
+// cannot express on both engines.
 func (r *Repo) DeleteTransactionSuggestionsByLinks(ctx context.Context, linkIDs []vo.Id) error {
 	if len(linkIDs) == 0 {
 		return nil
 	}
-	query, args := r.inList("DELETE FROM import_transaction_suggestions WHERE link_id IN (", linkIDs)
+	query, args := r.inList("DELETE FROM import_transaction_suggestions WHERE status = 'open' AND link_id IN (", linkIDs)
 	_, err := r.db(ctx).ExecContext(ctx, query, args...)
 	return err
 }

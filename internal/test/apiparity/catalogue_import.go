@@ -350,6 +350,52 @@ func init() {
 		}
 	}})
 
+	// The seed holds the Employer tap's own suggestion (ImportLinkTxn2): its
+	// category is already on Txn2, so only PayeeShop is offered.
+	register(Scenario{Name: "import_transaction_suggestion_list", Calls: func() []Call {
+		return []Call{
+			{Label: "get-transaction-suggestion-list", Method: "GET", Path: "/api/v1/import/get-transaction-suggestion-list", Auth: "owner"},
+			{Label: "get-transaction-suggestion-list-guest", Method: "GET", Path: "/api/v1/import/get-transaction-suggestion-list", Auth: "guest"},
+		}
+	}})
+
+	register(Scenario{Name: "import_transaction_suggestion_fill", Calls: func() []Call {
+		return []Call{
+			{Label: "get-account-list-before-fill", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "owner"},
+			{Label: "fill-transaction-suggestion", Method: "POST", Path: "/api/v1/import/fill-transaction-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportLinkTxn2}},
+			{Label: "get-account-list-after-fill", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "owner"},
+			{Label: "get-transaction-list-after-fill", Method: "GET", Path: "/api/v1/transaction/get-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+			{Label: "get-transaction-suggestion-list-after-fill", Method: "GET", Path: "/api/v1/import/get-transaction-suggestion-list", Auth: "owner"},
+			{Label: "err:fill-transaction-suggestion-again", Method: "POST", Path: "/api/v1/import/fill-transaction-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportLinkTxn2}},
+		}
+	}})
+
+	register(Scenario{Name: "import_transaction_suggestion_fill_err", Calls: func() []Call {
+		return []Call{
+			{Label: "err:fill-transaction-suggestion-blank", Method: "POST", Path: "/api/v1/import/fill-transaction-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ""}},
+			{Label: "err:fill-transaction-suggestion-unknown", Method: "POST", Path: "/api/v1/import/fill-transaction-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportLinkGone}},
+			// another user's suggestion reads as missing
+			{Label: "err:fill-transaction-suggestion-foreign", Method: "POST", Path: "/api/v1/import/fill-transaction-suggestion", Auth: "guest",
+				Body: map[string]any{"id": ImportLinkTxn2}},
+		}
+	}})
+
+	register(Scenario{Name: "import_transaction_suggestion_dismiss", Calls: func() []Call {
+		return []Call{
+			{Label: "err:dismiss-transaction-suggestion-foreign", Method: "POST", Path: "/api/v1/import/dismiss-transaction-suggestion", Auth: "guest",
+				Body: map[string]any{"id": ImportLinkTxn2}},
+			{Label: "dismiss-transaction-suggestion", Method: "POST", Path: "/api/v1/import/dismiss-transaction-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportLinkTxn2}},
+			{Label: "err:dismiss-transaction-suggestion-again", Method: "POST", Path: "/api/v1/import/dismiss-transaction-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportLinkTxn2}},
+			{Label: "get-transaction-list-after-dismiss", Method: "GET", Path: "/api/v1/transaction/get-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+		}
+	}})
+
 	register(Scenario{Name: "import_suggest_match_text", Calls: func() []Call {
 		return []Call{
 			{Label: "suggest-match-text-no-ai", Method: "POST", Path: "/api/v1/import/suggest-match-text", Auth: "owner",
