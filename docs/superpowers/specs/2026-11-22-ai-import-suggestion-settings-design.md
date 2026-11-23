@@ -61,6 +61,8 @@ tap in the Inbox.
 4. Rows look like the Due section's rows; tapping opens the preview sheet with ✕ and Fill in.
 5. Fill in and ✕ act on one transaction only.
 6. Approach B: a separate table for transaction suggestions, written by the same AI job.
+7. Values accepted with Fill in are protected like a hand edit: a later rule apply skips them
+   unless "include edited" is ticked.
 
 ## Approaches considered
 
@@ -180,9 +182,11 @@ In one DB transaction, under a lock on the suggestion row:
 2. Re-check the transaction as the read does. Fill only the **empty** fields: the category if
    the transaction has none and the category is valid and fits the type, the payee if the
    transaction has none and the payee is valid. Never overwrite.
-3. Write through `txns.UpdateTransaction` (revision bump, `revisionguard` passes), move the
-   ledger's `applied_category_id` / `applied_payee_id` snapshot only for the fields written
-   (as `AcceptSuggestion` does), and leave `applied_rule_id` alone (no rule wrote it).
+3. Write through `txns.UpdateTransaction` (revision bump, `revisionguard` passes) and leave
+   the ledger's `applied_*` snapshot alone, unlike `AcceptSuggestion` (decided by the owner):
+   values accepted with Fill in are the user's choice, protected like a hand edit. The row
+   then reads as edited (`edited()` in `ruleapply.go`), so a later `apply-rule` skips it unless
+   "include edited" is ticked, and `preview-rule` counts it in `alreadyEdited`.
 4. Set the status to `filled`. `reqctx.PinIdempotency`.
 
 Returns `{updated: 0|1}`. If nothing was left to fill, the suggestion is deleted instead and
@@ -196,11 +200,17 @@ refreshed list, like `dismiss-suggestion`.
 ## Interaction with Suggested rules
 
 Today a rule suggestion lists only transactions still empty in a field it would set, so it
-disappears once they are filled. A transaction filled **through Fill in** keeps counting as
-pending for its rule suggestion while the transaction's category and payee still equal what
-the fill wrote (decided with the owner: accepting the AI's values means its guess was right,
-so the rule is still worth offering). A transaction the user filled or changed by hand counts
-against the rule suggestion as today.
+disappears once they are filled. A transaction filled **through Fill in** (its
+transaction suggestion is `filled`) keeps counting as pending for its rule suggestion while
+the transaction **agrees** with it: every field the rule suggestion sets equals the
+transaction's current value (decided with the owner: accepting the AI's values means its
+guess was right, so the rule is still worth offering). A transaction's own suggestion can
+differ from its rule suggestion (the rule suggestion takes the merchant's majority answer, or
+an open suggestion's values), so a fill that disagrees, or a later hand change that makes the
+transaction disagree, counts against the rule suggestion (*my call*: accepting Restaurants
+argues against a Coffee rule). No record of which fields the fill wrote is needed. A
+transaction the user filled by hand without Fill in counts against the rule suggestion as
+today.
 
 Accepting the rule suggestion then has nothing to fill on such rows. It still walks and
 releases them; the rule applies to later imports as usual.
@@ -237,8 +247,9 @@ transaction suggestion dismissed, and the AI suggestion settings changed (with w
   transaction suggestions and the two switches.
 - `docs/regression-test-plan.md`: both switches (each section hides, both off = no new
   suggestions), an Apple Pay tap at a known merchant appears in Imported transactions, Fill in
-  fills only empty fields, ✕ removes it, a filled row keeps its rule suggestion, making a rule
-  clears the matching rows, AI off clears everything.
+  fills only empty fields, ✕ removes it, a filled row keeps its rule suggestion only when they
+  agree, a filled row is skipped by a later apply unless "include edited", making a rule clears
+  the matching rows, AI off clears everything.
 - apiparity scenarios and goldens for the four new routes.
 - Go tests with the recording completer: per-row values (not the group's), rules off writes no
   rule suggestion and skips reuse, fill off writes no transaction suggestion, both off makes no
