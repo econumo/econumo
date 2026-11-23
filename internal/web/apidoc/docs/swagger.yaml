@@ -2211,7 +2211,13 @@ definitions:
         type: string
       payeeId:
         type: string
+      transactionCategoryId:
+        description: the transaction's own values, so a client without the row can
+          show what Fill in keeps
+        type: string
       transactionId:
+        type: string
+      transactionPayeeId:
         type: string
       type:
         description: '"income" | "expense"'

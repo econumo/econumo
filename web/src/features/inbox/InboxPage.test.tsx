@@ -76,7 +76,7 @@ it('puts Imported transactions right after Suggested rules', async () => {
     importSuggestions: [{ id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }],
     importTransactionSuggestions: [{
       id: 'l1', transactionId: 't9', accountId: 'a1', type: 'expense', amount: '4.75', currency: 'USD', date: '2026-07-03 10:00:00',
-      description: '', externalPayee: 'BLUE BOTTLE #1', categoryId: 'cat-food', payeeId: null,
+      description: '', externalPayee: 'BLUE BOTTLE #1', categoryId: 'cat-food', payeeId: null, transactionCategoryId: null, transactionPayeeId: null,
     }],
   }))
   renderInbox()

@@ -147,14 +147,25 @@ export function useImportTransactionSuggestions() {
   })
 }
 
-// A refusal (the server answers an unknown, filled or dismissed suggestion with a 400) whose
-// suggestion is no longer listed was handled elsewhere: another device, a double tap, a retry
-// after a lost answer. There is nothing left to do, so it reads as done.
+// The server's not-found answer: a 400 with no field errors. Anything else (402 readonly,
+// a field-validation 400, 409) is a real refusal, and the list cannot tell it apart: it is empty
+// for a readonly user or one whose switch is off.
+function isNotFoundAnswer(err: unknown): boolean {
+  if (!isAxiosError(err) || err.response === undefined) return false
+  const { status, data } = err.response
+  if (status !== 400 && status !== 404) return false
+  const errors = (data as { errors?: unknown } | undefined)?.errors
+  return errors === undefined || (typeof errors === 'object' && errors !== null && !Array.isArray(errors) && Object.keys(errors).length === 0)
+}
+
+// A not-found refusal whose suggestion is no longer listed was handled elsewhere: another
+// device, a double tap, a retry after a lost answer. There is nothing left to do, so it reads as
+// done.
 async function unlessGone<T>(id: Id, request: Promise<T>): Promise<T | 'gone'> {
   try {
     return await request
   } catch (err) {
-    if (!isAxiosError(err) || err.response === undefined || err.response.status >= 500) throw err
+    if (!isNotFoundAnswer(err)) throw err
     const items = await importsApi.getImportTransactionSuggestionList().catch(() => undefined)
     if (items !== undefined && !items.some((s) => s.id === id)) return 'gone'
     throw err

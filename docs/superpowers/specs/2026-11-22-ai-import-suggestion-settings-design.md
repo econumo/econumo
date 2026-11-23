@@ -169,7 +169,9 @@ list does). Hidden (not deleted) when the caller is readonly or `ai_suggest_fill
 empty when AI is off.
 
 Each item: `id` (the link id), `transactionId`, `accountId`, `type`, `amount`, `currency`,
-`date`, `description`, `externalPayee`, `categoryId`, `payeeId`. Enough for the SPA to draw a
+`date`, `description`, `externalPayee`, `categoryId`, `payeeId` (only what Fill in would still
+write), `transactionCategoryId`, `transactionPayeeId` (the transaction's own values, null when
+empty). Enough for the SPA to draw a
 `TransactionRow` with the suggested fields in place without the local transaction store
 (*builder's call* whether to prefer the stored transaction when present).
 

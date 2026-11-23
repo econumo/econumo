@@ -57,7 +57,7 @@ func TestTransactionSuggestionListHidesInvalid(t *testing.T) {
 		}
 		it := items[0]
 		if it.TransactionId != links[0].TransactionID.String() || it.AccountId != acct1 || it.Type != "expense" || it.Currency != "USD" ||
-			it.Amount == "" || it.Date == "" || it.ExternalPayee != "Blue Bottle" {
+			it.Amount == "" || it.Date == "" || it.ExternalPayee != "Blue Bottle" || it.TransactionCategoryId != nil || it.TransactionPayeeId != nil {
 			t.Fatalf("item = %+v", it)
 		}
 	})
@@ -93,7 +93,21 @@ func TestTransactionSuggestionListHidesInvalid(t *testing.T) {
 		_, links := seedSuggestion(t, h, c, cat, py)
 		h.setTx(t, links[0].TransactionID, "payee_id", mine)
 		items := txSuggestionList(t, h, userA)
-		if len(items) != 1 || !strIs(items[0].CategoryId, cat) || items[0].PayeeId != nil {
+		if len(items) != 1 || !strIs(items[0].CategoryId, cat) || items[0].PayeeId != nil ||
+			items[0].TransactionCategoryId != nil || !strIs(items[0].TransactionPayeeId, mine) {
+			t.Fatalf("list = %+v", items)
+		}
+	})
+	t.Run("a payee-only suggestion carries the transaction's category", func(t *testing.T) {
+		h, c, _ := suggestSetup(t)
+		cat := h.category(t, userA, "Coffee")
+		py := h.payee(t, userA, "Blue Bottle Coffee")
+		mine := h.category(t, userA, "Eating out")
+		_, links := seedSuggestion(t, h, c, cat, py)
+		h.setTx(t, links[0].TransactionID, "category_id", mine)
+		items := txSuggestionList(t, h, userA)
+		if len(items) != 1 || items[0].CategoryId != nil || !strIs(items[0].PayeeId, py) ||
+			!strIs(items[0].TransactionCategoryId, mine) || items[0].TransactionPayeeId != nil {
 			t.Fatalf("list = %+v", items)
 		}
 	})

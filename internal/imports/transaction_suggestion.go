@@ -91,6 +91,7 @@ func (s *Service) GetTransactionSuggestionList(ctx context.Context, userID vo.Id
 			Id: sg.LinkID.String(), TransactionId: live.ID.String(), AccountId: live.AccountID.String(), Type: live.Type.Alias(),
 			Amount: vo.NewDecimal(live.Amount).String(), Currency: code, Date: live.SpentAt.Format(datetime.Layout),
 			Description: live.Description, ExternalPayee: l.ExternalPayee, CategoryId: idString2(category), PayeeId: idString2(payee),
+			TransactionCategoryId: idString2(live.CategoryID), TransactionPayeeId: idString2(live.PayeeID),
 		}})
 	}
 	if len(stale) > 0 {

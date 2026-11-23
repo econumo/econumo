@@ -13,9 +13,8 @@ import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDi
 import { apiErrorMessage } from '@/lib/apiError'
 import { useDismissImportTransactionSuggestion, useFillImportTransactionSuggestion } from './queries'
 
-// The transaction as Fill in would leave it. The suggestion carries only the values Fill in would
-// still write, so everything else is the transaction's own: the downloaded row when this device
-// has it, else what the suggestion says about it.
+// The transaction as Fill in would leave it: the suggested values over the transaction's own, read
+// from the downloaded row when this device has it, else from what the suggestion says about it.
 function suggestedTransaction(item: ImportTransactionSuggestionDto, stored: TransactionDto | undefined, lookups: TransactionLookups): ViewTransaction {
   const base = stored ?? {
     id: item.transactionId,
@@ -24,8 +23,8 @@ function suggestedTransaction(item: ImportTransactionSuggestionDto, stored: Tran
     accountRecipientId: null,
     amount: item.amount,
     amountRecipient: null,
-    categoryId: null,
-    payeeId: null,
+    categoryId: item.transactionCategoryId,
+    payeeId: item.transactionPayeeId,
     tagId: null,
     labelIds: [],
     description: item.description,

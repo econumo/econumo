@@ -697,6 +697,9 @@ type ImportTransactionSuggestionResult struct {
 	ExternalPayee string  `json:"externalPayee"`
 	CategoryId    *string `json:"categoryId"` // only a field Fill in would write; null otherwise
 	PayeeId       *string `json:"payeeId"`
+	// the transaction's own values, so a client without the row can show what Fill in keeps
+	TransactionCategoryId *string `json:"transactionCategoryId"`
+	TransactionPayeeId    *string `json:"transactionPayeeId"`
 }
 
 type GetImportTransactionSuggestionListResult struct {

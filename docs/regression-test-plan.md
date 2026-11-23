@@ -1072,13 +1072,16 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       a merchant the AI recognises (a known payee or category name), left without a category or
       payee, appears within about a minute under "Imported transactions", right after Suggested
       rules, as a transaction row naming its account, with the suggested category and payee in
-      place and a muted "Suggested" note; it counts one in the Inbox badge. Tapping it opens the
+      place and a muted "Suggested" note; it counts one in the Inbox badge. A value the
+      transaction already has (e.g. the category, when only the payee is suggested) shows as is,
+      also on a device that has not downloaded the transaction yet. Tapping it opens the
       transaction preview with each suggested value marked "Suggested" and a footer of a ✕
       button and a wide "Fill in", both disabled offline.
 - [ ] Fill in 📱 closes the sheet, removes the row and lowers the badge without a reload; the
       transaction then shows the suggested values in its account list and budget. Only empty
       fields are filled: a category or payee set by hand before tapping Fill in is kept, and when
-      both were set meanwhile the row is gone without writing anything.
+      both were set meanwhile the row is gone without writing anything. A refused Fill in or ✕
+      (e.g. the account turned read-only meanwhile) shows the error and keeps the sheet open.
 - [ ] ✕ on an imported-transaction suggestion 📱 closes the sheet and removes the row; the
       transaction is unchanged and the row does not come back after a reload.
 - [ ] A filled row and its rule suggestion 📱: when Fill in wrote the same category and payee
@@ -3246,7 +3249,8 @@ User C sees none of it.
       switches appear, both on by default: "Suggest rules" and "Suggest
       category and payee"; they are disabled offline and vanish when "Use AI
       features" is switched off. Turning one off persists across a reload and
-      keeps the other as it was.
+      keeps the other as it was; turning both off in quick succession leaves
+      both off.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on

@@ -16,6 +16,7 @@ import {
   useAcceptImportSuggestion,
   useApplyImportRule,
   useDismissImportSuggestion,
+  useFillImportTransactionSuggestion,
   useImportSuggestions,
   useCreateImportRule,
   useCreateImportSource,
@@ -455,4 +456,39 @@ it('useRetryImportEvent refreshes the ledger caches, debts included', async () =
   await act(() => result.current.mutateAsync('e1'))
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+})
+
+it.each([
+  ['402 readonly', 402, { success: false, message: 'Read-only access', code: 0, errors: {} }],
+  ['a field-validation 400', 400, { success: false, message: 'Form validation error', code: 400, errors: { id: ['This value should not be blank.'] } }],
+  ['409', 409, { success: false, message: 'Operation locked', code: 0, errors: {} }],
+])('a fill refused with %s is an error even when the list no longer has the suggestion', async (_name, status, body) => {
+  let listed = 0
+  server.use(
+    http.post('*/api/v1/import/fill-transaction-suggestion', () => HttpResponse.json(body, { status })),
+    http.get('*/api/v1/import/get-transaction-suggestion-list', () => {
+      listed++
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importTransactionSuggestions, [{ id: 'l1' }])
+  const { result } = renderHook(() => useFillImportTransactionSuggestion(), { wrapper })
+  await expect(act(() => result.current.mutateAsync('l1'))).rejects.toBeDefined()
+  expect(listed).toBe(0)
+  expect(queryClient.getQueryData(queryKeys.importTransactionSuggestions)).toEqual([{ id: 'l1' }])
+  expect(trackEventMock).not.toHaveBeenCalledWith(METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL)
+})
+
+it('a fill refused as not found while the list no longer has the suggestion counts as done', async () => {
+  server.use(
+    http.post('*/api/v1/import/fill-transaction-suggestion', () =>
+      HttpResponse.json({ success: false, message: 'Import transaction suggestion not found', code: 0, errors: {} }, { status: 400 })),
+    http.get('*/api/v1/import/get-transaction-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importTransactionSuggestions, [{ id: 'l1' }])
+  const { result } = renderHook(() => useFillImportTransactionSuggestion(), { wrapper })
+  await expect(act(() => result.current.mutateAsync('l1'))).resolves.toBe('gone')
+  expect(queryClient.getQueryData(queryKeys.importTransactionSuggestions)).toEqual([])
 })

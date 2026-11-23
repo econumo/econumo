@@ -18,11 +18,19 @@ vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
 const onLocal: ImportTransactionSuggestionDto = {
   id: 'l1', transactionId: 't2', accountId: 'a1', type: 'income', amount: '500', currency: 'USD', date: '2026-07-01 08:00:00',
   description: '', externalPayee: 'ACME PAYROLL', categoryId: null, payeeId: 'p1',
+  transactionCategoryId: 'cat-salary', transactionPayeeId: null,
 }
 // t9 is not downloaded on this device: the row is built from the suggestion itself
 const notLocal: ImportTransactionSuggestionDto = {
   id: 'l2', transactionId: 't9', accountId: 'a1', type: 'expense', amount: '4.75', currency: 'USD', date: '2026-07-03 10:00:00',
   description: '', externalPayee: 'BLUE BOTTLE #1', categoryId: 'cat-food', payeeId: null,
+  transactionCategoryId: null, transactionPayeeId: null,
+}
+// t8 is not downloaded either and already has a category: only the payee is suggested
+const notLocalPayee: ImportTransactionSuggestionDto = {
+  id: 'l3', transactionId: 't8', accountId: 'a1', type: 'expense', amount: '12', currency: 'USD', date: '2026-07-04 10:00:00',
+  description: '', externalPayee: 'CORNER SHOP', categoryId: null, payeeId: 'p1',
+  transactionCategoryId: 'cat-food', transactionPayeeId: null,
 }
 
 function Section() {
@@ -61,6 +69,14 @@ it('renders one row per suggestion with the suggested category and payee and a S
   const local = screen.getByTestId('tx-t2')
   expect(within(local).getByText('Grocer')).toBeInTheDocument()
   expect(within(local).getByText('Suggested')).toBeInTheDocument()
+})
+
+it('a transaction not on this device keeps its own category under a suggested payee', async () => {
+  renderSection([notLocalPayee])
+  const row = await screen.findByTestId('tx-t8')
+  expect(within(row).getByText('Food')).toBeInTheDocument()
+  expect(within(row).getByText('Grocer')).toBeInTheDocument()
+  expect(within(row).queryByText('Uncategorized')).not.toBeInTheDocument()
 })
 
 it('tapping opens the sheet; Fill in posts fill-transaction-suggestion and closes', async () => {
@@ -152,6 +168,29 @@ it('a refused fill whose suggestion is still listed shows the error and keeps th
   await user.click(within(dialog).getByRole('button', { name: 'Fill in' }))
   await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Category is archived'))
   expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
+
+it.each([
+  ['fill', 'fill-transaction-suggestion', 'Fill in', METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL],
+  ['dismiss', 'dismiss-transaction-suggestion', 'Dismiss', METRICS.IMPORT_TRANSACTION_SUGGESTION_DISMISS],
+])('a %s refused with 402 shows the error and keeps the sheet open, even though the list is empty', async (_name, route, button, metric) => {
+  let refused = false
+  renderSection([notLocal])
+  server.use(
+    http.post(`*/api/v1/import/${route}`, () => {
+      refused = true
+      return HttpResponse.json({ success: false, message: 'Read-only access', code: 0, errors: {} }, { status: 402 })
+    }),
+    // a readonly user's list is empty: the refusal must not read as "gone"
+    listAfter(() => (refused ? [] : [notLocal])),
+  )
+  const user = userEvent.setup()
+  await user.click(await screen.findByTestId('tx-t9'))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: button }))
+  await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Read-only access'))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(metric)
 })
 
 it('buttons disabled offline', async () => {

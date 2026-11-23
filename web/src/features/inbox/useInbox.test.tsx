@@ -372,7 +372,7 @@ it('offline, a readonly user\'s never-loaded suggestion list does not raise the 
 
 const txSg = (id: string) => ({
   id, transactionId: `t-${id}`, accountId: 'a1', type: 'expense', amount: '4.75', currency: 'USD', date: '2026-07-03 10:00:00',
-  description: '', externalPayee: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: null,
+  description: '', externalPayee: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: null, transactionCategoryId: null, transactionPayeeId: null,
 })
 const ruleSg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
 const withOption = (name: string, value: string) => ({ ...fixtureUser, options: [...fixtureUser.options, { name, value }] })

@@ -264,6 +264,9 @@ export interface ImportTransactionSuggestionDto {
   /** only a value Fill in would still write; null when the transaction has one or nothing is suggested */
   categoryId: Id | null
   payeeId: Id | null
+  /** the transaction's own category and payee, null when it has none */
+  transactionCategoryId: Id | null
+  transactionPayeeId: Id | null
 }
 
 export interface FillImportTransactionSuggestionDto {
