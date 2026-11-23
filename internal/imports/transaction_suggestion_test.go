@@ -466,3 +466,25 @@ func TestFillTransactionSuggestionReadsTheTransactionAfterLockingIt(t *testing.T
 		t.Fatalf("transaction = %+v: the payee set before the read must stay", tx)
 	}
 }
+
+func TestFillTransactionSuggestionSkipsACategoryArchivedWhileWaitingForTheLock(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	_, links := seedSuggestion(t, h, c, cat, py)
+	h.withRepo(&editOnTxLock{Repository: h.repo, edit: func(context.Context) {
+		archiveAll(h.entities.categories[vo.MustParseId(userA)])
+	}})
+
+	res, err := fillTxSuggestion(h, userA, links[0].ID)
+	if err != nil || res.Updated != 1 {
+		t.Fatalf("fill = %+v, %v", res, err)
+	}
+	tx, err := h.txns.GetByID(context.Background(), *links[0].TransactionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tx.CategoryID != nil || !idIs(tx.PayeeID, py) {
+		t.Fatalf("transaction = %+v: the archived category must not be written", tx)
+	}
+}

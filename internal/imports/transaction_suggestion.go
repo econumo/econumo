@@ -140,10 +140,6 @@ func (s *Service) FillTransactionSuggestion(ctx context.Context, userID vo.Id, r
 		return nil, errs.NewNotFound(transactionSuggestionNotFoundMessage)
 	}
 	reqctx.AddLogAttr(ctx, "link_id", linkID.String())
-	vocab, err := s.activeEntities(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
 	var out *model.FillImportTransactionSuggestionResult
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		out = &model.FillImportTransactionSuggestionResult{}
@@ -157,6 +153,11 @@ func (s *Service) FillTransactionSuggestion(ctx context.Context, userID vo.Id, r
 			return err
 		}
 		_, live, err := s.suggestionTarget(ctx, userID, sg.LinkID)
+		if err != nil {
+			return err
+		}
+		// read after the locks, so a category or payee archived meanwhile is not written
+		vocab, err := s.activeEntities(ctx, userID)
 		if err != nil {
 			return err
 		}
