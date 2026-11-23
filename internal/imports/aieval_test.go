@@ -165,7 +165,9 @@ var evalCurrency = map[string]string{"en": "CAD", "ru": "RUB"}
 
 type evalFacts struct{}
 
-func (evalFacts) OwnerFacts(context.Context, vo.Id) (OwnerInfo, error) { return OwnerInfo{}, nil }
+func (evalFacts) OwnerFacts(context.Context, vo.Id) (OwnerInfo, error) {
+	return OwnerInfo{SuggestRules: true, SuggestFill: true}, nil
+}
 
 func evalContext(t *testing.T) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
