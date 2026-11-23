@@ -39,10 +39,12 @@ export function invalidateReports(client: QueryClient): void {
 }
 
 // Everything any write may have changed without saying so: the reports, and
-// the import rule suggestions (editing a suggested transaction can clear one).
+// the import suggestions of both kinds (editing a suggested transaction or making
+// a rule can clear one).
 export function invalidateAfterWrite(client: QueryClient): void {
   invalidateReports(client)
   void client.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+  void client.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
 }
 
 export function createAppQueryClient() {

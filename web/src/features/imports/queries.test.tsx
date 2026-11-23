@@ -310,7 +310,7 @@ describe('suggestion refresh after a sync', () => {
     vi.useRealTimers()
   })
 
-  it('refetches the suggestion list at 15 s and 60 s when AI is on', () => {
+  it('refetches both suggestion lists at 15 s and 60 s when AI is on', () => {
     vi.useFakeTimers()
     window.econumoConfig = { AI_ENABLED: true }
     const queryClient = new QueryClient()
@@ -319,10 +319,9 @@ describe('suggestion refresh after a sync', () => {
     vi.advanceTimersByTime(14_999)
     expect(spy).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    expect(spy).toHaveBeenCalledTimes(1)
-    expect(spy).toHaveBeenLastCalledWith({ queryKey: queryKeys.importSuggestions })
+    expect(spy.mock.calls).toEqual([[{ queryKey: queryKeys.importSuggestions }], [{ queryKey: queryKeys.importTransactionSuggestions }]])
     vi.advanceTimersByTime(45_000)
-    expect(spy).toHaveBeenCalledTimes(2)
+    expect(spy).toHaveBeenCalledTimes(4)
   })
 
   it('schedules nothing without AI', () => {

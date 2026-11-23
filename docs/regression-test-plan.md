@@ -973,9 +973,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       Budget.
 - [ ] Inbox count 📱: the badge equals due recurring templates + pending invites +
       sources whose last sync failed/partially failed + failed imports + queued
-      imports + suggested rules; skipped rows are not counted.
-- [ ] Inbox page 📱: sections appear in order Due, To review, Suggested rules, Sync problems,
-      Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
+      imports + suggested rules + imported transactions with suggestions; skipped rows are not
+      counted.
+- [ ] Inbox page 📱: sections appear in order Due, To review, Suggested rules, Imported
+      transactions, Sync problems, Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
       nothing pending it reads "All caught up". On desktop the heading has no
       breadcrumb above it (the Inbox is not part of Settings).
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
@@ -1067,6 +1068,34 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       merchant gets its own row. 📱
 - [ ] Dismiss, then the next tap at that merchant suggests again (dismissal is not
       remembered). 📱
+- [ ] Imported transactions in the Inbox 📱 (server with `ECONUMO_AI_DSN`): an Apple Pay tap at
+      a merchant the AI recognises (a known payee or category name), left without a category or
+      payee, appears within about a minute under "Imported transactions", right after Suggested
+      rules, as a transaction row naming its account, with the suggested category and payee in
+      place and a muted "Suggested" note; it counts one in the Inbox badge. Tapping it opens the
+      transaction preview with each suggested value marked "Suggested" and a footer of a ✕
+      button and a wide "Fill in", both disabled offline.
+- [ ] Fill in 📱 closes the sheet, removes the row and lowers the badge without a reload; the
+      transaction then shows the suggested values in its account list and budget. Only empty
+      fields are filled: a category or payee set by hand before tapping Fill in is kept, and when
+      both were set meanwhile the row is gone without writing anything.
+- [ ] ✕ on an imported-transaction suggestion 📱 closes the sheet and removes the row; the
+      transaction is unchanged and the row does not come back after a reload.
+- [ ] A filled row and its rule suggestion 📱: when Fill in wrote the same category and payee
+      the open Suggested rules row proposes, that row stays and still counts the transaction;
+      when Fill in wrote different values, or the user later changes them by hand, the
+      transaction leaves that rule suggestion.
+- [ ] A transaction filled with Fill in counts as edited: "Apply to all imports" for a rule
+      matching it leaves it alone unless "include edited" is ticked. 📱
+- [ ] Making a rule clears the matching Imported transactions rows 📱: saving a Suggested rules
+      row (or a new import rule that classifies those transactions and is applied) removes the
+      rows its transactions no longer need, without a reload.
+- [ ] Each AI suggestion switch hides its own section 📱: with "Suggest rules" off there is no
+      Suggested rules section and its rows leave the badge, while Imported transactions stays;
+      with "Suggest category and payee" off it is the other way round; switching one back on
+      shows its open rows again.
+- [ ] Switching "Use AI features" off clears both Suggested rules and Imported transactions from
+      the Inbox and the badge at once; they do not come back after switching it on again. 📱
 - [ ] The AI match text in "Create an import rule" (server with AI): opening the editor from an
       imported transaction fills the match with a short merchant text found in the payee,
       at least 3 characters (a row with no payee text keeps the default and sends no AI request), still editable; with no

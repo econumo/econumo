@@ -203,6 +203,8 @@ export const METRICS = {
   IMPORT_RULE_AI_MATCH_USED: 'appImportRuleAiMatchUsed',
   IMPORT_SUGGESTION_ACCEPT: 'appImportSuggestionAccept',
   IMPORT_SUGGESTION_DISMISS: 'appImportSuggestionDismiss',
+  IMPORT_TRANSACTION_SUGGESTION_FILL: 'appImportTransactionSuggestionFill',
+  IMPORT_TRANSACTION_SUGGESTION_DISMISS: 'appImportTransactionSuggestionDismiss',
   DATA_FULL_RELOAD: 'appDataFullReload',
   INSTALL_APP_OPEN: 'appInstallAppOpen',
   INSTALL_APP_ACCEPT: 'appInstallAppAccept',

@@ -27,6 +27,7 @@ function makeInbox(over: Partial<Inbox> = {}): Inbox {
     queued: [],
     skipped: [],
     suggestions: [],
+    transactionSuggestions: [],
     count: 0,
     isLoaded: true,
     importsError: false,

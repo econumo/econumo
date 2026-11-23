@@ -69,6 +69,21 @@ it('renders the sections in a fixed order: To review, Sync problems, Failed impo
   expect(headings).toEqual(['To review', 'Sync problems', 'Failed imports', 'Skipped (1)'])
 })
 
+it('puts Imported transactions right after Suggested rules', async () => {
+  server.use(...coreHandlers({
+    importSources: [syncProblemSource()],
+    importSuggestions: [{ id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }],
+    importTransactionSuggestions: [{
+      id: 'l1', transactionId: 't9', accountId: 'a1', type: 'expense', amount: '4.75', currency: 'USD', date: '2026-07-03 10:00:00',
+      description: '', externalPayee: 'BLUE BOTTLE #1', categoryId: 'cat-food', payeeId: null,
+    }],
+  }))
+  renderInbox()
+  await screen.findByText('BLUE BOTTLE #1')
+  const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+  expect(headings).toEqual(['Suggested rules', 'Imported transactions', 'Sync problems'])
+})
+
 it('does not render empty sections', async () => {
   server.use(...coreHandlers({ importQueue: { queued: [queued()], skipped: [], failed: [] } }))
   renderInbox()

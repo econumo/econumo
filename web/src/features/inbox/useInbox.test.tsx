@@ -369,3 +369,66 @@ it('offline, a readonly user\'s never-loaded suggestion list does not raise the 
     act(() => onlineManager.setOnline(true))
   }
 })
+
+const txSg = (id: string) => ({
+  id, transactionId: `t-${id}`, accountId: 'a1', type: 'expense', amount: '4.75', currency: 'USD', date: '2026-07-03 10:00:00',
+  description: '', externalPayee: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: null,
+})
+const ruleSg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
+const withOption = (name: string, value: string) => ({ ...fixtureUser, options: [...fixtureUser.options, { name, value }] })
+
+it('useInbox counts transaction suggestions and hides them when ai_suggest_fill is 0', async () => {
+  server.use(...coreHandlers({ importTransactionSuggestions: [txSg('l1'), txSg('l2')], importSuggestions: [ruleSg] }))
+  const shown = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(shown.result.current.transactionSuggestions.map((s) => s.id)).toEqual(['l1', 'l2']))
+  expect(shown.result.current.count).toBe(1 + 2)
+  shown.unmount()
+
+  server.use(...coreHandlers({ user: withOption('ai_suggest_fill', '0'), importTransactionSuggestions: [txSg('l1')], importSuggestions: [ruleSg] }))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.suggestions).toHaveLength(1))
+  expect(result.current.transactionSuggestions).toEqual([])
+  expect(result.current.count).toBe(1)
+})
+
+it('useInbox hides rule suggestions when ai_suggest_rules is 0', async () => {
+  server.use(...coreHandlers({ user: withOption('ai_suggest_rules', '0'), importTransactionSuggestions: [txSg('l1')], importSuggestions: [ruleSg] }))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.transactionSuggestions).toHaveLength(1))
+  expect(result.current.suggestions).toEqual([])
+  expect(result.current.count).toBe(1)
+})
+
+it('hides transaction suggestions from a user who opted out of AI', async () => {
+  server.use(...coreHandlers({ user: withOption('ai', '0'), importTransactionSuggestions: [txSg('l1')] }))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.transactionSuggestions).toEqual([])
+  expect(result.current.count).toBe(0)
+})
+
+it('an older server without the transaction suggestion route is no failure', async () => {
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-transaction-suggestion-list', () => HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.importsError).toBe(false)
+  expect(result.current.transactionSuggestions).toEqual([])
+})
+
+it('flags importsError when the transaction suggestion list fails, and retryImports refetches it', async () => {
+  let calls = 0
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-transaction-suggestion-list', () => {
+    calls += 1
+    return HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.importsError).toBe(true))
+  const before = calls
+  result.current.retryImports()
+  await waitFor(() => expect(calls).toBeGreaterThan(before))
+})

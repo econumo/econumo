@@ -698,7 +698,8 @@
       "to_review": "To review",
       "failed_writes": "Not saved",
       "skipped": "Skipped ({count})",
-      "suggested_rules": "Suggested rules"
+      "suggested_rules": "Suggested rules",
+      "imported_transactions": "Imported transactions"
     },
     "due": {
       "overdue": "Overdue · {date}",
@@ -1032,6 +1033,11 @@
       "hint": "AI-suggested rules for automatically imported transactions. Tap one to review and save it.",
       "prompt_summary": "Suggested for {count} transaction | Suggested for {count} transactions",
       "transactions": "{count} transaction | {count} transactions"
+    },
+    "transaction_suggestions": {
+      "suggested": "Suggested",
+      "fill": "Fill in",
+      "dismiss": "Dismiss"
     }
   },
   "user": {

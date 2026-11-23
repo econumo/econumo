@@ -361,6 +361,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     importRuns: [] as unknown[],
     importRules: [] as unknown[],
     importSuggestions: [] as unknown[],
+    importTransactionSuggestions: [] as unknown[],
     importCredentialKey: null as unknown,
     personalTokens: [] as unknown[],
     debts: [] as unknown[],
@@ -404,6 +405,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/import/get-run-list', () => envelope({ items: data.importRuns })),
     http.get('*/api/v1/import/get-rule-list', () => envelope({ items: data.importRules })),
     http.get('*/api/v1/import/get-suggestion-list', () => envelope({ items: data.importSuggestions })),
+    http.get('*/api/v1/import/get-transaction-suggestion-list', () => envelope({ items: data.importTransactionSuggestions })),
     http.get('*/api/v1/import/get-credential-key', () =>
       envelope(data.importCredentialKey ?? { wrappedDataKey: '', kdf: '', updatedAt: '' })),
     http.get('*/api/v1/user/get-personal-token-list', () => envelope(data.personalTokens)),

@@ -5,7 +5,7 @@ import type { PayeeDto } from '@/api/dto/payee'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { LabelDto } from '@/api/dto/label'
 import type { TagDto } from '@/api/dto/tag'
-import type { TransactionDto } from '@/api/dto/transaction'
+import type { TransactionDto, TransactionPrefill } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { dayKey, formatDate, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
@@ -90,7 +90,7 @@ export function useTransactionLookups(): TransactionLookups {
   return useMemo(() => ({ accounts, categories, payees, tags, labels }), [accounts, categories, payees, tags, labels])
 }
 
-export function enrichTransaction(tx: TransactionDto, l: TransactionLookups): ViewTransaction {
+export function enrichTransaction(tx: TransactionPrefill, l: TransactionLookups): ViewTransaction {
   return {
     ...tx,
     account: l.accounts?.find((a) => a.id === tx.accountId),

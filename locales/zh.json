@@ -698,7 +698,8 @@
       "to_review": "待审核",
       "failed_writes": "未保存",
       "skipped": "已跳过（{count}）",
-      "suggested_rules": "建议的规则"
+      "suggested_rules": "建议的规则",
+      "imported_transactions": "导入的交易"
     },
     "due": {
       "overdue": "已逾期 · {date}",
@@ -1032,6 +1033,11 @@
       "hint": "AI 为自动导入的交易建议的规则。点按某条规则即可查看并保存。",
       "prompt_summary": "建议用于 {count} 笔交易 | 建议用于 {count} 笔交易",
       "transactions": "{count} 笔交易 | {count} 笔交易"
+    },
+    "transaction_suggestions": {
+      "suggested": "建议",
+      "fill": "填入",
+      "dismiss": "忽略"
     }
   },
   "user": {

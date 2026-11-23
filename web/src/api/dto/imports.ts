@@ -248,6 +248,28 @@ export interface ImportSuggestionDto {
   transactions: ImportSuggestionTransactionDto[]
 }
 
+/** an imported transaction with the category and payee the AI suggests for it */
+export interface ImportTransactionSuggestionDto {
+  /** the ledger link id: what fill and dismiss take */
+  id: Id
+  transactionId: Id
+  accountId: Id
+  type: 'income' | 'expense'
+  amount: string
+  /** the account's currency code */
+  currency: string
+  date: string
+  description: string
+  externalPayee: string
+  /** only a value Fill in would still write; null when the transaction has one or nothing is suggested */
+  categoryId: Id | null
+  payeeId: Id | null
+}
+
+export interface FillImportTransactionSuggestionDto {
+  updated: 0 | 1
+}
+
 export interface AcceptImportSuggestionDto {
   updated: number
 }

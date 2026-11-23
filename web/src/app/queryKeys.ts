@@ -27,6 +27,7 @@ export const queryKeys = {
   importRules: ['importRules'] as const,
   importQueue: ['importQueue'] as const,
   importSuggestions: ['importSuggestions'] as const,
+  importTransactionSuggestions: ['importTransactionSuggestions'] as const,
   transactionImports: (transactionId: string) => ['transactionImports', transactionId] as const,
   importRuns: (sourceId: string) => ['importRuns', sourceId] as const,
   importRun: (id: string) => ['importRun', id] as const,
