@@ -13,6 +13,7 @@ import { useFailedWrites, useStoredQueueSettled } from '@/features/pendingWrites
 import type { PendingOp } from '@/features/pendingWrites/types'
 import { hiddenFolderAccountIds } from '@/features/transactions/useTransactionForm'
 import { userAiActive, userAiSuggestFill, userAiSuggestRules, useUserData } from '@/features/user/queries'
+import { isAiEnabled } from '@/lib/config'
 import { isFuture } from '@/lib/datetime'
 
 export interface Inbox {
@@ -79,7 +80,8 @@ export function useInbox(): Inbox {
   // a readonly user cannot act on suggestions, and one who opted out of AI or turned a kind off
   // gets none of it; either way that list is shown empty, so it never decides the offline notice
   const noRuleSuggestions = !userAiActive(user) || !userAiSuggestRules(user)
-  const noTransactionSuggestions = !userAiActive(user) || !userAiSuggestFill(user)
+  // unlike the rule list, these are shown only while the server has AI configured
+  const noTransactionSuggestions = !isAiEnabled() || !userAiActive(user) || !userAiSuggestFill(user)
   const importsOffline = useUnavailableOffline(
     queue,
     sources,

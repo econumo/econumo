@@ -70,6 +70,7 @@ it('renders the sections in a fixed order: To review, Sync problems, Failed impo
 })
 
 it('puts Imported transactions right after Suggested rules', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
   server.use(...coreHandlers({
     importSources: [syncProblemSource()],
     importSuggestions: [{ id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }],

@@ -378,6 +378,7 @@ const ruleSg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 
 const withOption = (name: string, value: string) => ({ ...fixtureUser, options: [...fixtureUser.options, { name, value }] })
 
 it('useInbox counts transaction suggestions and hides them when ai_suggest_fill is 0', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
   server.use(...coreHandlers({ importTransactionSuggestions: [txSg('l1'), txSg('l2')], importSuggestions: [ruleSg] }))
   const shown = renderHook(() => useInbox(), { wrapper: makeWrapper() })
   await waitFor(() => expect(shown.result.current.transactionSuggestions.map((s) => s.id)).toEqual(['l1', 'l2']))
@@ -392,7 +393,18 @@ it('useInbox counts transaction suggestions and hides them when ai_suggest_fill 
   expect(result.current.count).toBe(1)
 })
 
+it('hides transaction suggestions, and leaves them out of the count, while the server has no AI', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: false }
+  server.use(...coreHandlers({ importTransactionSuggestions: [txSg('l1'), txSg('l2')], importSuggestions: [ruleSg] }))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.suggestions).toHaveLength(1))
+  expect(result.current.transactionSuggestions).toEqual([])
+  expect(result.current.count).toBe(1)
+})
+
 it('useInbox hides rule suggestions when ai_suggest_rules is 0', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
   server.use(...coreHandlers({ user: withOption('ai_suggest_rules', '0'), importTransactionSuggestions: [txSg('l1')], importSuggestions: [ruleSg] }))
   const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
   await waitFor(() => expect(result.current.isLoaded).toBe(true))
@@ -402,6 +414,7 @@ it('useInbox hides rule suggestions when ai_suggest_rules is 0', async () => {
 })
 
 it('hides transaction suggestions from a user who opted out of AI', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
   server.use(...coreHandlers({ user: withOption('ai', '0'), importTransactionSuggestions: [txSg('l1')] }))
   const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
   await waitFor(() => expect(result.current.isLoaded).toBe(true))
@@ -410,6 +423,7 @@ it('hides transaction suggestions from a user who opted out of AI', async () => 
 })
 
 it('an older server without the transaction suggestion route is no failure', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
   server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
   server.use(http.get('*/api/v1/import/get-transaction-suggestion-list', () => HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })))
   const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
@@ -419,6 +433,7 @@ it('an older server without the transaction suggestion route is no failure', asy
 })
 
 it('flags importsError when the transaction suggestion list fails, and retryImports refetches it', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
   let calls = 0
   server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
   server.use(http.get('*/api/v1/import/get-transaction-suggestion-list', () => {
