@@ -18,7 +18,7 @@ import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
 import { UserOptions } from '@/api/dto/user'
-import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, useUpdateAi, userAiOn, userCurrencyId, userOption } from '@/features/user/queries'
+import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, useUpdateAi, useUpdateAiSuggestions, userAiOn, userAiSuggestRules, userAiSuggestFill, userCurrencyId, userOption } from '@/features/user/queries'
 import { RecoveryDialog } from '@/features/auth/RecoveryDialog'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { SettingsShell } from './SettingsShell'
@@ -44,6 +44,7 @@ export function ProfilePage() {
   const updateAnalytics = useUpdateAnalytics()
   const analyticsOn = userOption(user, UserOptions.ANALYTICS) !== '0'
   const updateAi = useUpdateAi()
+  const updateAiSuggestions = useUpdateAiSuggestions()
 
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
@@ -310,6 +311,9 @@ export function ProfilePage() {
         onClose={() => setAiOpen(false)}
         enabled={userAiOn(user)}
         onChange={(checked) => updateAi.mutate(checked)}
+        suggestRules={userAiSuggestRules(user)}
+        suggestFill={userAiSuggestFill(user)}
+        onSuggestionsChange={(next) => updateAiSuggestions.mutate(next)}
       />
 
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />

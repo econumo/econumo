@@ -8,6 +8,8 @@ export const UserOptions = {
   ONBOARDING: 'onboarding',
   ANALYTICS: 'analytics',
   AI: 'ai',
+  AI_SUGGEST_RULES: 'ai_suggest_rules',
+  AI_SUGGEST_FILL: 'ai_suggest_fill',
   LAST_SEEN_VERSION: 'last_seen_version',
 } as const
 export type UserOptions = (typeof UserOptions)[keyof typeof UserOptions]

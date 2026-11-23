@@ -1280,7 +1280,10 @@
             "menu_item": "KI-Funktionen",
             "label": "KI-Funktionen verwenden",
             "description": "KI hilft Ihnen, Ordnung in Ihren Finanzen zu halten, und macht Econumo einfacher zu bedienen.",
-            "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und werden nicht an die KI übermittelt."
+            "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und werden nicht an die KI übermittelt.",
+            "imports_heading": "Importierte Transaktionen",
+            "suggest_rules_label": "Regeln vorschlagen",
+            "suggest_fill_label": "Kategorie und Zahlungsempfänger vorschlagen"
           }
         }
       }

@@ -463,3 +463,66 @@ describe('App lock row', () => {
   })
 
 })
+
+it('shows the import suggestion switches only while AI is on and saves a change', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  vi.mocked(trackEvent).mockClear()
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/user/update-ai-suggestions', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai_suggest_rules', value: '0' }] } },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
+  expect(rules).toBeChecked()
+  expect(within(dialog).getByRole('switch', { name: 'Suggest category and payee' })).toBeChecked()
+
+  await user.click(rules)
+
+  await waitFor(() => expect(body).toEqual({ suggestRules: false, suggestFill: true }))
+  await waitFor(() => expect(rules).not.toBeChecked())
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: true })
+})
+
+it('disables the import suggestion switches offline', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  act(() => onlineManager.setOnline(false))
+  try {
+    expect(within(dialog).getByRole('switch', { name: 'Suggest rules' })).toBeDisabled()
+    expect(within(dialog).getByRole('switch', { name: 'Suggest category and payee' })).toBeDisabled()
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
+})
+
+it('hides the import suggestion switches once AI is turned off', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  server.use(
+    http.post('*/api/v1/user/update-ai', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } },
+      })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('switch', { name: 'Suggest rules' })).toBeInTheDocument()
+
+  await user.click(within(dialog).getByRole('switch', { name: /use ai features/i }))
+
+  await waitFor(() => expect(within(dialog).queryByRole('switch', { name: 'Suggest rules' })).not.toBeInTheDocument())
+})

@@ -3213,6 +3213,11 @@ User C sees none of it.
       save-accounts start no AI job, and neither does a CSV import (icons stay
       default, no savings flagged).
       Switching it back on brings suggestions for new imports only.
+      While on, below that card an "Imported transactions" heading and two more
+      switches appear, both on by default: "Suggest rules" and "Suggest
+      category and payee"; they are disabled offline and vanish when "Use AI
+      features" is switched off. Turning one off persists across a reload and
+      keeps the other as it was.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on

@@ -1280,7 +1280,10 @@
             "menu_item": "AI-functies",
             "label": "AI-functies gebruiken",
             "description": "AI helpt u uw financiën op orde te houden en maakt Econumo makkelijker te gebruiken.",
-            "promise": "Uw financiële en persoonlijke gegevens blijven privé en worden niet naar AI verstuurd."
+            "promise": "Uw financiële en persoonlijke gegevens blijven privé en worden niet naar AI verstuurd.",
+            "imports_heading": "Geïmporteerde transacties",
+            "suggest_rules_label": "Regels voorstellen",
+            "suggest_fill_label": "Categorie en begunstigde voorstellen"
           }
         }
       }

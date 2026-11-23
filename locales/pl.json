@@ -1280,7 +1280,10 @@
             "menu_item": "Funkcje AI",
             "label": "Używaj funkcji AI",
             "description": "AI pomaga utrzymać porządek w finansach i sprawia, że Econumo jest wygodniejsze w użyciu.",
-            "promise": "Twoje dane finansowe i osobowe pozostają prywatne i nie są przekazywane AI."
+            "promise": "Twoje dane finansowe i osobowe pozostają prywatne i nie są przekazywane AI.",
+            "imports_heading": "Zaimportowane transakcje",
+            "suggest_rules_label": "Sugeruj reguły",
+            "suggest_fill_label": "Sugeruj kategorię i odbiorcę"
           }
         }
       }

@@ -186,6 +186,27 @@ export function useUpdateAi() {
   })
 }
 
+// The import suggestion switches are on unless turned off, like the main AI switch.
+export function userAiSuggestRules(user: CurrentUserDto | undefined): boolean {
+  return userOption(user, UserOptions.AI_SUGGEST_RULES) !== '0'
+}
+
+export function userAiSuggestFill(user: CurrentUserDto | undefined): boolean {
+  return userOption(user, UserOptions.AI_SUGGEST_FILL) !== '0'
+}
+
+export function useUpdateAiSuggestions() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { suggestRules: boolean; suggestFill: boolean }) => userApi.updateAiSuggestions(body),
+    onSuccess: (user, { suggestRules, suggestFill }) => {
+      queryClient.setQueryData(queryKeys.user, user)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+      trackEvent(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: suggestRules, fill: suggestFill })
+    },
+  })
+}
+
 export function useUpdateLastSeenVersion() {
   const queryClient = useQueryClient()
   return useMutation({
