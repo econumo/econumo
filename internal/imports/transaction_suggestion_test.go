@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -416,5 +417,52 @@ func TestSuggestionListOptOutDropsTransactionSuggestions(t *testing.T) {
 	}
 	if got := txSuggestions(t, h, userA); len(got) != 0 {
 		t.Fatalf("transaction suggestions kept: %+v", got)
+	}
+}
+
+// editOnTxLock commits an edit to the transaction right as Fill in takes its
+// row lock: what a concurrent edit that won the lock looks like to the fill.
+type editOnTxLock struct {
+	imports.Repository
+	locked []vo.Id
+	edit   func(ctx context.Context)
+}
+
+func (r *editOnTxLock) LockTransactionRow(ctx context.Context, transactionID vo.Id) error {
+	if err := r.Repository.LockTransactionRow(ctx, transactionID); err != nil {
+		return err
+	}
+	r.locked = append(r.locked, transactionID)
+	r.edit(ctx)
+	return nil
+}
+
+func TestFillTransactionSuggestionReadsTheTransactionAfterLockingIt(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	mine := h.payee(t, userA, "My Cafe")
+	_, links := seedSuggestion(t, h, c, cat, py)
+	txID := *links[0].TransactionID
+	rp := &editOnTxLock{Repository: h.repo, edit: func(ctx context.Context) {
+		if _, err := h.db.TX.Querier(ctx).ExecContext(ctx, h.db.Rebind(`UPDATE transactions SET payee_id = ? WHERE id = ?`), mine, txID.String()); err != nil {
+			t.Fatal(err)
+		}
+	}}
+	h.withRepo(rp)
+
+	res, err := fillTxSuggestion(h, userA, links[0].ID)
+	if err != nil || res.Updated != 1 {
+		t.Fatalf("fill = %+v, %v", res, err)
+	}
+	if len(rp.locked) != 1 || rp.locked[0] != txID {
+		t.Fatalf("locked = %v, want the suggestion's transaction", rp.locked)
+	}
+	tx, err := h.txns.GetByID(context.Background(), txID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !idIs(tx.CategoryID, cat) || !idIs(tx.PayeeID, mine) {
+		t.Fatalf("transaction = %+v: the payee set before the read must stay", tx)
 	}
 }

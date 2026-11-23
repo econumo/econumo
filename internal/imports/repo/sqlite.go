@@ -271,6 +271,12 @@ func (sqliteQuerier) GetImportTransactionSuggestion(ctx context.Context, db back
 	return sqlitegen.New(db).GetImportTransactionSuggestion(ctx, linkID)
 }
 
+// SQLite has no row locks: the suggestion's no-op UPDATE already took the
+// database write lock, which serializes every other writer.
+func (sqliteQuerier) LockImportTransactionRow(context.Context, backend.DBTX, string) error {
+	return nil
+}
+
 func (sqliteQuerier) LockImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (int64, error) {
 	return sqlitegen.New(db).LockImportTransactionSuggestion(ctx, linkID)
 }

@@ -1655,6 +1655,17 @@ func (q *Queries) LockImportSuggestion(ctx context.Context, id string) (int64, e
 	return result.RowsAffected()
 }
 
+const lockImportTransactionRow = `-- name: LockImportTransactionRow :exec
+SELECT id FROM transactions WHERE id = $1 FOR UPDATE
+`
+
+// Fill in reads the transaction and writes it back whole: the row lock keeps a
+// concurrent edit from landing between the read and the write.
+func (q *Queries) LockImportTransactionRow(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, lockImportTransactionRow, id)
+	return err
+}
+
 const lockImportTransactionSuggestion = `-- name: LockImportTransactionSuggestion :execrows
 UPDATE import_transaction_suggestions SET status = status WHERE link_id = $1
 `

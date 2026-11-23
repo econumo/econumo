@@ -151,6 +151,11 @@ func (s *Service) FillTransactionSuggestion(ctx context.Context, userID vo.Id, r
 		if err != nil {
 			return err
 		}
+		// The write below sends the whole transaction back: locked before the
+		// read, an edit committed meanwhile is read rather than reverted.
+		if err := s.lockSuggestionTransaction(ctx, sg.LinkID); err != nil {
+			return err
+		}
 		_, live, err := s.suggestionTarget(ctx, userID, sg.LinkID)
 		if err != nil {
 			return err
@@ -188,6 +193,20 @@ func (s *Service) FillTransactionSuggestion(ctx context.Context, userID vo.Id, r
 	}
 	reqctx.AddLogAttr(ctx, "updated", out.Updated)
 	return out, nil
+}
+
+func (s *Service) lockSuggestionTransaction(ctx context.Context, linkID vo.Id) error {
+	l, err := s.repo.GetLink(ctx, linkID)
+	if isNotFoundErr(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if l.TransactionID == nil {
+		return nil
+	}
+	return s.repo.LockTransactionRow(ctx, *l.TransactionID)
 }
 
 // DismissTransactionSuggestion deletes the suggestion: its link qualified

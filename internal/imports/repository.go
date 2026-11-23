@@ -84,6 +84,9 @@ type Repository interface {
 	ListOpenTransactionSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionSuggestion, error)
 	// LockTransactionSuggestion takes the row lock in the caller's transaction.
 	LockTransactionSuggestion(ctx context.Context, linkID vo.Id) (*model.ImportTransactionSuggestion, error)
+	// LockTransactionRow takes the transaction's row lock in the caller's
+	// transaction; a missing row is not an error.
+	LockTransactionRow(ctx context.Context, transactionID vo.Id) error
 	MarkTransactionSuggestionFilled(ctx context.Context, linkID vo.Id, now time.Time) error
 	DeleteTransactionSuggestion(ctx context.Context, linkID vo.Id) error
 	DeleteOpenTransactionSuggestionsByUser(ctx context.Context, userID vo.Id) error

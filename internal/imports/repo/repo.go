@@ -126,6 +126,7 @@ type querier interface {
 	ListOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]txSuggestionRow, error)
 	GetImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (txSuggestionRow, error)
 	LockImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (int64, error)
+	LockImportTransactionRow(ctx context.Context, db backend.DBTX, transactionID string) error
 	MarkImportTransactionSuggestionFilled(ctx context.Context, db backend.DBTX, p markTxSuggestionFilledPs) error
 	DeleteImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) error
 	DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error

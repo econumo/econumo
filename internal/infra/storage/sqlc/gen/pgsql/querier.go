@@ -475,6 +475,9 @@ type Querier interface {
 	// unblocked.
 	LockDebtBudget(ctx context.Context, id string) (string, error)
 	LockImportSuggestion(ctx context.Context, id string) (int64, error)
+	// Fill in reads the transaction and writes it back whole: the row lock keeps a
+	// concurrent edit from landing between the read and the write.
+	LockImportTransactionRow(ctx context.Context, id string) error
 	LockImportTransactionSuggestion(ctx context.Context, linkID string) (int64, error)
 	// The merge target's lock. The target is kept, so it needs no FOR UPDATE, and
 	// FOR NO KEY UPDATE lets the FOR KEY SHARE of a foreign key check pass: a

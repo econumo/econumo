@@ -425,6 +425,10 @@ func (pgsqlQuerier) LockImportTransactionSuggestion(ctx context.Context, db back
 	return pgsqlgen.New(db).LockImportTransactionSuggestion(ctx, linkID)
 }
 
+func (pgsqlQuerier) LockImportTransactionRow(ctx context.Context, db backend.DBTX, transactionID string) error {
+	return pgsqlgen.New(db).LockImportTransactionRow(ctx, transactionID)
+}
+
 func (pgsqlQuerier) MarkImportTransactionSuggestionFilled(ctx context.Context, db backend.DBTX, p markTxSuggestionFilledPs) error {
 	return pgsqlgen.New(db).MarkImportTransactionSuggestionFilled(ctx, pgsqlgen.MarkImportTransactionSuggestionFilledParams(p))
 }

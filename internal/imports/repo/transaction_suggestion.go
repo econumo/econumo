@@ -64,6 +64,10 @@ func (r *Repo) LockTransactionSuggestion(ctx context.Context, linkID vo.Id) (*mo
 	return transactionSuggestionFromRow(row)
 }
 
+func (r *Repo) LockTransactionRow(ctx context.Context, transactionID vo.Id) error {
+	return r.q.LockImportTransactionRow(ctx, r.db(ctx), transactionID.String())
+}
+
 func (r *Repo) MarkTransactionSuggestionFilled(ctx context.Context, linkID vo.Id, now time.Time) error {
 	return r.q.MarkImportTransactionSuggestionFilled(ctx, r.db(ctx), markTxSuggestionFilledPs{UpdatedAt: now, LinkID: linkID.String()})
 }

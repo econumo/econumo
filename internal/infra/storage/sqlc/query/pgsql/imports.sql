@@ -329,6 +329,11 @@ WHERE link_id = $1;
 -- name: LockImportTransactionSuggestion :execrows
 UPDATE import_transaction_suggestions SET status = status WHERE link_id = $1;
 
+-- name: LockImportTransactionRow :exec
+-- Fill in reads the transaction and writes it back whole: the row lock keeps a
+-- concurrent edit from landing between the read and the write.
+SELECT id FROM transactions WHERE id = $1 FOR UPDATE;
+
 -- name: MarkImportTransactionSuggestionFilled :exec
 UPDATE import_transaction_suggestions SET status = 'filled', updated_at = $1 WHERE link_id = $2;
 
