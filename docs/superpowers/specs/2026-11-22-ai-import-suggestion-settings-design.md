@@ -254,7 +254,8 @@ transaction suggestion dismissed, and the AI suggestion settings changed (with w
 - Go tests with the recording completer: per-row values (not the group's), rules off writes no
   rule suggestion and skips reuse, fill off writes no transaction suggestion, both off makes no
   AI call, fill never overwrites, readonly and AI off, opt-out undo removes both kinds, the
-  filled-row interaction with the rule list, owner-only on a shared account.
+  filled-row interaction with the rule list (agree and disagree), a filled row skipped by
+  apply-rule without "include edited", owner-only on a shared account.
 - Frontend tests for the settings dialog, the new section, the sheet actions, offline
   disabling; `metrics-coverage` and the offline coverage lists.
 - i18n keys in all 11 catalogues.
