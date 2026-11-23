@@ -492,6 +492,47 @@ it('shows the import suggestion switches only while AI is on and saves a change'
   expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: true })
 })
 
+it('a second suggestion toggle before the first answer keeps the first change', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  const bodies: { suggestRules: boolean; suggestFill: boolean }[] = []
+  const releases: (() => void)[] = []
+  server.use(
+    http.post('*/api/v1/user/update-ai-suggestions', async ({ request }) => {
+      const body = (await request.json()) as { suggestRules: boolean; suggestFill: boolean }
+      bodies.push(body)
+      await new Promise<void>((resolve) => releases.push(resolve))
+      const options = [
+        ...fixtureUser.options,
+        { name: 'ai_suggest_rules', value: body.suggestRules ? '1' : '0' },
+        { name: 'ai_suggest_fill', value: body.suggestFill ? '1' : '0' },
+      ]
+      return HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, options } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
+  const fill = within(dialog).getByRole('switch', { name: 'Suggest category and payee' })
+
+  await user.click(rules)
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(rules).not.toBeChecked()
+  await user.click(fill)
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(bodies).toEqual([{ suggestRules: false, suggestFill: true }, { suggestRules: false, suggestFill: false }])
+
+  // the first answer (fill still on) lands while the second is in flight: it must not flip fill back
+  releases[0]()
+  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: true }))
+  expect(fill).not.toBeChecked()
+  releases[1]()
+  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: false }))
+  expect(rules).not.toBeChecked()
+  expect(fill).not.toBeChecked()
+})
+
 it('disables the import suggestion switches offline', async () => {
   window.econumoConfig = { AI_ENABLED: true }
   const user = userEvent.setup()

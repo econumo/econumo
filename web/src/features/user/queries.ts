@@ -196,12 +196,41 @@ export function userAiSuggestFill(user: CurrentUserDto | undefined): boolean {
   return userOption(user, UserOptions.AI_SUGGEST_FILL) !== '0'
 }
 
+function withOption(user: CurrentUserDto, name: UserOptions, value: string): CurrentUserDto {
+  const options = user.options.some((o) => o.name === name)
+    ? user.options.map((o) => (o.name === name ? { ...o, value } : o))
+    : [...user.options, { name, value }]
+  return { ...user, options }
+}
+
+const updateAiSuggestionsKey = ['user', 'update-ai-suggestions'] as const
+
+// Each switch posts both values, taking the other from the cached user, so the cache changes at
+// once: a second toggle before the first answer must read the first one's value.
 export function useUpdateAiSuggestions() {
   const queryClient = useQueryClient()
+  // the mutation calling this still counts itself
+  const othersInFlight = () => queryClient.isMutating({ mutationKey: updateAiSuggestionsKey }) > 1
   return useMutation({
+    mutationKey: updateAiSuggestionsKey,
     mutationFn: (body: { suggestRules: boolean; suggestFill: boolean }) => userApi.updateAiSuggestions(body),
+    onMutate: async ({ suggestRules, suggestFill }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.user })
+      const previous = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
+      if (previous) {
+        const next = withOption(withOption(previous, UserOptions.AI_SUGGEST_RULES, suggestRules ? '1' : '0'), UserOptions.AI_SUGGEST_FILL, suggestFill ? '1' : '0')
+        queryClient.setQueryData(queryKeys.user, next)
+      }
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      // a later toggle still in flight carries its own values; its answer or the refetch settles them
+      if (context?.previous && !othersInFlight()) queryClient.setQueryData(queryKeys.user, context.previous)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+    },
     onSuccess: (user, { suggestRules, suggestFill }) => {
-      queryClient.setQueryData(queryKeys.user, user)
+      // an earlier answer would put back the switch a later toggle already changed
+      if (!othersInFlight()) queryClient.setQueryData(queryKeys.user, user)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       trackEvent(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: suggestRules, fill: suggestFill })
