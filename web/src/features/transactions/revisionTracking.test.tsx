@@ -691,3 +691,15 @@ it('a bucket write that never completes does not hold the first sync', async () 
     restore()
   }
 })
+
+// The AI import job creates payees on the server: a downloaded row naming one the cached list
+// lacks refetches the payee list.
+it('a downloaded row naming a payee the cached list lacks refetches the payee list', async () => {
+  const { queryClient, result } = await booted()
+  queryClient.setQueryData(queryKeys.payees, [{ id: 'p1', ownerUserId: 'u1', name: 'Grocer', position: 0, isArchived: 0, createdAt: '', updatedAt: '' }])
+  const assigned = { ...fixtureTransactions[0], id: 't-ai', accountId: 'a2', payeeId: 'p-ai' }
+  server.use(...coreHandlers({ accounts: withRevisions({ a2: 3 }), transactions: [...fixtureTransactions, assigned] }))
+  await act(() => queryClient.refetchQueries({ queryKey: queryKeys.accounts }))
+  await waitFor(() => expect(result.current.list.data!.map((t) => t.id)).toContain('t-ai'))
+  expect(queryClient.getQueryState(queryKeys.payees)?.isInvalidated).toBe(true)
+})

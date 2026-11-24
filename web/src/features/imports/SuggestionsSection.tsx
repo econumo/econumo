@@ -9,7 +9,7 @@ import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { pluralPick } from '@/lib/plural'
 import { useDismissImportSuggestion } from './queries'
-import { findSuggestedPayee } from './suggestionRule'
+import { resolveSuggestedPayee } from './suggestionRule'
 
 export function SuggestionsSection({ suggestions }: { suggestions: ImportSuggestionDto[] }) {
   const { t, i18n } = useTranslation()
@@ -20,10 +20,14 @@ export function SuggestionsSection({ suggestions }: { suggestions: ImportSuggest
   const { data: user } = useUserData()
   const dismiss = useDismissImportSuggestion()
 
-  const payeeName = (s: ImportSuggestionDto) =>
-    s.payeeName
-      ? findSuggestedPayee(payees, s.payeeName, user?.id)?.name ?? t('imports.suggestions.new_payee', { name: s.payeeName })
-      : payees.find((p) => p.id === s.payeeId)?.name
+  const payeeName = (s: ImportSuggestionDto) => {
+    if (!s.payeeName) {
+      return payees.find((p) => p.id === s.payeeId)?.name
+    }
+    const named = resolveSuggestedPayee(payees, s.payeeName, user?.id)
+    if (named.kind === 'active') return named.payee.name
+    return named.kind === 'new' ? t('imports.suggestions.new_payee', { name: s.payeeName }) : undefined
+  }
   const target = (s: ImportSuggestionDto) =>
     [categories.find((c) => c.id === s.categoryId)?.name, payeeName(s)].filter(Boolean).join(' · ')
 

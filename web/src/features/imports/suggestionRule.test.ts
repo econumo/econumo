@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ImportRuleDto, ImportRuleSpecDto } from '@/api/dto/imports'
-import { findSuggestedPayee, suggestionSpec } from './suggestionRule'
+import { resolveSuggestedPayee, suggestionSpec } from './suggestionRule'
 
 const spec: ImportRuleSpecDto = {
   sourceId: '', action: 'classify', matchField: 'external_payee', matchType: 'contains', matchValue: 'Blue Bottle',
@@ -23,25 +23,31 @@ describe('suggestionSpec', () => {
   })
 })
 
-describe('findSuggestedPayee', () => {
+describe('resolveSuggestedPayee', () => {
   const payee = (id: string, name: string, over: { ownerUserId?: string; isArchived?: 0 | 1 } = {}) =>
     ({ id, name, ownerUserId: over.ownerUserId ?? 'u1', isArchived: over.isArchived ?? 0 })
 
   it('matches a payee whose name differs only in case and punctuation', () => {
-    expect(findSuggestedPayee([payee('p1', 'Grocer'), payee('p2', 'blue-bottle')], 'Blue Bottle', 'u1')?.id).toBe('p2')
+    const found = resolveSuggestedPayee([payee('p1', 'Grocer'), payee('p2', 'blue-bottle')], 'Blue Bottle', 'u1')
+    expect(found.kind === 'active' && found.payee.id).toBe('p2')
   })
 
   it('ignores a partner\'s payee of the same name', () => {
-    expect(findSuggestedPayee([payee('p1', 'Blue Bottle', { ownerUserId: 'u2' })], 'Blue Bottle', 'u1')).toBeUndefined()
+    expect(resolveSuggestedPayee([payee('p1', 'Blue Bottle', { ownerUserId: 'u2' })], 'Blue Bottle', 'u1')).toEqual({ kind: 'new' })
   })
 
   it('prefers an active payee to an archived one', () => {
     const payees = [payee('old', 'BLUE BOTTLE', { isArchived: 1 }), payee('new', 'Blue Bottle')]
-    expect(findSuggestedPayee(payees, 'Blue Bottle', 'u1')?.id).toBe('new')
-    expect(findSuggestedPayee(payees.slice(0, 1), 'Blue Bottle', 'u1')?.id).toBe('old')
+    const found = resolveSuggestedPayee(payees, 'Blue Bottle', 'u1')
+    expect(found.kind === 'active' && found.payee.id).toBe('new')
+  })
+
+  // the user archived it on purpose: neither reused nor created again
+  it('reads an archived match alone as no payee', () => {
+    expect(resolveSuggestedPayee([payee('old', 'BLUE BOTTLE', { isArchived: 1 })], 'Blue Bottle', 'u1')).toEqual({ kind: 'archived' })
   })
 
   it('finds nothing for a name with no letters or digits', () => {
-    expect(findSuggestedPayee([payee('p1', '...')], '!!!', 'u1')).toBeUndefined()
+    expect(resolveSuggestedPayee([payee('p1', '...')], '!!!', 'u1')).toEqual({ kind: 'new' })
   })
 })

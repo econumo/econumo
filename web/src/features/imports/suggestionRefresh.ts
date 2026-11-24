@@ -2,7 +2,8 @@ import type { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
 import { isAiEnabled } from '@/lib/config'
 
-// when, after a sync, the suggestion list is refetched for the AI job's answer
+// when, after a sync, the suggestion list (and the payees the job may create) is refetched for the
+// AI job's answer
 export const SUGGESTION_REFRESH_DELAYS_MS = [15_000, 60_000]
 
 let suggestionRefresh: ReturnType<typeof setTimeout>[] = []
@@ -20,6 +21,7 @@ export function scheduleSuggestionRefresh(queryClient: QueryClient): void {
   suggestionRefresh = SUGGESTION_REFRESH_DELAYS_MS.map((delay) =>
     setTimeout(() => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.payees })
     }, delay),
   )
 }

@@ -6,6 +6,7 @@ import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 import type { CurrentUserDto, UserDto } from '@/api/dto/user'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { refetchPayeesIfUnknown } from '@/features/classifications/unknownPayees'
 import { isPendingForMe } from '@/features/connections/shared'
 import { deleteBuckets, putBuckets, storeEpoch, tryLoadBuckets, type Bucket } from '@/lib/transactionStore'
 import { assemble, hasRevisions, syncBuckets, type SyncOutput } from './sync'
@@ -334,6 +335,7 @@ export async function transactionsQueryFn(
     const list = await transactionApi.getTransactionList()
     if (!opts.signal?.aborted && storeEpoch() === at) {
       landing = { accounts: raw, revisions: null }
+      refetchPayeesIfUnknown(queryClient, list.map((t) => t.payeeId))
     }
     return list
   }
@@ -381,6 +383,7 @@ export async function transactionsQueryFn(
   // after a clear (logout, login) nothing of this run may become the page's state
   if (storeEpoch() === at) {
     landing = { accounts: raw, revisions: new Map([...out.buckets].map(([id, b]) => [id, b.revision])) }
+    refetchPayeesIfUnknown(queryClient, out.changed.flatMap((b) => b.items.map((t) => t.payeeId)))
   }
   return assemble(out.buckets)
 }

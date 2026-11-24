@@ -26,16 +26,22 @@ export function ruleSpec(rule: ImportRuleDto): ImportRuleSpecDto {
   }
 }
 
-// The owner's payee a suggestion's new payee name already names, compared as the server compares
-// names. An active payee wins; an archived one is still the same payee, and creating it again
-// under that exact name would be refused.
-export function findSuggestedPayee<T extends { name: string; ownerUserId: Id; isArchived: 0 | 1 }>(
+export type SuggestedPayee<T> = { kind: 'active'; payee: T } | { kind: 'archived' } | { kind: 'new' }
+
+// What a suggestion's new payee name comes to among the owner's payees, compared as the server
+// compares names: an active payee of that name is reused; one only archived means no payee, as on
+// the server (the user archived it on purpose); none means a payee to create.
+export function resolveSuggestedPayee<T extends { name: string; ownerUserId: Id; isArchived: 0 | 1 }>(
   payees: T[] | undefined, name: string, ownerUserId: Id | undefined,
-): T | undefined {
+): SuggestedPayee<T> {
   const key = similarityText(name)
   if (key === '') {
-    return undefined
+    return { kind: 'new' }
   }
   const same = (payees ?? []).filter((p) => (!ownerUserId || p.ownerUserId === ownerUserId) && similarityText(p.name) === key)
-  return same.find((p) => !p.isArchived) ?? same[0]
+  const active = same.find((p) => !p.isArchived)
+  if (active) {
+    return { kind: 'active', payee: active }
+  }
+  return same.length > 0 ? { kind: 'archived' } : { kind: 'new' }
 }

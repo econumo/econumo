@@ -37,7 +37,7 @@ import {
 } from './queries'
 import { RuleCondition } from './RuleCondition'
 import { describeMatch } from './ruleSummary'
-import { findSuggestedPayee, ruleSpec, suggestionSpec } from './suggestionRule'
+import { resolveSuggestedPayee, ruleSpec, suggestionSpec } from './suggestionRule'
 
 const PREVIEW_DEBOUNCE_MS = 300
 // mirrors model.MaxImportRuleLabels — the server rejects a longer set
@@ -375,9 +375,11 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const [busy, setBusy] = useState(false)
 
   const ownerId = user?.id
-  // a payee of that name made since the suggestion was written (or on another device) is used as is
-  const namedPayee = newPayeeName ? findSuggestedPayee(payees, newPayeeName, ownerId) : undefined
-  const knownPayeeId = newPayeeName ? namedPayee?.id ?? '' : payeeId
+  // a payee of that name made since the suggestion was written (or on another device) is used as is;
+  // one archived meanwhile means no payee, and nothing to create
+  const named = newPayeeName ? resolveSuggestedPayee(payees, newPayeeName, ownerId) : undefined
+  const proposedName = named?.kind === 'archived' ? '' : newPayeeName
+  const knownPayeeId = newPayeeName ? (named?.kind === 'active' ? named.payee.id : '') : payeeId
 
   const spec: ImportRuleSpecDto = useMemo(() => ({
     sourceId: '', action: 'classify', matchField, matchType, matchValue, isCaseSensitive: false,
@@ -386,7 +388,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   // the server refuses (and will not preview) a classify rule that sets nothing; a payee still to
   // be created is set only once Save makes it, so it allows Save but no preview
   const previewable = spec.matchValue.trim() !== '' && (categoryId !== '' || knownPayeeId !== '')
-  const complete = previewable || (spec.matchValue.trim() !== '' && newPayeeName !== '')
+  const complete = previewable || (spec.matchValue.trim() !== '' && proposedName !== '')
 
   const preview = usePreviewImportRule()
   const allPreview = usePreviewImportRule()
@@ -407,7 +409,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const own = <T extends { ownerUserId: string }>(rows: T[]) => rows.filter((r) => !ownerId || r.ownerUserId === ownerId)
   const fieldLabel = matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')
   const typeLabel = t(`imports.rules.type.${matchType}`)
-  const payeeValue = newPayeeName && !namedPayee ? NEW_PAYEE : knownPayeeId
+  const payeeValue = named?.kind === 'new' ? NEW_PAYEE : knownPayeeId
   const payeeOptions = [
     ...own(payees).filter((p) => !p.isArchived || p.id === knownPayeeId).map((p) => ({ value: p.id, label: p.name })),
     ...(payeeValue === NEW_PAYEE ? [{ value: NEW_PAYEE, label: t('imports.suggestions.new_payee', { name: newPayeeName }) }] : []),
@@ -421,9 +423,9 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const saveAndAccept = async () => {
     let saving = spec
     let newPayee = false
-    if (newPayeeName) {
-      const made = await createPayee.mutateAsync({ suggestionId: suggestion.id, name: newPayeeName, ownerUserId: ownerId })
-      saving = { ...spec, payeeId: made.payee.id }
+    if (proposedName) {
+      const made = await createPayee.mutateAsync({ suggestionId: suggestion.id, name: proposedName, ownerUserId: ownerId })
+      saving = { ...spec, payeeId: made.payee?.id ?? '' }
       newPayee = made.created
     }
     let rule = await create.mutateAsync({ spec: saving, id: suggestion.id })

@@ -766,7 +766,7 @@ describe('suggestion mode', () => {
         { changedMatch: false, changedCategory: false, changedPayee: false, newPayee: true })
     })
 
-    it('a Save retried after a lost create-payee answer sends the same id and makes no second payee', async () => {
+    it('a Save retried after a lost create-payee answer finds the payee it made and makes no second one', async () => {
       renderPrompt()
       const payees = payeeServer(fixturePayees, { loseFirst: true })
       previewCounts(0, 0)
@@ -778,9 +778,7 @@ describe('suggestion mode', () => {
       expect(posted.create).toBeUndefined()
       await user.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      const ids = (posted.createPayee as { id: string }[]).map((b) => b.id)
-      expect(ids).toHaveLength(2)
-      expect(ids[1]).toBe(ids[0])
+      expect(posted.createPayee).toHaveLength(1)
       expect(payees).toHaveLength(2)
       expect(posted.create![0]).toMatchObject({ payeeId: 'payee-2' })
       expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT, expect.objectContaining({ newPayee: true }))
@@ -844,14 +842,34 @@ describe('suggestion mode', () => {
       expect(posted.create![0]).toMatchObject({ payeeId: 'p-bb' })
     })
 
-    it('a payee of that name made elsewhere after the dialog opened is used when create-payee refuses it', async () => {
+    it('a payee of that name made elsewhere after the dialog opened is used without creating one', async () => {
       renderPrompt()
       const payees = payeeServer()
       previewCounts(0, 0)
       acceptHandler(2)
       const user = await open(proposing())
       await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
-      payees.push({ id: 'p-other', ownerUserId: 'u1', name: 'Blue Bottle', position: 1, isArchived: 0, createdAt: '', updatedAt: '' })
+      // only case and punctuation differ: the server's exact-name check would take a second one
+      payees.push({ id: 'p-other', ownerUserId: 'u1', name: 'BLUE-BOTTLE', position: 1, isArchived: 0, createdAt: '', updatedAt: '' })
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toBeUndefined()
+      expect(payees).toHaveLength(2)
+      expect(posted.create![0]).toMatchObject({ payeeId: 'p-other' })
+    })
+
+    it('a payee of that name made between the fresh read and the post is used when create-payee refuses it', async () => {
+      renderPrompt()
+      const payees = payeeServer()
+      server.use(http.post('*/api/v1/payee/create-payee', async ({ request }) => {
+        ;(posted.createPayee ??= []).push(await request.json())
+        payees.push({ id: 'p-other', ownerUserId: 'u1', name: 'Blue Bottle', position: 1, isArchived: 0, createdAt: '', updatedAt: '' })
+        return refused('Payee already exists.')
+      }))
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
       await user.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       expect(posted.createPayee).toHaveLength(1)
@@ -859,6 +877,35 @@ describe('suggestion mode', () => {
       expect(posted.create![0]).toMatchObject({ payeeId: 'p-other' })
       expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT,
         { changedMatch: false, changedCategory: false, changedPayee: false })
+    })
+
+    it('an archived payee of that name means no payee: nothing is created and the rule has none', async () => {
+      renderPrompt()
+      const payees = payeeServer([...fixturePayees, { id: 'p-arch', ownerUserId: 'u1', name: 'BLUE BOTTLE', position: 1, isArchived: 1, createdAt: '', updatedAt: '' }])
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).not.toHaveValue('Blue Bottle (new)'))
+      expect(screen.getByRole('combobox', { name: 'Payee' })).not.toHaveValue('BLUE BOTTLE')
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toBeUndefined()
+      expect(payees).toHaveLength(2)
+      expect(posted.create![0]).toMatchObject({ categoryId: 'cat-food', payeeId: '' })
+    })
+
+    it('a payee archived after the dialog opened is not created again on Save', async () => {
+      renderPrompt()
+      const payees = payeeServer()
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
+      payees.push({ id: 'p-arch', ownerUserId: 'u1', name: 'Blue Bottle', position: 1, isArchived: 1, createdAt: '', updatedAt: '' })
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toBeUndefined()
+      expect(posted.create![0]).toMatchObject({ categoryId: 'cat-food', payeeId: '' })
     })
 
     it('picking another payee drops the new one', async () => {

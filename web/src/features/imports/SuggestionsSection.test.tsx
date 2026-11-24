@@ -106,6 +106,15 @@ it('a payee the suggestion would create reads as new, and dismissing it creates 
   expect(created).toEqual([])
 })
 
+it('a proposed payee an archived payee already names shows no payee', async () => {
+  const archived = { ...payee, id: 'p-archived', name: 'BLUE BOTTLE', isArchived: 1 }
+  server.use(...coreHandlers({ importSuggestions: [suggestion({ payeeId: '', payeeName: 'Blue Bottle' })], payees: [...fixturePayees, archived] }))
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  render(<QueryClientProvider client={queryClient}><Section /></QueryClientProvider>)
+  expect(await screen.findByText(`→ ${category.name}`)).toBeInTheDocument()
+  expect(screen.queryByText(/Blue Bottle \(new\)/)).not.toBeInTheDocument()
+})
+
 it('dismiss is disabled offline', async () => {
   renderSection([suggestion()])
   await screen.findByText('BLUE BOTTLE')

@@ -21,7 +21,8 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
 import { retryPolicy, type OwnErrorHandling } from '@/lib/appQueryClient'
 import { afterFailedPullSync, afterPullSync } from './sidebarSync'
-import { findSuggestedPayee } from './suggestionRule'
+import { resolveSuggestedPayee } from './suggestionRule'
+import { refetchPayeesIfUnknown } from '@/features/classifications/unknownPayees'
 
 // The queries reached from surfaces that exist with transaction import off
 // (the Inbox, the transaction dialogs) never fetch then: the server does not
@@ -38,9 +39,14 @@ export function useImportQueue() {
 // push reaches the server without this device knowing: a short staleTime plus a refetch on focus
 // is how they show up.
 export function useImportSuggestions() {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: queryKeys.importSuggestions,
-    queryFn: importsApi.getImportSuggestionList,
+    queryFn: async () => {
+      const items = await importsApi.getImportSuggestionList()
+      refetchPayeesIfUnknown(queryClient, items.map((s) => s.payeeId))
+      return items
+    },
     staleTime: 60_000,
     refetchOnWindowFocus: true,
     retry: suggestionRetry,
@@ -65,29 +71,37 @@ export interface SuggestionChanges {
 // Per suggestion: the create-payee operation id, minted once so a Save retried after a lost answer
 // is refused as a replay instead of making a second payee; whether a request went out with it
 // whose outcome is unknown; and whether the payee is one this suggestion's Save created. Module
-// level, so Cancel and a reopen of the prompt keep it; dropped once the suggestion is accepted.
+// level, so Cancel and a reopen of the prompt keep it; dropped once the suggestion is accepted or dismissed.
 const suggestedPayees = new Map<Id, { opId: Id; unsettled: boolean; created: boolean }>()
 
-// The payee a suggestion proposes by name, created unless the owner already has one of that name.
-// create-payee answers a replayed operation id, and a name already taken, with a refusal and no
-// payee: after an answered refusal the fresh list is searched by name, and the refusal stands
-// only when the payee is not there.
+// The payee a suggestion proposes by name, created unless the owner already has one of that name;
+// an archived one of that name means none (payee null). create-payee answers a replayed operation
+// id, and a name already taken, with a refusal and no payee: after an answered refusal the fresh
+// list is searched by name, and the refusal stands only when the payee is not there.
 export function useCreateSuggestedPayee() {
   const queryClient = useQueryClient()
   return useMutation({
     meta: { handlesOwnErrors: true },
-    mutationFn: async ({ suggestionId, name, ownerUserId }: { suggestionId: Id; name: string; ownerUserId: Id | undefined }): Promise<{ payee: PayeeDto; created: boolean }> => {
+    mutationFn: async ({ suggestionId, name, ownerUserId }: { suggestionId: Id; name: string; ownerUserId: Id | undefined }): Promise<{ payee: PayeeDto | null; created: boolean }> => {
       let op = suggestedPayees.get(suggestionId)
       if (!op) {
         op = { opId: uuidv7(), unsettled: false, created: false }
         suggestedPayees.set(suggestionId, op)
       }
-      // a Save before the list has loaded must still find a payee of that name: the server refuses
-      // only an exact one, so posting would make a second payee for the same merchant
-      const known = await queryClient.ensureQueryData({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList })
-      const cached = findSuggestedPayee(known, name, ownerUserId)
-      if (cached) {
-        return { payee: cached, created: op.created }
+      // A fresh list, not the cache: the server refuses only an exact name, so a payee of that
+      // name made since the list was read (another device, the import job) would get a twin.
+      const known = await queryClient.fetchQuery({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList, staleTime: 0 })
+      const named = resolveSuggestedPayee(known, name, ownerUserId)
+      if (named.kind === 'archived') {
+        return { payee: null, created: false }
+      }
+      if (named.kind === 'active') {
+        // the earlier request whose answer was lost made it
+        if (op.unsettled) {
+          op.unsettled = false
+          op.created = true
+        }
+        return { payee: named.payee, created: op.created }
       }
       const retry = op.unsettled
       op.unsettled = true
@@ -103,18 +117,22 @@ export function useCreateSuggestedPayee() {
         }
         op.unsettled = false
         const fresh = await queryClient.fetchQuery({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList, staleTime: 0 }).catch(() => undefined)
-        const found = findSuggestedPayee(fresh, name, ownerUserId)
-        if (!found) {
+        const found = resolveSuggestedPayee(fresh, name, ownerUserId)
+        if (found.kind === 'archived') {
+          return { payee: null, created: false }
+        }
+        if (found.kind === 'new') {
           throw err
         }
         // refused as a replay: the earlier request whose answer was lost made it
         if (retry) {
           op.created = true
         }
-        return { payee: found, created: op.created }
+        return { payee: found.payee, created: op.created }
       }
     },
     onSuccess: ({ payee }) => {
+      if (!payee) return
       queryClient.setQueryData<PayeeDto[]>(queryKeys.payees, (prev) => {
         const items = prev ?? []
         return items.some((p) => p.id === payee.id) ? items : [...items, payee]
@@ -195,6 +213,7 @@ export function useDismissImportSuggestion() {
     // Never replace the cache with the answer's list: two dismisses answered out of order would
     // bring the first one's row back. Drop this id and refetch.
     onSuccess: (_result, id) => {
+      suggestedPayees.delete(id)
       queryClient.setQueryData<ImportSuggestionDto[]>(queryKeys.importSuggestions, (prev) => prev?.filter((s) => s.id !== id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.IMPORT_SUGGESTION_DISMISS)

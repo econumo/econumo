@@ -195,6 +195,29 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1, from: 'settings' })
 })
 
+it('a sync refreshes the payees with the suggestions', async () => {
+  const run = {
+    id: 'r1', sourceId: 's2', provider: 'simplefin', status: 'completed', trigger: 'manual',
+    importedCount: 1, matchedCount: 0, amountsUpdatedCount: 0, queuedCount: 0, skippedCount: 0, failedCount: 0,
+    errors: [], startedAt: '2026-09-07 10:00:00', finishedAt: '2026-09-07 10:00:02',
+  }
+  server.use(http.post('*/api/v1/import/sync-source', () => HttpResponse.json({ success: true, message: '', data: { run, accounts: [] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.payees, [])
+  const { result } = renderHook(() => useSyncImportSource(), { wrapper })
+  await act(() => result.current.mutateAsync({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }))
+  expect(queryClient.getQueryState(queryKeys.payees)?.isInvalidated).toBe(true)
+})
+
+it('a suggestion naming a payee the cached list lacks refetches the payee list', async () => {
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1', payeeId: 'p-job', payeeName: '' }] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.payees, [{ id: 'p1', ownerUserId: 'u1', name: 'Grocer', position: 0, isArchived: 0, createdAt: '', updatedAt: '' }])
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.payees)?.isInvalidated).toBe(true)
+})
+
 it('useAcceptImportSuggestion invalidates the plan with the other ledger views', async () => {
   server.use(http.post('*/api/v1/import/accept-suggestion', () => HttpResponse.json({ success: true, message: '', data: { updated: 1 } })))
   const { queryClient, wrapper } = makeWrapper()
@@ -310,7 +333,8 @@ describe('suggestion refresh after a sync', () => {
     vi.useRealTimers()
   })
 
-  it('refetches both suggestion lists at 15 s and 60 s when AI is on', () => {
+  // the job creates payees for the rows it assigns, which the payee list must show
+  it('refetches the suggestions and the payees at 15 s and 60 s when AI is on', () => {
     vi.useFakeTimers()
     window.econumoConfig = { AI_ENABLED: true }
     const queryClient = new QueryClient()
@@ -319,9 +343,9 @@ describe('suggestion refresh after a sync', () => {
     vi.advanceTimersByTime(14_999)
     expect(spy).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    expect(spy.mock.calls).toEqual([[{ queryKey: queryKeys.importSuggestions }]])
+    expect(spy.mock.calls).toEqual([[{ queryKey: queryKeys.importSuggestions }], [{ queryKey: queryKeys.payees }]])
     vi.advanceTimersByTime(45_000)
-    expect(spy).toHaveBeenCalledTimes(2)
+    expect(spy).toHaveBeenCalledTimes(4)
   })
 
   it('schedules nothing without AI', () => {
