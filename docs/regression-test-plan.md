@@ -1034,9 +1034,12 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       payee "Starbucks" (listed in Settings → Payees and in the transaction payee picker without a
       reload), the rule naming it, and fills the transactions. If a payee of that name already
       exists in another case or with punctuation (e.g. "starbucks."), the row and the editor show
-      that payee without "(new)" and Save creates none. Picking another payee in the editor
-      saves the rule with that payee and creates none. With the network dropped right after
-      tapping Save and Save tapped again, Settings → Payees shows ONE "Starbucks".
+      that payee without "(new)" and Save creates none; the same when that payee was created on
+      another device after the Inbox loaded. If the only payee of that name is archived, the
+      row and the editor show no payee (no "(new)"), and Save creates none and saves the rule
+      without a payee. Picking another payee in the editor saves the rule with that payee and
+      creates none. With the network dropped right after tapping Save and Save tapped again,
+      Settings → Payees shows ONE "Starbucks".
 - [ ] Suggested rule retry 📱: when Save created the rule but the accept failed (an error
       toast), Cancel, reopen the row and Save again: Import rules shows ONE rule for it, and an
       edited match on the retry is saved into that same rule.
@@ -1053,7 +1056,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       automatically" on): an Apple Pay tap at a well-known merchant (e.g. Starbucks), no rule
       matching it, gets a category and a payee within about a minute (the payee is created when
       the owner has none of that name); a tap at an unknown local shop gets a category and no
-      payee. No Inbox item appears for the assignment itself.
+      payee. No Inbox item appears for the assignment itself. Without a reload, the transaction
+      shows the new payee by name once it is filled, and the payee is in Settings → Payees and
+      the transaction payee picker.
 - [ ] Automatic assignment never changes a value already set 📱: a category or payee a rule set,
       or one set by hand within the minute before the AI answers, is kept.
 - [ ] With "Assign category and payee automatically" off 📱, new taps stay without a category
