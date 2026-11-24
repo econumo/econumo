@@ -794,3 +794,45 @@ func TestSuggestPartialOpenSuggestionCoversWithAssignmentOff(t *testing.T) {
 		t.Fatalf("rule suggestions = %+v", got)
 	}
 }
+
+// A well-known merchant the owner may already have a payee for (fuzzy
+// candidates) gets a new payee only once step 2 has answered and picked none:
+// a failed or unusable step 2 must not create "Blue Bottle" next to "Blue
+// Bottle Coffee".
+func TestAssignNewPayeeOnlyWhenStepTwoPickedNone(t *testing.T) {
+	step1 := `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"wellKnown":true,"categoryId":"%s"}]}`
+	for _, tc := range []struct {
+		name, step2 string
+		created     bool
+	}{
+		{"invalid_json", `not json`, false},
+		{"pick_not_a_candidate", `{"rows":[{"key":"0","payeeKey":"p9"}]}`, false},
+		{"null_pick", `{"rows":[{"key":"0","payeeKey":null}]}`, true},
+		{"row_left_out", `{"rows":[]}`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, c, _ := suggestSetup(t)
+			h.mapCard(t, "Apple Card")
+			cat := h.category(t, userA, "Cafes")
+			h.payee(t, userA, "Blue Bottle Coffee")
+			c.replies = []string{strings.Replace(step1, "%s", cat, 1), tc.step2}
+			ingest(t, h, tap)
+			if len(c.calls) != 2 {
+				t.Fatalf("calls = %d, want both steps", len(c.calls))
+			}
+			links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+			tx := txOf(t, h, links[0].ID)
+			if !idIs(tx.CategoryID, cat) {
+				t.Fatalf("transaction = %+v, want step 1's category", tx)
+			}
+			if got := len(h.payees.created) == 1 && h.payees.created[0] == "Blue Bottle"; got != tc.created || (tx.PayeeID != nil) != tc.created {
+				t.Fatalf("payees created = %v, transaction payee = %v, want created = %v", h.payees.created, tx.PayeeID, tc.created)
+			}
+			if !tc.created {
+				if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].PayeeID != nil || got[0].PayeeName != nil {
+					t.Fatalf("rule suggestions = %+v, want no payee", got)
+				}
+			}
+		})
+	}
+}

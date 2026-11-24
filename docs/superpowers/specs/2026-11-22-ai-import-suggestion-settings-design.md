@@ -100,7 +100,11 @@ New: a row that ends with **no** payee, has a merchant name (`merchants[0]`, tri
 `wellKnown: true` gets a **new-payee name** = `merchants[0]`. Before creating, the name is
 compared (normalised as in `similarityText`) with every payee the owner has, archived ones
 included; an equal name reuses that payee (unarchived ones only; an archived match means no
-payee, *my call*: the user archived it on purpose).
+payee, *my call*: the user archived it on purpose). A row that had step-2 candidates gets a new-payee
+name only when step 2 answered and picked none of them (a null pick or the row left out); when
+step 2 failed, replied unusably or picked something that is not one of the row's candidates, the
+owner may well have the merchant's payee already, so the row gets no payee rather than a
+near-duplicate.
 
 ### Writing assignments (switch "assign" on)
 

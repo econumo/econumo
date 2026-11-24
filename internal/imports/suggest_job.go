@@ -512,6 +512,12 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 	if len(candidates) == 0 {
 		return replies, nil
 	}
+	// until step 2 answers that it picked none of them
+	for k := range candidates {
+		r := replies[k]
+		r.NoNewPayee = true
+		replies[k] = r
+	}
 	system, user, keys := buildPayeePrompt(rows, replies, candidates, language, timezone)
 	reply, ok, err := ask(system, user, payeeSchema)
 	if !ok {
@@ -529,6 +535,14 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 	ids, unknown := resolvePayees(picks, candidates, keys)
 	ai.LogUnknownKeys(owner.String(), "payees", unknown)
 	applyPayeeReply(replies, ids, candidates)
+	// a null pick or a row left out is the prompt's "none of them"
+	for k := range candidates {
+		if _, picked := picks[k]; !picked {
+			r := replies[k]
+			r.NoNewPayee = false
+			replies[k] = r
+		}
+	}
 	return replies, nil
 }
 

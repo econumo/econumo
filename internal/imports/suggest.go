@@ -147,6 +147,9 @@ type suggestReplyRow struct {
 	WellKnown   bool     `json:"wellKnown"`
 	CategoryID  string   `json:"-"`
 	PayeeID     string   `json:"-"`
+	// NoNewPayee: the row had payee candidates and step 2 failed or picked
+	// one it cannot use, so the owner may well have this merchant's payee.
+	NoNewPayee bool `json:"-"`
 }
 
 func newSuggestVocabulary(categories, payees []model.ImportNamed) suggestVocabulary {
@@ -639,7 +642,7 @@ func validateReply(rows []suggestRow, reply map[string]suggestReplyRow, v sugges
 			id, isNew := v.names.resolve(name)
 			if id != nil {
 				s.PayeeID = id
-			} else if isNew {
+			} else if isNew && !r.NoNewPayee {
 				s.PayeeName = name
 			}
 		}
