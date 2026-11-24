@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
+import { toast } from 'sonner'
 import { queryKeys } from '@/app/queryKeys'
 import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState, useUpdateAi, useUpdateAiSuggestions } from './queries'
 
@@ -18,6 +19,8 @@ const switchesOf = (queryClient: QueryClient) =>
   queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)?.options.filter((o) => o.name.startsWith('ai_suggest_'))
 
 describe('queued suggestion switch writes', () => {
+  beforeEach(() => vi.mocked(toast.error).mockClear())
+
   // each answer waits for its release; ok[n] says whether the n-th write is taken
   function switchServer(ok: boolean[]) {
     const releases: (() => void)[] = []
@@ -54,6 +57,14 @@ describe('queued suggestion switch writes', () => {
   it('both refused: the cache is back to what the server had before the first', async () => {
     const queryClient = await run([false, false])
     expect(switchesOf(queryClient)).toEqual([{ name: 'ai_suggest_rules', value: '1' }, { name: 'ai_suggest_fill', value: '1' }])
+    expect(toast.error).toHaveBeenCalledTimes(1)
+  })
+
+  it('the first refused, the second taken: the refusal is still shown, once', async () => {
+    const queryClient = await run([false, true])
+    expect(switchesOf(queryClient)).toEqual([{ name: 'ai_suggest_rules', value: '0' }, { name: 'ai_suggest_fill', value: '0' }])
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalledWith('Not allowed')
   })
 
   it('the first taken, the second refused: the cache shows the first one\'s values', async () => {

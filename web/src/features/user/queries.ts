@@ -224,10 +224,10 @@ function withAiSuggestionOptions(current: CurrentUserDto | undefined, from: Curr
 }
 
 // A batch of queued switch writes, per query client: the switches as the server last had them (the
-// cache before the batch's first change, then each taken write's answer) and whether a write of the
-// batch failed. Each write's own previous value already carries the earlier writes' optimistic
-// changes, so only this can undo one the server never took.
-const suggestionBatches = new WeakMap<QueryClient, { server: CurrentUserDto | undefined; failed: boolean }>()
+// cache before the batch's first change, then each taken write's answer) and the first error of
+// the batch, shown once when it settles. Each write's own previous value already carries the
+// earlier writes' optimistic changes, so only this can undo one the server never took.
+const suggestionBatches = new WeakMap<QueryClient, { server: CurrentUserDto | undefined; error?: { err: unknown } }>()
 
 const updateAiSuggestionsKey = ['user', 'update-ai-suggestions'] as const
 
@@ -244,7 +244,10 @@ export function useUpdateAiSuggestions() {
     suggestionBatches.delete(queryClient)
     const server = batch?.server
     if (server) queryClient.setQueryData<CurrentUserDto>(queryKeys.user, (current) => withAiSuggestionOptions(current, server))
-    if (batch?.failed) void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+    if (batch?.error) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      toastWriteError(batch.error.err)
+    }
   }
   return useMutation({
     mutationKey: updateAiSuggestionsKey,
@@ -254,7 +257,7 @@ export function useUpdateAiSuggestions() {
       await queryClient.cancelQueries({ queryKey: queryKeys.user })
       const previous = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
       if (!othersPending() || !suggestionBatches.has(queryClient)) {
-        suggestionBatches.set(queryClient, { server: previous, failed: false })
+        suggestionBatches.set(queryClient, { server: previous })
       }
       if (previous) {
         const next = withOption(withOption(previous, UserOptions.AI_SUGGEST_RULES, suggestRules ? '1' : '0'), UserOptions.AI_SUGGEST_FILL, suggestFill ? '1' : '0')
@@ -262,14 +265,14 @@ export function useUpdateAiSuggestions() {
       }
     },
     // While a later toggle is queued, the cache keeps the optimistic state; the last write of the
-    // batch settles it from what the server took. Having an onError of its own, this write gets
-    // no global no-response toast: the switch flips back, which must not happen silently.
+    // batch settles it from what the server took and shows the batch's first error, even when a
+    // later write was taken. Having an onError of its own, this write gets no global no-response
+    // toast: a refused write must not go unnoticed.
     onError: (err) => {
       const batch = suggestionBatches.get(queryClient)
-      if (batch) batch.failed = true
-      if (othersPending()) return
-      settleSuggestionBatch()
-      toastWriteError(err)
+      if (batch) batch.error ??= { err }
+      else toastWriteError(err)
+      if (!othersPending()) settleSuggestionBatch()
     },
     onSuccess: (user, { suggestRules, suggestFill }) => {
       const batch = suggestionBatches.get(queryClient)
