@@ -105,11 +105,17 @@ func (s *Service) ClearSuggestions(ctx context.Context, userID vo.Id) error {
 
 // deleteSuggestions keeps the filled records: they are what the rule-suggestion
 // list reads to tell the AI job's assignment from a hand edit. Open ones are
-// leftovers of earlier builds.
+// leftovers of earlier builds. Deleted in id order, the order a job locks
+// them in.
 func (s *Service) deleteSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) error {
+	ids := make([]vo.Id, 0, len(open))
+	for _, sg := range open {
+		ids = append(ids, sg.ID)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		for _, sg := range open {
-			if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
+		for _, id := range ids {
+			if err := s.repo.DeleteSuggestion(ctx, id); err != nil {
 				return err
 			}
 		}

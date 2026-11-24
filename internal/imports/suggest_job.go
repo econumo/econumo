@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -267,6 +268,14 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 					}
 				}
 			}
+			gone, err := s.lockSuggestions(ctx, owner, slices.Collect(maps.Keys(joins)))
+			if err != nil {
+				return err
+			}
+			for _, id := range gone {
+				sendBack(joins[id])
+				delete(joins, id)
+			}
 			if facts.SuggestFill {
 				// an uncategorised row the reuse could not fill (edited, moved,
 				// failed) is left to the AI, not joined; a categorised one is
@@ -291,7 +300,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 					}
 				}
 			}
-			gone, err := s.addSuggestionLinks(ctx, joins)
+			gone, err = s.addSuggestionLinks(ctx, joins)
 			if err != nil {
 				return err
 			}
@@ -356,6 +365,21 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			return err
 		}
 		if facts.SuggestFill {
+			if facts.SuggestRules {
+				// which ones the rows join is known only once they are written
+				open, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
+				if err != nil {
+					return err
+				}
+				ids := make([]vo.Id, 0, len(open))
+				for _, o := range open {
+					ids = append(ids, o.ID)
+				}
+				// one gone by now is not in the re-read below
+				if _, err := s.lockSuggestions(ctx, owner, ids); err != nil {
+					return err
+				}
+			}
 			list := make([]assignment, 0, len(valid))
 			for _, v := range valid {
 				if !v.Row.Missing.Category {
@@ -706,6 +730,28 @@ func (s *Service) existingJoins(ctx context.Context, joins map[vo.Id][]vo.Id) (m
 		}
 	}
 	return out, nil
+}
+
+// lockSuggestions takes the row lock of each suggestion a run may join, in id
+// order, before the run's first transaction write: accept-suggestion locks its
+// suggestion and then writes the transactions, so a join made after the job's
+// own writes could deadlock with it (PostgreSQL). It returns the ones gone or
+// settled by now.
+func (s *Service) lockSuggestions(ctx context.Context, owner vo.Id, ids []vo.Id) ([]vo.Id, error) {
+	ids = slices.Clone(ids)
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	var gone []vo.Id
+	for _, id := range ids {
+		sg, err := s.repo.LockSuggestion(ctx, id)
+		if isNotFoundErr(err) || (err == nil && (sg.UserID != owner || sg.Status != model.ImportSuggestionStatusOpen)) {
+			gone = append(gone, id)
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return gone, nil
 }
 
 func (s *Service) addSuggestionLinks(ctx context.Context, joins map[vo.Id][]vo.Id) ([]vo.Id, error) {

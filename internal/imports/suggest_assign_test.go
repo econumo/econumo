@@ -936,3 +936,115 @@ func TestAssignPayeeNameTakenMeanwhile(t *testing.T) {
 		})
 	}
 }
+
+// suggestionLockRepo records the suggestion locks and the transaction row
+// locks, in order, and can drop a suggestion as the job locks it.
+type suggestionLockRepo struct {
+	imports.Repository
+	events []string
+	onLock func(ctx context.Context, id vo.Id)
+}
+
+func (r *suggestionLockRepo) LockSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error) {
+	r.events = append(r.events, "suggestion "+id.String())
+	if f := r.onLock; f != nil {
+		r.onLock = nil
+		f(ctx, id)
+	}
+	return r.Repository.LockSuggestion(ctx, id)
+}
+
+func (r *suggestionLockRepo) LockTransactionRow(ctx context.Context, id vo.Id) error {
+	r.events = append(r.events, "transaction")
+	return r.Repository.LockTransactionRow(ctx, id)
+}
+
+// lockedBeforeRows: the suggestion was locked before the first transaction
+// row, the order accept-suggestion takes them in (PostgreSQL deadlock).
+func lockedBeforeRows(t *testing.T, events []string, suggestion vo.Id) {
+	t.Helper()
+	at := slices.Index(events, "suggestion "+suggestion.String())
+	first := slices.Index(events, "transaction")
+	if at < 0 || first < 0 || at > first {
+		t.Fatalf("events = %v, want suggestion %s locked before the first transaction row", events, suggestion)
+	}
+}
+
+// The reuse step locks the open suggestion it joins before it writes the
+// joined rows.
+func TestAssignReuseLocksSuggestionBeforeRows(t *testing.T) {
+	h, p, c, facts := assignSetup(t)
+	facts[userA] = ownerFact{language: "en", fillOff: true}
+	groceries := h.category(t, userA, "Groceries")
+	c.reply = `{"rows":[{"key":"0","matchText":"WHOLEFDS","merchants":["Whole Foods"],"wellKnown":true,"categoryId":"` + groceries + `"}]}`
+	syncRows(t, h, p, extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "WHOLEFDS MKT 10234"))
+	open := openSuggestions(t, h, userA)
+	if len(open) != 1 {
+		t.Fatalf("rule suggestions = %+v", open)
+	}
+
+	rec := &suggestionLockRepo{Repository: h.repo}
+	h.withRepo(rec)
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	facts[userA] = ownerFact{language: "en"}
+	h.wireSuggest(c, facts)
+	syncRows(t, h, p, extTx("ACT-1", "b", "-6.00", now.AddDate(0, 0, -1).Unix(), "WHOLEFDS MKT 555"))
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the open suggestion reused", len(c.calls))
+	}
+	if tx := txOf(t, h, bankLinkID(t, h, "b")); !idIs(tx.CategoryID, groceries) {
+		t.Fatalf("joined row = %+v", tx)
+	}
+	lockedBeforeRows(t, rec.events, open[0].ID)
+}
+
+// A suggestion gone by the time the reuse step locks it covers nothing: its
+// row goes to the AI, and nothing is written from it.
+func TestAssignReuseSuggestionGoneAtLock(t *testing.T) {
+	h, p, c, facts := assignSetup(t)
+	facts[userA] = ownerFact{language: "en", fillOff: true}
+	groceries := h.category(t, userA, "Groceries")
+	c.reply = `{"rows":[{"key":"0","matchText":"WHOLEFDS","merchants":["Whole Foods"],"wellKnown":true,"categoryId":"` + groceries + `"}]}`
+	syncRows(t, h, p, extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "WHOLEFDS MKT 10234"))
+
+	rec := &suggestionLockRepo{Repository: h.repo}
+	rec.onLock = func(ctx context.Context, id vo.Id) {
+		if err := h.repo.DeleteSuggestion(ctx, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.withRepo(rec)
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	facts[userA] = ownerFact{language: "en"}
+	h.wireSuggest(c, facts)
+	c.reply = `{"rows":[{"key":"0","matchText":"WHOLEFDS","categoryId":"` + groceries + `"}]}`
+	syncRows(t, h, p, extTx("ACT-1", "b", "-6.00", now.AddDate(0, 0, -1).Unix(), "WHOLEFDS MKT 555"))
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+	}
+	if tx := txOf(t, h, bankLinkID(t, h, "b")); !idIs(tx.CategoryID, groceries) || tx.PayeeID != nil {
+		t.Fatalf("row = %+v, want the AI's category and no payee from the gone suggestion", tx)
+	}
+}
+
+// After the AI call, the open suggestions the rows may join are locked before
+// the first row is written.
+func TestAssignAfterAILocksSuggestionBeforeRows(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	rec := &suggestionLockRepo{Repository: h.repo}
+	h.withRepo(rec)
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	open := seedOpenSuggestion(t, h, "", h.payee(t, userA, "Some Cafe"))
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].ID != open.ID || !slices.Contains(got[0].LinkIDs, links[0].ID) {
+		t.Fatalf("rule suggestions = %+v, want the row joined to the open one", got)
+	}
+	lockedBeforeRows(t, rec.events, open.ID)
+}
