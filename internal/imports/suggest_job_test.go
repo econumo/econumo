@@ -1857,6 +1857,13 @@ func TestSuggestReuseRereadsTheVocabulary(t *testing.T) {
 		if tx := txOf(t, h, links[0].ID); tx.CategoryID != nil || len(assignRecords(t, h, userA)) != 0 {
 			t.Fatalf("transaction = %+v, records = %+v, want the archived category not written", tx, assignRecords(t, h, userA))
 		}
+		// the suggestion covers nothing now: the row goes to the AI, not into it
+		if len(c.calls) != 1 {
+			t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+		}
+		if got := openSuggestions(t, h, userA); len(got) != 1 || len(got[0].LinkIDs) != 0 {
+			t.Fatalf("rule suggestions = %+v, want the row not joined", got)
+		}
 	})
 	t.Run("payee name archived", func(t *testing.T) {
 		h, c, facts := suggestSetup(t)
@@ -1881,6 +1888,29 @@ func TestSuggestReuseRereadsTheVocabulary(t *testing.T) {
 		links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
 		if tx := txOf(t, h, links[0].ID); tx.PayeeID != nil || len(h.payees.created) != 0 {
 			t.Fatalf("transaction = %+v, payees created = %v, want no payee", tx, h.payees.created)
+		}
+		if len(c.calls) != 1 {
+			t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+		}
+	})
+	t.Run("assignment failed", func(t *testing.T) {
+		h, c, _ := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		name := "Blue Bottle"
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			PayeeName: &name, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		h.payees.fail = errors.New("refused")
+		ingest(t, h, tap)
+		if len(c.calls) != 1 {
+			t.Fatalf("calls = %d, want the row the reuse could not fill sent to the AI", len(c.calls))
+		}
+		if got := openSuggestions(t, h, userA); len(got) != 1 || len(got[0].LinkIDs) != 0 {
+			t.Fatalf("rule suggestions = %+v, want the row not joined", got)
 		}
 	})
 }

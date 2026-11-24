@@ -24,16 +24,19 @@ type assignment struct {
 // assign writes each row's values into the fields its transaction still has
 // empty, one savepoint per row: a row that fails is skipped with a WARN and
 // the others proceed. Rows of one merchant share the payee created for it.
-// It returns the payees created, by similarityText of their names.
-func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) map[string]vo.Id {
+// It returns the payees created, by similarityText of their names, and the
+// links of the rows it wrote.
+func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]bool) {
 	created := map[string]vo.Id{}
+	written := map[vo.Id]bool{}
 	now := s.clk.Now().UTC()
 	s.lockAssignRows(ctx, owner, list)
 	for _, a := range list {
 		var newPayee *vo.Id
+		var wrote bool
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 			var err error
-			newPayee, err = s.assignRow(ctx, owner, a, created, now)
+			newPayee, wrote, err = s.assignRow(ctx, owner, a, created, now)
 			return err
 		})
 		if err != nil {
@@ -46,8 +49,11 @@ func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) ma
 		if newPayee != nil {
 			created[similarityText(a.payeeName)] = *newPayee
 		}
+		if wrote {
+			written[a.row.Link.ID] = true
+		}
 	}
-	return created
+	return created, written
 }
 
 // lockAssignRows takes every row lock of the run, in id order, before the first
@@ -78,17 +84,17 @@ func (s *Service) lockAssignRows(ctx context.Context, owner vo.Id, list []assign
 // written, and a row gone, moved off the owner's account or of another type
 // by now is left alone. The applied snapshot moves for the fields written,
 // as a rule's write does, so a later apply-rule may replace them.
-func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id, now time.Time) (*vo.Id, error) {
+func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id, now time.Time) (*vo.Id, bool, error) {
 	if a.row.Link.TransactionID == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 	txID := *a.row.Link.TransactionID
 	if err := s.repo.LockTransactionRow(ctx, txID); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	l, live, err := s.suggestionTarget(ctx, owner, a.row.Link.ID)
 	if err != nil || live == nil || live.ID != txID || live.Type != a.row.Type {
-		return nil, err
+		return nil, false, err
 	}
 	fillCategory := live.CategoryID == nil && a.categoryID != nil
 	payeeID := a.payeeID
@@ -102,17 +108,17 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		} else if s.payees != nil {
 			p, err := s.payees.CreatePayee(ctx, owner, a.payeeName)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			id, err := vo.ParseId(p.ID)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			payeeID, newPayee = &id, &id
 		}
 	}
 	if !fillCategory && payeeID == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 	next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: live.LabelIDs}
 	record := model.ImportTransactionSuggestion{
@@ -126,25 +132,20 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		next.PayeeID, record.PayeeID, l.AppliedPayeeID = payeeID, payeeID, payeeID
 	}
 	if _, err := s.txns.UpdateTransaction(ctx, owner, updateRequest(live, next)); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := s.repo.UpdateLink(ctx, l); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := s.repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{record}); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return newPayee, nil
+	return newPayee, true, nil
 }
 
-// openAssignments gives each row joined to an open suggestion before the AI
-// call that suggestion's values, only for the fields the row lacks. A
-// suggestion found gone covers nothing: its rows go to the AI.
-func openAssignments(joins map[vo.Id][]vo.Id, gone []vo.Id, open []model.ImportSuggestion, rows []suggestRow) []assignment {
-	goneSet := make(map[vo.Id]bool, len(gone))
-	for _, id := range gone {
-		goneSet[id] = true
-	}
+// openAssignments gives each row to be joined to an open suggestion before the
+// AI call that suggestion's values, only for the fields the row lacks.
+func openAssignments(joins map[vo.Id][]vo.Id, open []model.ImportSuggestion, rows []suggestRow) []assignment {
 	byID := make(map[vo.Id]model.ImportSuggestion, len(open))
 	for _, o := range open {
 		byID[o.ID] = o
@@ -152,7 +153,7 @@ func openAssignments(joins map[vo.Id][]vo.Id, gone []vo.Id, open []model.ImportS
 	joinedTo := map[vo.Id]model.ImportSuggestion{}
 	for id, links := range joins {
 		o, ok := byID[id]
-		if !ok || goneSet[id] {
+		if !ok {
 			continue
 		}
 		for _, l := range links {

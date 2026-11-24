@@ -104,6 +104,19 @@ func TestValidateReplyNewPayeeName(t *testing.T) {
 	require.Empty(t, validateReply([]suggestRow{row}, reply("Uber", true), v))
 }
 
+func TestValidateReplyNewPayeeNameIsTrimmed(t *testing.T) {
+	v, _, _, _, _ := sVocab()
+	reply := func(merchant string) map[string]suggestReplyRow {
+		return map[string]suggestReplyRow{"0": {MatchText: "STARBUCKS", Merchants: []string{merchant}, WellKnown: true}}
+	}
+	rows := []suggestRow{sRow(sLink("STARBUCKS #123", "", time.Time{}))}
+	got := validateReply(rows, reply(" Starbucks "), v)
+	require.Len(t, got, 1)
+	require.Equal(t, "Starbucks", got[0].PayeeName)
+	// the length counts without the padding
+	require.Empty(t, validateReply(rows, reply("  St  "), v))
+}
+
 func TestValidateReplyNewPayeeNameReusesActivePayee(t *testing.T) {
 	v, _, _, _, bb := sVocab()
 	rows := []suggestRow{sRow(sLink("BLUE BOTTLE #4", "", time.Time{}))}

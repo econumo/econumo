@@ -208,10 +208,16 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		s.undoIfOptedOut(ctx, owner, inserted, all)
 	}()
 	if len(covered) > 0 {
-		var gone []vo.Id
+		var joinedNow map[vo.Id][]vo.Id
+		var back map[vo.Id]bool
 		off := false
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-			gone, off = nil, false
+			joinedNow, back, off = nil, map[vo.Id]bool{}, false
+			sendBack := func(links []vo.Id) {
+				for _, l := range links {
+					back[l] = true
+				}
+			}
 			facts, err := s.facts.OwnerFacts(ctx, owner)
 			if err != nil {
 				return err
@@ -221,53 +227,86 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			}
 			if !facts.SuggestRules {
 				// rules turned off meanwhile: no reuse, the rows go to the AI
-				for id := range covered {
-					gone = append(gone, id)
+				for _, links := range covered {
+					sendBack(links)
 				}
 				return nil
+			}
+			// As after the AI call: the vocabulary and the suggestions are read
+			// again, so a category or payee archived since the first read
+			// neither covers a row nor is written.
+			vocab, err := s.suggestVocabulary(ctx, owner)
+			if err != nil {
+				return err
+			}
+			fresh, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
+			if err != nil {
+				return err
+			}
+			freshOpen := vocab.liveOpen(fresh)
+			byID := make(map[vo.Id]model.ImportSuggestion, len(freshOpen))
+			for _, o := range freshOpen {
+				byID[o.ID] = o
+			}
+			byLink := make(map[vo.Id]suggestRow, len(rows))
+			for _, r := range rows {
+				byLink[r.Link.ID] = r
 			}
 			live, err := s.existingJoins(ctx, covered)
 			if err != nil {
 				return err
 			}
-			if gone, err = s.addSuggestionLinks(ctx, live); err != nil {
-				return err
+			joins := map[vo.Id][]vo.Id{}
+			for id, links := range live {
+				o, open := byID[id]
+				for _, l := range links {
+					if open && byLink[l].Missing.filledBy(o) {
+						joins[id] = append(joins[id], l)
+					} else {
+						back[l] = true
+					}
+				}
 			}
 			if facts.SuggestFill {
-				// As after the AI call: a category or payee archived since the
-				// first read is not written.
-				vocab, err := s.suggestVocabulary(ctx, owner)
-				if err != nil {
-					return err
+				// a row the reuse could not fill (edited, moved, failed) is
+				// left to the AI, not joined
+				_, written := s.assign(ctx, owner, openAssignments(joins, freshOpen, rows))
+				for id, links := range joins {
+					var kept []vo.Id
+					for _, l := range links {
+						if written[l] {
+							kept = append(kept, l)
+						} else {
+							back[l] = true
+						}
+					}
+					if len(kept) == 0 {
+						delete(joins, id)
+					} else {
+						joins[id] = kept
+					}
 				}
-				fresh, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
-				if err != nil {
-					return err
-				}
-				s.assign(ctx, owner, openAssignments(live, gone, vocab.liveOpen(fresh), rows))
 			}
+			gone, err := s.addSuggestionLinks(ctx, joins)
+			if err != nil {
+				return err
+			}
+			// a suggestion deleted meanwhile covers nothing
+			for _, id := range gone {
+				sendBack(joins[id])
+				delete(joins, id)
+			}
+			joinedNow = joins
 			return nil
 		})
 		if err != nil || off {
 			return err
 		}
-		// A suggestion the list read deleted meanwhile covers nothing: its rows
-		// go to the AI like any other.
-		goneSet := map[vo.Id]bool{}
-		goneLinks := map[vo.Id]bool{}
-		for _, id := range gone {
-			goneSet[id] = true
-			for _, l := range covered[id] {
-				goneLinks[l] = true
-			}
-		}
-		for id, links := range covered {
-			if !goneSet[id] {
-				preJoined[id] = links
-			}
+		for id, links := range joinedNow {
+			preJoined[id] = links
 		}
 		for _, r := range rows {
-			if goneLinks[r.Link.ID] {
+			if back[r.Link.ID] {
 				rest = append(rest, r)
 			}
 		}
@@ -318,7 +357,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				list = append(list, assignment{row: v.Row, categoryID: v.CategoryID, payeeID: v.PayeeID, payeeName: v.PayeeName})
 			}
 			// the rule suggestion carries the payee its rows were given
-			created := s.assign(ctx, owner, list)
+			created, _ := s.assign(ctx, owner, list)
 			for i := range valid {
 				if id, ok := created[similarityText(valid[i].PayeeName)]; valid[i].PayeeName != "" && ok {
 					valid[i].PayeeID, valid[i].PayeeName = &id, ""

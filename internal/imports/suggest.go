@@ -613,7 +613,7 @@ func validateReply(rows []suggestRow, reply map[string]suggestReplyRow, v sugges
 		}
 		s := validSuggestion{Row: row, MatchField: field, MatchText: text, WellKnown: r.WellKnown}
 		if len(r.Merchants) > 0 {
-			s.MerchantName = r.Merchants[0]
+			s.MerchantName = strings.TrimSpace(r.Merchants[0])
 		}
 		if row.Missing.Category && r.CategoryID != "" {
 			if id, ok := v.hasCategory(r.CategoryID); ok && categoryFits(id, v.income, row.Type) {
