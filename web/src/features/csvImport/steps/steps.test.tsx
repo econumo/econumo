@@ -193,6 +193,17 @@ it('an Econumo export prefills a per-row account’s currency from account_curre
   expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
 })
 
+it('leaving Each row says which account and coming back shows its answer again, not the list', async () => {
+  server.use(...coreHandlers({ currencies: [fixtureUsd, fixtureEur, fixtureCad] }))
+  const user = userEvent.setup()
+  await openExportAccountStep(user)
+  await user.click(screen.getByRole('radio', { name: 'A new account' }))
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  expect(screen.queryByRole('radiogroup', { name: 'Which of these is the account?' })).not.toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
+  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+})
+
 it('a per-row account whose file currency is not set up here keeps the user’s currency, with a note', async () => {
   await openExportAccountStep(userEvent.setup())
   const row = within(screen.getByRole('list', { name: /^Your file names the account for each transaction/ })).getByRole('listitem')

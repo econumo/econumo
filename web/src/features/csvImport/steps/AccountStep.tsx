@@ -248,6 +248,8 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
     const fallback: AccountChoice | null =
       next === 'new' ? { kind: 'new', name: defaultAccountName(state.fileName), currencyId: fileCurrencyId(state.file, currencies) ?? currencyId } : null
     set(remembered.current[next] ?? fallback)
+    // back to a column chosen before: its answer, not the list the other options left open
+    if (next === 'column' && remembered.current.column) closeChoices()
   }
 
   const chooseColumn = (column: number | null) => {
