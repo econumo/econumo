@@ -836,3 +836,72 @@ func TestAssignNewPayeeOnlyWhenStepTwoPickedNone(t *testing.T) {
 		})
 	}
 }
+
+// onLockRepo runs onLock once, at the first transaction row lock: something
+// the owner did while the job waited for that lock.
+type onLockRepo struct {
+	imports.Repository
+	onLock func()
+}
+
+func (r *onLockRepo) LockTransactionRow(ctx context.Context, id vo.Id) error {
+	if f := r.onLock; f != nil {
+		r.onLock = nil
+		f()
+	}
+	return r.Repository.LockTransactionRow(ctx, id)
+}
+
+func archiveNamed(list []model.ImportNamed, id string) {
+	for i := range list {
+		if list[i].ID == id {
+			list[i].Archived = true
+		}
+	}
+}
+
+// A category or payee archived while the job waited for the row locks is not
+// written, and a new-payee name an archived payee took meanwhile is not created.
+func TestAssignRereadsVocabularyAfterTheRowLocks(t *testing.T) {
+	owner := vo.MustParseId(userA)
+	for _, tc := range []struct {
+		name         string
+		existing     bool
+		archive      func(h *harness, cat, payee string)
+		wantCategory bool
+		wantPayee    bool
+	}{
+		{name: "category_archived", archive: func(h *harness, cat, _ string) { archiveNamed(h.entities.categories[owner], cat) }, wantPayee: true},
+		{name: "payee_archived", existing: true, archive: func(h *harness, _, payee string) { archiveNamed(h.entities.payees[owner], payee) }, wantCategory: true},
+		{name: "new_payee_name_taken_by_archived", archive: func(h *harness, _, _ string) {
+			h.entities.payees[owner] = append(h.entities.payees[owner], model.ImportNamed{ID: vo.NewId().String(), Name: "Blue Bottle", OwnerID: userA, Archived: true})
+		}, wantCategory: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, c, facts := suggestSetup(t)
+			rec := &onLockRepo{Repository: h.repo}
+			h.withRepo(rec)
+			h.wireSuggest(c, facts)
+			h.mapCard(t, "Apple Card")
+			cat := h.category(t, userA, "Cafes")
+			var payee string
+			if tc.existing {
+				payee = h.payee(t, userA, "Blue Bottle")
+			}
+			rec.onLock = func() { tc.archive(h, cat, payee) }
+			c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"wellKnown":true,"categoryId":"` + cat + `"}]}`
+			ingest(t, h, tap)
+			links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+			tx := txOf(t, h, links[0].ID)
+			if (tx.CategoryID != nil) != tc.wantCategory || (tx.PayeeID != nil) != tc.wantPayee {
+				t.Fatalf("transaction = %+v (payees created %v), want category %v, payee %v", tx, h.payees.created, tc.wantCategory, tc.wantPayee)
+			}
+			if tc.wantCategory && !idIs(tx.CategoryID, cat) {
+				t.Fatalf("category = %v", tx.CategoryID)
+			}
+			if !tc.wantPayee && len(h.payees.created) != 0 {
+				t.Fatalf("payees created = %v", h.payees.created)
+			}
+		})
+	}
+}

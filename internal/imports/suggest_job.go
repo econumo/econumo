@@ -271,7 +271,10 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				// an uncategorised row the reuse could not fill (edited, moved,
 				// failed) is left to the AI, not joined; a categorised one is
 				// never assigned and joins as it is
-				_, written := s.assign(ctx, owner, openAssignments(joins, freshOpen, rows))
+				_, written, err := s.assign(ctx, owner, openAssignments(joins, freshOpen, rows))
+				if err != nil {
+					return err
+				}
 				for id, links := range joins {
 					var kept []vo.Id
 					for _, l := range links {
@@ -361,7 +364,10 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				list = append(list, assignment{row: v.Row, categoryID: v.CategoryID, payeeID: v.PayeeID, payeeName: v.PayeeName})
 			}
 			// the rule suggestion carries the payee its rows were given
-			created, _ := s.assign(ctx, owner, list)
+			created, _, err := s.assign(ctx, owner, list)
+			if err != nil {
+				return err
+			}
 			for i := range valid {
 				if id, ok := created[similarityText(valid[i].PayeeName)]; valid[i].PayeeName != "" && ok {
 					valid[i].PayeeID, valid[i].PayeeName = &id, ""

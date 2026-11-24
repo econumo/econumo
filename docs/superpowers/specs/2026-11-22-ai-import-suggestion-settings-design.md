@@ -114,7 +114,9 @@ match text placeable, category of the right type), under the owner's job lock:
 1. Lock the transaction row (`LockTransactionRow`), re-read it, skip it if it is gone, changed
    type, or **has a category** (whatever its payee). A row whose transaction has a category is
    never assigned, so a rule-set category with an empty payee stays as the rule left it; such a
-   row can still feed a rule suggestion as before.
+   row can still feed a rule suggestion as before. Once the run's rows are locked, the owner's
+   categories and payees are read again: a value archived while the job waited is not written,
+   and a new-payee name an archived payee now carries creates nothing.
 2. Create the new payee if the row needs one (through a new imports port
    `PayeeCreator.CreatePayee(ctx, ownerID, name) (model.ImportNamed, error)`, wired in
    `internal/server` to the payee service like `TransactionImportPayees.CreatePayee`). One

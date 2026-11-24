@@ -26,12 +26,19 @@ type assignment struct {
 // the others proceed. Rows of one merchant share the payee created for it.
 // It returns the payees created, by similarityText of their names, and the
 // links of the rows it wrote.
-func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]bool) {
+func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]bool, error) {
 	created := map[string]vo.Id{}
 	written := map[vo.Id]bool{}
 	now := s.clk.Now().UTC()
 	s.lockAssignRows(ctx, owner, list)
+	// The locks can take a while: a category or payee archived meanwhile is
+	// not written, and neither is a new payee whose name an archived one took.
+	vocab, err := s.suggestVocabulary(ctx, owner)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, a := range list {
+		a = vocab.current(a)
 		var newPayee *vo.Id
 		var wrote bool
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -53,7 +60,26 @@ func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (m
 			written[a.row.Link.ID] = true
 		}
 	}
-	return created, written
+	return created, written, nil
+}
+
+// current keeps only the values still active, and turns a new-payee name into
+// the payee that carries it by now (none when only an archived one does).
+func (v suggestVocabulary) current(a assignment) assignment {
+	if a.categoryID != nil && !v.active[*a.categoryID] {
+		a.categoryID = nil
+	}
+	if a.payeeID != nil && !v.active[*a.payeeID] {
+		a.payeeID = nil
+	}
+	if a.payeeID == nil && a.payeeName != "" {
+		if id, isNew := v.names.resolve(a.payeeName); id != nil {
+			a.payeeID, a.payeeName = id, ""
+		} else if !isNew {
+			a.payeeName = ""
+		}
+	}
+	return a
 }
 
 // lockAssignRows takes every row lock of the run, in id order, before the first
