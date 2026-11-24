@@ -237,6 +237,34 @@ it('says the subscription is active while its renewal payment is landing', async
   expect(screen.queryByText(/Renews|Subscription ends/)).not.toBeInTheDocument()
 })
 
+it('holds the subscription hint until billing access has answered', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  let release = () => {}
+  const answered = new Promise<void>((resolve) => (release = resolve))
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' } }))
+  server.use(
+    http.get('*/api/v1/user/get-billing-access', async () => {
+      await answered
+      return HttpResponse.json({
+        success: true,
+        message: '',
+        data: {
+          available: true,
+          user: { paid: true, renewing: true, renewsAt: '2099-12-24 10:00:00', endsAt: '', paymentFailed: false, discountUntil: '' },
+          connections: [],
+        },
+      })
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Billing')).toBeInTheDocument()
+  await new Promise((r) => setTimeout(r, 50))
+  expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
+  release()
+  expect(await screen.findByText('Renews 24th December 2099')).toBeInTheDocument()
+})
+
 it('shows the scheduled end of a cancelled subscription', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(

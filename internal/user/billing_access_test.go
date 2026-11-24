@@ -188,3 +188,17 @@ func TestBillingAccessCacheStaysBounded(t *testing.T) {
 		t.Fatalf("cache holds %d entries, max %d", n, billingAccessMaxEntries)
 	}
 }
+
+func TestBillingAccessDoesNotCacheARequestTheCallerAbandoned(t *testing.T) {
+	f := newBAFixture(true)
+	f.fetcher.err = context.Canceled
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if res, err := f.svc.GetBillingAccess(ctx, baUser); err != nil || res.Available {
+		t.Fatalf("got %+v, %v; want unavailable", res, err)
+	}
+	f.fetcher.err = nil
+	if got := f.get(t); !got.Available || len(f.fetcher.calls) != 2 {
+		t.Fatalf("got %+v after %d calls, want a fresh ask", got, len(f.fetcher.calls))
+	}
+}

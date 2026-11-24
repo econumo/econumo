@@ -85,8 +85,15 @@ func TestGetAccessRejectsWhatIsNotAWellFormedView(t *testing.T) {
 		"not json":                        {http.StatusOK, `<html>`},
 		"no data":                         {http.StatusOK, `{"success":true,"message":""}`},
 		"no user":                         {http.StatusOK, `{"success":true,"message":"","data":{"connections":[]}}`},
-		"malformed date":                  {http.StatusOK, `{"success":true,"data":{"user":{"paid":true,"renewsAt":"2026-12-24T10:00:00Z"}}}`},
-		"wrong type":                      {http.StatusOK, `{"success":true,"data":{"user":{"paid":"yes"}}}`},
+		"malformed date": {http.StatusOK, `{"success":true,"data":{"user":{"paid":true,"renewing":true,"renewsAt":"2026-12-24T10:00:00Z",` +
+			`"endsAt":"","paymentFailed":false,"discountUntil":""},"connections":[]}}`},
+		"wrong type":            {http.StatusOK, `{"success":true,"data":{"user":{"paid":"yes"}}}`},
+		"incomplete user":       {http.StatusOK, `{"success":true,"message":"","data":{"user":{},"connections":[]}}`},
+		"user without renewing": {http.StatusOK, `{"success":true,"data":{"user":{"paid":true,"renewsAt":"","endsAt":"","paymentFailed":false,"discountUntil":""},"connections":[]}}`},
+		"no connections": {http.StatusOK, `{"success":true,"data":{"user":{"paid":true,"renewing":false,"renewsAt":"","endsAt":"",` +
+			`"paymentFailed":false,"discountUntil":""}}}`},
+		"incomplete connection": {http.StatusOK, `{"success":true,"data":{"user":{"paid":true,"renewing":false,"renewsAt":"","endsAt":"",` +
+			`"paymentFailed":false,"discountUntil":""},"connections":[{"id":"c1"}]}}`},
 	} {
 		t.Run(name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

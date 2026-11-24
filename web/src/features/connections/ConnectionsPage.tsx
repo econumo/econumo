@@ -27,7 +27,7 @@ export function ConnectionsPage() {
   const generateInvite = useGenerateInvite()
   const acceptInvite = useAcceptInvite()
   const deleteConnection = useDeleteConnection()
-  const { billingEnabled } = useAccessState()
+  const { billingEnabled, billingSettled } = useAccessState()
   const renewingIds = useRenewingConnectionIds()
   const portal = useOpenBillingPortal()
 
@@ -71,9 +71,10 @@ export function ConnectionsPage() {
       ) : (
         <ul className="flex max-w-md flex-col gap-2">
           {connections.map((connection) => {
-            // billing's renewing subscriber reads as full access: nothing is ending
+            // billing's renewing subscriber reads as full access: nothing is
+            // ending; until billing answers, no ending is shown at all
             const derived = deriveAccessState(connection.accessLevel, connection.accessUntil)
-            const connState = derived === 'trial' && renewingIds.has(connection.user.id) ? 'full_access' : derived
+            const connState = derived === 'trial' && (!billingSettled || renewingIds.has(connection.user.id)) ? 'full_access' : derived
             const connDays = connState === 'trial' ? accessDaysLeft(connection.accessUntil) : null
             const needsAttention = connState === 'readonly' || (connDays !== null && connDays <= 3)
             return (

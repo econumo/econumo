@@ -3850,7 +3850,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `get-access`): for a subscriber billing reports as renewing, with access
       ending within 3 days, no "Your subscription ends in N days" banner shows,
       not even for a moment while the page loads. Settings > Billing > Manage
-      subscription reads "Renews <date>" (ru "Продлевается …"), or "Active
+      subscription reads "Renews <date>" (ru "Продление …"), or "Active
       subscription" (ru "Подписка активна") while the renewal date has just
       passed and the payment is landing. A partner who
       renews shows no "ends in" status and no Pay button on Connections, and

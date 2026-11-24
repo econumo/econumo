@@ -154,7 +154,7 @@ export function SettingsPage() {
                     <span className="shrink-0 text-xs text-econumo-link/80">
                       {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.endsAt), i18n.language) })}
                     </span>
-                  ) : access.state === 'trial' ? (
+                  ) : access.state === 'trial' && access.billingSettled ? (
                     <span className="shrink-0 text-xs text-econumo-link/80">
                       {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
                     </span>

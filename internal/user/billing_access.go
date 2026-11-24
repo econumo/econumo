@@ -114,6 +114,11 @@ func (s *BillingAccessService) GetBillingAccess(ctx context.Context, userID vo.I
 	if err != nil {
 		reqctx.AddLogAttr(ctx, "billing_access", "unavailable")
 		reqctx.AddLogAttr(ctx, "billing_access_err_type", errType(err))
+		if ctx.Err() != nil {
+			// The caller went away (a reload mid-request): billing did not
+			// fail, so the next page must not be served this.
+			return &res, nil
+		}
 	} else {
 		reqctx.AddLogAttr(ctx, "billing_access", "fetched")
 		res = model.GetBillingAccessResult{Available: true, User: &u, Connections: knownConnections(conns, connIDs)}

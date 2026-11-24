@@ -45,9 +45,10 @@ export interface AccessStateView {
 
 export function useAccessState(): AccessStateView {
   const { data: user } = useUserData()
-  const { data: billing, isPending: billingPending } = useBillingAccess()
+  const { data: billing, isPending: billingPending, fetchStatus: billingFetch } = useBillingAccess()
   const billingEnabled = getBillingUrl() !== ''
-  const billingSettled = !billingEnabled || !billingPending
+  // offline the query pauses: nothing is coming, so behave as unavailable
+  const billingSettled = !billingEnabled || !billingPending || billingFetch === 'paused'
   if (!user) {
     return { state: undefined, accessUntil: '', daysLeft: null, renewing: false, renewsAt: '', endsAt: '', billingSettled, billingEnabled }
   }
