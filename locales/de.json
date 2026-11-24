@@ -1282,9 +1282,9 @@
             "label": "KI-Funktionen verwenden",
             "description": "KI hilft Ihnen, Ordnung in Ihren Finanzen zu halten, und macht Econumo einfacher zu bedienen.",
             "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und werden nicht an die KI übermittelt.",
-            "imports_heading": "Importierte Transaktionen",
+            "imports_heading": "Importe",
             "suggest_rules_label": "Regeln vorschlagen",
-            "suggest_fill_label": "Kategorie und Zahlungsempfänger automatisch zuweisen"
+            "suggest_fill_label": "Automatisch kategorisieren"
           }
         }
       }

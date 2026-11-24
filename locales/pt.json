@@ -1282,9 +1282,9 @@
             "label": "Utilizar funcionalidades de IA",
             "description": "A IA ajuda-o a manter as suas finanças organizadas e torna o Econumo mais fácil de utilizar.",
             "promise": "Os seus dados financeiros e pessoais continuam privados e não são enviados para a IA.",
-            "imports_heading": "Transações importadas",
+            "imports_heading": "Importações",
             "suggest_rules_label": "Sugerir regras",
-            "suggest_fill_label": "Atribuir categoria e beneficiário automaticamente"
+            "suggest_fill_label": "Categorizar automaticamente"
           }
         }
       }

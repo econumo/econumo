@@ -482,9 +482,10 @@ it('shows the import suggestion switches only while AI is on and saves a change'
   renderPage()
   await user.click(await screen.findByRole('button', { name: 'AI features' }))
   const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Imports')).toBeInTheDocument()
   const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
   expect(rules).toBeChecked()
-  expect(within(dialog).getByRole('switch', { name: 'Assign category and payee automatically' })).toBeChecked()
+  expect(within(dialog).getByRole('switch', { name: 'Auto-categorize' })).toBeChecked()
 
   await user.click(rules)
 
@@ -520,7 +521,7 @@ it('suggestion toggles are sent one at a time, so the latest toggle wins on the 
   await user.click(await screen.findByRole('button', { name: 'AI features' }))
   const dialog = await screen.findByRole('dialog')
   const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
-  const fill = within(dialog).getByRole('switch', { name: 'Assign category and payee automatically' })
+  const fill = within(dialog).getByRole('switch', { name: 'Auto-categorize' })
 
   await user.click(rules)
   await waitFor(() => expect(bodies).toHaveLength(1))
@@ -619,7 +620,7 @@ it('disables the import suggestion switches offline', async () => {
   act(() => onlineManager.setOnline(false))
   try {
     expect(within(dialog).getByRole('switch', { name: 'Suggest rules' })).toBeDisabled()
-    expect(within(dialog).getByRole('switch', { name: 'Assign category and payee automatically' })).toBeDisabled()
+    expect(within(dialog).getByRole('switch', { name: 'Auto-categorize' })).toBeDisabled()
   } finally {
     act(() => onlineManager.setOnline(true))
   }

@@ -1027,8 +1027,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       payee is set. The category picker lists only categories of the suggestion's kind
       (expense or income).
 - [ ] Suggested rule with a new payee 📱 (server with AI, an Apple Pay tap at a well-known chain
-      such as Starbucks that has no payee of that name yet, with "Assign category and payee
-      automatically" off so the tap stays unfilled): the Suggested rules row reads
+      such as Starbucks that has no payee of that name yet, with "Auto-categorize" off so the
+      tap stays unfilled): the Suggested rules row reads
       "→ <category> · Starbucks (new)" and the editor's payee field shows "Starbucks (new)". Dismiss
       creates no payee (Settings → Payees unchanged). On another such suggestion, Save creates the
       payee "Starbucks" (listed in Settings → Payees and in the transaction payee picker without a
@@ -1052,10 +1052,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       no matching rule, whose category or payee stays empty, adds a Suggested rules row to the
       Inbox within about a minute, without a reload once the app is refocused (or within 60 s
       of a SimpleFIN sync on the page that ran it); with no AI configured, none appears. 📱
-- [ ] Automatic assignment 📱 (server with `ECONUMO_AI_DSN`, "Assign category and payee
-      automatically" on): an Apple Pay tap at a well-known merchant (e.g. Starbucks), no rule
-      matching it, gets a category and a payee within about a minute (the payee is created when
-      the owner has none of that name); a tap at an unknown local shop gets a category and no
+- [ ] Automatic assignment 📱 (server with `ECONUMO_AI_DSN`, "Auto-categorize" on): an Apple
+      Pay tap at a well-known merchant (e.g. Starbucks), no rule matching it, gets a category
+      and a payee within about a minute (the payee is created when the owner has none of that
+      name); a tap at an unknown local shop gets a category and no
       payee. No Inbox item appears for the assignment itself. Without a reload (refocus the app
       after an Apple Pay tap; within 60 s of a SimpleFIN sync on the page that ran it), the
       transaction and the budget show the category and the new payee by name, and the payee is
@@ -1064,7 +1064,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       while the AI fills the empty category. A tap whose category a rule set (payee left empty),
       or one given a category by hand within the minute before the AI answers, gets nothing
       assigned: its payee stays empty, though a Suggested rules row may still appear for it.
-- [ ] With "Assign category and payee automatically" off 📱, new taps stay without a category
+- [ ] With "Auto-categorize" off 📱, new taps stay without a category
       and payee (rule suggestions still appear while "Suggest rules" is on); with both switches
       off nothing is assigned or suggested.
 - [ ] Rule suggestions for auto-filled taps 📱: with both switches on, taps at the same merchant
@@ -3250,9 +3250,10 @@ User C sees none of it.
       save-accounts start no AI job, and neither does a CSV import (icons stay
       default, no savings flagged).
       Switching it back on brings suggestions for new imports only.
-      While on, below that card an "Imported transactions" heading and two more
-      switches appear, both on by default: "Suggest rules" and "Assign
-      category and payee automatically"; they are disabled offline and vanish when "Use AI
+      While on, below that card an "Imports" heading and two more switches
+      appear, both on by default: "Suggest rules" and "Auto-categorize"
+      (German "Importe", "Regeln vorschlagen", "Automatisch kategorisieren");
+      they are disabled offline and vanish when "Use AI
       features" is switched off. Turning one off persists across a reload and
       keeps the other as it was; turning both off in quick succession leaves
       both off.

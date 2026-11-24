@@ -1282,9 +1282,9 @@
             "label": "使用 AI 功能",
             "description": "AI 帮助您让财务井井有条，让 Econumo 更易于使用。",
             "promise": "您的财务和个人数据始终保密，不会发送给 AI。",
-            "imports_heading": "导入的交易",
+            "imports_heading": "导入",
             "suggest_rules_label": "建议规则",
-            "suggest_fill_label": "自动分配类别和收款人"
+            "suggest_fill_label": "自动分类"
           }
         }
       }

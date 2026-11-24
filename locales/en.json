@@ -1282,9 +1282,9 @@
             "label": "Use AI features",
             "description": "AI helps you keep your finances organized and makes Econumo easier to use.",
             "promise": "Your financial and personal data stays private and is never sent to AI.",
-            "imports_heading": "Imported transactions",
+            "imports_heading": "Imports",
             "suggest_rules_label": "Suggest rules",
-            "suggest_fill_label": "Assign category and payee automatically"
+            "suggest_fill_label": "Auto-categorize"
           }
         }
       }
