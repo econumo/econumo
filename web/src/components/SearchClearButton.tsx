@@ -11,6 +11,9 @@ export function SearchClearButton({ onClear, className }: { onClear: () => void;
       type="button"
       aria-label={t('common.list.clear_search')}
       title={t('common.list.clear_search')}
+      // a pointer shortcut only: kept out of the Tab order, which runs from the
+      // search to the rows (cmdk also claims Enter around it)
+      tabIndex={-1}
       // keeps the field focused (and a phone keyboard up) through the tap
       onMouseDown={(e) => e.preventDefault()}
       onClick={(e) => {

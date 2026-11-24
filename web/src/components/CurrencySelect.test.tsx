@@ -53,3 +53,25 @@ it('search skips letters and matches the code, symbol or name', async () => {
   expect(await screen.findByText('USD, $, US Dollar')).toBeInTheDocument()
   expect(screen.queryByText('EUR, €, Euro')).not.toBeInTheDocument()
 })
+
+it('the clear button empties the search and lists every currency again', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <CurrencySelect value="cur-usd" onChange={onChange} aria-label="Currency" />
+    </QueryClientProvider>,
+  )
+  await vi.waitFor(() => expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveTextContent('USD'))
+  await user.click(screen.getByRole('combobox', { name: 'Currency' }))
+  expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument()
+  await user.keyboard('ero')
+  expect(screen.queryByText('USD, $, US Dollar')).not.toBeInTheDocument()
+  const clear = screen.getByRole('button', { name: 'Clear search' })
+  expect(clear).toHaveAttribute('tabindex', '-1')
+  await user.click(clear)
+  expect(await screen.findByText('USD, $, US Dollar')).toBeInTheDocument()
+  expect(screen.getByText('EUR, €, Euro')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument()
+  expect(onChange).not.toHaveBeenCalled()
+})
