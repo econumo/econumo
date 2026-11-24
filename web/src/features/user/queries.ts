@@ -182,7 +182,6 @@ export function useUpdateAi() {
       queryClient.setQueryData(queryKeys.user, user)
       // the server drops an opted-out user's open suggestions on the next read
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       trackEvent(METRICS.USER_UPDATE_AI, { enabled })
     },
   })
@@ -253,7 +252,6 @@ export function useUpdateAiSuggestions() {
     onSuccess: (user, { suggestRules, suggestFill }) => {
       if (!othersPending()) queryClient.setQueryData<CurrentUserDto>(queryKeys.user, (current) => withAiSuggestionOptions(current, user))
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       trackEvent(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: suggestRules, fill: suggestFill })
     },
   })

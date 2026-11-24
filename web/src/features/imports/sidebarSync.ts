@@ -39,7 +39,6 @@ export function afterPullSync(queryClient: QueryClient, sourceId: Id, result: Sy
   void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
   void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
   void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-  void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
   if (result.run.importedCount > 0) scheduleSuggestionRefresh(queryClient)
   void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
   if (result.run.importedCount + result.run.matchedCount + result.run.amountsUpdatedCount > 0) {

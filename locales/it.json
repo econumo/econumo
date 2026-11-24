@@ -698,8 +698,7 @@
       "to_review": "Da rivedere",
       "failed_writes": "Non salvato",
       "skipped": "Saltati ({count})",
-      "suggested_rules": "Regole suggerite",
-      "imported_transactions": "Transazioni importate"
+      "suggested_rules": "Regole suggerite"
     },
     "due": {
       "overdue": "Scaduto · {date}",
@@ -1033,11 +1032,6 @@
       "hint": "Regole suggerite dall'IA per le transazioni importate automaticamente. Tocca una regola per rivederla e salvarla.",
       "prompt_summary": "Suggerita per {count} transazione | Suggerita per {count} transazioni",
       "transactions": "{count} transazione | {count} transazioni"
-    },
-    "transaction_suggestions": {
-      "suggested": "Suggerito",
-      "fill": "Compila",
-      "dismiss": "Ignora"
     }
   },
   "user": {

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/econumo/econumo/internal/imports"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
@@ -887,15 +888,33 @@ func (h *harness) setTxSuggestion(t *testing.T, linkID vo.Id, column, value stri
 	}
 }
 
+// fillIn stands in for the job's assignment: it writes the stored suggestion's
+// values into the transaction's empty fields and settles the row.
 func fillIn(t *testing.T, h *harness, linkID vo.Id) {
 	t.Helper()
-	res, err := fillTxSuggestion(h, userA, linkID)
-	if err != nil || res.Updated != 1 {
-		t.Fatalf("fill = %+v, %v", res, err)
+	for _, sg := range txSuggestions(t, h, userA) {
+		if sg.LinkID != linkID {
+			continue
+		}
+		l, err := h.repo.GetLink(context.Background(), linkID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sg.CategoryID != nil {
+			h.setTx(t, l.TransactionID, "category_id", sg.CategoryID.String())
+		}
+		if sg.PayeeID != nil {
+			h.setTx(t, l.TransactionID, "payee_id", sg.PayeeID.String())
+		}
+		if err := h.repo.MarkTransactionSuggestionFilled(context.Background(), linkID, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		return
 	}
+	t.Fatalf("no open transaction suggestion for %s", linkID)
 }
 
-// Taking the AI's values with Fill in confirms its guess, so the rule
+// Taking the AI's values confirms its guess, so the rule
 // suggestion keeps offering the row while the transaction agrees with it.
 func TestRuleSuggestionKeepsAgreeingFilledRow(t *testing.T) {
 	h, c, _ := suggestSetup(t)

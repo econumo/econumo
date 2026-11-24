@@ -698,8 +698,7 @@
       "to_review": "Te beoordelen",
       "failed_writes": "Niet opgeslagen",
       "skipped": "Overgeslagen ({count})",
-      "suggested_rules": "Voorgestelde regels",
-      "imported_transactions": "Geïmporteerde transacties"
+      "suggested_rules": "Voorgestelde regels"
     },
     "due": {
       "overdue": "Achterstallig · {date}",
@@ -1033,11 +1032,6 @@
       "hint": "Door AI voorgestelde regels voor automatisch geïmporteerde transacties. Tik op een regel om die te bekijken en op te slaan.",
       "prompt_summary": "Voorgesteld voor {count} transactie | Voorgesteld voor {count} transacties",
       "transactions": "{count} transactie | {count} transacties"
-    },
-    "transaction_suggestions": {
-      "suggested": "Voorgesteld",
-      "fill": "Invullen",
-      "dismiss": "Negeren"
     }
   },
   "user": {

@@ -5,8 +5,6 @@ import type {
   AcceptImportSuggestionDto,
   ApplyImportRuleDto,
   ImportSuggestionDto,
-  ImportTransactionSuggestionDto,
-  FillImportTransactionSuggestionDto,
   ExternalAccountDto,
   ImportCredentialKeyDto,
   ImportProvider,
@@ -212,21 +210,6 @@ export async function acceptImportSuggestion(id: Id, ruleId: Id): Promise<Accept
 
 export async function dismissImportSuggestion(id: Id): Promise<ImportSuggestionDto[]> {
   const response = await api.post<Envelope<{ items: ImportSuggestionDto[] }>>(apiUrl('/api/v1/import/dismiss-suggestion'), { id })
-  return response.data.data.items
-}
-
-export async function getImportTransactionSuggestionList(): Promise<ImportTransactionSuggestionDto[]> {
-  const response = await api.get<Envelope<{ items: ImportTransactionSuggestionDto[] }>>(apiUrl('/api/v1/import/get-transaction-suggestion-list'))
-  return response.data.data.items
-}
-
-export async function fillImportTransactionSuggestion(id: Id): Promise<FillImportTransactionSuggestionDto> {
-  const response = await api.post<Envelope<FillImportTransactionSuggestionDto>>(apiUrl('/api/v1/import/fill-transaction-suggestion'), { id })
-  return response.data.data
-}
-
-export async function dismissImportTransactionSuggestion(id: Id): Promise<ImportTransactionSuggestionDto[]> {
-  const response = await api.post<Envelope<{ items: ImportTransactionSuggestionDto[] }>>(apiUrl('/api/v1/import/dismiss-transaction-suggestion'), { id })
   return response.data.data.items
 }
 

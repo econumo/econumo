@@ -1,6 +1,0 @@
-== get-transaction-suggestion-list GET /api/v1/import/get-transaction-suggestion-list [owner] -> 200
-{"success":true,"message":"","data":{"items":[{"id":"0d000000-0000-0000-0000-000000000001","transactionId":"d0000000-0000-0000-0000-000000000002","accountId":"a0000000-0000-0000-0000-000000000001","type":"income","amount":"1000","currency":"USD","date":"<datetime>","description":"pay","externalPayee":"Employer","categoryId":null,"payeeId":"20000000-0000-0000-0000-000000000001","transactionCategoryId":"c0000000-0000-0000-0000-000000000002","transactionPayeeId":null}]}}
-
-== get-transaction-suggestion-list-guest GET /api/v1/import/get-transaction-suggestion-list [guest] -> 200
-{"success":true,"message":"","data":{"items":[]}}
-

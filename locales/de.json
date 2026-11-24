@@ -698,8 +698,7 @@
       "to_review": "Zu prüfen",
       "failed_writes": "Nicht gespeichert",
       "skipped": "Übersprungen ({count})",
-      "suggested_rules": "Vorgeschlagene Regeln",
-      "imported_transactions": "Importierte Transaktionen"
+      "suggested_rules": "Vorgeschlagene Regeln"
     },
     "due": {
       "overdue": "Überfällig · {date}",
@@ -1033,11 +1032,6 @@
       "hint": "KI-vorgeschlagene Regeln für automatisch importierte Transaktionen. Tippen Sie auf eine, um sie zu prüfen und zu speichern.",
       "prompt_summary": "Vorgeschlagen für {count} Transaktion | Vorgeschlagen für {count} Transaktionen",
       "transactions": "{count} Transaktion | {count} Transaktionen"
-    },
-    "transaction_suggestions": {
-      "suggested": "Vorgeschlagen",
-      "fill": "Ausfüllen",
-      "dismiss": "Verwerfen"
     }
   },
   "user": {

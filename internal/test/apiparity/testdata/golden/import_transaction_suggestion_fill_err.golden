@@ -1,9 +1,0 @@
-== err:fill-transaction-suggestion-blank POST /api/v1/import/fill-transaction-suggestion [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
-
-== err:fill-transaction-suggestion-unknown POST /api/v1/import/fill-transaction-suggestion [owner] -> 400
-{"success":false,"message":"Import transaction suggestion not found","code":0,"errors":{}}
-
-== err:fill-transaction-suggestion-foreign POST /api/v1/import/fill-transaction-suggestion [guest] -> 400
-{"success":false,"message":"Import transaction suggestion not found","code":0,"errors":{}}
-

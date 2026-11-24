@@ -685,57 +685,6 @@ func (r DismissImportSuggestionRequest) Validate() error {
 	return nil
 }
 
-type ImportTransactionSuggestionResult struct {
-	Id            string  `json:"id"` // the ledger link id
-	TransactionId string  `json:"transactionId"`
-	AccountId     string  `json:"accountId"`
-	Type          string  `json:"type"` // "income" | "expense"
-	Amount        string  `json:"amount"`
-	Currency      string  `json:"currency"` // the account's currency code
-	Date          string  `json:"date"`
-	Description   string  `json:"description"`
-	ExternalPayee string  `json:"externalPayee"`
-	CategoryId    *string `json:"categoryId"` // only a field Fill in would write; null otherwise
-	PayeeId       *string `json:"payeeId"`
-	// the transaction's own values, so a client without the row can show what Fill in keeps
-	TransactionCategoryId *string `json:"transactionCategoryId"`
-	TransactionPayeeId    *string `json:"transactionPayeeId"`
-}
-
-type GetImportTransactionSuggestionListResult struct {
-	Items []ImportTransactionSuggestionResult `json:"items"` // newest transaction first
-}
-
-type FillImportTransactionSuggestionRequest struct {
-	Id string `json:"id"`
-}
-
-func (r FillImportTransactionSuggestionRequest) Validate() error {
-	var fields []errs.FieldError
-	requireIDField("id", r.Id, &fields)
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
-	}
-	return nil
-}
-
-type FillImportTransactionSuggestionResult struct {
-	Updated int `json:"updated"`
-}
-
-type DismissImportTransactionSuggestionRequest struct {
-	Id string `json:"id"`
-}
-
-func (r DismissImportTransactionSuggestionRequest) Validate() error {
-	var fields []errs.FieldError
-	requireIDField("id", r.Id, &fields)
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
-	}
-	return nil
-}
-
 type SuggestImportMatchTextRequest struct {
 	LinkId string `json:"linkId"`
 }

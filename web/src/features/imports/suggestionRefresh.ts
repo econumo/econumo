@@ -20,7 +20,6 @@ export function scheduleSuggestionRefresh(queryClient: QueryClient): void {
   suggestionRefresh = SUGGESTION_REFRESH_DELAYS_MS.map((delay) =>
     setTimeout(() => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
     }, delay),
   )
 }

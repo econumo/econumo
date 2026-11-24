@@ -7,7 +7,6 @@ import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from '@/features/imports/QueueSections'
-import { ImportedTransactionsSection } from '@/features/imports/ImportedTransactionsSection'
 import { SuggestionsSection } from '@/features/imports/SuggestionsSection'
 import { DueRecurringSection } from './DueRecurringSection'
 import { FailedWritesSection } from './FailedWritesSection'
@@ -60,11 +59,6 @@ export function InboxPage() {
         ) : null}
         {inbox.suggestions.length > 0 ? (
           <InboxSection title={t('inbox.sections.suggested_rules')}><SuggestionsSection suggestions={inbox.suggestions} /></InboxSection>
-        ) : null}
-        {inbox.transactionSuggestions.length > 0 ? (
-          <InboxSection title={t('inbox.sections.imported_transactions')}>
-            <ImportedTransactionsSection items={inbox.transactionSuggestions} />
-          </InboxSection>
         ) : null}
         {inbox.syncProblems.length > 0 ? (
           <InboxSection title={t('inbox.sections.sync')}><SyncProblemsSection sources={inbox.syncProblems} /></InboxSection>

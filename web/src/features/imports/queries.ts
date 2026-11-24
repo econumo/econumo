@@ -12,7 +12,6 @@ import type {
   ImportRuleSpecDto,
   ImportSourceDto,
   ImportSuggestionDto,
-  ImportTransactionSuggestionDto,
   UpdateImportAccountDto,
 } from '@/api/dto/imports'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
@@ -106,7 +105,7 @@ export function useAcceptImportSuggestion() {
     },
     onSuccess: (_result, { id, changes }) => {
       acceptsSent.delete(id)
-      for (const queryKey of [queryKeys.importSuggestions, queryKeys.importTransactionSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
+      for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
         void queryClient.invalidateQueries({ queryKey })
       }
       void queryClient.invalidateQueries({ queryKey: ['transactionImports'] })
@@ -132,82 +131,6 @@ export function useDismissImportSuggestion() {
       queryClient.setQueryData<ImportSuggestionDto[]>(queryKeys.importSuggestions, (prev) => prev?.filter((s) => s.id !== id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.IMPORT_SUGGESTION_DISMISS)
-    },
-  })
-}
-
-// Fed and refreshed like the rule suggestions: the server writes them in the background.
-export function useImportTransactionSuggestions() {
-  return useQuery({
-    queryKey: queryKeys.importTransactionSuggestions,
-    queryFn: importsApi.getImportTransactionSuggestionList,
-    staleTime: 60_000,
-    refetchOnWindowFocus: true,
-    retry: suggestionRetry,
-  })
-}
-
-// The server's not-found answer: a 400 with code 0 and no field errors. Anything else (402
-// readonly, a coded refusal, a field-validation 400, 409) is a real refusal, and the list cannot
-// tell it apart: it is empty for a readonly user or one whose switch is off.
-function isNotFoundAnswer(err: unknown): boolean {
-  if (!isAxiosError(err) || err.response === undefined) return false
-  const { status, data } = err.response
-  if (status !== 400 && status !== 404) return false
-  const body = data as { code?: unknown; errors?: unknown } | undefined
-  const errors = body?.errors
-  return body?.code === 0 && typeof errors === 'object' && errors !== null && !Array.isArray(errors) && Object.keys(errors).length === 0
-}
-
-// A not-found refusal whose suggestion is no longer listed was handled elsewhere: another
-// device, a double tap, a retry after a lost answer. There is nothing left to do, so it reads as
-// done.
-async function unlessGone<T>(id: Id, request: Promise<T>): Promise<T | 'gone'> {
-  try {
-    return await request
-  } catch (err) {
-    if (!isNotFoundAnswer(err)) throw err
-    const items = await importsApi.getImportTransactionSuggestionList().catch(() => undefined)
-    if (items !== undefined && !items.some((s) => s.id === id)) return 'gone'
-    throw err
-  }
-}
-
-function useDropTransactionSuggestion() {
-  const queryClient = useQueryClient()
-  return (id: Id) => {
-    queryClient.setQueryData<ImportTransactionSuggestionDto[]>(queryKeys.importTransactionSuggestions, (prev) => prev?.filter((s) => s.id !== id))
-    void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
-  }
-}
-
-export function useFillImportTransactionSuggestion() {
-  const queryClient = useQueryClient()
-  const drop = useDropTransactionSuggestion()
-  return useMutation({
-    meta: { handlesOwnErrors: true },
-    mutationFn: (id: Id) => unlessGone(id, importsApi.fillImportTransactionSuggestion(id)),
-    onSuccess: (result, id) => {
-      drop(id)
-      // the revision sync reads the cached account list, so it is refetched with the transactions
-      for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions, queryKeys.debts]) {
-        void queryClient.invalidateQueries({ queryKey })
-      }
-      // updated 0: the server found nothing left to fill and dropped the suggestion
-      if (result !== 'gone' && result.updated === 1) trackEvent(METRICS.IMPORT_TRANSACTION_SUGGESTION_FILL)
-    },
-  })
-}
-
-export function useDismissImportTransactionSuggestion() {
-  const drop = useDropTransactionSuggestion()
-  return useMutation({
-    meta: { handlesOwnErrors: true },
-    mutationFn: (id: Id) => unlessGone(id, importsApi.dismissImportTransactionSuggestion(id)),
-    // never the answer's list, as with the rule suggestions: answers out of order would bring a row back
-    onSuccess: (result, id) => {
-      drop(id)
-      if (result !== 'gone') trackEvent(METRICS.IMPORT_TRANSACTION_SUGGESTION_DISMISS)
     },
   })
 }
@@ -238,7 +161,6 @@ export function useDeleteImportSource({ handlesOwnErrors = false }: OwnErrorHand
       queryClient.setQueryData(queryKeys.importSources, items)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       trackEvent(METRICS.IMPORT_SOURCE_DISCONNECT, source ? { provider: source.provider } : {})
     },
   })
@@ -253,7 +175,6 @@ function useApplyImportAccount() {
       (prev ?? []).map((s) => (s.id === result.item.id ? result.item : s)))
     void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
     void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-    void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
     if (result.run) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
@@ -339,7 +260,6 @@ export function useImportQueuedEvent() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: ['importSourceHistory'] })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       trackEvent(METRICS.IMPORT_QUEUE_IMPORT)
     },
   })
@@ -385,7 +305,6 @@ export function useRetryImportEvent() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importTransactionSuggestions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })

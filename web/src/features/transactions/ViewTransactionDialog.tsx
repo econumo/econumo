@@ -40,8 +40,6 @@ interface ViewTransactionDialogProps {
   /** replaces the whole action row. The recurring dialog shows the same body with
       its own actions (hide/post/skip), so the layout lives in one component. */
   footer?: React.ReactNode
-  /** values shown that the transaction does not have yet (an import suggestion's preview), each marked as suggested */
-  suggested?: { category: boolean; payee: boolean }
 }
 
 /** A transaction posted from a template already has a schedule behind it, so
@@ -52,7 +50,7 @@ function canMakeRecurring(tx: ViewTransaction, onMakeRecurring?: () => void): bo
   return onMakeRecurring !== undefined && !tx.recurringId
 }
 
-export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring, recurringSchedule, onOpenRecurring, footer, suggested }: ViewTransactionDialogProps) {
+export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring, recurringSchedule, onOpenRecurring, footer }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
   // labels are owner-scoped like tags/categories/payees: the same globally
   // fetched list every editor resolves against, matched here by the ids the
@@ -78,7 +76,6 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   const heroName = isTransfer ? typeLabel : (tx.category?.name ?? t('common.uncategorized'))
   const sign = tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''
   const amountClass = tx.type === 'expense' ? 'text-expense' : tx.type === 'income' ? 'text-income' : ''
-  const suggestedNote = <span className="shrink-0 text-xs text-muted-foreground">{t('imports.transaction_suggestions.suggested')}</span>
 
   const accountRow = (account: ViewTransaction['account'], amount: string | null) => (
     <span className="flex items-center gap-2 text-sm">
@@ -122,7 +119,6 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       content: (
         <span className="flex items-center gap-2 text-sm">
           <span className="truncate">{tx.payee.name}</span>
-          {suggested?.payee ? suggestedNote : null}
         </span>
       ),
     })
@@ -224,7 +220,6 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         <span className="mt-1 max-w-full truncate text-base font-medium" title={heroName}>
           {heroName}
         </span>
-        {suggested?.category && tx.category && !isTransfer ? suggestedNote : null}
         {/* Whatever sits beside the amount, an equal-width spacer opposite keeps
             the amount optically centred. The two are mutually exclusive: only a
             hand-entered transaction offers the action, only a posted one carries
