@@ -8,7 +8,7 @@ import type { CurrentUserDto, UserDto } from '@/api/dto/user'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { refetchPayeesIfUnknown } from '@/features/classifications/unknownPayees'
 import { isPendingForMe } from '@/features/connections/shared'
-import { deleteBuckets, putBuckets, storeEpoch, tryLoadBuckets, type Bucket } from '@/lib/transactionStore'
+import { RELOAD_REVISION, deleteBuckets, putBuckets, storeEpoch, tryLoadBuckets, type Bucket } from '@/lib/transactionStore'
 import { assemble, hasRevisions, syncBuckets, type SyncOutput } from './sync'
 
 const WRITE_THROUGH_DELAY_MS = 500
@@ -384,6 +384,22 @@ export async function transactionsQueryFn(
   if (storeEpoch() === at) {
     landing = { accounts: raw, revisions: new Map([...out.buckets].map(([id, b]) => [id, b.revision])) }
     refetchPayeesIfUnknown(queryClient, out.changed.flatMap((b) => b.items.map((t) => t.payeeId)))
+    // a bucket the page already had, changed elsewhere (another device, an import and what the
+    // AI job filled in on it): the views computed from the ledger are stale too
+    if (out.changed.some((b) => movedElsewhere(stored?.get(b.accountId)?.revision, b.revision))) {
+      invalidateBudgetViews(queryClient)
+    }
   }
   return assemble(out.buckets)
+}
+
+function movedElsewhere(before: number | undefined, after: number): boolean {
+  return before !== undefined && before !== RELOAD_REVISION && before !== after
+}
+
+// What a transaction write changes besides the transaction list.
+export function invalidateBudgetViews(queryClient: QueryClient): void {
+  for (const queryKey of [queryKeys.budget, queryKeys.debts, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
+    void queryClient.invalidateQueries({ queryKey })
+  }
 }

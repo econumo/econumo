@@ -38,8 +38,9 @@ export function useImportQueue() {
 // The server writes suggestions in the background after an import answers, and an Apple Wallet
 // push reaches the server without this device knowing: a short staleTime plus a refetch on focus
 // is how they show up. The same refetch brings the tap itself and what the AI job filled in on
-// it: an accounts list older than the staleTime is refreshed, and its revisions make the
-// transaction sync download the changed accounts.
+// it: an accounts list older than the staleTime is refreshed (at most once a minute), and its
+// revisions make the transaction sync download the changed accounts, which refreshes the budget,
+// plan and debt views.
 const SUGGESTIONS_STALE_MS = 60_000
 
 export function useImportSuggestions() {
