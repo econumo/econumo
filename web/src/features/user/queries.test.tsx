@@ -5,7 +5,82 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState } from './queries'
+import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState, useUpdateAi, useUpdateAiSuggestions } from './queries'
+
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+
+type Switches = { suggestRules: boolean; suggestFill: boolean }
+const withSwitches = (rules: string, fill: string) => ({
+  ...fixtureUser,
+  options: [...fixtureUser.options, { name: 'ai_suggest_rules', value: rules }, { name: 'ai_suggest_fill', value: fill }],
+})
+const switchesOf = (queryClient: QueryClient) =>
+  queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)?.options.filter((o) => o.name.startsWith('ai_suggest_'))
+
+describe('queued suggestion switch writes', () => {
+  // each answer waits for its release; ok[n] says whether the n-th write is taken
+  function switchServer(ok: boolean[]) {
+    const releases: (() => void)[] = []
+    let n = 0
+    server.use(
+      http.post('*/api/v1/user/update-ai-suggestions', async ({ request }) => {
+        const body = (await request.json()) as Switches
+        const taken = ok[n++]
+        await new Promise<void>((resolve) => releases.push(resolve))
+        if (!taken) return HttpResponse.json({ success: false, message: 'Not allowed', code: 0, errors: {} }, { status: 400 })
+        return HttpResponse.json({ success: true, message: '', data: { user: withSwitches(body.suggestRules ? '1' : '0', body.suggestFill ? '1' : '0') } })
+      }),
+      // the refetch after a failure never answers, so only the restore can settle the cache
+      http.get('*/api/v1/user/get-user-data', () => new Promise<never>(() => {})),
+    )
+    return releases
+  }
+
+  async function run(ok: boolean[]) {
+    const releases = switchServer(ok)
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.user, withSwitches('1', '1'))
+    const { result } = renderHook(() => [useUpdateAiSuggestions(), useUpdateAiSuggestions()] as const, { wrapper })
+    const first = result.current[0].mutateAsync({ suggestRules: false, suggestFill: true }).catch(() => undefined)
+    const second = result.current[1].mutateAsync({ suggestRules: false, suggestFill: false }).catch(() => undefined)
+    await waitFor(() => expect(releases).toHaveLength(1))
+    releases[0]()
+    await waitFor(() => expect(releases).toHaveLength(2))
+    releases[1]()
+    await Promise.all([first, second])
+    return queryClient
+  }
+
+  it('both refused: the cache is back to what the server had before the first', async () => {
+    const queryClient = await run([false, false])
+    expect(switchesOf(queryClient)).toEqual([{ name: 'ai_suggest_rules', value: '1' }, { name: 'ai_suggest_fill', value: '1' }])
+  })
+
+  it('the first taken, the second refused: the cache shows the first one\'s values', async () => {
+    const queryClient = await run([true, false])
+    expect(switchesOf(queryClient)).toEqual([{ name: 'ai_suggest_rules', value: '0' }, { name: 'ai_suggest_fill', value: '1' }])
+  })
+})
+
+it('update-ai takes only the ai option from its answer, keeping a suggestion switch changed meanwhile', async () => {
+  let release: (() => void) | null = null
+  server.use(http.post('*/api/v1/user/update-ai', async () => {
+    await new Promise<void>((resolve) => { release = resolve })
+    // the user as this write saw it: the suggestion switch still on
+    return HttpResponse.json({ success: true, message: '', data: { user: { ...withSwitches('1', '1'), options: [...withSwitches('1', '1').options, { name: 'ai', value: '0' }] } } })
+  }))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.user, withSwitches('1', '1'))
+  const { result } = renderHook(() => useUpdateAi(), { wrapper })
+  const done = result.current.mutateAsync(false)
+  await waitFor(() => expect(release).not.toBeNull())
+  queryClient.setQueryData(queryKeys.user, withSwitches('0', '1'))
+  release!()
+  await done
+  const options = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)!.options
+  expect(options).toContainEqual({ name: 'ai', value: '0' })
+  expect(options).toContainEqual({ name: 'ai_suggest_rules', value: '0' })
+})
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
