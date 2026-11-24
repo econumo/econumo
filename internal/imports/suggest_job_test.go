@@ -1772,3 +1772,115 @@ func TestSuggestRulesTurnedOffBeforeTheJoinSendsRowsToAI(t *testing.T) {
 		t.Fatalf("transaction suggestions = %+v", got)
 	}
 }
+
+// Readonly reached while the job runs: neither write it would make (the
+// pre-AI reuse nor the post-AI one) happens.
+func TestSuggestReadonlyMeanwhileWritesNothing(t *testing.T) {
+	t.Run("before the reuse", func(t *testing.T) {
+		h, c, _ := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		cat := h.category(t, userA, "Coffee")
+		catID := vo.MustParseId(cat)
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		h.wireSuggest(c, &factsSeq{seq: []imports.OwnerInfo{
+			{Language: "en", SuggestRules: true, SuggestFill: true},
+			{Language: "en", Readonly: true, SuggestRules: true, SuggestFill: true},
+		}})
+		ingest(t, h, tap)
+		if len(c.calls) != 0 || len(assignRecords(t, h, userA)) != 0 {
+			t.Fatalf("calls = %d, records = %+v", len(c.calls), assignRecords(t, h, userA))
+		}
+		if got := openSuggestions(t, h, userA); len(got) != 1 || len(got[0].LinkIDs) != 0 {
+			t.Fatalf("rule suggestions = %+v, want no join", got)
+		}
+	})
+	t.Run("during the call", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		cat := h.category(t, userA, "Coffee")
+		c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"wellKnown":true,"categoryId":"` + cat + `"}]}`
+		c.onCall = func() { facts[userA] = ownerFact{language: "en", readonly: true} }
+		ingest(t, h, tap)
+		if len(c.calls) != 1 || len(assignRecords(t, h, userA)) != 0 || len(openSuggestions(t, h, userA)) != 0 || len(h.payees.created) != 0 {
+			t.Fatalf("calls = %d, records = %+v, rules = %+v, payees = %v", len(c.calls), assignRecords(t, h, userA), openSuggestions(t, h, userA), h.payees.created)
+		}
+	})
+}
+
+// hookFacts runs onRead before answering the n-th read (1-based).
+type hookFacts struct {
+	inner  imports.OwnerFacts
+	reads  int
+	onRead func(n int)
+}
+
+func (f *hookFacts) OwnerFacts(ctx context.Context, owner vo.Id) (imports.OwnerInfo, error) {
+	f.reads++
+	f.onRead(f.reads)
+	return f.inner.OwnerFacts(ctx, owner)
+}
+
+// A category or payee archived after the job's first look is not written by
+// the reuse step, and a new-payee name an archived payee now carries creates
+// nothing.
+func TestSuggestReuseRereadsTheVocabulary(t *testing.T) {
+	t.Run("category archived", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		cat := h.category(t, userA, "Coffee")
+		catID := vo.MustParseId(cat)
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		uA := vo.MustParseId(userA)
+		h.wireSuggest(c, &hookFacts{inner: facts, onRead: func(n int) {
+			if n == 2 {
+				for i := range h.entities.categories[uA] {
+					if h.entities.categories[uA][i].ID == cat {
+						h.entities.categories[uA][i].Archived = true
+					}
+				}
+			}
+		}})
+		ingest(t, h, tap)
+		links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+		if tx := txOf(t, h, links[0].ID); tx.CategoryID != nil || len(assignRecords(t, h, userA)) != 0 {
+			t.Fatalf("transaction = %+v, records = %+v, want the archived category not written", tx, assignRecords(t, h, userA))
+		}
+	})
+	t.Run("payee name archived", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		name := "Blue Bottle"
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			PayeeName: &name, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		h.wireSuggest(c, &hookFacts{inner: facts, onRead: func(n int) {
+			// only the vocabulary: the fixture's connection would wait on the
+			// job's transaction
+			if n == 2 {
+				uA := vo.MustParseId(userA)
+				h.entities.payees[uA] = append(h.entities.payees[uA], model.ImportNamed{ID: vo.NewId().String(), Name: "BLUE BOTTLE", OwnerID: userA, Archived: true})
+			}
+		}})
+		ingest(t, h, tap)
+		links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+		if tx := txOf(t, h, links[0].ID); tx.PayeeID != nil || len(h.payees.created) != 0 {
+			t.Fatalf("transaction = %+v, payees created = %v, want no payee", tx, h.payees.created)
+		}
+	})
+}

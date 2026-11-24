@@ -150,7 +150,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	if err != nil {
 		return err
 	}
-	if facts.Readonly || stopped(facts) {
+	if stopped(facts) {
 		return nil
 	}
 	language, timezone := facts.Language, facts.Timezone
@@ -234,7 +234,17 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				return err
 			}
 			if facts.SuggestFill {
-				s.assign(ctx, owner, openAssignments(live, gone, open, rows))
+				// As after the AI call: a category or payee archived since the
+				// first read is not written.
+				vocab, err := s.suggestVocabulary(ctx, owner)
+				if err != nil {
+					return err
+				}
+				fresh, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
+				if err != nil {
+					return err
+				}
+				s.assign(ctx, owner, openAssignments(live, gone, vocab.liveOpen(fresh), rows))
 			}
 			return nil
 		})
@@ -515,9 +525,10 @@ func (s *Service) undoIfOptedOut(ctx context.Context, owner vo.Id, inserted []vo
 	}
 }
 
-// stopped: the owner opted out of AI, or turned both kinds of suggestion off.
+// stopped: the owner opted out of AI, turned both kinds of suggestion off, or
+// is readonly (the job writes transactions and payees).
 func stopped(facts OwnerInfo) bool {
-	return facts.AIOff || (!facts.SuggestRules && !facts.SuggestFill)
+	return facts.Readonly || facts.AIOff || (!facts.SuggestRules && !facts.SuggestFill)
 }
 
 // suggestVocabulary is the owner's non-archived categories and payees, payees
