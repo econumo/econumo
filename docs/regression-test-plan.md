@@ -1034,8 +1034,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       payee "Starbucks" (listed in Settings → Payees and in the transaction payee picker without a
       reload), the rule naming it, and fills the transactions. If a payee of that name already
       exists in another case or with punctuation (e.g. "starbucks."), the row and the editor show
-      that payee without "(new)" and Save creates none; the same when that payee was created on
-      another device after the Inbox loaded. If the only payee of that name is archived, the
+      that payee without "(new)" and Save creates none; when such a payee was created on another
+      device after the Inbox loaded, Save still creates none and the rule names that payee. If the only payee of that name is archived, the
       row and the editor show no payee (no "(new)"), and Save creates none and saves the rule
       without a payee. Picking another payee in the editor saves the rule with that payee and
       creates none. With the network dropped right after tapping Save and Save tapped again,
