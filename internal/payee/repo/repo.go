@@ -33,6 +33,7 @@ type querier interface {
 	DeletePayee(ctx context.Context, db backend.DBTX, id string) error
 	ReassignPayeeTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error
 	ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
+	LockPayeeOwner(ctx context.Context, db backend.DBTX, userID string) error
 }
 
 type Repo struct {
@@ -65,6 +66,10 @@ func NewPgsqlRepo(tx *backend.TxManager) *Repo {
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
+
+func (r *Repo) LockOwner(ctx context.Context, userID vo.Id) error {
+	return r.q.LockPayeeOwner(ctx, r.db(ctx), userID.String())
+}
 
 func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Payee, error) {
 	row, err := r.q.GetPayeeByID(ctx, r.db(ctx), id.String())

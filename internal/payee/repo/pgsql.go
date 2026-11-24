@@ -47,3 +47,7 @@ func (pgsqlQuerier) ReassignPayeeTransactions(ctx context.Context, db backend.DB
 func (pgsqlQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return pgsqlgen.New(db).ReassignPayeeRecurring(ctx, pgsqlgen.ReassignPayeeRecurringParams(p))
 }
+
+func (pgsqlQuerier) LockPayeeOwner(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).LockPayeeOwner(ctx, userID)
+}

@@ -21,6 +21,11 @@ type Repository interface {
 
 	Save(ctx context.Context, p *model.Payee) error
 
+	// LockOwner holds the owner's payee names until the transaction ends, so a
+	// name check and the write it guards never interleave with another
+	// create or rename for that owner.
+	LockOwner(ctx context.Context, userID vo.Id) error
+
 	// Delete removes a payee. Transactions referencing it have payee_id set to
 	// NULL via the ON DELETE SET NULL FK.
 	Delete(ctx context.Context, id vo.Id) error

@@ -484,6 +484,11 @@ type Querier interface {
 	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
 	// lock a concurrent grant INSERT takes on this row through its foreign key.
 	LockOAuthClient(ctx context.Context, id string) (string, error)
+	// Serializes payee creation per owner until the transaction ends: payees has
+	// no unique name constraint, so the exact-name check and the insert must not
+	// interleave with another create for the same owner. An advisory lock, not the
+	// users row, because creates run inside long import transactions.
+	LockPayeeOwner(ctx context.Context, userID string) error
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the
 	// row first has committed by the time the guard's EXISTS runs, and one that
