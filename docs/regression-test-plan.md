@@ -1060,8 +1060,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       after an Apple Pay tap; within 60 s of a SimpleFIN sync on the page that ran it), the
       transaction and the budget show the category and the new payee by name, and the payee is
       in Settings → Payees and the transaction payee picker.
-- [ ] Automatic assignment never changes a value already set 📱: a category or payee a rule set,
-      or one set by hand within the minute before the AI answers, is kept.
+- [ ] Automatic assignment never changes a value already set 📱: a payee a rule set is kept
+      while the AI fills the empty category. A tap whose category a rule set (payee left empty),
+      or one given a category by hand within the minute before the AI answers, gets nothing
+      assigned: its payee stays empty, though a Suggested rules row may still appear for it.
 - [ ] With "Assign category and payee automatically" off 📱, new taps stay without a category
       and payee (rule suggestions still appear while "Suggest rules" is on); with both switches
       off nothing is assigned or suggested.

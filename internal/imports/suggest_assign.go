@@ -81,9 +81,11 @@ func (s *Service) lockAssignRows(ctx context.Context, owner vo.Id, list []assign
 
 // assignRow locks the transaction and reads it and its link again, so a hand
 // edit since the scan is never overwritten: only fields still empty are
-// written, and a row gone, moved off the owner's account or of another type
-// by now is left alone. The applied snapshot moves for the fields written,
-// as a rule's write does, so a later apply-rule may replace them.
+// written, and a row gone, moved off the owner's account, of another type or
+// with a category by now is left alone: a transaction a rule or the user
+// categorised keeps its empty payee (the owner's call). The applied snapshot
+// moves for the fields written, as a rule's write does, so a later apply-rule
+// may replace them.
 func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id, now time.Time) (*vo.Id, bool, error) {
 	if a.row.Link.TransactionID == nil {
 		return nil, false, nil
@@ -93,10 +95,10 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		return nil, false, err
 	}
 	l, live, err := s.suggestionTarget(ctx, owner, a.row.Link.ID)
-	if err != nil || live == nil || live.ID != txID || live.Type != a.row.Type {
+	if err != nil || live == nil || live.ID != txID || live.Type != a.row.Type || live.CategoryID != nil {
 		return nil, false, err
 	}
-	fillCategory := live.CategoryID == nil && a.categoryID != nil
+	fillCategory := a.categoryID != nil
 	payeeID := a.payeeID
 	if live.PayeeID != nil {
 		payeeID = nil
@@ -143,8 +145,9 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 	return newPayee, true, nil
 }
 
-// openAssignments gives each row to be joined to an open suggestion before the
-// AI call that suggestion's values, only for the fields the row lacks.
+// openAssignments gives each uncategorised row to be joined to an open
+// suggestion before the AI call that suggestion's values, only for the fields
+// the row lacks.
 func openAssignments(joins map[vo.Id][]vo.Id, open []model.ImportSuggestion, rows []suggestRow) []assignment {
 	byID := make(map[vo.Id]model.ImportSuggestion, len(open))
 	for _, o := range open {
@@ -163,13 +166,11 @@ func openAssignments(joins map[vo.Id][]vo.Id, open []model.ImportSuggestion, row
 	var out []assignment
 	for _, r := range rows {
 		o, ok := joinedTo[r.Link.ID]
-		if !ok {
+		if !ok || !r.Missing.Category {
 			continue
 		}
 		a := assignment{row: r}
-		if r.Missing.Category {
-			a.categoryID = o.CategoryID
-		}
+		a.categoryID = o.CategoryID
 		if r.Missing.Payee {
 			a.payeeID = o.PayeeID
 			if o.PayeeID == nil && o.PayeeName != nil {

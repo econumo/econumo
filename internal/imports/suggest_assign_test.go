@@ -62,13 +62,14 @@ func payeeOwners(t *testing.T, h *harness, name string) []string {
 	return out
 }
 
-func TestAssignWritesEmptyFieldsOnly(t *testing.T) {
+// A row a rule categorised is never assigned, even with its payee empty; it
+// still feeds the rule suggestion.
+func TestAssignSkipsRowARuleCategorised(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	ruled := h.category(t, userA, "Coffee")
 	other := h.category(t, userA, "Restaurants")
 	py := h.payee(t, userA, "Blue Bottle")
-	// the rule set the category, so only the payee is empty
 	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: ruled})
 	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + other + `"}]}`
 	ingest(t, h, tap)
@@ -77,17 +78,115 @@ func TestAssignWritesEmptyFieldsOnly(t *testing.T) {
 		t.Fatalf("links = %+v", links)
 	}
 	tx := txOf(t, h, links[0].ID)
-	if !idIs(tx.CategoryID, ruled) || !idIs(tx.PayeeID, py) {
-		t.Fatalf("transaction = %+v, want the rule's category and the AI's payee", tx)
+	if !idIs(tx.CategoryID, ruled) || tx.PayeeID != nil {
+		t.Fatalf("transaction = %+v, want the rule's category and no payee", tx)
 	}
 	l, _ := h.repo.GetLink(context.Background(), links[0].ID)
-	if !idIs(l.AppliedCategoryID, ruled) || !idIs(l.AppliedPayeeID, py) || l.AppliedRuleID == nil {
+	if !idIs(l.AppliedCategoryID, ruled) || l.AppliedPayeeID != nil || l.AppliedRuleID == nil {
+		t.Fatalf("applied = category %v payee %v rule %v", l.AppliedCategoryID, l.AppliedPayeeID, l.AppliedRuleID)
+	}
+	if got := assignRecords(t, h, userA); len(got) != 0 {
+		t.Fatalf("records = %+v, want none", got)
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || got[0].CategoryID != nil || !idIs(got[0].PayeeID, py) || len(got[0].LinkIDs) != 1 {
+		t.Fatalf("rule suggestions = %+v, want the payee only", got)
+	}
+}
+
+// An uncategorised row gets the AI's category and keeps the payee a rule set.
+func TestAssignWritesEmptyFieldsOnly(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	ruled := h.payee(t, userA, "Blue Bottle")
+	h.payee(t, userA, "Blue Bottle Coffee")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", PayeeID: ruled})
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle Coffee"],"categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if len(links) != 1 {
+		t.Fatalf("links = %+v", links)
+	}
+	tx := txOf(t, h, links[0].ID)
+	if !idIs(tx.CategoryID, cat) || !idIs(tx.PayeeID, ruled) {
+		t.Fatalf("transaction = %+v, want the AI's category and the rule's payee", tx)
+	}
+	l, _ := h.repo.GetLink(context.Background(), links[0].ID)
+	if !idIs(l.AppliedCategoryID, cat) || !idIs(l.AppliedPayeeID, ruled) || l.AppliedRuleID == nil {
 		t.Fatalf("applied = category %v payee %v rule %v", l.AppliedCategoryID, l.AppliedPayeeID, l.AppliedRuleID)
 	}
 	got := assignRecords(t, h, userA)
-	if len(got) != 1 || got[0].LinkID != links[0].ID || got[0].CategoryID != nil || !idIs(got[0].PayeeID, py) ||
+	if len(got) != 1 || got[0].LinkID != links[0].ID || !idIs(got[0].CategoryID, cat) || got[0].PayeeID != nil ||
 		got[0].Status != model.ImportTransactionSuggestionStatusFilled || got[0].Type != model.TransactionTypeExpense {
-		t.Fatalf("records = %+v, want the payee only", got)
+		t.Fatalf("records = %+v, want the category only", got)
+	}
+}
+
+// With no category of the row's kind the AI can still name the payee of an
+// uncategorised row, and that payee is written.
+func TestAssignPayeeOnlyForUncategorisedRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	py := h.payee(t, userA, "Blue Bottle")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"]}]}`
+	ingest(t, h, tap)
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if tx := txOf(t, h, links[0].ID); tx.CategoryID != nil || !idIs(tx.PayeeID, py) {
+		t.Fatalf("transaction = %+v, want the AI's payee", tx)
+	}
+	if got := assignRecords(t, h, userA); len(got) != 1 || got[0].CategoryID != nil || !idIs(got[0].PayeeID, py) {
+		t.Fatalf("records = %+v", got)
+	}
+}
+
+// A categorised row an open suggestion covers is joined to it without an AI
+// call and gets nothing assigned.
+func TestAssignReuseJoinsCategorisedRowWithoutWriting(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	ruled := h.category(t, userA, "Coffee")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: ruled})
+	pyID := vo.MustParseId(py)
+	open := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+		PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+		t.Fatal(err)
+	}
+	ingest(t, h, tap)
+	if len(c.calls) != 0 {
+		t.Fatalf("an open suggestion covers the row: %+v", c.calls)
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if tx := txOf(t, h, links[0].ID); !idIs(tx.CategoryID, ruled) || tx.PayeeID != nil {
+		t.Fatalf("transaction = %+v, want the rule's category and no payee", tx)
+	}
+	if got := assignRecords(t, h, userA); len(got) != 0 {
+		t.Fatalf("records = %+v, want none", got)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || len(got[0].LinkIDs) != 1 || got[0].LinkIDs[0] != links[0].ID {
+		t.Fatalf("suggestions = %+v, want the row joined", got)
+	}
+}
+
+// With rule suggestions off, a categorised row has nothing left to gain: no
+// AI call is made for it.
+func TestAssignOnlyMakesNoCallForCategorisedRow(t *testing.T) {
+	h, _, _ := suggestSetup(t)
+	c := &fakeCompleter{reply: `{"rows":[]}`}
+	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en", rulesOff: true}})
+	h.mapCard(t, "Apple Card")
+	ruled := h.category(t, userA, "Coffee")
+	h.payee(t, userA, "Blue Bottle")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: ruled})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
+		t.Fatalf("calls = %d, reservations = %v", len(c.calls), l.reserve)
 	}
 }
 
@@ -260,9 +359,8 @@ func TestAssignSharedAccountGoesToOwner(t *testing.T) {
 	}
 }
 
-// Edits made while the AI was answering win: a row set by hand in full is
-// left alone (no payee created for it), a row with one field set gets the
-// other.
+// Edits made while the AI was answering win: a row given a category by hand
+// is left alone, payee included, and no payee is created for it.
 func TestAssignSkipsTransactionEditedMeanwhile(t *testing.T) {
 	h, p, c, _ := assignSetup(t)
 	groceries := h.category(t, userA, "Groceries")
@@ -286,16 +384,14 @@ func TestAssignSkipsTransactionEditedMeanwhile(t *testing.T) {
 	if a := txOf(t, h, bankLinkID(t, h, "a")); !idIs(a.CategoryID, food) || !idIs(a.PayeeID, mine) {
 		t.Fatalf("row edited in full = %+v", a)
 	}
-	b := txOf(t, h, bankLinkID(t, h, "b"))
-	if !idIs(b.CategoryID, food) || b.PayeeID == nil {
-		t.Fatalf("row with its category set = %+v, want the hand category and the AI payee", b)
+	if b := txOf(t, h, bankLinkID(t, h, "b")); !idIs(b.CategoryID, food) || b.PayeeID != nil {
+		t.Fatalf("row with its category set = %+v, want the hand category and no payee", b)
 	}
-	if len(h.payees.created) != 1 || h.payees.created[0] != "Starbucks" {
-		t.Fatalf("payees created = %v", h.payees.created)
+	if len(h.payees.created) != 0 {
+		t.Fatalf("payees created = %v, want none", h.payees.created)
 	}
-	got := assignRecords(t, h, userA)
-	if len(got) != 1 || got[0].LinkID != bankLinkID(t, h, "b") || got[0].CategoryID != nil || !idIs(got[0].PayeeID, b.PayeeID.String()) {
-		t.Fatalf("records = %+v", got)
+	if got := assignRecords(t, h, userA); len(got) != 0 {
+		t.Fatalf("records = %+v, want none", got)
 	}
 }
 

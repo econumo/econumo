@@ -268,13 +268,14 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				}
 			}
 			if facts.SuggestFill {
-				// a row the reuse could not fill (edited, moved, failed) is
-				// left to the AI, not joined
+				// an uncategorised row the reuse could not fill (edited, moved,
+				// failed) is left to the AI, not joined; a categorised one is
+				// never assigned and joins as it is
 				_, written := s.assign(ctx, owner, openAssignments(joins, freshOpen, rows))
 				for id, links := range joins {
 					var kept []vo.Id
 					for _, l := range links {
-						if written[l] {
+						if written[l] || !byLink[l].Missing.Category {
 							kept = append(kept, l)
 						} else {
 							back[l] = true
@@ -311,7 +312,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			}
 		}
 	}
-	if rest = fillable(rest, vocab); len(rest) == 0 {
+	if rest = fillable(rest, vocab, facts.SuggestRules, facts.SuggestFill); len(rest) == 0 {
 		return nil
 	}
 	sort.SliceStable(rest, func(i, j int) bool { return rest[i].Link.ExternalPostedAt.After(rest[j].Link.ExternalPostedAt) })
@@ -354,6 +355,9 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		if facts.SuggestFill {
 			list := make([]assignment, 0, len(valid))
 			for _, v := range valid {
+				if !v.Row.Missing.Category {
+					continue
+				}
 				list = append(list, assignment{row: v.Row, categoryID: v.CategoryID, payeeID: v.PayeeID, payeeName: v.PayeeName})
 			}
 			// the rule suggestion carries the payee its rows were given
@@ -421,18 +425,20 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	return err
 }
 
-// fillable keeps the rows a suggestion could fill: a missing payee (an
-// existing one, or a new one for a well-known merchant), a missing category
-// when there is an active category of the row's type. The others would cost
-// an AI call and a cap slot for nothing.
-func fillable(rows []suggestRow, vocab suggestVocabulary) []suggestRow {
+// fillable keeps the rows the switched-on kinds could use. A rule suggestion
+// can set a missing payee (an existing one, or a new one for a well-known
+// merchant) or a missing category when there is an active category of the
+// row's type; an assignment takes only a row with no category, the payee
+// alone included. The others would cost an AI call and a cap slot for nothing.
+func fillable(rows []suggestRow, vocab suggestVocabulary, rules, assign bool) []suggestRow {
 	hasType := map[bool]bool{}
 	for _, c := range vocab.Categories {
 		hasType[c.Income] = true
 	}
 	out := rows[:0:0]
 	for _, r := range rows {
-		if r.Missing.Payee || (r.Missing.Category && hasType[r.Type.IsIncome()]) {
+		category := r.Missing.Category && hasType[r.Type.IsIncome()]
+		if (rules && (r.Missing.Payee || category)) || (assign && r.Missing.Category && (category || r.Missing.Payee)) {
 			out = append(out, r)
 		}
 	}
