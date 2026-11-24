@@ -3259,7 +3259,8 @@ User C sees none of it.
       they are disabled offline and vanish when "Use AI
       features" is switched off. Turning one off persists across a reload and
       keeps the other as it was; turning both off in quick succession leaves
-      both off.
+      both off. A refused switch write shows one error toast, even when a
+      quick second toggle after it went through.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on

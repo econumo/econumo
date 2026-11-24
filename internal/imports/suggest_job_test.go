@@ -647,6 +647,8 @@ func seedPayeeSuggestion(t *testing.T, h *harness, py string) vo.Id {
 
 func TestSuggestCoveringSuggestionDeletedSendsRowsToAI(t *testing.T) {
 	h, c, facts := suggestSetup(t)
+	// assignment off: the payee-only suggestion covers the row it partly fills
+	facts[userA] = ownerFact{language: "en", fillOff: true}
 	h.withRepo(&vanishingRepo{Repository: h.repo, deleteOn: 1})
 	h.wireSuggest(c, facts)
 	h.mapCard(t, "Apple Card")
@@ -753,6 +755,8 @@ func TestSuggestIgnoresOpenSuggestionWithArchivedCategory(t *testing.T) {
 	}{{"before the AI call", false}, {"after the AI call", true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			h, c, facts := suggestSetup(t)
+			// assignment off: the category-only suggestion would cover the row
+			facts[userA] = ownerFact{language: "en", fillOff: true}
 			if tc.hideFirst {
 				h.withRepo(&vanishingRepo{Repository: h.repo, hideFirst: true})
 				h.wireSuggest(c, facts)
@@ -1770,10 +1774,11 @@ func TestSuggestRulesTurnedOffBeforeTheJoinSendsRowsToAI(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	catID := vo.MustParseId(cat)
+	catID, pyID := vo.MustParseId(cat), vo.MustParseId(h.payee(t, userA, "Some Cafe"))
+	// it fills all the row lacks, so the first pass covers the row
 	open := &model.ImportSuggestion{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
-		CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		CategoryID: &catID, PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
 		t.Fatal(err)
@@ -1936,4 +1941,30 @@ func TestSuggestReuseRereadsTheVocabulary(t *testing.T) {
 			t.Fatalf("rule suggestions = %+v, want the row not joined", got)
 		}
 	})
+}
+
+// Assignment turned on between the first look and the join: the join reads
+// the switch again, so a payee-only suggestion no longer takes the
+// uncategorised row, which goes to the AI for its category.
+func TestSuggestFillTurnedOnBeforeTheJoinSendsPartlyCoveredRowToAI(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	open := seedOpenSuggestion(t, h, "", h.payee(t, userA, "Some Cafe"))
+	h.wireSuggest(c, &factsSeq{seq: []imports.OwnerInfo{
+		{Language: "en", SuggestRules: true},
+		{Language: "en", SuggestRules: true, SuggestFill: true},
+	}})
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if tx := txOf(t, h, links[0].ID); !idIs(tx.CategoryID, cat) {
+		t.Fatalf("transaction = %+v, want the AI's category", tx)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].ID != open.ID || len(got[0].LinkIDs) != 1 {
+		t.Fatalf("rule suggestions = %+v", got)
+	}
 }
