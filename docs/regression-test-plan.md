@@ -1395,6 +1395,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Manual sort dialog + drag reorder persists order across reload and is
       reflected in transaction-dialog pickers.
 - [ ] Search (inline on desktop, search dialog on compact) and empty states.
+- [ ] 📱 A search field with text shows a ✕ at its right end (account page
+      transaction search, the settings lists, every picker sheet and searchable
+      dropdown); one tap empties it, restores the full list and leaves the
+      cursor in the field. An empty field shows no ✕. Global search keeps its
+      own ✕, which closes search.
 - [ ] Creating from within the transaction dialog (create-on-type) lands the
       item in the settings list too.
 

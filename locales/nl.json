@@ -7,6 +7,7 @@
     "list": {
       "list_empty": "Lijst is leeg",
       "search": "Zoeken",
+      "clear_search": "Zoekopdracht wissen",
       "search_empty": "Niets gevonden",
       "order_list": "Volgorde wijzigen",
       "active_only": "Alleen actieve"

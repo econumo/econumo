@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 import type { RecurringDto } from '@/api/dto/recurring'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/SearchInput'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -189,12 +189,13 @@ export function AccountPage() {
             </div>
             <div ref={setHistoryNavigationTarget} className="relative h-3 border-b" />
           </header>
-          <Input
+          <SearchInput
             aria-label={t('accounts.page.toolbar.search')}
             placeholder={t('accounts.page.toolbar.search')}
             className="border-0 bg-econumo-card shadow-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch('')}
           />
         </>
       ) : (
@@ -244,12 +245,14 @@ export function AccountPage() {
             ) : (
               <span />
             )}
-            <Input
+            <SearchInput
               aria-label={t('accounts.page.toolbar.search')}
               placeholder={t('accounts.page.toolbar.search')}
-              className="w-60 border-0 bg-econumo-card shadow-none"
+              wrapperClassName="w-60"
+              className="border-0 bg-econumo-card shadow-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onClear={() => setSearch('')}
             />
           </div>
         </>
