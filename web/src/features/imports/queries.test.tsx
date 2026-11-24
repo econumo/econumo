@@ -209,6 +209,27 @@ it('a sync refreshes the payees with the suggestions', async () => {
   expect(queryClient.getQueryState(queryKeys.payees)?.isInvalidated).toBe(true)
 })
 
+// An Apple Wallet tap reaches the server without this device, and the job then fills it in: the
+// suggestion list's refetch on focus also refreshes an accounts list older than a minute, whose
+// revisions drive the transaction sync.
+it('a suggestion list fetch refreshes the accounts list when it is older than a minute', async () => {
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [], { updatedAt: Date.now() - 61_000 })
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.accounts)?.isInvalidated).toBe(true)
+})
+
+it('a suggestion list fetch leaves a fresh accounts list alone', async () => {
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [])
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.accounts)?.isInvalidated).toBe(false)
+})
+
 it('a suggestion naming a payee the cached list lacks refetches the payee list', async () => {
   server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1', payeeId: 'p-job', payeeName: '' }] } })))
   const { queryClient, wrapper } = makeWrapper()
@@ -333,8 +354,9 @@ describe('suggestion refresh after a sync', () => {
     vi.useRealTimers()
   })
 
-  // the job creates payees for the rows it assigns, which the payee list must show
-  it('refetches the suggestions and the payees at 15 s and 60 s when AI is on', () => {
+  // the job assigns categories and payees (creating payees) after the sync answered: the ledger
+  // views and the payee list must show them
+  it('refetches the suggestions, the payees and the ledger views at 15 s and 60 s when AI is on', () => {
     vi.useFakeTimers()
     window.econumoConfig = { AI_ENABLED: true }
     const queryClient = new QueryClient()
@@ -343,9 +365,10 @@ describe('suggestion refresh after a sync', () => {
     vi.advanceTimersByTime(14_999)
     expect(spy).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    expect(spy.mock.calls).toEqual([[{ queryKey: queryKeys.importSuggestions }], [{ queryKey: queryKeys.payees }]])
+    const keys = [queryKeys.importSuggestions, queryKeys.payees, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.debts, queryKeys.budgetTransactions]
+    expect(spy.mock.calls).toEqual(keys.map((queryKey) => [{ queryKey }]))
     vi.advanceTimersByTime(45_000)
-    expect(spy).toHaveBeenCalledTimes(4)
+    expect(spy).toHaveBeenCalledTimes(keys.length * 2)
   })
 
   it('schedules nothing without AI', () => {

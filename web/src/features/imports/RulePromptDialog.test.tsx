@@ -942,6 +942,31 @@ describe('suggestion mode', () => {
       expect(posted.create![0]).toMatchObject({ categoryId: '', payeeId: 'payee-2' })
     })
 
+    it('a Save retried after the payee it made was deleted elsewhere creates it again under a new id', async () => {
+      renderPrompt()
+      const payees = payeeServer()
+      previewCounts(0, 0)
+      let fail = true
+      server.use(http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+        ;(posted.accept ??= []).push(await request.json())
+        if (fail) return refused('boom')
+        return HttpResponse.json({ success: true, message: '', data: { updated: 2 } })
+      }))
+      const user = await open(proposing())
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(posted.accept).toHaveLength(1))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+      payees.splice(payees.findIndex((p) => p.id === 'payee-2'), 1)
+      fail = false
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const ids = (posted.createPayee as { id: string }[]).map((b) => b.id)
+      expect(ids).toHaveLength(3)
+      expect(ids[1]).toBe(ids[0])
+      expect(ids[2]).not.toBe(ids[0])
+      expect((posted.create as Record<string, unknown>[]).at(-1)).toMatchObject({ payeeId: 'payee-2' })
+    })
+
     it('Cancel creates no payee', async () => {
       renderPrompt()
       payeeServer()

@@ -37,7 +37,11 @@ export function useImportQueue() {
 
 // The server writes suggestions in the background after an import answers, and an Apple Wallet
 // push reaches the server without this device knowing: a short staleTime plus a refetch on focus
-// is how they show up.
+// is how they show up. The same refetch brings the tap itself and what the AI job filled in on
+// it: an accounts list older than the staleTime is refreshed, and its revisions make the
+// transaction sync download the changed accounts.
+const SUGGESTIONS_STALE_MS = 60_000
+
 export function useImportSuggestions() {
   const queryClient = useQueryClient()
   return useQuery({
@@ -45,9 +49,13 @@ export function useImportSuggestions() {
     queryFn: async () => {
       const items = await importsApi.getImportSuggestionList()
       refetchPayeesIfUnknown(queryClient, items.map((s) => s.payeeId))
+      const accounts = queryClient.getQueryState(queryKeys.accounts)
+      if (accounts && Date.now() - accounts.dataUpdatedAt > SUGGESTIONS_STALE_MS) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      }
       return items
     },
-    staleTime: 60_000,
+    staleTime: SUGGESTIONS_STALE_MS,
     refetchOnWindowFocus: true,
     retry: suggestionRetry,
   })
@@ -103,32 +111,43 @@ export function useCreateSuggestedPayee() {
         }
         return { payee: named.payee, created: op.created }
       }
-      const retry = op.unsettled
-      op.unsettled = true
-      try {
-        const payee = await payeeApi.createPayee({ id: op.opId, name })
-        op.unsettled = false
-        op.created = true
-        trackEvent(METRICS.PAYEE_CREATE)
-        return { payee, created: true }
-      } catch (err) {
-        if (!isAxiosError(err) || err.response === undefined || err.response.status >= 500) {
-          throw err
-        }
-        op.unsettled = false
-        const fresh = await queryClient.fetchQuery({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList, staleTime: 0 }).catch(() => undefined)
-        const found = resolveSuggestedPayee(fresh, name, ownerUserId)
-        if (found.kind === 'archived') {
-          return { payee: null, created: false }
-        }
-        if (found.kind === 'new') {
-          throw err
-        }
-        // refused as a replay: the earlier request whose answer was lost made it
-        if (retry) {
+      for (let attempt = 0; ; attempt++) {
+        const retry = op.unsettled
+        // the server may already have handled this id, in which case it refuses it again
+        const usedBefore = retry || op.created
+        op.unsettled = true
+        try {
+          const payee = await payeeApi.createPayee({ id: op.opId, name })
+          op.unsettled = false
           op.created = true
+          trackEvent(METRICS.PAYEE_CREATE)
+          return { payee, created: true }
+        } catch (err) {
+          if (!isAxiosError(err) || err.response === undefined || err.response.status >= 500) {
+            throw err
+          }
+          op.unsettled = false
+          const fresh = await queryClient.fetchQuery({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList, staleTime: 0 }).catch(() => undefined)
+          const found = resolveSuggestedPayee(fresh, name, ownerUserId)
+          if (found.kind === 'archived') {
+            return { payee: null, created: false }
+          }
+          if (found.kind === 'new') {
+            // An id the server already handled whose payee is gone (deleted or merged elsewhere
+            // since) would be refused on every Save: a new id gets one more try.
+            if (!usedBefore || attempt > 0) {
+              throw err
+            }
+            op = { opId: uuidv7(), unsettled: false, created: false }
+            suggestedPayees.set(suggestionId, op)
+            continue
+          }
+          // refused as a replay: the earlier request whose answer was lost made it
+          if (retry) {
+            op.created = true
+          }
+          return { payee: found.payee, created: op.created }
         }
-        return { payee: found.payee, created: op.created }
       }
     },
     onSuccess: ({ payee }) => {
