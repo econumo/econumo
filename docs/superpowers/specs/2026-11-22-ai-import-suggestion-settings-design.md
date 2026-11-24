@@ -1,270 +1,203 @@
-# AI import suggestions: settings and per-transaction suggestions
+# AI import settings: automatic assignment and rule suggestions with new payees
 
-Date: 2026-11-22. Status: approved, implemented (PR #501).
+Date: 2026-11-22, revised 2026-11-23. Status: approved (revision 2), PR #501.
 
-Builds on `2026-11-11-ai-import-rule-suggestions-design.md` (the AI rule suggestions job,
-#473). Everything that spec says still holds unless this one changes it.
+Builds on `2026-11-11-ai-import-rule-suggestions-design.md` (the AI rule-suggestion job, #473).
+Everything that spec says still holds unless this one changes it.
+
+**Revision 2 (2026-11-23).** The first version added per-transaction *suggestions* (an Inbox
+section "Imported transactions" with Fill in). After seeing it running, the owner found it too
+much: the category and payee are now **assigned automatically**, and rule suggestions may
+name a **new payee** for a well-known merchant. The Inbox section, its three routes and the
+preview sheet are removed; the table stays as the record of what the AI assigned.
 
 ## Intent
 
-Today the AI import job can only propose **rules** ("Suggested rules" in the Inbox). The owner
-wants two things, both controlled from the AI settings:
-
-1. A choice of what the AI suggests for imported transactions: rules, a category and payee
-   for each transaction, both, or neither.
-2. A new kind of suggestion: for one imported transaction, "fill in this category and payee",
-   accepted with one tap, without creating a rule.
-
-The AI still never writes anything by itself. Every change to a transaction goes through a
-tap in the Inbox.
-
-## Goals
-
-- Two switches under "Use AI features": **Suggest rules** and **Suggest category and payee**.
-- A new Inbox section, **Imported transactions**, listing imported transactions the AI has a
-  suggestion for: one row per transaction, not grouped, newest first, across accounts,
-  drawn like the Due section's rows (a full `TransactionRow`), with the suggested category
-  and payee shown in place and a "Suggested" tag.
-- Tapping a row opens the transaction preview sheet with two actions: **✕** (dismiss) and
-  **Fill in**. Both act on that one transaction only.
-- "Suggested rules" stays its own section, unchanged, above "Imported transactions".
-- One AI pass feeds both sections: no extra AI calls.
-
-## Non-goals
-
-- No automatic writes. Auto-assigning and auto-creating rules were discussed and dropped in
-  favour of suggestions only (decided by the owner).
-- No change to which transactions qualify: still ongoing live imports only, the account
-  owner only, never readonly (see the rule-suggestions spec, "Which transactions qualify").
-- No change to the prompts or to the data sent to the AI. The data allowlist and its guard
-  tests are untouched.
-- No change to how "Suggested rules" behaves, except the one interaction below.
-- No MCP surface. No offline queueing: Fill in and ✕ need the server, like Dismiss today.
-- No grouping, bulk fill or "fill all from this merchant". Covering a merchant at once is
-  what a rule is for.
-
-## Anti-goals
-
-- A Fill in that overwrites a category or payee the user set.
-- The AI called more often than today, or called at all when both switches are off.
-- "Suggested rules" regressing: its grouping, reuse, accept and dismiss behaviour was
-  settled over several review rounds and must keep passing its tests.
-- A transaction suggestion shown to anyone but the account owner, or naming another user's
-  categories or payees.
+An Apple Pay tap or a SimpleFIN row usually arrives with no category and no payee. With AI
+configured, the owner wants Econumo to fill both in by itself for new imports, and to keep
+proposing rules so a merchant is covered for good. A merchant the user has never had as a payee
+should still get one when it is a well-known brand.
 
 ## Decisions made with the owner
 
-1. Suggestions only, no automatic writes.
-2. Two independent on/off switches: Suggest rules, Suggest category and payee.
-3. Separate Inbox sections: "Suggested rules" (unchanged) and "Imported transactions"
-   (new, ungrouped, one row per transaction, newest first).
-4. Rows look like the Due section's rows; tapping opens the preview sheet with ✕ and Fill in.
-5. Fill in and ✕ act on one transaction only.
-6. Approach B: a separate table for transaction suggestions, written by the same AI job.
-7. Values accepted with Fill in are protected like a hand edit: a later rule apply skips them
-   unless "include edited" is ticked.
+1. Two switches under "Use AI features", both **on** by default:
+   **Assign category and payee automatically** and **Suggest rules**.
+2. Automatic assignment writes straight onto the transaction (no Inbox step), empty fields only.
+3. A missing payee is **created** only when the merchant is a major, well-known brand
+   (Starbucks, Uber, Whole Foods); an unknown local shop gets a category and no payee.
+4. Suggested rules may carry a new payee (same well-known-only limit, *my proposal, accepted*);
+   it is created only when the user saves the rule.
+5. AI-assigned values count like a rule's write: a rule applied later may replace them
+   (*my proposal, accepted*).
+6. Rule suggestions keep counting an auto-assigned transaction while its values agree with them.
+
+## Goals
+
+- With "Assign automatically" on, every new live imported transaction no rule classified gets
+  the AI's category (an existing category of the right type) and payee (existing, or new when
+  well-known), in the background after the import answers.
+- Suggested rules still appear for those merchants even though their transactions are filled.
+- A rule suggestion can propose a payee that does not exist yet; saving creates it.
+- No extra AI calls: one AI pass per import run serves both.
+
+## Non-goals
+
+- No Inbox item, badge or review list for automatic assignments, and no "AI" marker on
+  transactions.
+- No change to which rows qualify: ongoing live imports only, account owner only, never
+  readonly (rule-suggestions spec, "Which transactions qualify").
+- No new categories are ever created. No tags, labels or descriptions.
+- No MCP surface.
+
+## Anti-goals
+
+- Overwriting a category or payee the user (or a rule) set.
+- A new payee for an unknown shop, or two payees for one merchant.
+- An import slowed or failed by the AI (the job still runs after the import commits).
+- Any data outside the AI allowlist reaching the model.
 
 ## Approaches considered
 
-- **A. Reuse the rule-suggestion storage** (a per-link state on `import_suggestion_links`,
-  dismissing a rule hides instead of deletes). Less new code, but it rewrites the rule
-  suggestions' read, dismiss and cleanup logic, and each row's values would be the
-  merchant group's, not the AI's answer for that transaction.
-- **B. A separate table, same AI job (chosen).** Independent lifecycles that match the two
-  sections, per-row values straight from the AI reply, rule-suggestion code mostly untouched.
-  Costs a table and three routes.
-- **C. A second AI job.** Cleanest separation, but doubles AI calls per import. Rejected.
+- **A. Write assignments inside the existing job (chosen).** The job already validates a
+  per-row category and payee; it writes them through the transaction update path, records them
+  in `import_transaction_suggestions` (status `filled`), and keeps rule suggestions alive
+  through the existing agreement check. Small change on top of revision 1.
+- **B. A second job just for assignment.** Doubles AI calls. Rejected.
+- **C. Assign through auto-created rules.** Rejected earlier by the owner (suggestions for rules,
+  no automatic rules).
 
 ## Settings
 
-### Storage
-
-Two new user options, read like `ai` and `analytics` (absent or empty = on, so no backfill):
-
-- `ai_suggest_rules`: `"1"` / `"0"`.
-- `ai_suggest_fill`: `"1"` / `"0"`.
-
-Defaults: both on, for existing and new users (*my call, stated to the owner*: both only
-produce suggestions, and rules-on keeps today's behaviour).
-
-### API
-
-`POST /api/v1/user/update-ai-suggestions {suggestRules: bool, suggestFill: bool}`, both
-required, returns the refreshed user like `update-ai`. On the read-only allowlist next to
-`update-ai` (*my call*: turning a preference off must work for a lapsed trial too, and it
-sends nothing anywhere). An apiparity scenario and golden.
-
-### Effects
-
-- `Use AI features` off: as today, nothing is suggested and all open suggestions are deleted,
-  now including transaction suggestions (`ClearSuggestions` clears both).
-- A switch off: its section is **hidden, not deleted**; turning it back on shows what is still
-  pending. The job stops creating that kind while it is off.
-- Both off: the job makes no AI call and writes nothing (checked with the other owner facts,
-  before the rate-limit slot is taken).
-- `OwnerFacts` gains the two switches. The job re-reads them where it re-reads the opt-out
-  today (before each AI call and inside the write transaction).
-- The better match text in the rule editor (`suggest-match-text`) still follows only the main
-  switch.
-
-### UI
-
-`AiDialog` keeps the privacy promise, the description and the main switch. Below it, shown
-only while the main switch is on, a small group headed "Imported transactions" with the two
-switches. Each switch is disabled offline (`useOnline`). The SPA reads both options from the
-user like `userAiOn`.
+- User options `ai_suggest_rules` (unchanged) and `ai_suggest_fill`, now meaning **assign
+  automatically**. Values `"1"`/`"0"`, absent or empty = **on** (both). The option name stays
+  `ai_suggest_fill` (unreleased, but already wired through route, goldens and SPA; *my call*).
+- `POST /api/v1/user/update-ai-suggestions {suggestRules, suggestFill}` unchanged, on the
+  read-only allowlist.
+- AiDialog labels: "Suggest rules" and "Assign category and payee automatically" (new key
+  text in all 11 catalogues). Shown only while "Use AI features" is on.
+- Both off: the job makes no AI call. "Use AI features" off: nothing runs; open rule
+  suggestions are deleted as today.
 
 ## The AI job
 
-The job, its qualification rules, the reuse step, the two-step prompts, validation and the
-rate cap stay as they are. What changes:
+### Prompt: the well-known flag
 
-- **Rules off:** no `import_suggestions` row is inserted or joined, and the reuse step
-  (attaching rows to an open rule suggestion without an AI call) is skipped. Rule
-  suggestions left open from before stay in the table, hidden.
-- **Fill on:** after validation (`validateReply`), every valid row also gets a transaction
-  suggestion carrying **that row's own** validated category and payee (not the group's
-  majority classification). Rows the reuse step attached to an open rule suggestion without
-  an AI call get a transaction suggestion with that rule suggestion's category and payee
-  (still valid per `liveOpen`), limited to the fields the row lacks.
-- Validation is unchanged, including the requirement for a valid match text (*my call*: a row
-  whose match text the AI could not place is a sign it did not identify the merchant, and
-  keeping one validation path avoids touching the delicate code). A field the transaction
-  already carries is dropped, as today; a row left with neither field gets no suggestion.
-- Transaction suggestions are written in the same DB transaction as the rule suggestions, and
-  `undoIfOptedOut` deletes them too.
-- One transaction suggestion per ledger row: a second write for the same link is ignored.
+Step 1's reply rows gain `wellKnown` (boolean): true only for a major chain or brand most
+people in the request's language would recognise. The system prompt (`prompts/suggest.md`)
+says so, with examples on both sides (Starbucks / Uber / Whole Foods / Яндекс Такси true; a
+single local café, a person, a payment processor naming no merchant false). Reply schema in
+`internal/imports/prompts.go` gains the field. No new input data: the data allowlist and the
+prompt builders' key-set guard tests are unchanged.
+
+### Payee resolution per row
+
+Unchanged: exact match against existing payees, then step 2 (candidates) picks an existing one.
+New: a row that ends with **no** payee, has a merchant name (`merchants[0]`, trimmed) and
+`wellKnown: true` gets a **new-payee name** = `merchants[0]`. Before creating, the name is
+compared (normalised as in `similarityText`) with every payee the owner has, archived ones
+included; an equal name reuses that payee (unarchived ones only; an archived match means no
+payee, *my call*: the user archived it on purpose).
+
+### Writing assignments (switch "assign" on)
+
+Inside the job's post-AI write transaction, for each valid row (same validation as today:
+match text placeable, category of the right type), under the owner's job lock:
+
+1. Lock the transaction row (`LockTransactionRow`), re-read it, skip it if it is gone, changed
+   type, or no longer empty in the fields to fill.
+2. Create the new payee if the row needs one (through a new imports port
+   `PayeeCreator.CreatePayee(ctx, ownerID, name) (model.ImportNamed, error)`, wired in
+   `internal/server` to the payee service like `TransactionImportPayees.CreatePayee`). One
+   payee per normalised name per run (rows of the same merchant share it).
+3. Write only empty fields through `txns.UpdateTransaction` (revision bump, sort keys untouched)
+   and move the ledger's `applied_category_id` / `applied_payee_id` snapshot for the fields
+   written (like a rule's write: a later apply-rule may replace them; `applied_rule_id` stays
+   unset).
+4. Record `import_transaction_suggestions` (link, owner, the category and payee written, type,
+   status `filled`).
+
+Rows the pre-AI reuse step attached to an open rule suggestion get that suggestion's
+category/payee assigned the same way (no AI call), limited to the fields the row lacks.
+
+A failure on one row (a payee name the payee service rejects, a write error) skips that row
+and logs a WARN with ids and `err_type` only; the rest of the run proceeds. The opt-out
+re-checks stay; an opt-out (AI off) found after commit does **not** undo assignments already
+written (*my call*: they are ordinary data by then, like a rule's write), but the undo still
+removes the run's rule suggestions.
+
+### Rule suggestions (switch "rules" on)
+
+Unchanged, except a group whose rows have no payee but a well-known merchant carries
+`payee_name` (the new-payee name) instead of `payee_id`. Grouping and the one-open-suggestion
+rule treat a `payee_name` like a payee value (two groups with different names do not merge). A
+reused open suggestion with a `payee_name` whose payee now exists (created by assignment or by
+hand) reads as that payee.
+
+When "assign" is also on, the assignment usually creates the payee in the same run; the rule
+suggestion then simply carries that `payee_id`.
 
 ## Storage
 
-New table on both engines, migration version above every released one (currently above
-`20261116000000`):
+- `import_transaction_suggestions` (migration `20261122000000`, unreleased): unchanged schema;
+  only `filled` rows are written now. `open` stays a valid status for rows written by earlier
+  builds of this branch (none in production).
+- `import_suggestions` gains `payee_name TEXT DEFAULT NULL`, in the same unreleased migration
+  `20261122000000` on both engines (*my call*: nothing outside this branch ran it).
 
-`import_transaction_suggestions`
-- `link_id` TEXT PRIMARY KEY, FK to `import_transaction_links (id)` ON DELETE CASCADE.
-- `user_id` TEXT NOT NULL, the account owner, FK to `users (id)` ON DELETE CASCADE.
-- `category_id` TEXT NULL, `payee_id` TEXT NULL.
-- `transaction_type` TEXT NOT NULL (`expense` / `income`).
-- `status` TEXT NOT NULL: `open` or `filled`.
-- `created_at`, `updated_at` DATETIME NOT NULL.
-- Index on `(user_id, status)`.
+## Removed from revision 1
 
-Dismissed suggestions are deleted (nothing reads them; a link only ever qualifies once, at
-its live import, so it is never suggested again). `filled` rows are kept for the
-rule-suggestion interaction below and go when the link goes.
+- Routes `get-transaction-suggestion-list`, `fill-transaction-suggestion`,
+  `dismiss-transaction-suggestion`, their handlers, DTOs, apiparity scenarios and goldens.
+- The Inbox section "Imported transactions", its queries, refresh hooks, metrics keys, the
+  preview sheet's "Suggested" marks, i18n keys and tests.
+- Fill in's "counts as a hand edit" rule.
 
-## Reading: `GET /api/v1/import/get-transaction-suggestion-list`
-
-Returns the caller's `open` transaction suggestions, newest first by the transaction's date
-(then id), computed at read time like the rule-suggestion list:
-
-- the transaction is live, on an account the caller owns, still of the suggestion's type;
-- the suggestion's category (if any) is a non-archived category of the caller that fits the
-  type, its payee (if any) a non-archived payee of the caller; an invalid field counts as
-  unset;
-- at least one remaining field would fill an empty field of the transaction.
-
-A suggestion failing these is not listed, and is deleted lazily (best effort, as the rule
-list does). Hidden (not deleted) when the caller is readonly or `ai_suggest_fill` is off;
-empty when AI is off.
-
-Each item: `id` (the link id), `transactionId`, `accountId`, `type`, `amount`, `currency`,
-`date`, `description`, `externalPayee`, `categoryId`, `payeeId` (only what Fill in would still
-write), `transactionCategoryId`, `transactionPayeeId` (the transaction's own values, null when
-empty). Enough for the SPA to draw a
-`TransactionRow` with the suggested fields in place without the local transaction store
-(*builder's call* whether to prefer the stored transaction when present).
-
-## Fill in: `POST /api/v1/import/fill-transaction-suggestion {id}`
-
-In one DB transaction, under a lock on the suggestion row:
-
-1. Re-read the suggestion; gone, not `open` or not the caller's = not found (the client treats
-   a not-found as done, like accept and dismiss today).
-2. Re-check the transaction as the read does. Fill only the **empty** fields: the category if
-   the transaction has none and the category is valid and fits the type, the payee if the
-   transaction has none and the payee is valid. Never overwrite.
-3. Write through `txns.UpdateTransaction` (revision bump, `revisionguard` passes) and leave
-   the ledger's `applied_*` snapshot alone, unlike `AcceptSuggestion` (decided by the owner):
-   values accepted with Fill in are the user's choice, protected like a hand edit. The row
-   then reads as edited (`edited()` in `ruleapply.go`), so a later `apply-rule` skips it unless
-   "include edited" is ticked, and `preview-rule` counts it in `alreadyEdited`.
-4. Set the status to `filled`. `reqctx.PinIdempotency`.
-
-Returns `{updated: 0|1}`. If nothing was left to fill, the suggestion is deleted instead and
-`updated` is 0.
-
-## Dismiss: `POST /api/v1/import/dismiss-transaction-suggestion {id}`
-
-Deletes the caller's open suggestion. Not found counts as done on the client. Returns the
-refreshed list, like `dismiss-suggestion`.
+The list's read-time cleanup is not needed: nothing is open any more.
 
 ## Interaction with Suggested rules
 
-Today a rule suggestion lists only transactions still empty in a field it would set, so it
-disappears once they are filled. A transaction filled **through Fill in** (its
-transaction suggestion is `filled`) keeps counting as pending for its rule suggestion while
-the transaction **agrees** with it: every field the rule suggestion sets equals the
-transaction's current value (decided with the owner: accepting the AI's values means its
-guess was right, so the rule is still worth offering). A transaction's own suggestion can
-differ from its rule suggestion (the rule suggestion takes the merchant's majority answer, or
-an open suggestion's values), so a fill that disagrees, or a later hand change that makes the
-transaction disagree, counts against the rule suggestion (*my call*: accepting Restaurants
-argues against a Coffee rule). No record of which fields the fill wrote is needed. A
-transaction the user filled by hand without Fill in counts against the rule suggestion as
-today.
+`pendingSuggestionRows` keeps a row whose transaction has no empty field the rule suggestion
+sets when its link has a `filled` record and every field the suggestion sets equals the
+transaction's current value (revision 1's agreement check, unchanged). A suggestion's
+`payee_name` counts as "sets the payee"; it agrees when the transaction's payee has that name
+(normalised). Accepting such a suggestion has nothing to fill on those rows and releases them.
 
-Accepting the rule suggestion then has nothing to fill on such rows. It still walks and
-releases them; the rule applies to later imports as usual.
+## Suggested rules: saving a new payee
 
-Making a rule fills its transactions, which removes them from "Imported transactions" through
-the read-time check (no extra write path). Dismissing a rule suggestion leaves its
-transactions' suggestions in place.
-
-## Inbox
-
-- New section **Imported transactions** (`inbox.sections.imported_transactions`), right after
-  "Suggested rules", fed through `useInbox()` and counted in the badge (one per row). Shown only
-  while the server has AI configured, the user's AI is active and `ai_suggest_fill` is on.
-- "Suggested rules" is shown only while `ai_suggest_rules` is on.
-- Each row: a `TransactionRow` of the imported transaction with the suggested category and
-  payee overlaid, the account shown (cross-account list, like Due), and a "Suggested" note.
-- Tapping opens the transaction preview sheet (`ViewTransactionDialog`, as
-  `ViewRecurringDialog` does) with the suggested values shown and the footer `[ ✕ ] [ Fill in ]`
-  (small, wide), both disabled offline. Fill in closes the sheet on success.
-- Refresh: the list refetches on the same schedule as the rule suggestions
-  (`suggestionRefresh.ts`), and the transaction caches are invalidated after a fill so the
-  revision sync downloads the changed account.
-- A 404 from an older server without the route is treated as an empty list, like the rule
-  list.
+`GET get-suggestion-list` items gain `payeeName` (string, empty when none). The Inbox row shows
+"→ Coffee · Blue Bottle (new)". Tapping opens the rule editor prefilled with the payee field
+showing the new name as a pending new payee. On **Save**, the SPA first creates the payee
+(`create-payee`, client-minted id, so a retried save reuses it; a name that now exists reuses the
+existing payee), then `create-rule` with that payee, then `accept-suggestion` as today. Changing
+the payee in the editor drops the pending name. Offline: disabled as today.
 
 ## Analytics
 
-New `METRICS` keys fired at the success points: a transaction suggestion filled, a
-transaction suggestion dismissed, and the AI suggestion settings changed (with which switch).
+Removed: the two transaction-suggestion keys. Kept: `appUserAiSuggestionsUpdate`. New: a rule
+saved from a suggestion that carried a new payee fires the existing save event with
+`newPayee: true` (no new key needed if the event accepts props; else a new key).
 
 ## Docs and tests
 
-- `CLAUDE.md`: imports route count (33 → 36), the AI rule-suggestions bullet mentions the
-  transaction suggestions and the two switches.
-- `docs/regression-test-plan.md`: both switches (each section hides, both off = no new
-  suggestions), an Apple Pay tap at a known merchant appears in Imported transactions, Fill in
-  fills only empty fields, ✕ removes it, a filled row keeps its rule suggestion only when they
-  agree, a filled row is skipped by a later apply unless "include edited", making a rule clears
-  the matching rows, AI off clears everything.
-- apiparity scenarios and goldens for the four new routes.
-- Go tests with the recording completer: per-row values (not the group's), rules off writes no
-  rule suggestion and skips reuse, fill off writes no transaction suggestion, both off makes no
-  AI call, fill never overwrites, readonly and AI off, opt-out undo removes both kinds, the
-  filled-row interaction with the rule list (agree and disagree), a filled row skipped by
-  apply-rule without "include edited", owner-only on a shared account.
-- Frontend tests for the settings dialog, the new section, the sheet actions, offline
-  disabling; `metrics-coverage` and the offline coverage lists.
-- i18n keys in all 11 catalogues.
+- `CLAUDE.md`: imports route count back to 33; the AI bullet describes automatic assignment,
+  the well-known flag and `payee_name`.
+- `docs/regression-test-plan.md`: replace the Imported-transactions items with: a tap at a known
+  merchant is categorised and gets a payee within a minute; an unknown shop gets a category
+  only; a value already set is never changed; switch off = no assignment; a rule suggestion with
+  "(new)" creates the payee on save and not on dismiss; rule suggestions still listed for
+  auto-filled taps.
+- Go tests with the recording completer: assignment writes only empty fields and moves the
+  applied snapshot; new payee only when `wellKnown`; name reuse (case/punctuation), archived
+  match = no payee; one payee per merchant per run; switch off writes nothing; both off no
+  call; shared account goes to the owner; rule suggestion `payee_name` round trip, merge rules,
+  agreement on name; a concurrent hand edit is not overwritten.
+- AI evals (`aieval` tag): cases for `wellKnown` in English and Russian, at or above 0.90.
+- apiparity: `get-suggestion-list` golden gains `payeeName`; removed routes' goldens deleted
+  (the guard requires no orphans).
+- Frontend tests: AiDialog labels; rule row "(new)"; save creates the payee then the rule;
+  retried save reuses it.
 
 ## Left to the builder
 
-Every *builder's call* above, plus: exact copy and keys, the "Suggested" note's styling, how
-the preview sheet marks suggested values, whether `update-ai-suggestions` is one route or the
-two options ride on `update-ai`, and the internal shape of the job changes as long as the
-rule-suggestion behaviour and tests are preserved.
+Exact prompt wording and eval cases, the rule editor's presentation of a pending new payee,
+and whether the analytics flag is a prop or a key.
