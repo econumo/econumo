@@ -23,10 +23,12 @@ export interface StepBodyProps {
   setAnswers: (step: StepId, patch: Partial<WizardAnswers>) => void
   setFixes: (update: (prev: ReadonlyMap<number, RowFix>) => ReadonlyMap<number, RowFix>) => void
   goTo: (step: StepId) => void
-  /** the step's list of choices was opened ("Not right? Choose differently") */
+  /** the step's list of choices was opened with Change */
   choosing: boolean
   /** opens the step's list of choices; it answers nothing, so the step stays open to later guesses */
-  choose: () => void
+  change: () => void
+  /** a pick was made: back to the answer */
+  closeChoices: () => void
 }
 
 // accounts I can write transactions into, as the import checks it: mine, or shared to me with

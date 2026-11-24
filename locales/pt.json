@@ -445,7 +445,7 @@
         "currency_of": "Moeda de {name}",
         "name_hint": "Pode mudar o nome mais tarde",
         "currency_unknown": "O ficheiro indica {code}, que não está configurada aqui. Pode adicioná-la nas Definições.",
-        "per_row": "O seu ficheiro indica a conta de cada movimento:",
+        "per_row": "O seu ficheiro indica a conta de cada movimento",
         "transactions": "{count} movimento | {count} movimentos"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} linha | {count} linhas",
       "all_steps": "Todos os passos",
       "column_empty": "vazia",
-      "more_columns": "Mostrar mais {count} | Mostrar mais {count}",
+      "show_all": "Mostrar tudo",
       "now_used": "usado para {role}",
       "summary": {
         "not_chosen": "Por escolher",
@@ -553,7 +553,8 @@
       },
       "from": "de «{name}»",
       "looks_right": "Está certo",
-      "choose_differently": "Não está certo? Escolher outra coisa"
+      "change": "Alterar",
+      "done": "Concluído"
     },
     "import_result": {
       "success_title": "Importação concluída",

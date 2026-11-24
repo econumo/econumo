@@ -445,7 +445,7 @@
         "currency_of": "Devise de {name}",
         "name_hint": "Vous pourrez le renommer plus tard",
         "currency_unknown": "Le fichier indique {code}, qui n'est pas configurée ici. Vous pouvez l'ajouter dans les Paramètres.",
-        "per_row": "Votre fichier indique le compte de chaque opération :",
+        "per_row": "Votre fichier indique le compte de chaque opération",
         "transactions": "{count} opération | {count} opérations"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} ligne | {count} lignes",
       "all_steps": "Toutes les étapes",
       "column_empty": "vide",
-      "more_columns": "Afficher {count} de plus | Afficher {count} de plus",
+      "show_all": "Tout afficher",
       "now_used": "utilisé pour : {role}",
       "summary": {
         "not_chosen": "Non choisi",
@@ -553,7 +553,8 @@
       },
       "from": "de « {name} »",
       "looks_right": "C’est bon",
-      "choose_differently": "Pas correct ? Choisir autre chose"
+      "change": "Modifier",
+      "done": "Terminé"
     },
     "import_result": {
       "success_title": "Import terminé",

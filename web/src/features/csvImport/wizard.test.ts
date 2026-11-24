@@ -34,7 +34,7 @@ it('a new account goes to the first visible folder, a hidden one only when all a
 })
 
 it('Extra details stays listed while it is open, even with no free column left', () => {
-  const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [], internal: false }))
+  const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [], internal: false, filled: 1, distinct: 1, averageLength: 1, codes: false }))
   expect(visibleSteps(answers({}), profiles)).not.toContain('extras')
   expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'description', 'extras', 'preview'])
 })

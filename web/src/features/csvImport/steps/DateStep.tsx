@@ -4,7 +4,8 @@ import { pluralPick } from '@/lib/plural'
 import { formatDay } from '../accountView'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
-import { Answer, AnswerActions, Field, Segmented, SkippedNote } from '../controls'
+import { candidates } from '../candidates'
+import { AnswerRow, Field, Segmented, SkippedNote } from '../controls'
 import { detectDateOrder, parseDateCell, type DateOrder } from '../dates'
 import { columnValues } from '../guess'
 import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
@@ -19,7 +20,7 @@ function longDate(value: string, order: DateOrder, language: string, withYear = 
   )
 }
 
-export function DateStep({ state, setAnswers, choosing, choose }: StepBodyProps) {
+export function DateStep({ state, setAnswers, choosing, change, closeChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { date } = state.answers
   const values = useMemo(() => (date.column === null ? [] : columnValues(state.file, date.column)), [state.file, date.column])
@@ -43,22 +44,24 @@ export function DateStep({ state, setAnswers, choosing, choose }: StepBodyProps)
 
   return (
     <div className="flex flex-col gap-6">
-      {guessed ? (
-        <Answer from={date.column === null ? null : fromName(state.profiles[date.column], state.profiles, t)}>
-          {days.values.map((day) => formatDay(day, i18n.language)).join(' · ')}
-          {days.more ? ' …' : ''}
-        </Answer>
-      ) : null}
       {open ? (
         <ColumnChoices
           profiles={state.profiles}
           label={t('transactions.import_wizard.date.choose')}
           selected={date.column}
-          onSelect={(column) => setAnswers('date', { date: { ...date, column } })}
-          fits={(type) => type === 'date' || type === 'text'}
+          onSelect={(column) => {
+            setAnswers('date', { date: { ...date, column } })
+            closeChoices()
+          }}
+          candidates={candidates('date', state.profiles, state.answers)}
           tags={columnTags(state.answers, t, i18n.language, ['date'])}
         />
-      ) : null}
+      ) : (
+        <AnswerRow from={date.column === null ? null : fromName(state.profiles[date.column], state.profiles, t)} onChange={change}>
+          {days.values.map((day) => formatDay(day, i18n.language)).join(' · ')}
+          {days.more ? ' …' : ''}
+        </AnswerRow>
+      )}
       {ambiguous ? (
         <Field label={question}>
           <Segmented<DateOrder>
@@ -73,7 +76,6 @@ export function DateStep({ state, setAnswers, choosing, choose }: StepBodyProps)
         </Field>
       ) : null}
       {unreadable > 0 ? <SkippedNote>{pluralPick(t('transactions.import_wizard.date.skipped'), unreadable, i18n.language)}</SkippedNote> : null}
-      {open ? null : <AnswerActions onChoose={choose} />}
     </div>
   )
 }

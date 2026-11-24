@@ -445,7 +445,7 @@
         "currency_of": "Currency for {name}",
         "name_hint": "You can rename it later",
         "currency_unknown": "The file says {code}, which isn't set up here. You can add it in Settings.",
-        "per_row": "Your file names the account for each transaction:",
+        "per_row": "Your file names the account for each transaction",
         "transactions": "{count} transaction | {count} transactions"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} row | {count} rows",
       "all_steps": "All steps",
       "column_empty": "empty",
-      "more_columns": "Show {count} more | Show {count} more",
+      "show_all": "Show all",
       "now_used": "used for {role}",
       "summary": {
         "not_chosen": "Not chosen",
@@ -553,7 +553,8 @@
       },
       "from": "from “{name}”",
       "looks_right": "Looks right",
-      "choose_differently": "Not right? Choose differently"
+      "change": "Change",
+      "done": "Done"
     },
     "import_result": {
       "success_title": "Import complete",

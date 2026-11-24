@@ -445,7 +445,7 @@
         "currency_of": "Валюта для «{name}»",
         "name_hint": "Название можно изменить позже",
         "currency_unknown": "В файле указана {code}, но такой валюты здесь нет. Её можно добавить в настройках.",
-        "per_row": "В вашем файле у каждой операции указан счёт:",
+        "per_row": "В вашем файле у каждой операции указан счёт",
         "transactions": "{count} операция | {count} операции | {count} операций"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} строка | {count} строки | {count} строк",
       "all_steps": "Все шаги",
       "column_empty": "пусто",
-      "more_columns": "Показать ещё {count} | Показать ещё {count} | Показать ещё {count}",
+      "show_all": "Показать все",
       "now_used": "используется как {role}",
       "summary": {
         "not_chosen": "Не выбрано",
@@ -553,7 +553,8 @@
       },
       "from": "из «{name}»",
       "looks_right": "Всё верно",
-      "choose_differently": "Не так? Выбрать другое"
+      "change": "Изменить",
+      "done": "Готово"
     },
     "import_result": {
       "success_title": "Импорт завершён",

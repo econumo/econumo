@@ -445,7 +445,7 @@
         "currency_of": "Waluta dla {name}",
         "name_hint": "Nazwę możesz zmienić później",
         "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
-        "per_row": "Twój plik podaje konto każdej transakcji:",
+        "per_row": "Twój plik podaje konto każdej transakcji",
         "transactions": "{count} transakcja | {count} transakcje | {count} transakcji"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} wiersz | {count} wiersze | {count} wierszy",
       "all_steps": "Wszystkie kroki",
       "column_empty": "pusta",
-      "more_columns": "Pokaż jeszcze {count} | Pokaż jeszcze {count} | Pokaż jeszcze {count}",
+      "show_all": "Pokaż wszystko",
       "now_used": "używane jako: {role}",
       "summary": {
         "not_chosen": "Nie wybrano",
@@ -553,7 +553,8 @@
       },
       "from": "z „{name}”",
       "looks_right": "Zgadza się",
-      "choose_differently": "Nie tak? Wybierz inaczej"
+      "change": "Zmień",
+      "done": "Gotowe"
     },
     "import_result": {
       "success_title": "Import zakończony",

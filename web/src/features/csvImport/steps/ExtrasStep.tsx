@@ -11,7 +11,8 @@ import { isNegative } from '@/lib/decimal'
 import type { PreparedRow } from '../prepare'
 import { firstDistinct, hasGuess, unusedColumns, type StepBodyProps } from '../wizard'
 import { displaySamples, fromName } from '../columnLabels'
-import { Answer, AnswerActions, Field, Segmented } from '../controls'
+import { candidates } from '../candidates'
+import { AnswerRow, ChoicesDone, Field, Segmented } from '../controls'
 
 type Role = 'category' | 'payee' | 'tag' | 'labels'
 const ROLES: Role[] = ['payee', 'category', 'tag', 'labels']
@@ -45,7 +46,7 @@ function distinctNew(rows: PreparedRow[], role: 'category' | 'labels', split: st
   return found.size
 }
 
-export function ExtrasStep({ state, setAnswers, choosing, choose }: StepBodyProps) {
+export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -54,6 +55,7 @@ export function ExtrasStep({ state, setAnswers, choosing, choose }: StepBodyProp
   const { data: labels = [] } = useLabels()
   const customId = useId()
   const { extras, account } = state.answers
+  const [showAll, setShowAll] = useState(false)
   const [custom, setCustom] = useState(() => (SEPARATORS.includes(extras.labelsSeparator) ? '' : extras.labelsSeparator))
   const separator = extras.labelsSeparator || DEFAULT_SEPARATOR
 
@@ -77,6 +79,9 @@ export function ExtrasStep({ state, setAnswers, choosing, choose }: StepBodyProp
 
   // the main steps' columns are never offered; a column belongs to one role, so giving it to another takes it from the first
   const offered = unusedColumns(state.answers, state.profiles)
+  const likely = new Set(candidates('payee', state.profiles, state.answers))
+  const hiddenCount = offered.filter((p) => !likely.has(p.index)).length
+  const choicesFor = (role: Role) => (showAll || likely.size === 0 ? offered : offered.filter((p) => likely.has(p.index) || p.index === extras[role]))
   const assign = (role: Role, column: number | null) => {
     const next = { ...extras }
     for (const r of ROLES) if (column !== null && next[r] === column) next[r] = null
@@ -97,10 +102,49 @@ export function ExtrasStep({ state, setAnswers, choosing, choose }: StepBodyProp
 
   return (
     <div className="flex flex-col gap-5">
-      {guessed ? (
+      {open ? (
         <div className="flex flex-col gap-2">
-          <Answer>{t('transactions.import_wizard.extras.answer')}</Answer>
-          <ul aria-label={t('transactions.import_wizard.extras.answer')} className="flex flex-col gap-1.5 pl-6 text-sm">
+          <div className="divide-y divide-border rounded-xl border border-border">
+            {ROLES.map((role) => {
+              const label = t(`transactions.import_wizard.extras.role.${role}`)
+              return (
+                <div key={role} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm">{label}</div>
+                    <div className="text-xs text-muted-foreground">{t(`transactions.import_wizard.extras.role_hint.${role}`)}</div>
+                  </div>
+                  <NativeSelect
+                    aria-label={label}
+                    className="w-full sm:w-64"
+                    value={extras[role] === null ? '' : String(extras[role])}
+                    onChange={(e) => assign(role, e.target.value === '' ? null : Number(e.target.value))}
+                  >
+                    <NativeSelectOption value="">{t('transactions.import_wizard.extras.leave_out')}</NativeSelectOption>
+                    {choicesFor(role).map((p) => (
+                      <NativeSelectOption key={p.index} value={String(p.index)}>
+                        {option(p)}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            {!showAll && likely.size > 0 && hiddenCount > 0 ? (
+              <button type="button" className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={() => setShowAll(true)}>
+                {t('transactions.import_wizard.show_all')}
+              </button>
+            ) : (
+              <span />
+            )}
+            {guessed ? <ChoicesDone onDone={closeChoices} /> : null}
+          </div>
+        </div>
+      ) : (
+        <AnswerRow onChange={change}>
+          {t('transactions.import_wizard.extras.answer')}
+          <ul aria-label={t('transactions.import_wizard.extras.answer')} className="mt-1.5 flex flex-col gap-1.5 text-sm">
             {ROLES.filter((role) => extras[role] !== null).map((role) => {
               const column = extras[role] as number
               const examples = firstDistinct(state.rows, (row) => row[role])
@@ -115,36 +159,8 @@ export function ExtrasStep({ state, setAnswers, choosing, choose }: StepBodyProp
               )
             })}
           </ul>
-        </div>
-      ) : null}
-      {open ? (
-        <div className="divide-y divide-border rounded-xl border border-border">
-          {ROLES.map((role) => {
-            const label = t(`transactions.import_wizard.extras.role.${role}`)
-            return (
-              <div key={role} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm">{label}</div>
-                  <div className="text-xs text-muted-foreground">{t(`transactions.import_wizard.extras.role_hint.${role}`)}</div>
-                </div>
-                <NativeSelect
-                  aria-label={label}
-                  className="w-full sm:w-64"
-                  value={extras[role] === null ? '' : String(extras[role])}
-                  onChange={(e) => assign(role, e.target.value === '' ? null : Number(e.target.value))}
-                >
-                  <NativeSelectOption value="">{t('transactions.import_wizard.extras.leave_out')}</NativeSelectOption>
-                  {offered.filter((p) => !p.internal || p.index === extras[role]).map((p) => (
-                    <NativeSelectOption key={p.index} value={String(p.index)}>
-                      {option(p)}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
+        </AnswerRow>
+      )}
 
       {extras.labels !== null ? (
         <div className="flex flex-wrap items-end gap-3">
@@ -188,7 +204,6 @@ export function ExtrasStep({ state, setAnswers, choosing, choose }: StepBodyProp
           {pluralPick(t('transactions.import_wizard.extras.new_labels'), newLabels, i18n.language)}
         </p>
       ) : null}
-      {open ? null : <AnswerActions onChoose={choose} />}
     </div>
   )
 }

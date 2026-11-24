@@ -322,13 +322,14 @@ it('an AI guess fills a step the user left alone but never one they answered', a
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
   // opening the choices answers nothing; picking one does
-  await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
+  await user.click(screen.getByRole('button', { name: 'Change' }))
   await user.click(screen.getByRole('radio', { name: /from “Value date”/ }))
   release()
   await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_AI_GUESS))
-  expect(screen.getByRole('radio', { name: /from “Value date”/ })).toBeChecked()
+  expect(screen.getByText('from “Value date”')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Description' }))
-  expect(screen.getByText('(from “Info”)').parentElement).toHaveTextContent('Coffee · Salary (from “Info”)')
+  expect(screen.getByText('Coffee · Salary')).toBeInTheDocument()
+  expect(screen.getByText('from “Info”')).toBeInTheDocument()
   expect(asked).toEqual([
     { name: 'Booking date', type: 'date', negatives: false },
     { name: 'Value date', type: 'date', negatives: false },

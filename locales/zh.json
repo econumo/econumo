@@ -445,7 +445,7 @@
         "currency_of": "{name} 的货币",
         "name_hint": "以后可以改名",
         "currency_unknown": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。",
-        "per_row": "您的文件为每笔交易写明了账户：",
+        "per_row": "您的文件为每笔交易写明了账户",
         "transactions": "{count} 笔交易"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} 行",
       "all_steps": "全部步骤",
       "column_empty": "空",
-      "more_columns": "再显示 {count} 项",
+      "show_all": "显示全部",
       "now_used": "已用作{role}",
       "summary": {
         "not_chosen": "未选择",
@@ -553,7 +553,8 @@
       },
       "from": "来自“{name}”",
       "looks_right": "没问题",
-      "choose_differently": "不对？重新选择"
+      "change": "更改",
+      "done": "完成"
     },
     "import_result": {
       "success_title": "导入完成",

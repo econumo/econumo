@@ -165,7 +165,7 @@ export const METRICS = {
   TRANSACTION_IMPORT_CLOSE: 'appTransactionImportClose',
   TRANSACTION_IMPORT_AI_GUESS: 'appTransactionImportAiGuess',
   TRANSACTION_IMPORT_LOOKS_WRONG: 'appTransactionImportLooksWrong',
-  TRANSACTION_IMPORT_CHOOSE_DIFFERENTLY: 'appTransactionImportChooseDifferently',
+  TRANSACTION_IMPORT_CHANGE_ANSWER: 'appTransactionImportChangeAnswer',
   TRANSACTION_EXPORT: 'appTransactionExport',
   WRITE_QUEUED: 'appWriteQueued',
   WRITE_RETRIED: 'appWriteRetried',

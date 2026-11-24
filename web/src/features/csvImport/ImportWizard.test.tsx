@@ -72,20 +72,24 @@ it('any step opens from the step list, and Back and Looks right walk the steps i
   expect(screen.getByRole('heading', { name: 'What was each payment for?' })).toBeInTheDocument()
 })
 
-it('a guessed step opens on its answer with Looks right in the footer; Choose differently opens the choices and brings Continue back', async () => {
+it('a guessed step opens on its answer with Looks right in the footer; Change puts the choices in its place and brings Continue back', async () => {
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: 'Date' }))
-  expect(screen.getByText('(from “Booking date”)').parentElement).toHaveTextContent('Jan 2, 2026 · Jan 3, 2026 (from “Booking date”)')
+  expect(screen.getByText('Jan 2, 2026 · Jan 3, 2026')).toBeInTheDocument()
+  expect(screen.getByText('from “Booking date”')).toBeInTheDocument()
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   // the footer's primary button accepts the guess
   expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_CHOOSE_DIFFERENTLY, { step: 'date' })
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_CHANGE_ANSWER, { step: 'date' })
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: /from “Booking date”/ })).toBeChecked()
+  // the answer row gives way to the list
+  expect(screen.queryByText('from “Booking date”', { selector: 'div' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Looks right' })).not.toBeInTheDocument()
   // the list stays open after leaving the step and coming back
   await user.click(screen.getByRole('button', { name: 'Continue' }))
@@ -93,16 +97,18 @@ it('a guessed step opens on its answer with Looks right in the footer; Choose di
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()
 })
 
-it('a step with nothing guessed opens on its question, and picking an answer keeps the choices open', async () => {
+it('a step with nothing guessed opens on its question, and picking an answer shows it with Looks right', async () => {
   renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,1.00,x\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Looks right' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('radio', { name: /from “Day”/ }))
-  expect(screen.getByRole('radio', { name: /from “Day”/ })).toBeChecked()
   expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: /from “Day”/ }))
+  expect(screen.queryByRole('radiogroup', { name: 'Which of these is the date?' })).not.toBeInTheDocument()
+  expect(screen.getByText('from “Day”')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
 })
 
 it('Extra details is left out when every column is already used', async () => {
@@ -171,11 +177,14 @@ it('a column given in Extra details carries a “used for payee” tag on Descri
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: 'Extra details' }))
-  await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
+  await user.click(screen.getByRole('button', { name: 'Change' }))
   await user.selectOptions(screen.getByRole('combobox', { name: 'Payee' }), 'Cafe — from “Merchant”')
   expect(screen.getByRole('button', { name: 'Extra details' })).toHaveAccessibleDescription('With payee')
   await user.click(screen.getByRole('button', { name: 'Description' }))
-  await user.click(screen.getByRole('button', { name: 'Not right? Choose differently' }))
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  // used elsewhere, so not offered until Show all
+  expect(screen.queryByRole('radio', { name: 'Cafe from “Merchant”' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Show all' }))
   expect(screen.getByRole('radio', { name: 'Cafe from “Merchant”' })).toHaveAccessibleDescription('used for payee')
   expect(screen.getByRole('radio', { name: 'Coffee from “Details”' })).toBeChecked()
 })
@@ -192,8 +201,8 @@ it('an Econumo export’s Account step answers with the accounts the file names'
   await screen.findByRole('heading', { name: 'Here is what will be added' })
   expect(screen.getByRole('button', { name: 'Account' })).toHaveAccessibleDescription('From Cash and 1 more account')
   await user.click(screen.getByRole('button', { name: 'Account' }))
-  const list = screen.getByRole('list', { name: /^Your file names the account for each transaction:/ })
-  expect(list).toHaveAccessibleName('Your file names the account for each transaction: (from “account_name”)')
+  const list = screen.getByRole('list', { name: /^Your file names the account for each transaction/ })
+  expect(list).toHaveAccessibleName('Your file names the account for each transaction from “account_name”')
   expect(list).toHaveTextContent('Cash · 1 transaction')
   expect(list).toHaveTextContent('Bank · 1 transaction')
   expect(screen.queryByRole('radio', { name: /from “account_name”/ })).not.toBeInTheDocument()

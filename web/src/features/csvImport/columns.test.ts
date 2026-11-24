@@ -49,3 +49,12 @@ describe('profileColumns', () => {
     expect(profileColumns(p).map((c) => c.internal)).toEqual([false, false])
   })
 })
+
+describe('profileColumns counts', () => {
+  it('counts filled cells, different values in any case, their average length and currency codes', () => {
+    const p = profileColumns(parseCsvText('Wallet,Cur,Memo\nCash,CAD,ab\ncash,CAD,abcd\nVisa,eur,\n'))
+    expect(p[0]).toMatchObject({ filled: 3, distinct: 2, averageLength: 4, codes: false })
+    expect(p[1]).toMatchObject({ codes: true })
+    expect(p[2]).toMatchObject({ filled: 2, averageLength: 3, codes: false })
+  })
+})

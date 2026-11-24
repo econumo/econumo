@@ -30,7 +30,8 @@ function Harness({ text, extras = noExtras, account = { kind: 'new', name: 'Main
         setFixes={() => {}}
         goTo={() => {}}
         choosing
-        choose={() => {}}
+        change={() => {}}
+        closeChoices={() => {}}
       />
       <output aria-label="extras">{JSON.stringify(answers.extras)}</output>
     </>
@@ -61,9 +62,13 @@ it('offers each detail what the earlier steps left free, values first', () => {
   expect(screen.getByRole('combobox', { name: 'Reporting tags' })).toHaveValue('')
 })
 
-it('ids are not offered as a detail', () => {
-  renderStep('Date,Amount,Ref,Memo\n2026-01-02,-5,01a1be03-f8df-7603-b2b1-2c3d4e5f6a7b,lunch\n')
+it('ids and currency codes are not offered as a detail until Show all', async () => {
+  renderStep('Date,Amount,Ref,Memo,Cur\n2026-01-02,-5,01a1be03-f8df-7603-b2b1-2c3d4e5f6a7b,lunch,EUR\n')
+  const user = userEvent.setup()
   expect(optionsOf('Payee')).toEqual(['Don’t bring it', 'lunch — from “Memo”'])
+  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  expect(optionsOf('Payee')).toEqual(['Don’t bring it', expect.stringMatching(/from “Ref”$/), 'lunch — from “Memo”', 'EUR — from “Cur”'])
+  expect(screen.queryByRole('button', { name: 'Show all' })).not.toBeInTheDocument()
 })
 
 it('choosing a column for a detail brings it over', async () => {

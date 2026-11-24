@@ -94,7 +94,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const [fileError, setFileError] = useState<FileError | null>(null)
   const [answers, setAnswersState] = useState<WizardAnswers | null>(null)
   const [touched, setTouched] = useState<ReadonlySet<StepId>>(() => new Set())
-  // steps whose list of choices was opened; not "touched": opening it answers nothing
+  // steps whose list of choices was opened with Change; not "touched": opening it answers nothing
   const [choosing, setChoosing] = useState<ReadonlySet<StepId>>(() => new Set())
   const [fixes, setFixes] = useState<ReadonlyMap<number, RowFix>>(() => new Map())
   const [step, setStep] = useState<StepId>('file')
@@ -301,15 +301,24 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     }
   }
 
-  const chooseStep = () => {
+  const changeStep = () => {
     if (choosing.has(step)) return
     setChoosing((prev) => new Set(prev).add(step))
-    trackEvent(METRICS.TRANSACTION_IMPORT_CHOOSE_DIFFERENTLY, { step })
+    trackEvent(METRICS.TRANSACTION_IMPORT_CHANGE_ANSWER, { step })
   }
-  // A step that opens on its list of choices keeps it open: picking an answer there must not
-  // fold the list away under the pointer. Set during render, so the list never flickers shut.
+  // A step that opens on its list of choices keeps it open until a pick closes it: in and out
+  // columns are two picks, and the first must not fold the list away under the pointer. Set
+  // during render, so the list never flickers shut.
   if (state !== null && step !== 'file' && step !== 'preview' && !choosing.has(step) && !hasGuess(step, state)) {
     setChoosing((prev) => new Set(prev).add(step))
+  }
+  const closeChoices = () => {
+    if (!choosing.has(step)) return
+    setChoosing((prev) => {
+      const next = new Set(prev)
+      next.delete(step)
+      return next
+    })
   }
   // over a guessed answer the footer's primary button accepts it: "Looks right" instead of Continue
   const guessShown = state !== null && !choosing.has(step) && hasGuess(step, state)
@@ -403,7 +412,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
             setFixes={setFixes}
             goTo={openStep}
             choosing={choosing.has(step)}
-            choose={chooseStep}
+            change={changeStep}
+            closeChoices={closeChoices}
           />
         </fieldset>
       ) : (

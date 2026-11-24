@@ -445,7 +445,7 @@
         "currency_of": "Valuta di {name}",
         "name_hint": "Puoi rinominarlo più tardi",
         "currency_unknown": "Il file indica {code}, che qui non è configurata. Puoi aggiungerla nelle Impostazioni.",
-        "per_row": "Il tuo file indica il conto di ogni movimento:",
+        "per_row": "Il tuo file indica il conto di ogni movimento",
         "transactions": "{count} movimento | {count} movimenti"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} riga | {count} righe",
       "all_steps": "Tutti i passi",
       "column_empty": "vuota",
-      "more_columns": "Mostra altri {count} | Mostra altri {count}",
+      "show_all": "Mostra tutto",
       "now_used": "usato per {role}",
       "summary": {
         "not_chosen": "Non scelto",
@@ -553,7 +553,8 @@
       },
       "from": "da «{name}»",
       "looks_right": "Va bene",
-      "choose_differently": "Non è giusto? Scegli altro"
+      "change": "Modifica",
+      "done": "Fatto"
     },
     "import_result": {
       "success_title": "Importazione completata",

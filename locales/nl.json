@@ -445,7 +445,7 @@
         "currency_of": "Valuta voor {name}",
         "name_hint": "U kunt de naam later wijzigen",
         "currency_unknown": "Het bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen.",
-        "per_row": "Uw bestand vermeldt bij elke transactie de rekening:",
+        "per_row": "Uw bestand vermeldt bij elke transactie de rekening",
         "transactions": "{count} transactie | {count} transacties"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} regel | {count} regels",
       "all_steps": "Alle stappen",
       "column_empty": "leeg",
-      "more_columns": "Nog {count} tonen | Nog {count} tonen",
+      "show_all": "Alles tonen",
       "now_used": "gebruikt voor {role}",
       "summary": {
         "not_chosen": "Niet gekozen",
@@ -553,7 +553,8 @@
       },
       "from": "uit ‘{name}’",
       "looks_right": "Klopt",
-      "choose_differently": "Klopt het niet? Kies iets anders"
+      "change": "Wijzigen",
+      "done": "Klaar"
     },
     "import_result": {
       "success_title": "Import voltooid",

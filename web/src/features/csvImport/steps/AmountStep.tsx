@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils'
 import { formatSigned, useAccountView } from '../accountView'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
-import { Answer, AnswerActions, Field, Segmented, SkippedNote } from '../controls'
+import { candidates } from '../candidates'
+import { AnswerRow, ChoicesDone, Field, Segmented, SkippedNote } from '../controls'
 import { detectDecimalSeparator, parseAmountCell, type DecimalSeparator } from '../amounts'
 import { columnValues } from '../guess'
 import type { ParsedFile } from '../parse'
@@ -53,9 +54,8 @@ function amountValues(file: ParsedFile, amount: Amount): string[] {
 }
 
 const EXAMPLE_ROWS = 3
-const isNumber = (type: string) => type === 'number'
 
-export function AmountStep({ state, setAnswers, choosing, choose }: StepBodyProps) {
+export function AmountStep({ state, setAnswers, choosing, change, closeChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const flipId = useId()
   const { amount } = state.answers
@@ -85,24 +85,6 @@ export function AmountStep({ state, setAnswers, choosing, choose }: StepBodyProp
 
   return (
     <div className="flex flex-col gap-6">
-      {guessed ? (
-        <Answer from={from}>
-          <span aria-label={t('transactions.import_wizard.amount.example_label')} role="list" className="inline">
-            {examples.map((row, i) => {
-              const signed = formatSigned(row.amount ?? '0', accountView(row).currency)
-              return (
-                <Fragment key={row.fileRow}>
-                  {i > 0 ? <span aria-hidden> · </span> : null}
-                  <span role="listitem" className={cn('tabular-nums whitespace-nowrap', signed.income && 'text-income')}>
-                    {signed.text}
-                  </span>
-                </Fragment>
-              )
-            })}
-          </span>
-          {readable.length > examples.length ? ' …' : ''}
-        </Answer>
-      ) : null}
       {open ? (
         <div className="flex flex-col gap-4">
           <Segmented<Amount['mode']>
@@ -119,8 +101,11 @@ export function AmountStep({ state, setAnswers, choosing, choose }: StepBodyProp
               profiles={state.profiles}
               label={t('transactions.import_wizard.amount.choose')}
               selected={amount.column}
-              onSelect={(column) => set({ column })}
-              fits={isNumber}
+              onSelect={(column) => {
+                set({ column })
+                closeChoices()
+              }}
+              candidates={candidates('amount', state.profiles, state.answers)}
               tags={columnTags(state.answers, t, i18n.language, ['amount'])}
             />
           ) : (
@@ -130,7 +115,7 @@ export function AmountStep({ state, setAnswers, choosing, choose }: StepBodyProp
                 label={moneyIn}
                 selected={amount.inColumn}
                 onSelect={(inColumn) => set({ inColumn })}
-                fits={isNumber}
+                candidates={candidates('amountIn', state.profiles, state.answers)}
                 tags={columnTags(state.answers, t, i18n.language, ['amountIn'])}
                 noneLabel={t('transactions.import_wizard.amount.none_in')}
               />
@@ -139,14 +124,32 @@ export function AmountStep({ state, setAnswers, choosing, choose }: StepBodyProp
                 label={moneyOut}
                 selected={amount.outColumn}
                 onSelect={(outColumn) => set({ outColumn })}
-                fits={isNumber}
+                candidates={candidates('amountOut', state.profiles, state.answers)}
                 tags={columnTags(state.answers, t, i18n.language, ['amountOut'])}
                 noneLabel={t('transactions.import_wizard.amount.none_out')}
               />
+              {guessed ? <ChoicesDone onDone={closeChoices} /> : null}
             </>
           )}
         </div>
-      ) : null}
+      ) : (
+        <AnswerRow from={from} onChange={change}>
+          <span aria-label={t('transactions.import_wizard.amount.example_label')} role="list" className="inline">
+            {examples.map((row, i) => {
+              const signed = formatSigned(row.amount ?? '0', accountView(row).currency)
+              return (
+                <Fragment key={row.fileRow}>
+                  {i > 0 ? <span aria-hidden> · </span> : null}
+                  <span role="listitem" className={cn('tabular-nums whitespace-nowrap', signed.income && 'text-income')}>
+                    {signed.text}
+                  </span>
+                </Fragment>
+              )
+            })}
+          </span>
+          {readable.length > examples.length ? ' …' : ''}
+        </AnswerRow>
+      )}
       {unreadable > 0 && !missing ? (
         <SkippedNote>{pluralPick(t('transactions.import_wizard.amount.skipped'), unreadable, i18n.language)}</SkippedNote>
       ) : null}
@@ -175,7 +178,6 @@ export function AmountStep({ state, setAnswers, choosing, choose }: StepBodyProp
           ) : null}
         </div>
       ) : null}
-      {open ? null : <AnswerActions onChoose={choose} />}
     </div>
   )
 }

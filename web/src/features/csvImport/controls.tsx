@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { ReactNode } from 'react'
-import { Check, Info } from 'lucide-react'
+import { Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
@@ -60,30 +60,38 @@ export function Field({ label, hint, htmlFor, children }: { label: string; hint?
   )
 }
 
-/** the current answer as a sentence about the user's money, with where in the file it comes from */
-export function Answer({ id, from, children }: { id?: string; from?: string | null; children: ReactNode }) {
+/** the current answer as a settings row: the answer in plain words, where in the file it comes from, and a quiet Change */
+export function AnswerRow({ id, from, onChange, children }: { id?: string; from?: string | null; onChange: () => void; children: ReactNode }) {
+  const { t } = useTranslation()
   return (
-    <div id={id} className="flex items-start gap-2 text-base">
-      <Check aria-hidden className="mt-1 size-4 shrink-0 text-income" />
-      <p className="min-w-0 break-words">
-        {children}
-        {from ? (
-          <>
-            {' '}
-            <span className="ml-1 text-sm whitespace-nowrap text-muted-foreground">({from})</span>
-          </>
-        ) : null}
-      </p>
+    <div className="flex items-start gap-3 rounded-xl border border-border px-4 py-3">
+      <div id={id} className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="text-base break-words">{children}</div>
+        {from ? <div className="text-xs text-muted-foreground">{from}</div> : null}
+      </div>
+      <QuietButton onClick={onChange}>{t('transactions.import_wizard.change')}</QuietButton>
     </div>
   )
 }
 
-/** under a guessed answer, the quiet way to the list of choices; "Looks right" is the footer's primary button */
-export function AnswerActions({ onChoose }: { onChoose: () => void }) {
+/** closes a list of choices that takes more than one pick */
+export function ChoicesDone({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation()
   return (
-    <button type="button" className="self-start text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={onChoose}>
-      {t('transactions.import_wizard.choose_differently')}
+    <div className="flex justify-end">
+      <QuietButton onClick={onDone}>{t('transactions.import_wizard.done')}</QuietButton>
+    </div>
+  )
+}
+
+function QuietButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="-my-1 -mr-2 shrink-0 rounded-md px-2 py-1 text-sm text-primary hover:bg-econumo-card focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+      onClick={onClick}
+    >
+      {children}
     </button>
   )
 }

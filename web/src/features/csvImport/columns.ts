@@ -13,6 +13,14 @@ export interface ColumnProfile {
   samples: string[]
   /** every value reads like a bank's own reference (a UUID, a long code or number), not anything a person would pick */
   internal: boolean
+  /** cells with a value */
+  filled: number
+  /** different values, compared as names are (trimmed, any case) */
+  distinct: number
+  /** the average length of a value, in characters */
+  averageLength: number
+  /** every value is a three-letter code such as CAD or EUR */
+  codes: boolean
 }
 
 const TYPE_SAMPLE = 500
@@ -41,6 +49,7 @@ const CODE = /^[A-Za-z0-9_\-./]{10,}$/
 // a run of digits, not digits spread out: "02-Jan-2026" or "2026.01.02." is a date the reader missed
 const DIGIT_RUN = /\d{6,}/
 const LONG_INTEGER = /^\d{9,}$/
+const CURRENCY_CODE = /^(?:[A-Z]{3}|[a-z]{3})$/
 
 function looksInternal(type: ColumnType, values: string[]): boolean {
   if (values.length === 0 || type === 'date' || type === 'empty') return false
@@ -68,7 +77,18 @@ export function profileColumns(file: ParsedFile): ColumnProfile[] {
       .slice(0, SAMPLE_COUNT)
       .map((v) => (v.length > SAMPLE_MAX ? `${v.slice(0, SAMPLE_MAX)}…` : v))
     const negatives = type === 'number' && typed.some((v) => /^[-−(]/.test(v) || /-$/.test(v))
-    return { index, name, type, negatives, samples, internal: looksInternal(type, typed) }
+    return {
+      index,
+      name,
+      type,
+      negatives,
+      samples,
+      internal: looksInternal(type, typed),
+      filled: values.length,
+      distinct: new Set(values.map((v) => v.toLowerCase())).size,
+      averageLength: values.length === 0 ? 0 : values.reduce((sum, v) => sum + v.length, 0) / values.length,
+      codes: values.length > 0 && values.every((v) => CURRENCY_CODE.test(v)),
+    }
   })
 }
 

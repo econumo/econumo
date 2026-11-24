@@ -12,7 +12,8 @@ import { pluralPick } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
-import { Answer, AnswerActions, Field, Segmented, SkippedNote } from '../controls'
+import { candidates } from '../candidates'
+import { AnswerRow, Field, Segmented, SkippedNote } from '../controls'
 import { currencyColumn, fileCurrencyId, rowsCurrencyId, unknownRowsCurrency } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice, PreparedRow } from '../prepare'
@@ -71,7 +72,7 @@ function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
   )
 }
 
-export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency, onChange, heading }: {
+export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency, onChange, heading, labelledBy }: {
   file: ParsedFile
   /** the prepared rows: each account says how many of them name it */
   rows?: PreparedRow[]
@@ -80,6 +81,8 @@ export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency
   fallbackCurrency: string
   onChange: (account: PerRow) => void
   heading?: ReactNode
+  /** the answer above names the list instead of a heading of its own */
+  labelledBy?: string
 }) {
   const { t, i18n } = useTranslation()
   const headingId = useId()
@@ -109,10 +112,12 @@ export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency
   if (names.length === 0) return null
   return (
     <div className="flex flex-col gap-2">
-      <div id={headingId} className="text-sm">
-        {heading ?? t('transactions.import_wizard.account.found')}
-      </div>
-      <ul aria-labelledby={headingId} className="divide-y divide-border rounded-xl border border-border">
+      {labelledBy ? null : (
+        <div id={headingId} className="text-sm">
+          {heading ?? t('transactions.import_wizard.account.found')}
+        </div>
+      )}
+      <ul aria-labelledby={labelledBy ?? headingId} className="divide-y divide-border rounded-xl border border-border">
         {names.map((name) => {
           const key = nameKey(name)
           const unknownCode = unknownCodes.get(key)
@@ -180,8 +185,9 @@ function AccountList({ accounts, selected, label, onSelect }: {
   )
 }
 
-export function AccountStep({ state, setAnswers, choosing, choose: openChoices }: StepBodyProps) {
+export function AccountStep({ state, setAnswers, choosing, change, closeChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
+  const answerId = useId()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const writable = useMemo(() => writableAccounts(accounts, user?.id), [accounts, user?.id])
@@ -254,6 +260,7 @@ export function AccountStep({ state, setAnswers, choosing, choose: openChoices }
     // fromEntries, not assignment: a name like "__proto__" must stay a plain key
     const perAccount = Object.fromEntries(keys.map((key) => [key, ownCurrency(previous, key) ?? fromFile(key) ?? currencyId]))
     set({ kind: 'column', column, currencies: perAccount })
+    closeChoices()
   }
 
   const accountLabel = t('transactions.import_wizard.steps.account')
@@ -289,31 +296,34 @@ export function AccountStep({ state, setAnswers, choosing, choose: openChoices }
       ) : null}
       {option === 'column' ? (
         <>
-          {account?.kind === 'column' && guessed ? (
-            <PerRowAccounts
-              file={state.file}
-              rows={state.rows}
-              account={account}
-              existing={existing}
-              fallbackCurrency={currencyId}
-              onChange={set}
-              heading={<Answer from={fromName(state.profiles[account.column], state.profiles, t)}>{t('transactions.import_wizard.account.per_row')}</Answer>}
-            />
-          ) : null}
           {open ? (
             <ColumnChoices
               profiles={state.profiles}
               label={columnQuestion}
               selected={account?.kind === 'column' ? account.column : null}
               onSelect={chooseColumn}
-              fits={(type) => type === 'text'}
+              candidates={candidates('account', state.profiles, state.answers)}
               tags={columnTags(state.answers, t, i18n.language, ['account'])}
             />
+          ) : account?.kind === 'column' ? (
+            <>
+              <AnswerRow id={answerId} from={fromName(state.profiles[account.column], state.profiles, t)} onChange={change}>
+                {t('transactions.import_wizard.account.per_row')}
+              </AnswerRow>
+              <PerRowAccounts
+                file={state.file}
+                rows={state.rows}
+                account={account}
+                existing={existing}
+                fallbackCurrency={currencyId}
+                onChange={set}
+                labelledBy={answerId}
+              />
+            </>
           ) : null}
           {nameless > 0 ? (
             <SkippedNote>{pluralPick(t('transactions.import_wizard.account.skipped'), nameless, i18n.language)}</SkippedNote>
           ) : null}
-          {open ? null : <AnswerActions onChoose={openChoices} />}
         </>
       ) : null}
     </div>

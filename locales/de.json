@@ -445,7 +445,7 @@
         "currency_of": "Währung für {name}",
         "name_hint": "Sie können es später umbenennen",
         "currency_unknown": "Die Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen.",
-        "per_row": "Ihre Datei nennt zu jeder Buchung das Konto:",
+        "per_row": "Ihre Datei nennt zu jeder Buchung das Konto",
         "transactions": "{count} Buchung | {count} Buchungen"
       },
       "date": {
@@ -539,7 +539,7 @@
       "rows": "{count} Zeile | {count} Zeilen",
       "all_steps": "Alle Schritte",
       "column_empty": "leer",
-      "more_columns": "{count} weitere zeigen | {count} weitere zeigen",
+      "show_all": "Alle anzeigen",
       "now_used": "verwendet für {role}",
       "summary": {
         "not_chosen": "Nicht gewählt",
@@ -553,7 +553,8 @@
       },
       "from": "aus „{name}“",
       "looks_right": "Stimmt so",
-      "choose_differently": "Nicht richtig? Anders wählen"
+      "change": "Ändern",
+      "done": "Fertig"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",

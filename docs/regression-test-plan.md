@@ -762,41 +762,52 @@ navigation (single-pane vs sidebar).
       summary uses the words "column", "header", "mapping", "field" or "CSV",
       in any of the 11 languages. Answer first: a step with a guess (Account's
       per-row option, Date, Amount, Description, Extra details) opens on the
-      guess as a sentence about the money with a green ✓ — Date "Nov 3, 2026 ·
-      Nov 5, 2026 · Nov 7, 2026 … (from “Buchungstag”)", Amount "−12.50 € ·
-      +2,500.00 € · −4.99 € …" (income green), Description "REWE Markt Berlin ·
-      Gehalt November · Spotify …", the per-row account "Your file names the
-      account for each transaction:" with one line per account ("WS Cash · 572
-      transactions" and its currency picker or "Existing account"), Extra
-      details "We’ll also bring along:" with "Payee: … (from “payee”)" lines —
-      the footer's primary button reads "Looks right" instead of Continue
-      (goes to the next step; never an empty footer, also on Account), with a
-      quiet "Not right? Choose differently" under the answer. Open
-      questions (date order, decimal separator, "Spending shows as" with Flip
-      the signs, Reporting tags' separator) and the grey skipped-rows notes
-      stay visible under the guess. "Looks right" and opening the choices
-      change no answer: an AI reply landing later still fills the step.
-      "Choose differently" opens the choices (the footer button reads Continue again), and
-      they stay open when the step is left and opened again; a step with
-      nothing to show (no guess, or values that read as nothing) opens on its
-      choices, which stay open after one is picked. The choices ("Which of
-      these is the date?") are ONE rounded list with thin lines between rows
-      (no grid of cards), on Account's per-row option, Date, Amount ("Which of
+      guess as a settings-style row (a rounded box): the answer in plain words
+      about the money — Date "Nov 3, 2026 · Nov 5, 2026 · Nov 7, 2026 …",
+      Amount "−12.50 € · +2,500.00 € · −4.99 € …" (income green), Description
+      "REWE Markt Berlin · Gehalt November · Spotify …", the per-row account
+      "Your file names the account for each transaction", Extra details "We’ll
+      also bring along:" with "Payee: … (from “payee”)" lines — with the
+      file's own name in small grey text under it ("from “Buchungstag”") and a
+      quiet "Change" on the right. Under the per-row account's row, one line
+      per account ("WS Cash · 572 transactions" and its currency picker or
+      "Existing account"). The footer's primary button reads "Looks right"
+      instead of Continue (goes to the next step; never an empty footer, also
+      on Account). Open questions (date order, decimal separator, "Spending
+      shows as" with Flip the signs, Reporting tags' separator) and the grey
+      skipped-rows notes stay visible under the answer. "Looks right" and
+      Change answer nothing: an AI reply landing later still fills the step.
+      Change puts the choices IN PLACE of the answer row (the answer is not
+      shown twice; the footer button reads Continue), with the question
+      ("Which of these is the account?") and the short list; picking one
+      (also the one already chosen) closes the list and shows the answer
+      again. Money in and money out, and Extra details, take more than one
+      pick: their list stays open, with a quiet "Done" that goes back to the
+      answer. An opened list stays open when the step is left and opened
+      again. A step with nothing to show (no guess, or values that read as
+      nothing) opens on its choices; picking one that reads shows the answer
+      row. The choices are ONE rounded list with thin lines between rows (no
+      grid of cards), on Account's per-row option, Date, Amount ("Which of
       these is money in?" / "…money out?" one under the other) and
       Description: each row is a radio led by its first values, written as
       dates or amounts where they read as such ("Nov 3, 2026 · Nov 5, 2026",
       "−12.50 · 2,500.00"; a date whose day and month could swap stays as in
       the file), the file's own name under them in small grey text ("from
       “Buchungstag”"; none for a blank header or a file without a header
-      row); the whole row is tappable, the chosen one is tinted, arrow keys
-      move the choice, a "none of these" answer is the list's last row, the
-      guessed one is already chosen, and one another step uses carries a small
-      grey tag ("used for payee", "used for description"). Values of a kind
-      that cannot answer (numbers on Date, text on Amount), empty ones and
-      internal ones (UUIDs such as `transaction_id`, long codes or reference
-      numbers) wait behind "Show N more", unless one is the chosen answer. No
-      table, no dropdowns of bare header names. Opening the choices fires
-      `appTransactionImportChooseDifferently` with the step.
+      row); the whole row is tappable, the chosen one is tinted and listed
+      first, a "none of these" answer is the list's last row. Only what could
+      answer is listed: Account — short text that repeats on many rows (not
+      currency codes such as CAD/EUR, not ids, not long free text); Date —
+      dates; Amount — money; Description — text, the longest first; Extra
+      details — text. A part another step already uses is not listed. A quiet
+      "Show all" under the list adds every other non-empty part, each one
+      another step uses with a small grey tag ("used for payee", "used for
+      description"); when nothing fits, the whole list shows at once. On an
+      Econumo export, Change on the Account step lists only "WS Cash · …
+      from “account_name”" (not account_currency, transaction_id, category,
+      description, payee) until "Show all". No table, no dropdowns of bare
+      header names. Change fires `appTransactionImportChangeAnswer` with the
+      step.
 - [ ] 📱 Step list: once a file is read every step can be opened in any order
       by clicking it. Each step shows its answer in plain words under its name
       ("New: Girokonto · EUR", "From WS Cash and 2 more accounts", "Oct 2,
@@ -853,12 +864,14 @@ navigation (single-pane vs sidebar).
 - [ ] Extra details (a file with Category, Payee, Tags columns from another
       app): recognised headers come preselected and the step opens on "We’ll
       also bring along:" with one line per detail ("Payee: WealthSimple ·
-      ICBC · IFS Premium (from “payee”)"). "Choose differently" shows one row
+      ICBC · IFS Premium (from “payee”)"). Change shows one row
       per detail (Payee, Category, Budget tag, Reporting tags), each with a
-      one-line hint and a dropdown of what the main steps left free, written
-      "first values — from “Header”", or "Don’t bring it". Giving one to a
-      second detail takes it from the first. On Description, one given here
-      carries "used for payee"; one that ends up on a main step anyway (e.g. by
+      one-line hint and a dropdown of the text the main steps left free
+      (ids and currency codes only after "Show all"), written
+      "first values — from “Header”", or "Don’t bring it", and "Done" under
+      them. Giving one to a second detail takes it from the first. On
+      Description, one given here is listed only after "Show all", with
+      "used for payee"; one that ends up on a main step anyway (e.g. by
       the AI guess) is never also uploaded as an extra detail; Reporting tags
       asks how several tags are separated (";" by default, ",",
       "|", Tab, New line, or something else). A note counts the new categories
@@ -923,7 +936,7 @@ navigation (single-pane vs sidebar).
       pre-filled and a grey note under the picker reads "The file says CAD,
       which isn't set up here. You can add it in Settings."); "Each row says which
       account" asks "Which of these is the account?", then answers "Your file
-      names the account for each transaction:" listing the names found, each
+      names the account for each transaction" with the names found under it, each
       with how many transactions it gets: one matching
       a writable account (any letter case) reads "Existing account", every
       other gets its own currency picker, pre-filled with the currency its own
@@ -939,10 +952,10 @@ navigation (single-pane vs sidebar).
 - [ ] Econumo export: export transactions (§ CSV export) and import that file,
       with the UI in English and in another language: the wizard skips
       straight to Check, with "Accounts in this file" listing each account (on
-      the Account step: "Your file names the account for each transaction:"
+      the Account step: "Your file names the account for each transaction"
       with "WS Cash · N transactions", and the step list reads "From WS Cash
       and N more accounts"; transaction_id never shows among the choices
-      until "Show N more"); a
+      until "Show all"); a
       new one has a currency picker prefilled from the file's
       `account_currency` (CAD stays CAD when the instance has CAD, also for a
       user whose currency is USD; otherwise the user's currency with the note
