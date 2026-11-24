@@ -105,16 +105,21 @@ func keyedReply(reply, prompt string) string {
 	})
 }
 
+// rulesOff and fillOff are negated so a zero ownerFact keeps both switches on.
 type ownerFact struct {
 	language, timezone string
 	readonly, aiOff    bool
+	rulesOff, fillOff  bool
 }
 
 type fakeFacts map[string]ownerFact
 
 func (f fakeFacts) OwnerFacts(_ context.Context, userID vo.Id) (imports.OwnerInfo, error) {
 	o := f[userID.String()]
-	return imports.OwnerInfo{Language: o.language, Timezone: o.timezone, Readonly: o.readonly, AIOff: o.aiOff}, nil
+	return imports.OwnerInfo{
+		Language: o.language, Timezone: o.timezone, Readonly: o.readonly, AIOff: o.aiOff,
+		SuggestRules: !o.rulesOff, SuggestFill: !o.fillOff,
+	}, nil
 }
 
 // denyScope refuses one rate-limit scope and lets every other through.
@@ -129,8 +134,13 @@ func (d denyScope) Allow(_ context.Context, scope, _ string) error {
 func (d denyScope) Reserve(string, string) error { return nil }
 
 func (h *harness) wireSuggest(c imports.Completer, facts imports.OwnerFacts) {
+	h.facts = facts
 	h.svc.SetSuggester(c, facts)
 	h.svc.SetJobRunner(func(run func()) { run() })
+	if h.payees == nil {
+		h.payees = &fakePayees{h: h}
+	}
+	h.svc.SetPayeeCreator(h.payees)
 }
 
 func suggestSetup(t *testing.T) (*harness, *fakeCompleter, fakeFacts) {
@@ -316,10 +326,11 @@ func TestSuggestReusesOpenSuggestionWithoutAI(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	catID := vo.MustParseId(cat)
+	catID, pyID := vo.MustParseId(cat), vo.MustParseId(h.payee(t, userA, "Blue Bottle Coffee"))
+	// it fills both fields the row lacks, as assignment (on) needs
 	open := &model.ImportSuggestion{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
-		CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		CategoryID: &catID, PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
 		t.Fatal(err)
@@ -386,7 +397,7 @@ type optOutAfter struct {
 
 func (f *optOutAfter) OwnerFacts(context.Context, vo.Id) (imports.OwnerInfo, error) {
 	f.reads++
-	return imports.OwnerInfo{Language: "en", AIOff: f.reads > f.n}, nil
+	return imports.OwnerInfo{Language: "en", AIOff: f.reads > f.n, SuggestRules: true, SuggestFill: true}, nil
 }
 
 // The job's first look found AI on; the user opted out before the call.
@@ -636,6 +647,8 @@ func seedPayeeSuggestion(t *testing.T, h *harness, py string) vo.Id {
 
 func TestSuggestCoveringSuggestionDeletedSendsRowsToAI(t *testing.T) {
 	h, c, facts := suggestSetup(t)
+	// assignment off: the payee-only suggestion covers the row it partly fills
+	facts[userA] = ownerFact{language: "en", fillOff: true}
 	h.withRepo(&vanishingRepo{Repository: h.repo, deleteOn: 1})
 	h.wireSuggest(c, facts)
 	h.mapCard(t, "Apple Card")
@@ -705,7 +718,9 @@ func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
 	h, _, facts := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
-	c := &gatedCompleter{reply: `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"payeeId":"` + py + `"}]}`, started: make(chan struct{}, 2)}
+	cat := h.category(t, userA, "Coffee")
+	// category and payee: the suggestion fills all the second row lacks
+	c := &gatedCompleter{reply: `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + cat + `","payeeId":"` + py + `"}]}`, started: make(chan struct{}, 2)}
 	h.svc.SetSuggester(c, facts)
 	var queued []func()
 	h.svc.SetJobRunner(func(run func()) { queued = append(queued, run) })
@@ -740,6 +755,8 @@ func TestSuggestIgnoresOpenSuggestionWithArchivedCategory(t *testing.T) {
 	}{{"before the AI call", false}, {"after the AI call", true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			h, c, facts := suggestSetup(t)
+			// assignment off: the category-only suggestion would cover the row
+			facts[userA] = ownerFact{language: "en", fillOff: true}
 			if tc.hideFirst {
 				h.withRepo(&vanishingRepo{Repository: h.repo, hideFirst: true})
 				h.wireSuggest(c, facts)
@@ -1155,7 +1172,7 @@ func TestSuggestPreAIJoinRespectsOptOut(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			h, c, _ := suggestSetup(t)
 			cat := h.category(t, userA, "Coffee")
-			s, _ := seedSuggestion(t, h, c, cat, "")
+			s, _ := seedSuggestion(t, h, c, cat, h.payee(t, userA, "Blue Bottle Coffee"))
 			h.wireSuggest(c, &optOutAfter{n: n})
 			calls := len(c.calls)
 			if res := ingest(t, h, pushWithPayee("Blue Bottle", "evt-join")); res.Status != model.ImportIngestStatusCreated {
@@ -1222,26 +1239,28 @@ func TestSuggestSkipsASimpleFINRowWhosePayeeIsTheMemo(t *testing.T) {
 	}
 }
 
-// A row nothing could be suggested for (no payees to pick from, no category
-// of its type) costs no AI call and no cap slot.
+// A row nothing could be suggested for (its payee set, no category of its
+// type) costs no AI call and no cap slot. A missing payee always qualifies: a
+// well-known merchant may get a new one.
 func TestSuggestSkipsRowsNothingCanFill(t *testing.T) {
 	h, _, _ := suggestSetup(t)
 	c := &fakeCompleter{reply: `{"rows":[]}`}
 	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
 	h.mapCard(t, "Apple Card")
 	h.incomeCategory(t, userA, "Salary")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", PayeeID: py})
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
 	if len(c.calls) != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
-		t.Fatalf("an expense with no expense category and no payees: calls = %d, reservations = %v", len(c.calls), l.reserve)
+		t.Fatalf("an expense with its payee and no expense category: calls = %d, reservations = %v", len(c.calls), l.reserve)
 	}
-	h.payee(t, userA, "Blue Bottle")
 	if res := ingest(t, h, pushWithPayee("Philz", "evt-2")); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
 	if len(c.calls) != 1 || l.reserve[imports.RateScopeSuggest] != 1 {
-		t.Fatalf("with a payee to pick: calls = %d, reservations = %v", len(c.calls), l.reserve)
+		t.Fatalf("with the payee missing: calls = %d, reservations = %v", len(c.calls), l.reserve)
 	}
 }
 
@@ -1255,7 +1274,7 @@ func (f *optOutAfterDeadlines) OwnerFacts(ctx context.Context, _ vo.Id) (imports
 	f.reads++
 	d, _ := ctx.Deadline()
 	f.deadlines = append(f.deadlines, d)
-	return imports.OwnerInfo{Language: "en", AIOff: f.reads > f.n}, nil
+	return imports.OwnerInfo{Language: "en", AIOff: f.reads > f.n, SuggestRules: true, SuggestFill: true}, nil
 }
 
 // The undo after the write runs under a short context of its own, not the
@@ -1458,5 +1477,494 @@ func TestSuggestVanishedLinkKeepsTheOtherSuggestions(t *testing.T) {
 	got := openSuggestions(t, h, userA)
 	if len(got) != 1 || got[0].MatchText != "Corner Shop" || len(got[0].LinkIDs) != 1 {
 		t.Fatalf("suggestions = %+v, want only Corner Shop", got)
+	}
+}
+
+// assignRecords reads the owner's import_transaction_suggestions rows: the
+// record of what the job assigned.
+func assignRecords(t *testing.T, h *harness, owner string) []model.ImportTransactionSuggestion {
+	t.Helper()
+	rows, err := h.db.Raw.QueryContext(context.Background(), h.db.Rebind(
+		`SELECT link_id, user_id, category_id, payee_id, transaction_type, status FROM import_transaction_suggestions WHERE user_id = ? ORDER BY link_id`), owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []model.ImportTransactionSuggestion
+	for rows.Next() {
+		var link, user, typ, status string
+		var cat, payee *string
+		if err := rows.Scan(&link, &user, &cat, &payee, &typ, &status); err != nil {
+			t.Fatal(err)
+		}
+		r := model.ImportTransactionSuggestion{LinkID: vo.MustParseId(link), UserID: vo.MustParseId(user), CategoryID: parseOptID(cat), PayeeID: parseOptID(payee), Status: status}
+		if typ == "income" {
+			r.Type = model.TransactionTypeIncome
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// fakePayees creates payees as the payee feature would: a real row
+// (transactions.payee_id is a foreign key) written through the job's own
+// transaction (the fixture builder's connection would deadlock on the pool of
+// one), also added to the owner's vocabulary.
+type fakePayees struct {
+	h       *harness
+	created []string
+	fail    error
+	// raced, when set, makes the create lose a race: another writer has just
+	// stored a payee of that exact name (archived when raced is "archived")
+	// and the payee feature refuses the name.
+	raced   string
+	racedID string
+}
+
+func (f *fakePayees) CreatePayee(ctx context.Context, owner vo.Id, name string) (model.ImportNamed, error) {
+	id := vo.NewId().String()
+	if f.raced != "" {
+		archived := f.raced == "archived"
+		flag := "FALSE"
+		if archived {
+			flag = "TRUE"
+		}
+		if _, err := f.h.db.TX.Querier(ctx).ExecContext(ctx, f.h.db.Rebind(
+			`INSERT INTO payees (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+flag+`, ?, ?)`),
+			id, owner.String(), name, "a0", now, now); err != nil {
+			return model.ImportNamed{}, err
+		}
+		f.h.entities.payees[owner] = append(f.h.entities.payees[owner], model.ImportNamed{ID: id, Name: name, OwnerID: owner.String(), Archived: archived})
+		f.racedID = id
+		return model.ImportNamed{}, &errs.ValidationError{Msg: "Payee already exists.", MsgCode: errs.CodePayeeAlreadyExists}
+	}
+	if f.fail != nil {
+		// a real failing statement, so PostgreSQL shows whether the failed row
+		// leaves the job's transaction usable
+		if _, err := f.h.db.TX.Querier(ctx).ExecContext(ctx, f.h.db.Rebind(
+			`INSERT INTO payees (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, FALSE, ?, ?)`),
+			id, vo.NewId().String(), name, "a0", now, now); err != nil {
+			return model.ImportNamed{}, err
+		}
+		return model.ImportNamed{}, f.fail
+	}
+	if _, err := f.h.db.TX.Querier(ctx).ExecContext(ctx, f.h.db.Rebind(
+		`INSERT INTO payees (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, FALSE, ?, ?)`),
+		id, owner.String(), name, "a0", now, now); err != nil {
+		return model.ImportNamed{}, err
+	}
+	f.h.entities.add(f.h.entities.payees, owner, id, name)
+	f.created = append(f.created, name)
+	return model.ImportNamed{ID: id, Name: name, OwnerID: owner.String()}, nil
+}
+
+// txOf reads the live transaction behind a ledger link.
+func txOf(t *testing.T, h *harness, linkID vo.Id) *model.Transaction {
+	t.Helper()
+	l, err := h.repo.GetLink(context.Background(), linkID)
+	if err != nil || l.TransactionID == nil {
+		t.Fatalf("link %s: %+v, %v", linkID, l, err)
+	}
+	tx, err := h.txns.GetByID(context.Background(), *l.TransactionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tx
+}
+
+func bankLinkID(t *testing.T, h *harness, externalID string) vo.Id {
+	t.Helper()
+	links, err := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(bankSource))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range links {
+		if l.ExternalTransactionID == externalID {
+			return l.ID
+		}
+	}
+	t.Fatalf("no link for %s", externalID)
+	return vo.Id{}
+}
+
+func idIs(id *vo.Id, want string) bool {
+	if want == "" {
+		return id == nil
+	}
+	return id != nil && id.String() == want
+}
+
+func TestSuggestAssignsEachRowItsOwnValues(t *testing.T) {
+	h, p := bankHarness(t)
+	c := &fakeCompleter{}
+	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	coffee := h.category(t, userA, "Coffee")
+	restaurants := h.category(t, userA, "Restaurants")
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	p.txs = []model.ExternalTransaction{
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Corner Shop"),
+		extTx("ACT-1", "b", "-6.00", now.AddDate(0, 0, -2).Unix(), "Corner Shop"),
+		extTx("ACT-1", "c", "-7.00", now.AddDate(0, 0, -3).Unix(), "Corner Shop"),
+	}
+	c.reply = `{"rows":[{"key":"0","matchText":"Corner Shop","categoryId":"` + coffee + `"},{"key":"1","matchText":"Corner Shop","categoryId":"` + coffee + `"},{"key":"2","matchText":"Corner Shop","categoryId":"` + restaurants + `"}]}`
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	rules := openSuggestions(t, h, userA)
+	if len(rules) != 1 || !idIs(rules[0].CategoryID, coffee) || len(rules[0].LinkIDs) != 3 {
+		t.Fatalf("rule suggestions = %+v", rules)
+	}
+	want := map[vo.Id]string{
+		bankLinkID(t, h, "a"): coffee,
+		bankLinkID(t, h, "b"): coffee,
+		bankLinkID(t, h, "c"): restaurants,
+	}
+	got := assignRecords(t, h, userA)
+	if len(got) != 3 {
+		t.Fatalf("records = %+v", got)
+	}
+	for _, s := range got {
+		cat, ok := want[s.LinkID]
+		if !ok || !idIs(s.CategoryID, cat) || s.PayeeID != nil || s.UserID.String() != userA ||
+			s.Type != model.TransactionTypeExpense || s.Status != model.ImportTransactionSuggestionStatusFilled {
+			t.Fatalf("record = %+v, want category %s", s, cat)
+		}
+		if tx := txOf(t, h, s.LinkID); !idIs(tx.CategoryID, cat) || tx.PayeeID != nil {
+			t.Fatalf("transaction = %+v, want category %s", tx, cat)
+		}
+	}
+}
+
+func TestSuggestRulesOffWritesNoRuleSuggestion(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	facts[userA] = ownerFact{language: "en", rulesOff: true}
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	catID := vo.MustParseId(cat)
+	open := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+		CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+		t.Fatal(err)
+	}
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("with rules off the open suggestion is not reused: calls = %d", len(c.calls))
+	}
+	rules := openSuggestions(t, h, userA)
+	if len(rules) != 1 || rules[0].ID != open.ID || len(rules[0].LinkIDs) != 0 {
+		t.Fatalf("rule suggestions = %+v, want only the untouched seeded one", rules)
+	}
+	got := assignRecords(t, h, userA)
+	if len(got) != 1 || !idIs(got[0].CategoryID, cat) {
+		t.Fatalf("transaction suggestions = %+v", got)
+	}
+}
+
+func TestSuggestRulesOffWritesNoRuleSuggestionFromScratch(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	facts[userA] = ownerFact{language: "en", rulesOff: true}
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if n := len(openSuggestions(t, h, userA)); n != 0 {
+		t.Fatalf("rule suggestions = %d, want none", n)
+	}
+	if got := assignRecords(t, h, userA); len(got) != 1 {
+		t.Fatalf("transaction suggestions = %+v", got)
+	}
+}
+
+func TestSuggestBothOffMakesNoCall(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en", rulesOff: true, fillOff: true}})
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 0 || l.allow[imports.RateScopeSuggest] != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
+		t.Fatalf("calls = %d, limiter allow = %d, reserve = %d", len(c.calls), l.allow[imports.RateScopeSuggest], l.reserve[imports.RateScopeSuggest])
+	}
+	if len(openSuggestions(t, h, userA)) != 0 || len(assignRecords(t, h, userA)) != 0 {
+		t.Fatal("nothing may be stored with both switches off")
+	}
+}
+
+// An opt-out found after the write committed removes the run's rule
+// suggestion; what was assigned stays, as ordinary data.
+func TestSuggestOptOutUndoKeepsAssignments(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.wireSuggest(c, &optOutAfter{n: 3})
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 {
+		t.Fatalf("calls = %d, rules = %+v", len(c.calls), openSuggestions(t, h, userA))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(txOf(t, h, links[0].ID).CategoryID, cat) {
+		t.Fatalf("records = %+v, want the assignment kept", got)
+	}
+}
+
+func TestSuggestOptOutUndoKeepsReusedAssignments(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	catID, pyID := vo.MustParseId(cat), vo.MustParseId(h.payee(t, userA, "Blue Bottle Coffee"))
+	open := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+		CategoryID: &catID, PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+		t.Fatal(err)
+	}
+	// reads: the first look, the pre-join write, then the undo's check
+	h.wireSuggest(c, &optOutAfter{n: 2})
+	ingest(t, h, tap)
+	if len(c.calls) != 0 || len(assignRecords(t, h, userA)) != 1 {
+		t.Fatalf("calls = %d, records = %+v, want the assignment kept", len(c.calls), assignRecords(t, h, userA))
+	}
+	for _, s := range openSuggestions(t, h, userA) {
+		if len(s.LinkIDs) != 0 {
+			t.Fatalf("links = %v, want the join undone", s.LinkIDs)
+		}
+	}
+}
+
+// factsSeq answers the n-th read with seq[n] (the last one past its end).
+type factsSeq struct {
+	seq   []imports.OwnerInfo
+	reads int
+}
+
+func (f *factsSeq) OwnerFacts(context.Context, vo.Id) (imports.OwnerInfo, error) {
+	i := min(f.reads, len(f.seq)-1)
+	f.reads++
+	return f.seq[i], nil
+}
+
+func TestSuggestFillTurnedOffDuringTheCallStoresOnlyRules(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	c.onCall = func() { facts[userA] = ownerFact{language: "en", fillOff: true} }
+	ingest(t, h, tap)
+	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 1 || len(assignRecords(t, h, userA)) != 0 {
+		t.Fatalf("calls = %d, rules = %+v, transactions = %+v", len(c.calls), openSuggestions(t, h, userA), assignRecords(t, h, userA))
+	}
+}
+
+// Rules turned off between the first look and the pre-AI join: the open
+// suggestion is not reused, the row goes to the AI for its own suggestion.
+func TestSuggestRulesTurnedOffBeforeTheJoinSendsRowsToAI(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	catID, pyID := vo.MustParseId(cat), vo.MustParseId(h.payee(t, userA, "Some Cafe"))
+	// it fills all the row lacks, so the first pass covers the row
+	open := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+		CategoryID: &catID, PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+		t.Fatal(err)
+	}
+	h.wireSuggest(c, &factsSeq{seq: []imports.OwnerInfo{
+		{Language: "en", SuggestRules: true, SuggestFill: true},
+		{Language: "en", SuggestFill: true},
+	}})
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+	}
+	rules := openSuggestions(t, h, userA)
+	if len(rules) != 1 || rules[0].ID != open.ID || len(rules[0].LinkIDs) != 0 {
+		t.Fatalf("rule suggestions = %+v, want only the untouched seeded one", rules)
+	}
+	if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(got[0].CategoryID, cat) {
+		t.Fatalf("transaction suggestions = %+v", got)
+	}
+}
+
+// Readonly reached while the job runs: neither write it would make (the
+// pre-AI reuse nor the post-AI one) happens.
+func TestSuggestReadonlyMeanwhileWritesNothing(t *testing.T) {
+	t.Run("before the reuse", func(t *testing.T) {
+		h, c, _ := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		cat := h.category(t, userA, "Coffee")
+		catID := vo.MustParseId(cat)
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		h.wireSuggest(c, &factsSeq{seq: []imports.OwnerInfo{
+			{Language: "en", SuggestRules: true, SuggestFill: true},
+			{Language: "en", Readonly: true, SuggestRules: true, SuggestFill: true},
+		}})
+		ingest(t, h, tap)
+		if len(c.calls) != 0 || len(assignRecords(t, h, userA)) != 0 {
+			t.Fatalf("calls = %d, records = %+v", len(c.calls), assignRecords(t, h, userA))
+		}
+		if got := openSuggestions(t, h, userA); len(got) != 1 || len(got[0].LinkIDs) != 0 {
+			t.Fatalf("rule suggestions = %+v, want no join", got)
+		}
+	})
+	t.Run("during the call", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		cat := h.category(t, userA, "Coffee")
+		c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"wellKnown":true,"categoryId":"` + cat + `"}]}`
+		c.onCall = func() { facts[userA] = ownerFact{language: "en", readonly: true} }
+		ingest(t, h, tap)
+		if len(c.calls) != 1 || len(assignRecords(t, h, userA)) != 0 || len(openSuggestions(t, h, userA)) != 0 || len(h.payees.created) != 0 {
+			t.Fatalf("calls = %d, records = %+v, rules = %+v, payees = %v", len(c.calls), assignRecords(t, h, userA), openSuggestions(t, h, userA), h.payees.created)
+		}
+	})
+}
+
+// hookFacts runs onRead before answering the n-th read (1-based).
+type hookFacts struct {
+	inner  imports.OwnerFacts
+	reads  int
+	onRead func(n int)
+}
+
+func (f *hookFacts) OwnerFacts(ctx context.Context, owner vo.Id) (imports.OwnerInfo, error) {
+	f.reads++
+	f.onRead(f.reads)
+	return f.inner.OwnerFacts(ctx, owner)
+}
+
+// A category or payee archived after the job's first look is not written by
+// the reuse step, and a new-payee name an archived payee now carries creates
+// nothing.
+func TestSuggestReuseRereadsTheVocabulary(t *testing.T) {
+	t.Run("category archived", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		cat := h.category(t, userA, "Coffee")
+		catID := vo.MustParseId(cat)
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		uA := vo.MustParseId(userA)
+		h.wireSuggest(c, &hookFacts{inner: facts, onRead: func(n int) {
+			if n == 2 {
+				for i := range h.entities.categories[uA] {
+					if h.entities.categories[uA][i].ID == cat {
+						h.entities.categories[uA][i].Archived = true
+					}
+				}
+			}
+		}})
+		ingest(t, h, tap)
+		links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+		if tx := txOf(t, h, links[0].ID); tx.CategoryID != nil || len(assignRecords(t, h, userA)) != 0 {
+			t.Fatalf("transaction = %+v, records = %+v, want the archived category not written", tx, assignRecords(t, h, userA))
+		}
+		// the suggestion covers nothing now: the row goes to the AI, not into it
+		if len(c.calls) != 1 {
+			t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+		}
+		if got := openSuggestions(t, h, userA); len(got) != 1 || len(got[0].LinkIDs) != 0 {
+			t.Fatalf("rule suggestions = %+v, want the row not joined", got)
+		}
+	})
+	t.Run("payee name archived", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		name := "Blue Bottle"
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			PayeeName: &name, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		h.wireSuggest(c, &hookFacts{inner: facts, onRead: func(n int) {
+			// only the vocabulary: the fixture's connection would wait on the
+			// job's transaction
+			if n == 2 {
+				uA := vo.MustParseId(userA)
+				h.entities.payees[uA] = append(h.entities.payees[uA], model.ImportNamed{ID: vo.NewId().String(), Name: "BLUE BOTTLE", OwnerID: userA, Archived: true})
+			}
+		}})
+		ingest(t, h, tap)
+		links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+		if tx := txOf(t, h, links[0].ID); tx.PayeeID != nil || len(h.payees.created) != 0 {
+			t.Fatalf("transaction = %+v, payees created = %v, want no payee", tx, h.payees.created)
+		}
+		if len(c.calls) != 1 {
+			t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+		}
+	})
+	t.Run("assignment failed", func(t *testing.T) {
+		h, c, _ := suggestSetup(t)
+		h.mapCard(t, "Apple Card")
+		name := "Blue Bottle"
+		open := &model.ImportSuggestion{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+			PayeeName: &name, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
+			t.Fatal(err)
+		}
+		h.payees.fail = errors.New("refused")
+		ingest(t, h, tap)
+		if len(c.calls) != 1 {
+			t.Fatalf("calls = %d, want the row the reuse could not fill sent to the AI", len(c.calls))
+		}
+		if got := openSuggestions(t, h, userA); len(got) != 1 || len(got[0].LinkIDs) != 0 {
+			t.Fatalf("rule suggestions = %+v, want the row not joined", got)
+		}
+	})
+}
+
+// Assignment turned on between the first look and the join: the join reads
+// the switch again, so a payee-only suggestion no longer takes the
+// uncategorised row, which goes to the AI for its category.
+func TestSuggestFillTurnedOnBeforeTheJoinSendsPartlyCoveredRowToAI(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	open := seedOpenSuggestion(t, h, "", h.payee(t, userA, "Some Cafe"))
+	h.wireSuggest(c, &factsSeq{seq: []imports.OwnerInfo{
+		{Language: "en", SuggestRules: true},
+		{Language: "en", SuggestRules: true, SuggestFill: true},
+	}})
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if tx := txOf(t, h, links[0].ID); !idIs(tx.CategoryID, cat) {
+		t.Fatalf("transaction = %+v, want the AI's category", tx)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].ID != open.ID || len(got[0].LinkIDs) != 1 {
+		t.Fatalf("rule suggestions = %+v", got)
 	}
 }

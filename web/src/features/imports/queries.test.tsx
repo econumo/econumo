@@ -15,6 +15,7 @@ import {
   suggestionRetry,
   useAcceptImportSuggestion,
   useApplyImportRule,
+  useCreateSuggestedPayee,
   useDismissImportSuggestion,
   useImportSuggestions,
   useCreateImportRule,
@@ -195,6 +196,75 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1, from: 'settings' })
 })
 
+it('a sync refreshes the payees with the suggestions', async () => {
+  const run = {
+    id: 'r1', sourceId: 's2', provider: 'simplefin', status: 'completed', trigger: 'manual',
+    importedCount: 1, matchedCount: 0, amountsUpdatedCount: 0, queuedCount: 0, skippedCount: 0, failedCount: 0,
+    errors: [], startedAt: '2026-09-07 10:00:00', finishedAt: '2026-09-07 10:00:02',
+  }
+  server.use(http.post('*/api/v1/import/sync-source', () => HttpResponse.json({ success: true, message: '', data: { run, accounts: [] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.payees, [])
+  const { result } = renderHook(() => useSyncImportSource(), { wrapper })
+  await act(() => result.current.mutateAsync({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }))
+  expect(queryClient.getQueryState(queryKeys.payees)?.isInvalidated).toBe(true)
+})
+
+// An Apple Wallet tap reaches the server without this device, and the job then fills it in: the
+// suggestion list's refetch on focus also refreshes an accounts list older than a minute, whose
+// revisions drive the transaction sync.
+it('a suggestion list fetch refreshes the accounts list when it is older than a minute', async () => {
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [], { updatedAt: Date.now() - 61_000 })
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.accounts)?.isInvalidated).toBe(true)
+})
+
+it('a suggestion list fetch leaves a fresh accounts list alone', async () => {
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [])
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.accounts)?.isInvalidated).toBe(false)
+})
+
+// the create-payee state of a suggestion no longer listed (accepted or dismissed elsewhere) is dropped
+it('a suggestion gone from the list forgets its create-payee operation id', async () => {
+  const ids: string[] = []
+  server.use(
+    http.get('*/api/v1/payee/get-payee-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+    http.post('*/api/v1/payee/create-payee', async ({ request }) => {
+      const body = (await request.json()) as { id: string; name: string }
+      ids.push(body.id)
+      return ids.length === 1
+        ? HttpResponse.error()
+        : HttpResponse.json({ success: true, message: '', data: { item: { id: 'p-new', ownerUserId: 'u1', name: body.name, position: 0, isArchived: 0, createdAt: '', updatedAt: '' } } })
+    }),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const { wrapper } = makeWrapper()
+  const create = renderHook(() => useCreateSuggestedPayee(), { wrapper })
+  const vars = { suggestionId: 'sg-pruned', name: 'Blue Bottle', ownerUserId: 'u1' }
+  await expect(act(() => create.result.current.mutateAsync(vars))).rejects.toBeDefined()
+  const list = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(list.result.current.isSuccess).toBe(true))
+  await act(() => create.result.current.mutateAsync(vars))
+  expect(ids).toHaveLength(2)
+  expect(ids[1]).not.toBe(ids[0])
+})
+
+it('a suggestion naming a payee the cached list lacks refetches the payee list', async () => {
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1', payeeId: 'p-job', payeeName: '' }] } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.payees, [{ id: 'p1', ownerUserId: 'u1', name: 'Grocer', position: 0, isArchived: 0, createdAt: '', updatedAt: '' }])
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.payees)?.isInvalidated).toBe(true)
+})
+
 it('useAcceptImportSuggestion invalidates the plan with the other ledger views', async () => {
   server.use(http.post('*/api/v1/import/accept-suggestion', () => HttpResponse.json({ success: true, message: '', data: { updated: 1 } })))
   const { queryClient, wrapper } = makeWrapper()
@@ -310,7 +380,9 @@ describe('suggestion refresh after a sync', () => {
     vi.useRealTimers()
   })
 
-  it('refetches the suggestion list at 15 s and 60 s when AI is on', () => {
+  // the job assigns categories and payees (creating payees) after the sync answered: the ledger
+  // views and the payee list must show them
+  it('refetches the suggestions, the payees and the ledger views at 15 s and 60 s when AI is on', () => {
     vi.useFakeTimers()
     window.econumoConfig = { AI_ENABLED: true }
     const queryClient = new QueryClient()
@@ -319,10 +391,10 @@ describe('suggestion refresh after a sync', () => {
     vi.advanceTimersByTime(14_999)
     expect(spy).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    expect(spy).toHaveBeenCalledTimes(1)
-    expect(spy).toHaveBeenLastCalledWith({ queryKey: queryKeys.importSuggestions })
+    const keys = [queryKeys.importSuggestions, queryKeys.payees, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.debts, queryKeys.budgetTransactions]
+    expect(spy.mock.calls).toEqual(keys.map((queryKey) => [{ queryKey }]))
     vi.advanceTimersByTime(45_000)
-    expect(spy).toHaveBeenCalledTimes(2)
+    expect(spy).toHaveBeenCalledTimes(keys.length * 2)
   })
 
   it('schedules nothing without AI', () => {
@@ -457,3 +529,4 @@ it('useRetryImportEvent refreshes the ledger caches, debts included', async () =
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
 })
+

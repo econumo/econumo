@@ -17,6 +17,9 @@ import (
 const (
 	maxPayeeCandidates = 5
 	maxMerchantNames   = 4
+	// the payee feature's name length, so a suggested new payee can be created
+	minPayeeName = 3
+	maxPayeeName = 64
 )
 
 type suggestRow struct {
@@ -30,7 +33,22 @@ type suggestRow struct {
 type missingFields struct{ Category, Payee bool }
 
 func (m missingFields) filledBy(o model.ImportSuggestion) bool {
-	return (m.Category && o.CategoryID != nil) || (m.Payee && o.PayeeID != nil)
+	return (m.Category && o.CategoryID != nil) || (m.Payee && (o.PayeeID != nil || o.PayeeName != nil))
+}
+
+// covers: every field m lacks is set.
+func (set missingFields) covers(m missingFields) bool {
+	return (!m.Category || set.Category) && (!m.Payee || set.Payee)
+}
+
+// coveredBy is whether an open suggestion takes the row before the AI call.
+// With whole (assignment on) it must fill every field the row lacks: a row it
+// would leave half done goes to the AI, which may find the rest.
+func (m missingFields) coveredBy(o model.ImportSuggestion, whole bool) bool {
+	if !whole {
+		return m.filledBy(o)
+	}
+	return m.filledBy(o) && (!m.Category || o.CategoryID != nil) && (!m.Payee || o.PayeeID != nil || o.PayeeName != nil)
 }
 
 type suggestVocabulary struct {
@@ -38,6 +56,9 @@ type suggestVocabulary struct {
 	Payees     []model.ImportNamed
 	income     map[vo.Id]bool
 	active     map[vo.Id]bool
+	// names covers archived payees too: a new-payee name equal to one of
+	// those gets no payee.
+	names payeeNames
 }
 
 type validSuggestion struct {
@@ -46,6 +67,83 @@ type validSuggestion struct {
 	MatchText  string
 	CategoryID *vo.Id
 	PayeeID    *vo.Id
+	// PayeeName is a payee to create for a well-known merchant the owner has
+	// no payee for; set only when PayeeID is nil.
+	PayeeName string
+	// WellKnown is the AI's word that MerchantName is a major chain or brand.
+	WellKnown    bool
+	MerchantName string
+}
+
+// payeeNames finds the owner's payee for a new-payee name, both compared as
+// similarityText normalizes them, so "WHOLE FOODS" reuses "Whole Foods".
+type payeeNames struct {
+	active   map[string]vo.Id
+	archived map[string]bool
+	// keys is every payee's normalized name, by id
+	keys map[vo.Id]string
+}
+
+func newPayeeNames(payees []model.ImportNamed) payeeNames {
+	n := payeeNames{active: map[string]vo.Id{}, archived: map[string]bool{}, keys: map[vo.Id]string{}}
+	for _, p := range payees {
+		key := similarityText(p.Name)
+		if key == "" {
+			continue
+		}
+		if id, err := vo.ParseId(p.ID); err == nil {
+			n.keys[id] = key
+		}
+		if p.Archived {
+			n.archived[key] = true
+			continue
+		}
+		if id, err := vo.ParseId(p.ID); err == nil {
+			if _, seen := n.active[key]; !seen {
+				n.active[key] = id
+			}
+		}
+	}
+	return n
+}
+
+// resolve answers the active payee of that name; with only an archived one,
+// neither an id nor a new name (the user archived it on purpose); with none,
+// isNew.
+func (n payeeNames) resolve(name string) (id *vo.Id, isNew bool) {
+	key := similarityText(name)
+	if key == "" {
+		return nil, false
+	}
+	if found, ok := n.active[key]; ok {
+		return &found, false
+	}
+	return nil, !n.archived[key]
+}
+
+// resolveName turns a suggestion's new-payee name into the payee that now
+// carries it (created by an assignment or by hand), or drops it when only an
+// archived payee does.
+func (n payeeNames) resolveName(o *model.ImportSuggestion) {
+	if o.PayeeID != nil || o.PayeeName == nil {
+		return
+	}
+	id, isNew := n.resolve(*o.PayeeName)
+	if id != nil || !isNew {
+		o.PayeeID, o.PayeeName = id, nil
+	}
+}
+
+// newPayeeName is the payee a row the AI found none for may get: the first
+// merchant name of a well-known brand, when the payee feature would take it.
+func newPayeeName(s validSuggestion) string {
+	if !s.Row.Missing.Payee || s.PayeeID != nil || !s.WellKnown {
+		return ""
+	}
+	if n := len([]rune(s.MerchantName)); n < minPayeeName || n > maxPayeeName {
+		return ""
+	}
+	return s.MerchantName
 }
 
 // suggestReplyRow is step 1's answer for a row. CategoryID is the id
@@ -56,8 +154,12 @@ type suggestReplyRow struct {
 	MatchText   string   `json:"matchText"`
 	Merchants   []string `json:"merchants"`
 	CategoryKey string   `json:"categoryKey"`
+	WellKnown   bool     `json:"wellKnown"`
 	CategoryID  string   `json:"-"`
 	PayeeID     string   `json:"-"`
+	// NoNewPayee: the row had payee candidates and step 2 failed or picked
+	// one it cannot use, so the owner may well have this merchant's payee.
+	NoNewPayee bool `json:"-"`
 }
 
 func newSuggestVocabulary(categories, payees []model.ImportNamed) suggestVocabulary {
@@ -78,12 +180,14 @@ func newSuggestVocabulary(categories, payees []model.ImportNamed) suggestVocabul
 		}
 	}
 	v.Payees = payees
+	v.names = newPayeeNames(payees)
 	return v
 }
 
 // liveOpen drops the fields of open suggestions whose category or payee the
 // owner has since archived or deleted, and the suggestions left with none:
 // the list read hides such a suggestion, so rows joined to it would be lost.
+// A new-payee name reads as the payee that carries it by now.
 func (v suggestVocabulary) liveOpen(open []model.ImportSuggestion) []model.ImportSuggestion {
 	out := make([]model.ImportSuggestion, 0, len(open))
 	for _, o := range open {
@@ -93,7 +197,8 @@ func (v suggestVocabulary) liveOpen(open []model.ImportSuggestion) []model.Impor
 		if o.PayeeID != nil && !v.active[*o.PayeeID] {
 			o.PayeeID = nil
 		}
-		if o.CategoryID != nil || o.PayeeID != nil {
+		v.names.resolveName(&o)
+		if o.CategoryID != nil || o.PayeeID != nil || o.PayeeName != nil {
 			out = append(out, o)
 		}
 	}
@@ -529,7 +634,10 @@ func validateReply(rows []suggestRow, reply map[string]suggestReplyRow, v sugges
 		if !ok {
 			continue
 		}
-		s := validSuggestion{Row: row, MatchField: field, MatchText: text}
+		s := validSuggestion{Row: row, MatchField: field, MatchText: text, WellKnown: r.WellKnown}
+		if len(r.Merchants) > 0 {
+			s.MerchantName = strings.TrimSpace(r.Merchants[0])
+		}
 		if row.Missing.Category && r.CategoryID != "" {
 			if id, ok := v.hasCategory(r.CategoryID); ok && categoryFits(id, v.income, row.Type) {
 				s.CategoryID = &id
@@ -540,7 +648,15 @@ func validateReply(rows []suggestRow, reply map[string]suggestReplyRow, v sugges
 				s.PayeeID = &id
 			}
 		}
-		if s.CategoryID == nil && s.PayeeID == nil {
+		if name := newPayeeName(s); name != "" {
+			id, isNew := v.names.resolve(name)
+			if id != nil {
+				s.PayeeID = id
+			} else if isNew && !r.NoNewPayee {
+				s.PayeeName = name
+			}
+		}
+		if s.CategoryID == nil && s.PayeeID == nil && s.PayeeName == "" {
 			continue
 		}
 		out = append(out, s)
@@ -594,6 +710,9 @@ func groupRowsMissing(valid []validSuggestion) ([]model.ImportSuggestion, [][]mi
 				ID: vo.NewId(), MatchField: b.field, MatchText: b.text,
 				CategoryID: best.CategoryID, PayeeID: best.PayeeID, Type: rows[0].Row.Type, Status: model.ImportSuggestionStatusOpen,
 			}
+			if name := best.PayeeName; name != "" {
+				sug.PayeeName = &name
+			}
 			var m []missingFields
 			var left []validSuggestion
 			for _, s := range rows {
@@ -616,15 +735,20 @@ func groupRowsMissing(valid []validSuggestion) ([]model.ImportSuggestion, [][]mi
 	return out, missing
 }
 
+// classification keys a row's values; a new-payee name counts as a payee.
+func classification(s validSuggestion) string {
+	return idPtrKey(s.CategoryID) + "\x00" + idPtrKey(s.PayeeID) + "\x00" + similarityText(s.PayeeName)
+}
+
 func majority(rows []validSuggestion) validSuggestion {
 	count := map[string]int{}
 	for _, s := range rows {
-		count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]++
+		count[classification(s)]++
 	}
 	best := rows[0]
-	bestN := count[idPtrKey(best.CategoryID)+"\x00"+idPtrKey(best.PayeeID)]
+	bestN := count[classification(best)]
 	for _, s := range rows[1:] {
-		n := count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]
+		n := count[classification(s)]
 		if n > bestN || (n == bestN && s.Row.Link.ExternalPostedAt.After(best.Row.Link.ExternalPostedAt)) {
 			best, bestN = s, n
 		}
@@ -690,7 +814,7 @@ func mergeIntoOpen(groups []model.ImportSuggestion, groupMissing [][]missingFiel
 	return rest, joins
 }
 
-func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]bool) (vo.Id, bool) {
+func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]bool, whole bool) (vo.Id, bool) {
 	ev := model.IngestEvent{Payee: row.Link.ExternalPayee, Description: row.Link.ExternalDescription}
 	for _, o := range sortedOldestFirst(open) {
 		r := model.ImportRule{MatchField: o.MatchField, MatchValue: o.MatchText, MatchType: model.ImportRuleMatchTypeContains}
@@ -700,7 +824,7 @@ func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]boo
 		if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, row.Type) {
 			continue
 		}
-		if !row.Missing.filledBy(o) {
+		if !row.Missing.coveredBy(o, whole) {
 			continue
 		}
 		return o.ID, true

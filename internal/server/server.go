@@ -533,6 +533,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	if seams.ImportsJobRunner != nil {
 		importsSvc.SetJobRunner(seams.ImportsJobRunner)
 	}
+	importsSvc.SetPayeeCreator(txImportPayees)
 	userSvc.SetAISuggestionClearer(importsSvc)
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 

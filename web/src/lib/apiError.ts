@@ -30,6 +30,22 @@ export function toastRefusal(err: unknown): void {
   }
 }
 
+// A failed write's toast for a site that handles its own errors (so the query client's
+// no-response toast stays quiet): skips a 401 or 402, which the API client already answers
+// with a sign-out or its readonly toast, and shares the no-response toast's id.
+export function toastWriteError(err: unknown): void {
+  if (!isAxiosError(err)) {
+    toast.error(apiErrorMessage(err))
+    return
+  }
+  if (!err.response) {
+    toast.error(apiErrorMessage(err), { id: 'no-response' })
+    return
+  }
+  if (err.response.status === 401 || err.response.status === 402) return
+  toast.error(apiErrorMessage(err))
+}
+
 // Per-field messages for inline form errors, as rendered by the backend.
 export function apiFieldErrors(err: unknown, field: string): string[] | undefined {
   const data = isAxiosError(err) ? (err.response?.data as ErrEnvelope | undefined) : undefined

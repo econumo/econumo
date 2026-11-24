@@ -1,4 +1,5 @@
-import { apiErrorMessage, apiFieldErrors } from './apiError'
+import { toast } from 'sonner'
+import { apiErrorMessage, apiFieldErrors, toastWriteError } from './apiError'
 import i18n from '@/app/i18n'
 
 function axiosErr(data: unknown) {
@@ -37,4 +38,28 @@ it('apiFieldErrors returns the field messages', () => {
   })
   expect(apiFieldErrors(err, 'name')).toEqual(['Это значение слишком длинное.'])
   expect(apiFieldErrors(err, 'other')).toBeUndefined()
+})
+
+describe('toastWriteError', () => {
+  const withStatus = (status: number) => ({ isAxiosError: true, response: { status, data: { success: false, message: 'Refused', code: 0, errors: {} } } })
+  let toastError: ReturnType<typeof vi.spyOn>
+  beforeEach(() => {
+    toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
+  })
+  afterEach(() => toastError.mockRestore())
+
+  it('shows the server message for a refusal', () => {
+    toastWriteError(withStatus(400))
+    expect(toastError).toHaveBeenCalledWith('Refused')
+  })
+
+  it('shares the no-response toast id when nothing answered', () => {
+    toastWriteError({ isAxiosError: true })
+    expect(toastError).toHaveBeenCalledWith(expect.any(String), { id: 'no-response' })
+  })
+
+  it.each([401, 402])('leaves a %i to the API client', (status) => {
+    toastWriteError(withStatus(status))
+    expect(toastError).not.toHaveBeenCalled()
+  })
 })

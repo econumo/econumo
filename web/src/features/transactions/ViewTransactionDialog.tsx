@@ -114,7 +114,14 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       tx.type === 'expense'
         ? t('accounts.page.preview_transaction_modal.recipient.label')
         : t('accounts.page.preview_transaction_modal.sender.label')
-    cards.push({ label: payeeLabel, content: <span className="text-sm">{tx.payee.name}</span> })
+    cards.push({
+      label: payeeLabel,
+      content: (
+        <span className="flex items-center gap-2 text-sm">
+          <span className="truncate">{tx.payee.name}</span>
+        </span>
+      ),
+    })
   }
   if (tx.tag || attachedLabels.length > 0) {
     cards.push({

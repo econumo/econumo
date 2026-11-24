@@ -13,7 +13,7 @@ import { submitChange } from '@/features/pendingWrites/submit'
 import { realIdOf } from '@/features/pendingWrites/tempIds'
 import { useUserData } from '@/features/user/queries'
 import { compareTransactions } from './order'
-import { beginLocalWrite, consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
+import { beginLocalWrite, consumeFullReload, invalidateBudgetViews, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
 
 const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => compareTransactions(a, b))
 
@@ -55,10 +55,7 @@ export function applyTransactionItem(queryClient: QueryClient, result: Transacti
       return items.filter((t) => t.id !== result.item.id)
     })
   }
-  void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
-  void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
-  void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-  void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+  invalidateBudgetViews(queryClient)
 }
 
 export function useApplyTransactionItem() {
@@ -114,10 +111,7 @@ export function useMoveTransaction() {
         const byId = new Map(result.items.map((t) => [t.id, t]))
         queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => (prev ?? []).map((t) => byId.get(t.id) ?? t))
       }
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+      invalidateBudgetViews(queryClient)
       trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: req.fromDate !== req.date })
     },
     onError: (err) => {

@@ -685,8 +685,26 @@ func TestSuggestionRepoRoundTrip(t *testing.T) {
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list = %v, %v", list, err)
 	}
-	if got := list[0]; len(got.LinkIDs) != 2 || got.MatchText != "coffee shop" || got.CategoryID == nil || *got.CategoryID != catID || got.PayeeID != nil || got.Type != model.TransactionTypeIncome || !got.CreatedAt.Equal(fixedTime) {
+	if got := list[0]; len(got.LinkIDs) != 2 || got.MatchText != "coffee shop" || got.CategoryID == nil || *got.CategoryID != catID || got.PayeeID != nil || got.PayeeName != nil || got.Type != model.TransactionTypeIncome || !got.CreatedAt.Equal(fixedTime) {
 		t.Errorf("mismatch: %+v", got)
+	}
+	name := "Whole Foods"
+	named := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee,
+		MatchText: "wholefds", PayeeName: &name, Type: model.TransactionTypeExpense, Status: model.ImportSuggestionStatusOpen,
+		CreatedAt: fixedTime.Add(time.Second), UpdatedAt: fixedTime,
+	}
+	if err := repo.InsertSuggestion(ctx, named); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := repo.GetSuggestion(ctx, named.ID); err != nil || got.PayeeName == nil || *got.PayeeName != name || got.PayeeID != nil {
+		t.Fatalf("payee name round trip = %+v, %v", got, err)
+	}
+	if list, err := repo.ListOpenSuggestionsByUser(ctx, s.UserID); err != nil || len(list) != 2 || list[1].PayeeName == nil || *list[1].PayeeName != name {
+		t.Fatalf("list with a payee name = %+v, %v", list, err)
+	}
+	if err := repo.DeleteSuggestion(ctx, named.ID); err != nil {
+		t.Fatal(err)
 	}
 	if ok, err := repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{l2.ID, l3.ID}, fixedTime); err != nil || !ok {
 		t.Fatalf("AddSuggestionLinks: %v, %v", ok, err)
@@ -880,5 +898,55 @@ func TestExistingLinkIDs(t *testing.T) {
 	}
 	if got, err := repo.ExistingLinkIDs(ctx, nil); err != nil || len(got) != 0 {
 		t.Fatalf("empty = %v, %v", got, err)
+	}
+}
+
+func TestTransactionSuggestionRepo(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	_, links := seedSuggestionWithLinks(t, repo, db, 3)
+	catA, catB := vo.NewId(), vo.NewId()
+	mk := func(l *model.ImportTransactionLink, cat vo.Id, status string) model.ImportTransactionSuggestion {
+		return model.ImportTransactionSuggestion{
+			LinkID: l.ID, UserID: vo.MustParseId(userA), CategoryID: &cat, Type: model.TransactionTypeExpense,
+			Status: status, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		}
+	}
+	filledStatus, openStatus := model.ImportTransactionSuggestionStatusFilled, model.ImportTransactionSuggestionStatusOpen
+	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[0], catA, filledStatus), mk(links[1], catA, openStatus)}); err != nil {
+		t.Fatal(err)
+	}
+	// a repeated insert keeps the first row
+	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[1], catB, filledStatus)}); err != nil {
+		t.Fatal(err)
+	}
+	filled, err := repo.FilledTransactionSuggestionLinks(ctx, []vo.Id{links[0].ID, links[1].ID, links[2].ID})
+	if err != nil || len(filled) != 1 || !filled[links[0].ID] {
+		t.Fatalf("filled = %v, %v", filled, err)
+	}
+	if got, err := repo.FilledTransactionSuggestionLinks(ctx, nil); err != nil || len(got) != 0 {
+		t.Fatalf("empty input = %v, %v", got, err)
+	}
+	count := func() int {
+		var n int
+		if err := db.Raw.QueryRow(`SELECT COUNT(*) FROM import_transaction_suggestions`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if err := repo.DeleteOpenTransactionSuggestionsByUser(ctx, vo.NewId()); err != nil || count() != 2 {
+		t.Fatalf("another user's delete: %v, rows = %d", err, count())
+	}
+	if err := repo.DeleteOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA)); err != nil {
+		t.Fatal(err)
+	}
+	if filled, _ = repo.FilledTransactionSuggestionLinks(ctx, []vo.Id{links[0].ID}); !filled[links[0].ID] || count() != 1 {
+		t.Fatalf("deleting a user's open rows keeps the filled one: rows = %d", count())
+	}
+
+	db.Exec(t, db.Rebind(`DELETE FROM import_transaction_links WHERE id = ?`), links[0].ID.String())
+	if n := count(); n != 0 {
+		t.Fatalf("deleting the ledger link cascades: rows = %d", n)
 	}
 }

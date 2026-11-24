@@ -38,3 +38,9 @@ func (sqliteQuerier) ReassignPayeeTransactions(ctx context.Context, db backend.D
 func (sqliteQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return sqlitegen.New(db).ReassignPayeeRecurring(ctx, p)
 }
+
+// LockPayeeOwner has nothing to take: the SQLite pool is one connection, so a
+// transaction already runs alone from its first statement to its commit.
+func (sqliteQuerier) LockPayeeOwner(ctx context.Context, db backend.DBTX, userID string) error {
+	return nil
+}

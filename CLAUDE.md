@@ -380,7 +380,7 @@ global app and prints its secret once. CLI-created users never get a trial.
   the six public `oauth` routes.
 - **Read-only access**: a `readonly` caller gets HTTP 402 on any `POST` outside the
   middleware's allowlist (account security actions, `update-analytics`, `update-ai`,
-  `update-last-seen-version`, declining or approving a `read` authorization). `GET` is never
+  `update-ai-suggestions`, `update-last-seen-version`, declining or approving a `read` authorization). `GET` is never
   restricted.
 - **`Idempotency-Key`** (`internal/web/middleware/idempotency.go`): the SPA sends a UUIDv7 on
   every `POST`. The server checks the table BEFORE the handler and records the key inside the
@@ -535,12 +535,19 @@ surface.
 - **AI rule suggestions** (spec `2026-11-11-ai-import-rule-suggestions-design.md`): after a
   live import leaves rows unclassified, a background job proposes a rule, landing in the
   owner's Inbox. One open suggestion per (owner, merchant, type); one owner's jobs run one at
-  a time.
+  a time. The same AI pass also ASSIGNS the category and payee to those transactions that
+  still have NO category (a rule- or hand-set category means nothing is assigned, even an
+  empty payee; empty fields only, under a transaction row lock, like a rule's write; recorded
+  as `filled` rows of `import_transaction_suggestions`, which keep an agreeing rule suggestion
+  listed). A missing payee is created only for a merchant the AI flags `wellKnown`; a rule
+  suggestion may carry such a name (`payee_name`), created when the user saves the rule. Spec
+  `2026-11-22-ai-import-suggestion-settings-design.md`. User options `ai_suggest_rules` and
+  `ai_suggest_fill` (assign; `update-ai-suggestions`, absent = on); both off = no AI call.
 
 ### AI integration (`internal/infra/ai`)
 
 Consumers: onboarding (savings detection, icons for imported or newly named categories and
-accounts) and imports (rule suggestions, `suggest-match-text`). System prompts are Markdown
+accounts) and imports (rule suggestions, automatic category/payee assignment, `suggest-match-text`). System prompts are Markdown
 files in the top-level `prompts/`; reply schemas live in `internal/{imports,onboarding}/prompts.go`.
 
 - **Data allowlist, every prompt**: category names and types; payee, tag, label and account

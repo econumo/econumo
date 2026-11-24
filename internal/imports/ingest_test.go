@@ -108,6 +108,7 @@ type fakeTxns struct {
 	builder       *fixture.Builder
 	created       []model.CreateTransactionRequest
 	updated       []model.UpdateTransactionRequest
+	updatedBy     []vo.Id
 	replaced      []model.UpdateTransactionRequest
 	candidates    []*model.Transaction
 	fail          error
@@ -250,8 +251,9 @@ func (f *fakeTxns) UpdateTransactionReplacingLabels(ctx context.Context, _ vo.Id
 
 // UpdateTransaction is the labels-preserving update: it writes the
 // classification columns and leaves the label rows alone.
-func (f *fakeTxns) UpdateTransaction(ctx context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+func (f *fakeTxns) UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	f.updated = append(f.updated, req)
+	f.updatedBy = append(f.updatedBy, userID)
 	if f.failUpdateAt > 0 && len(f.updated) == f.failUpdateAt {
 		return nil, errors.New("update failed")
 	}
@@ -363,6 +365,8 @@ type harness struct {
 	lim      *limiter
 	f        *fixture.Builder
 	db       *dbtest.DB
+	payees   *fakePayees
+	facts    imports.OwnerFacts
 }
 
 // setup builds a harness with rate limiting disabled (nil limiter — see

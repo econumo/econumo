@@ -1031,6 +1031,7 @@
     "suggestions": {
       "dismiss": "Negeren",
       "hint": "Door AI voorgestelde regels voor automatisch geïmporteerde transacties. Tik op een regel om die te bekijken en op te slaan.",
+      "new_payee": "{name} (nieuw)",
       "prompt_summary": "Voorgesteld voor {count} transactie | Voorgesteld voor {count} transacties",
       "transactions": "{count} transactie | {count} transacties"
     }
@@ -1281,7 +1282,10 @@
             "menu_item": "AI-functies",
             "label": "AI-functies gebruiken",
             "description": "AI helpt u uw financiën op orde te houden en maakt Econumo makkelijker te gebruiken.",
-            "promise": "Uw financiële en persoonlijke gegevens blijven privé en worden niet naar AI verstuurd."
+            "promise": "Uw financiële en persoonlijke gegevens blijven privé en worden niet naar AI verstuurd.",
+            "imports_heading": "Imports",
+            "suggest_rules_label": "Regels voorstellen",
+            "suggest_fill_label": "Automatisch categoriseren"
           }
         }
       }

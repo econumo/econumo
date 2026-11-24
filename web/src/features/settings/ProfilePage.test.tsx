@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react
 import { act } from 'react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
@@ -462,4 +463,185 @@ describe('App lock row', () => {
     expect(await screen.findByRole('link', { name: /App lock/ })).toHaveTextContent('On')
   })
 
+})
+
+it('shows the import suggestion switches only while AI is on and saves a change', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  vi.mocked(trackEvent).mockClear()
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/user/update-ai-suggestions', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai_suggest_rules', value: '0' }] } },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Imports')).toBeInTheDocument()
+  const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
+  expect(rules).toBeChecked()
+  expect(within(dialog).getByRole('switch', { name: 'Auto-categorize' })).toBeChecked()
+
+  await user.click(rules)
+
+  await waitFor(() => expect(body).toEqual({ suggestRules: false, suggestFill: true }))
+  await waitFor(() => expect(rules).not.toBeChecked())
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: true })
+})
+
+it('suggestion toggles are sent one at a time, so the latest toggle wins on the server and in the cache', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  const bodies: { suggestRules: boolean; suggestFill: boolean }[] = []
+  const releases: (() => void)[] = []
+  let inFlight = 0
+  let maxInFlight = 0
+  server.use(
+    http.post('*/api/v1/user/update-ai-suggestions', async ({ request }) => {
+      const body = (await request.json()) as { suggestRules: boolean; suggestFill: boolean }
+      bodies.push(body)
+      inFlight++
+      maxInFlight = Math.max(maxInFlight, inFlight)
+      await new Promise<void>((resolve) => releases.push(resolve))
+      inFlight--
+      const options = [
+        ...fixtureUser.options,
+        { name: 'ai_suggest_rules', value: body.suggestRules ? '1' : '0' },
+        { name: 'ai_suggest_fill', value: body.suggestFill ? '1' : '0' },
+      ]
+      return HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, options } } })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
+  const fill = within(dialog).getByRole('switch', { name: 'Auto-categorize' })
+
+  await user.click(rules)
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(rules).not.toBeChecked()
+  await user.click(fill)
+  expect(fill).not.toBeChecked()
+  // the second write waits for the first answer: concurrent, it could commit first and lose
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(bodies).toHaveLength(1)
+
+  // the first answer (fill still on) must not flip fill back while the second is queued
+  releases[0]()
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(fill).not.toBeChecked()
+  expect(bodies).toEqual([{ suggestRules: false, suggestFill: true }, { suggestRules: false, suggestFill: false }])
+  releases[1]()
+  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: false }))
+  expect(maxInFlight).toBe(1)
+  const cached = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)
+  expect(cached?.options.filter((o) => o.name.startsWith('ai_suggest_'))).toEqual([
+    { name: 'ai_suggest_rules', value: '0' },
+    { name: 'ai_suggest_fill', value: '0' },
+  ])
+  expect(rules).not.toBeChecked()
+  expect(fill).not.toBeChecked()
+})
+
+it.each([
+  ['a refusal', () => HttpResponse.json({ success: false, message: 'Not allowed', code: 0, errors: {} }, { status: 400 }), ['Not allowed']],
+  ['no response', () => HttpResponse.error(), [expect.any(String), { id: 'no-response' }]],
+  // the API client's own readonly toast, not a second one
+  ['402 readonly', () => HttpResponse.json({ success: false, message: 'Read-only access', code: 0, errors: {} }, { status: 402 }), [expect.any(String), { id: 'subscription-readonly' }]],
+])('a failed suggestion switch change (%s) flips back with one error toast', async (_name, respond, args) => {
+  window.econumoConfig = { AI_ENABLED: true }
+  const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
+  onTestFinished(() => toastError.mockRestore())
+  server.use(http.post('*/api/v1/user/update-ai-suggestions', respond))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  const rules = within(dialog).getByRole('switch', { name: 'Suggest rules' })
+
+  await user.click(rules)
+
+  await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
+  expect(toastError).toHaveBeenCalledWith(...args)
+  await waitFor(() => expect(rules).toBeChecked())
+})
+
+it('a late suggestion switch answer does not revert the main AI switch changed meanwhile', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  vi.mocked(trackEvent).mockClear()
+  let release: () => void = () => {}
+  let answered = false
+  server.use(
+    http.post('*/api/v1/user/update-ai-suggestions', async () => {
+      await new Promise<void>((resolve) => { release = resolve })
+      answered = true
+      // the user as this write saw it: main switch still on
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai_suggest_rules', value: '0' }, { name: 'ai_suggest_fill', value: '1' }] } },
+      })
+    }),
+    http.post('*/api/v1/user/update-ai', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } },
+      })),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('switch', { name: 'Suggest rules' }))
+  const main = within(dialog).getByRole('switch', { name: /use ai features/i })
+  await user.click(main)
+  await waitFor(() => expect(main).not.toBeChecked())
+
+  release()
+  await waitFor(() => expect(answered).toBe(true))
+  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: false, fill: true }))
+  expect(main).not.toBeChecked()
+  const options = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)?.options ?? []
+  expect(options).toContainEqual({ name: 'ai', value: '0' })
+  expect(options).toContainEqual({ name: 'ai_suggest_rules', value: '0' })
+})
+
+it('disables the import suggestion switches offline', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  act(() => onlineManager.setOnline(false))
+  try {
+    expect(within(dialog).getByRole('switch', { name: 'Suggest rules' })).toBeDisabled()
+    expect(within(dialog).getByRole('switch', { name: 'Auto-categorize' })).toBeDisabled()
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
+})
+
+it('hides the import suggestion switches once AI is turned off', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  server.use(
+    http.post('*/api/v1/user/update-ai', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } },
+      })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('switch', { name: 'Suggest rules' })).toBeInTheDocument()
+
+  await user.click(within(dialog).getByRole('switch', { name: /use ai features/i }))
+
+  await waitFor(() => expect(within(dialog).queryByRole('switch', { name: 'Suggest rules' })).not.toBeInTheDocument())
 })

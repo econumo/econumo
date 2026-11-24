@@ -269,9 +269,30 @@ type ImportSuggestion struct {
 	MatchText  string // normalized
 	CategoryID *vo.Id
 	PayeeID    *vo.Id
-	Type       TransactionType // expense or income: every row it offers is of this type
+	// PayeeName is a payee the owner does not have yet, for a well-known
+	// merchant; set only when PayeeID is nil.
+	PayeeName *string
+	Type      TransactionType // expense or income: every row it offers is of this type
+	Status    string
+	LinkIDs   []vo.Id // filled by the read methods
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+const (
+	ImportTransactionSuggestionStatusOpen   = "open"
+	ImportTransactionSuggestionStatusFilled = "filled"
+)
+
+// ImportTransactionSuggestion is a category/payee proposal for one imported
+// transaction, keyed by its ledger link.
+type ImportTransactionSuggestion struct {
+	LinkID     vo.Id
+	UserID     vo.Id // the account owner
+	CategoryID *vo.Id
+	PayeeID    *vo.Id
+	Type       TransactionType
 	Status     string
-	LinkIDs    []vo.Id // filled by the read methods
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }

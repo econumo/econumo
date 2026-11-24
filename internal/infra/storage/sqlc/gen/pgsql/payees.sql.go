@@ -93,6 +93,19 @@ func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee
 	return items, nil
 }
 
+const lockPayeeOwner = `-- name: LockPayeeOwner :exec
+SELECT pg_advisory_xact_lock(hashtextextended('payee:' || $1::text, 0))
+`
+
+// Serializes payee creation per owner until the transaction ends: payees has
+// no unique name constraint, so the exact-name check and the insert must not
+// interleave with another create for the same owner. An advisory lock, not the
+// users row, because creates run inside long import transactions.
+func (q *Queries) LockPayeeOwner(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, lockPayeeOwner, userID)
+	return err
+}
+
 const reassignPayeeRecurring = `-- name: ReassignPayeeRecurring :exec
 UPDATE recurring_transactions SET payee_id = $1 WHERE payee_id = $2
 `

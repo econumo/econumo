@@ -78,6 +78,14 @@ type Repository interface {
 	ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error)
 	DeleteSuggestion(ctx context.Context, id vo.Id) error
 	ReleaseSuggestionLinks(ctx context.Context, id vo.Id, linkIDs []vo.Id) (bool, error)
+
+	// What the AI job assigned, keyed by ledger link
+	InsertTransactionSuggestions(ctx context.Context, rows []model.ImportTransactionSuggestion) error
+	// LockTransactionRow takes the transaction's row lock in the caller's
+	// transaction; a missing row is not an error.
+	LockTransactionRow(ctx context.Context, transactionID vo.Id) error
+	DeleteOpenTransactionSuggestionsByUser(ctx context.Context, userID vo.Id) error
+	FilledTransactionSuggestionLinks(ctx context.Context, linkIDs []vo.Id) (map[vo.Id]bool, error)
 	// scope=all for preview/apply
 	ListLinksByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)
 	ListLinksIntoUserAccounts(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)

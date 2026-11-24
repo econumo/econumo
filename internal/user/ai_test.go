@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -53,5 +54,29 @@ func TestUpdateAI_ClearerFailureNeverFailsTheToggle(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("options = %+v", res.User.Options)
+	}
+}
+
+func TestUpdateAISuggestions(t *testing.T) {
+	svc, _, _, _, _, _, _ := newChangeEmailEnv(t)
+	ctx := context.Background()
+	uid := createChangeEmailUser(t, svc, "Me", "me@econumo.test", "secretpass1")
+	rules, fill := false, true
+	res, err := svc.UpdateAISuggestions(ctx, uid, model.UpdateAISuggestionsRequest{SuggestRules: &rules, SuggestFill: &fill})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, o := range res.User.Options {
+		if o.Value != nil {
+			got[o.Name] = *o.Value
+		}
+	}
+	if got[model.OptionAISuggestRules] != "0" || got[model.OptionAISuggestFill] != "1" {
+		t.Fatalf("options = %+v", res.User.Options)
+	}
+	ve, ok := errs.AsValidation(model.UpdateAISuggestionsRequest{SuggestRules: &rules}.Validate())
+	if !ok || len(ve.Fields) != 1 || ve.Fields[0].Key != "suggestFill" {
+		t.Fatalf("validate = %+v", ve)
 	}
 }

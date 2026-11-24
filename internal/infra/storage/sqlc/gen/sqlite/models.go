@@ -340,6 +340,7 @@ type ImportSuggestion struct {
 	Status          string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	PayeeName       *string
 }
 
 type ImportSuggestionLink struct {
@@ -366,6 +367,17 @@ type ImportTransactionLink struct {
 	AppliedTagID          *string
 	AppliedRuleID         *string
 	ImportedAt            time.Time
+}
+
+type ImportTransactionSuggestion struct {
+	LinkID          string
+	UserID          string
+	CategoryID      *string
+	PayeeID         *string
+	TransactionType string
+	Status          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type Label struct {

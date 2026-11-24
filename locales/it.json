@@ -1031,6 +1031,7 @@
     "suggestions": {
       "dismiss": "Ignora",
       "hint": "Regole suggerite dall'IA per le transazioni importate automaticamente. Tocca una regola per rivederla e salvarla.",
+      "new_payee": "{name} (nuovo)",
       "prompt_summary": "Suggerita per {count} transazione | Suggerita per {count} transazioni",
       "transactions": "{count} transazione | {count} transazioni"
     }
@@ -1281,7 +1282,10 @@
             "menu_item": "Funzioni IA",
             "label": "Usa le funzioni IA",
             "description": "L'IA ti aiuta a tenere in ordine le tue finanze e rende Econumo più facile da usare.",
-            "promise": "I tuoi dati finanziari e personali restano privati e non vengono inviati all'IA."
+            "promise": "I tuoi dati finanziari e personali restano privati e non vengono inviati all'IA.",
+            "imports_heading": "Importazioni",
+            "suggest_rules_label": "Suggerisci regole",
+            "suggest_fill_label": "Categorizza automaticamente"
           }
         }
       }

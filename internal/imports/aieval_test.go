@@ -74,6 +74,10 @@ var evalSuggestCases = map[string][]evalRow{
 		{"PRESTO AUTOLOAD", false, []string{"PRESTO"}, []string{"Transport"}, none},
 		{"DOORDASH*THAI EXPRESS", false, []string{"DOORDASH*THAI EXPRESS", "DOORDASH", "THAI EXPRESS"}, []string{"Restaurants"}, none},
 		{"SQ *FARMERS MARKET", false, []string{"FARMERS MARKET"}, []string{"Groceries"}, none},
+		{"WHOLEFDS MKT 10234", false, []string{"WHOLEFDS MKT", "WHOLEFDS"}, []string{"Groceries"}, none},
+		{"SQ *LUNAS CORNER CAFE", false, []string{"LUNAS CORNER CAFE", "LUNAS CORNER", "LUNAS"}, []string{"Coffee", "Restaurants", ""}, none},
+		{"E-TRANSFER TO JOHN SMITH", false, nil, none, none},
+		{"SQ *7731", false, nil, none, none},
 		{"MONTHLY ACCOUNT FEE", false, nil, []string{"Fees", ""}, none},
 		{"POS PURCHASE 4829 XKQ", false, nil, none, none},
 		{"E-TRANSFER 3920193", false, nil, none, none},
@@ -105,6 +109,9 @@ var evalSuggestCases = map[string][]evalRow{
 		{"DNS SHOP 3301", false, []string{"DNS SHOP", "DNS"}, []string{"Покупки"}, none},
 		{"MTS MOBILE", false, nil, []string{"Коммунальные услуги", "Подписки", ""}, none},
 		{"SBERMARKET", false, []string{"SBERMARKET"}, []string{"Продукты", "Покупки"}, none},
+		{"ВКУСНО И ТОЧКА 0123", false, []string{"ВКУСНО И ТОЧКА"}, []string{"Рестораны и кафе"}, none},
+		{"КОФЕЙНЯ НА ЛЕСНОЙ", false, []string{"КОФЕЙНЯ НА ЛЕСНОЙ", "НА ЛЕСНОЙ"}, []string{"Кофе", "Рестораны и кафе", ""}, none},
+		{"ПЕРЕВОД МАРИЯ ПЕТРОВНА К.", false, nil, none, none},
 		{"КОМИССИЯ ЗА ОБСЛУЖИВАНИЕ", false, nil, []string{"Комиссии", ""}, none},
 		{"ОПЛАТА ПО QR 8812", false, nil, none, none},
 		{"СБЕР ПЕРЕВОД", false, nil, none, none},
@@ -114,6 +121,49 @@ var evalSuggestCases = map[string][]evalRow{
 		{"ПРОЦЕНТЫ ПО ВКЛАДУ", true, nil, []string{"Проценты", ""}, none},
 		{"КЭШБЭК", true, nil, []string{"Возвраты", "Проценты", ""}, none},
 		{"ПЕРЕВОД ОТ ИВАН И.", true, nil, none, none},
+	},
+}
+
+// evalWellKnown: the wellKnown answer expected for rows of evalSuggestCases,
+// by payee. Rows whose answer is arguable are left out.
+var evalWellKnown = map[string]map[string]bool{
+	"en": {
+		"STARBUCKS #4521 TORONTO ON": true,
+		"UBER *TRIP HELP.UBER.COM":   true,
+		"WHOLEFDS MKT 10234":         true,
+		"AMZN Mktp CA*2K4HJ8XY1":     true,
+		"COSTCO WHOLESALE W532":      true,
+		"NETFLIX.COM":                true,
+		"SHELL C12345 OAKVILLE":      true,
+		"WAL-MART #3045":             true,
+		"SPOTIFY P1A2B3C4":           true,
+		"TIM HORTONS #2231":          true,
+		"TST* JOES PIZZA 0042":       false,
+		"SQ *LUNAS CORNER CAFE":      false,
+		"SQ *FARMERS MARKET":         false,
+		"E-TRANSFER TO JOHN SMITH":   false,
+		"SQ *7731":                   false,
+		"MONTHLY ACCOUNT FEE":        false,
+		"E-TRANSFER 3920193":         false,
+		"ACME CORP PAYROLL":          false,
+	},
+	"ru": {
+		"ПЯТЕРОЧКА 1234 МОСКВА":     true,
+		"YANDEX*TAXI":               true,
+		"МАГНИТ М-1234":             true,
+		"OZON.RU":                   true,
+		"WILDBERRIES":               true,
+		"LUKOIL AZS 77123":          true,
+		"PEREKRESTOK 0567 MOSCOW":   true,
+		"ВКУСВИЛЛ":                  true,
+		"AEROFLOT 5552100":          true,
+		"ВКУСНО И ТОЧКА 0123":       true,
+		"КОФЕЙНЯ НА ЛЕСНОЙ":         false,
+		"ПЕРЕВОД ОТ ИВАН И.":        false,
+		"ПЕРЕВОД МАРИЯ ПЕТРОВНА К.": false,
+		"ОПЛАТА ПО QR 8812":         false,
+		"КОМИССИЯ ЗА ОБСЛУЖИВАНИЕ":  false,
+		"ЗАРПЛАТА ООО РОМАШКА":      false,
 	},
 }
 
@@ -165,7 +215,9 @@ var evalCurrency = map[string]string{"en": "CAD", "ru": "RUB"}
 
 type evalFacts struct{}
 
-func (evalFacts) OwnerFacts(context.Context, vo.Id) (OwnerInfo, error) { return OwnerInfo{}, nil }
+func (evalFacts) OwnerFacts(context.Context, vo.Id) (OwnerInfo, error) {
+	return OwnerInfo{SuggestRules: true, SuggestFill: true}, nil
+}
 
 func evalContext(t *testing.T) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -200,7 +252,8 @@ func TestAIEval_Suggestions(t *testing.T) {
 		matchArea := aieval.NewArea("suggest-match/" + lang.Code)
 		categoryArea := aieval.NewArea("suggest-category/" + lang.Code)
 		payeeArea := aieval.NewArea("suggest-payee/" + lang.Code)
-		areas = append(areas, matchArea, categoryArea, payeeArea)
+		wellKnownArea := aieval.NewArea("suggest-well-known/" + lang.Code)
+		areas = append(areas, matchArea, categoryArea, payeeArea, wellKnownArea)
 
 		voc := evalVocab[lang.Code]
 		expense, names := evalNamed(voc.expense, false)
@@ -238,9 +291,14 @@ func TestAIEval_Suggestions(t *testing.T) {
 		for _, s := range validateReply(rows, replies, vocab) {
 			kept[s.Row.Link.ID] = s
 		}
+		wellKnown, scored := evalWellKnown[lang.Code], 0
 		for i, c := range cases {
 			reply := replies[strconv.Itoa(i)]
 			s := kept[rows[i].Link.ID]
+			if want, ok := wellKnown[c.payee]; ok {
+				scored++
+				wellKnownArea.Check(reply.WellKnown == want, c.payee, strconv.FormatBool(reply.WellKnown), strconv.FormatBool(want))
+			}
 			gotCategory, gotPayee := idName(s.CategoryID, names), idName(s.PayeeID, payeeNames)
 			categoryArea.Check(aieval.OneOf(gotCategory, c.category), c.payee, aieval.Show(gotCategory), aieval.ShowSet(c.category))
 			payeeArea.Check(aieval.OneOf(gotPayee, c.payee2), c.payee, aieval.Show(gotPayee), aieval.ShowSet(c.payee2))
@@ -259,6 +317,9 @@ func TestAIEval_Suggestions(t *testing.T) {
 				got += " (refused by the validator)"
 			}
 			matchArea.Check(pass, c.payee, got, want)
+		}
+		if scored != len(wellKnown) {
+			t.Errorf("%s: %d wellKnown cases name no row", lang.Code, len(wellKnown)-scored)
 		}
 	}
 	aieval.Finish(t, areas...)

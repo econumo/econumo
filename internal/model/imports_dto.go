@@ -646,6 +646,7 @@ type ImportSuggestionResult struct {
 	Type         string                              `json:"type"` // "income" | "expense", of every listed transaction
 	CategoryId   string                              `json:"categoryId"`
 	PayeeId      string                              `json:"payeeId"`
+	PayeeName    string                              `json:"payeeName"`    // a payee to create on save, for a well-known merchant; "" when none
 	Transactions []ImportSuggestionTransactionResult `json:"transactions"` // newest first
 }
 

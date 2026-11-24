@@ -399,3 +399,15 @@ func (pgsqlQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db 
 func (pgsqlQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteImportSuggestion(ctx, id)
 }
+
+func (pgsqlQuerier) InsertImportTransactionSuggestion(ctx context.Context, db backend.DBTX, p insertTxSuggestionParams) error {
+	return pgsqlgen.New(db).InsertImportTransactionSuggestion(ctx, pgsqlgen.InsertImportTransactionSuggestionParams(p))
+}
+
+func (pgsqlQuerier) LockImportTransactionRow(ctx context.Context, db backend.DBTX, transactionID string) error {
+	return pgsqlgen.New(db).LockImportTransactionRow(ctx, transactionID)
+}
+
+func (pgsqlQuerier) DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).DeleteOpenImportTransactionSuggestionsByUser(ctx, userID)
+}

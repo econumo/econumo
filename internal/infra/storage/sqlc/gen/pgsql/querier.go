@@ -84,6 +84,7 @@ type Querier interface {
 	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
+	DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) error
 	DeletePayee(ctx context.Context, id string) error
 	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, arg DeleteQueuedImportTransactionLinksByExternalAccountParams) error
 	// Link rows between a recurring template and its reporting labels. See the
@@ -320,6 +321,7 @@ type Querier interface {
 	InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error
 	InsertImportSuggestionLink(ctx context.Context, arg InsertImportSuggestionLinkParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
+	InsertImportTransactionSuggestion(ctx context.Context, arg InsertImportTransactionSuggestionParams) error
 	// See the sqlite sibling.
 	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)
 	// OAuth authorization server (MCP clients): clients, codes, grants.
@@ -470,6 +472,9 @@ type Querier interface {
 	// unblocked.
 	LockDebtBudget(ctx context.Context, id string) (string, error)
 	LockImportSuggestion(ctx context.Context, id string) (int64, error)
+	// The AI assignment reads the transaction and writes it back whole: the row
+	// lock keeps a concurrent edit from landing between the read and the write.
+	LockImportTransactionRow(ctx context.Context, id string) error
 	// The merge target's lock. The target is kept, so it needs no FOR UPDATE, and
 	// FOR NO KEY UPDATE lets the FOR KEY SHARE of a foreign key check pass: a
 	// transaction moved onto the target while the merge runs does not wait on it
@@ -479,6 +484,11 @@ type Querier interface {
 	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
 	// lock a concurrent grant INSERT takes on this row through its foreign key.
 	LockOAuthClient(ctx context.Context, id string) (string, error)
+	// Serializes payee creation per owner until the transaction ends: payees has
+	// no unique name constraint, so the exact-name check and the insert must not
+	// interleave with another create for the same owner. An advisory lock, not the
+	// users row, because creates run inside long import transactions.
+	LockPayeeOwner(ctx context.Context, userID string) error
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the
 	// row first has committed by the time the guard's EXISTS runs, and one that

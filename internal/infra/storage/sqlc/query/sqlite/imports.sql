@@ -237,8 +237,8 @@ WHERE a.user_id = ? AND s.user_id <> a.user_id
 ORDER BY l.imported_at, l.id;
 
 -- name: InsertImportSuggestion :exec
-INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: TouchOpenImportSuggestion :execrows
 UPDATE import_suggestions SET updated_at = ? WHERE id = ? AND status = 'open';
@@ -247,12 +247,12 @@ UPDATE import_suggestions SET updated_at = ? WHERE id = ? AND status = 'open';
 INSERT INTO import_suggestion_links (suggestion_id, link_id) VALUES (?, ?) ON CONFLICT (suggestion_id, link_id) DO NOTHING;
 
 -- name: GetImportSuggestionByID :one
-SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name
 FROM import_suggestions
 WHERE id = ?;
 
 -- name: ListOpenImportSuggestionsByUser :many
-SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name
 FROM import_suggestions
 WHERE user_id = ? AND status = 'open'
 ORDER BY created_at, id;
@@ -275,3 +275,11 @@ DELETE FROM import_suggestion_links WHERE suggestion_id = ? AND link_id = ?;
 
 -- name: DeleteImportSuggestion :exec
 DELETE FROM import_suggestions WHERE id = ?;
+
+-- name: InsertImportTransactionSuggestion :exec
+INSERT INTO import_transaction_suggestions (link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (link_id) DO NOTHING;
+
+-- name: DeleteOpenImportTransactionSuggestionsByUser :exec
+DELETE FROM import_transaction_suggestions WHERE user_id = ? AND status = 'open';

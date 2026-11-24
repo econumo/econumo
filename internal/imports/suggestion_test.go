@@ -20,8 +20,27 @@ import (
 
 // seedSuggestion imports one Blue Bottle tap per payee text through the AI
 // job, which answers with the given category and payee; later taps join the
-// open suggestion without a new call.
+// open suggestion without a new call. Automatic assignment is off, so the
+// rows stay empty for the suggestion to fill.
 func seedSuggestion(t *testing.T, h *harness, c *fakeCompleter, cat, payee string, payees ...string) (model.ImportSuggestion, []model.ImportTransactionLink) {
+	t.Helper()
+	h.svc.SetSuggester(c, assignOff{h.facts})
+	defer h.svc.SetSuggester(c, h.facts)
+	return seedAssigned(t, h, c, cat, payee, payees...)
+}
+
+// assignOff reads the owner's facts with automatic assignment turned off.
+type assignOff struct{ inner imports.OwnerFacts }
+
+func (a assignOff) OwnerFacts(ctx context.Context, userID vo.Id) (imports.OwnerInfo, error) {
+	info, err := a.inner.OwnerFacts(ctx, userID)
+	info.SuggestFill = false
+	return info, err
+}
+
+// seedAssigned is seedSuggestion with automatic assignment on: the job also
+// writes the values into the rows.
+func seedAssigned(t *testing.T, h *harness, c *fakeCompleter, cat, payee string, payees ...string) (model.ImportSuggestion, []model.ImportTransactionLink) {
 	t.Helper()
 	h.mapCard(t, "Apple Card")
 	reply := `{"rows":[{"key":"0","matchText":"Blue Bottle"`
@@ -877,5 +896,114 @@ func releaseInTx(t *testing.T, h *harness, id vo.Id, links []vo.Id) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The AI job assigned the rows: the rule suggestion keeps offering them while
+// the transactions agree with it.
+func TestRuleSuggestionKeepsAgreeingFilledRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	s, links := seedAssigned(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
+	for _, l := range links {
+		if tx := txOf(t, h, l.ID); !idIs(tx.CategoryID, cat) || !idIs(tx.PayeeID, py) {
+			t.Fatalf("assigned = %+v", tx)
+		}
+	}
+
+	items := suggestionList(t, h, userA)
+	if len(items) != 1 || items[0].Id != s.ID.String() || len(items[0].Transactions) != 2 {
+		t.Fatalf("list = %+v", items)
+	}
+
+	// a later hand change that disagrees counts against the rule suggestion
+	other := h.payee(t, userA, "My Cafe")
+	h.setTx(t, links[0].TransactionID, "payee_id", other)
+	items = suggestionList(t, h, userA)
+	if len(items) != 1 || len(items[0].Transactions) != 1 || items[0].Transactions[0].TransactionId != links[1].TransactionID.String() {
+		t.Fatalf("list after a hand change = %+v", items)
+	}
+}
+
+func TestRuleSuggestionDropsDisagreeingFilledRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	restaurants := h.category(t, userA, "Restaurants")
+	s, links := seedAssigned(t, h, c, cat, "")
+	h.setTx(t, links[0].TransactionID, "category_id", restaurants)
+
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("list = %+v", items)
+	}
+	_, err := h.repo.GetSuggestion(context.Background(), s.ID)
+	wantNotFound(t, err)
+}
+
+// An assigned row whose category changed and whose payee is empty again: the
+// row still wants the payee, but its category counts against the rule.
+func TestRuleSuggestionDropsFilledRowDisagreeingWhileAFieldIsEmpty(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	restaurants := h.category(t, userA, "Restaurants")
+	s, links := seedAssigned(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
+	h.setTx(t, links[0].TransactionID, "category_id", restaurants)
+	if _, err := h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE transactions SET payee_id = NULL WHERE id = ?`), links[0].TransactionID.String()); err != nil {
+		t.Fatal(err)
+	}
+
+	items := suggestionList(t, h, userA)
+	if len(items) != 1 || items[0].Id != s.ID.String() || len(items[0].Transactions) != 1 || items[0].Transactions[0].TransactionId != links[1].TransactionID.String() {
+		t.Fatalf("list = %+v", items)
+	}
+}
+
+func TestRuleSuggestionDropsHandEditedRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, links := seedSuggestion(t, h, c, cat, "")
+	h.setTx(t, links[0].TransactionID, "category_id", cat)
+
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("list = %+v", items)
+	}
+	_, err := h.repo.GetSuggestion(context.Background(), s.ID)
+	wantNotFound(t, err)
+}
+
+func TestRuleSuggestionListHiddenWhenRulesOff(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	seedSuggestion(t, h, c, cat, "")
+	facts[userA] = ownerFact{language: "en", rulesOff: true}
+	if got := suggestionList(t, h, userA); len(got) != 0 {
+		t.Fatalf("list = %+v", got)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 {
+		t.Fatalf("rules off hides, never deletes: %+v", got)
+	}
+	facts[userA] = ownerFact{language: "en"}
+	if got := suggestionList(t, h, userA); len(got) != 1 {
+		t.Fatalf("list after switching rules back on = %+v", got)
+	}
+}
+
+// An assigned row has nothing left for the rule to write: accept still walks
+// and releases it, without counting it as updated.
+func TestRuleSuggestionAcceptReleasesAgreeingFilledRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, _ := seedAssigned(t, h, c, cat, "")
+	rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat})
+
+	res, err := h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})
+	if err != nil || res.Updated != 0 {
+		t.Fatalf("accept = %+v, %v", res, err)
+	}
+	_, err = h.repo.GetSuggestion(context.Background(), s.ID)
+	wantNotFound(t, err)
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("list = %+v", items)
 	}
 }

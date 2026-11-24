@@ -80,6 +80,52 @@ func TestValidateReplyDropsFieldAlreadySet(t *testing.T) {
 	require.NotNil(t, got[0].CategoryID)
 }
 
+// A well-known merchant the owner has no payee for keeps its row with a
+// new-payee name, even with no category; a local shop, a name the payee
+// feature would refuse or one only an archived payee carries does not.
+func TestValidateReplyNewPayeeName(t *testing.T) {
+	v, _, _, _, _ := sVocab()
+	v.names = newPayeeNames([]model.ImportNamed{{ID: vo.NewId().String(), Name: "Whole Foods", Archived: true}})
+	reply := func(merchant string, wellKnown bool) map[string]suggestReplyRow {
+		return map[string]suggestReplyRow{"0": {MatchText: "UBER", Merchants: []string{merchant}, WellKnown: wellKnown}}
+	}
+	rows := []suggestRow{sRow(sLink("UBER *TRIP", "", time.Time{}))}
+	got := validateReply(rows, reply("Uber", true), v)
+	require.Len(t, got, 1)
+	require.Equal(t, "Uber", got[0].PayeeName)
+	require.Nil(t, got[0].PayeeID)
+	require.Nil(t, got[0].CategoryID)
+	require.Empty(t, validateReply(rows, reply("Uber", false), v))
+	require.Empty(t, validateReply(rows, reply("UB", true), v))
+	require.Empty(t, validateReply(rows, reply(strings.Repeat("u", 65), true), v))
+	require.Empty(t, validateReply(rows, reply("WHOLE FOODS", true), v))
+	row := sRow(sLink("UBER *TRIP", "", time.Time{}))
+	row.Missing.Payee = false
+	require.Empty(t, validateReply([]suggestRow{row}, reply("Uber", true), v))
+}
+
+func TestValidateReplyNewPayeeNameIsTrimmed(t *testing.T) {
+	v, _, _, _, _ := sVocab()
+	reply := func(merchant string) map[string]suggestReplyRow {
+		return map[string]suggestReplyRow{"0": {MatchText: "STARBUCKS", Merchants: []string{merchant}, WellKnown: true}}
+	}
+	rows := []suggestRow{sRow(sLink("STARBUCKS #123", "", time.Time{}))}
+	got := validateReply(rows, reply(" Starbucks "), v)
+	require.Len(t, got, 1)
+	require.Equal(t, "Starbucks", got[0].PayeeName)
+	// the length counts without the padding
+	require.Empty(t, validateReply(rows, reply("  St  "), v))
+}
+
+func TestValidateReplyNewPayeeNameReusesActivePayee(t *testing.T) {
+	v, _, _, _, bb := sVocab()
+	rows := []suggestRow{sRow(sLink("BLUE BOTTLE #4", "", time.Time{}))}
+	got := validateReply(rows, map[string]suggestReplyRow{"0": {MatchText: "BLUE BOTTLE", Merchants: []string{"blue-bottle"}, WellKnown: true}}, v)
+	require.Len(t, got, 1)
+	require.Equal(t, bb.ID, got[0].PayeeID.String())
+	require.Empty(t, got[0].PayeeName)
+}
+
 func TestParseSuggestReplyRejectsGarbage(t *testing.T) {
 	_, err := parseSuggestReply("sorry, no")
 	require.Error(t, err)
@@ -271,15 +317,46 @@ func TestLiveOpenDropsArchivedFields(t *testing.T) {
 	require.Equal(t, gone, *open[0].CategoryID)
 }
 
+// A new-payee name counts as a payee value, compared normalized, when the
+// majority classification is picked.
+func TestGroupRowsCountsPayeeNames(t *testing.T) {
+	row := func(payee, name string) validSuggestion {
+		return validSuggestion{Row: sRow(sLink(payee, "", time.Time{})), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "SQ *SHOP", PayeeName: name}
+	}
+	got := groupRows([]validSuggestion{row("SQ *SHOP 1", "Shop Two"), row("SQ *SHOP 2", "Shop One"), row("SQ *SHOP 3", "SHOP ONE")})
+	require.Len(t, got, 1)
+	require.Equal(t, "Shop One", *got[0].PayeeName)
+	require.Nil(t, got[0].PayeeID)
+	require.Len(t, got[0].LinkIDs, 3)
+}
+
+func TestLiveOpenResolvesPayeeName(t *testing.T) {
+	v, _, _, _, bb := sVocab()
+	v.names = newPayeeNames([]model.ImportNamed{bb, {ID: vo.NewId().String(), Name: "Old Shop", Archived: true}})
+	name := func(s string) *string { return &s }
+	open := []model.ImportSuggestion{
+		{ID: vo.NewId(), PayeeName: name("BLUE BOTTLE")},
+		{ID: vo.NewId(), PayeeName: name("old shop")},
+		{ID: vo.NewId(), PayeeName: name("Uber")},
+	}
+	got := v.liveOpen(open)
+	require.Len(t, got, 2)
+	require.Equal(t, bb.ID, got[0].PayeeID.String())
+	require.Nil(t, got[0].PayeeName)
+	require.Equal(t, "Uber", *got[1].PayeeName)
+	require.Nil(t, got[1].PayeeID)
+	require.True(t, missingFields{Payee: true}.filledBy(got[1]))
+}
+
 func TestOpenForRequiresAFieldTheRowLacks(t *testing.T) {
 	p := vo.NewId()
 	row := sRow(sLink("BLUE BOTTLE", "", time.Time{}))
 	row.Missing.Payee = false
 	o := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p}
-	_, ok := openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok := openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.False(t, ok)
 	row.Missing.Payee = true
-	_, ok = openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok = openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.True(t, ok)
 }
 
@@ -288,10 +365,10 @@ func TestOpenForRequiresSameType(t *testing.T) {
 	row := sRow(sLink("BLUE BOTTLE", "", time.Time{}))
 	row.Type = model.TransactionTypeIncome
 	o := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p, Type: model.TransactionTypeExpense}
-	_, ok := openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok := openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.False(t, ok)
 	o.Type = model.TransactionTypeIncome
-	_, ok = openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok = openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.True(t, ok)
 }
 
@@ -300,12 +377,28 @@ func TestOpenForChecksCategoryType(t *testing.T) {
 	income := map[vo.Id]bool{salary: true}
 	row := sRow(sLink("SQ *BLUE BOTTLE #1", "", time.Time{}))
 	o := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", CategoryID: &salary}
-	_, ok := openFor(row, []model.ImportSuggestion{o}, income)
+	_, ok := openFor(row, []model.ImportSuggestion{o}, income, false)
 	require.False(t, ok)
 	o.CategoryID = &coffee
-	id, ok := openFor(row, []model.ImportSuggestion{o}, income)
+	id, ok := openFor(row, []model.ImportSuggestion{o}, income, false)
 	require.True(t, ok)
 	require.Equal(t, o.ID, id)
+}
+
+// With whole, a partial suggestion covers nothing, and an older partial one
+// does not hide a newer one that fills every missing field.
+func TestOpenForWholeNeedsEveryMissingField(t *testing.T) {
+	p, c := vo.NewId(), vo.NewId()
+	row := sRow(sLink("BLUE BOTTLE", "", time.Time{}))
+	partial := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p, CreatedAt: time.Unix(1, 0)}
+	_, ok := openFor(row, []model.ImportSuggestion{partial}, nil, true)
+	require.False(t, ok)
+	_, ok = openFor(row, []model.ImportSuggestion{partial}, nil, false)
+	require.True(t, ok)
+	full := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p, CategoryID: &c, CreatedAt: time.Unix(2, 0)}
+	id, ok := openFor(row, []model.ImportSuggestion{partial, full}, nil, true)
+	require.True(t, ok)
+	require.Equal(t, full.ID, id)
 }
 
 // guardRow is an imported row whose amount, date, description and owner name
@@ -551,6 +644,34 @@ func TestParseSuggestReplyCleansMerchants(t *testing.T) {
 	require.Equal(t, []string{"Yandex Taxi", "Яндекс Такси", "Yandex Go", "Yandex"}, m["0"].Merchants)
 	require.Empty(t, m["1"].Merchants)
 	require.Empty(t, m["2"].Merchants)
+}
+
+func TestParseSuggestReplyWellKnown(t *testing.T) {
+	v, coffee, _, _, _ := sVocab()
+	m, err := parseSuggestReply(`{"rows":[` +
+		`{"key":"0","matchText":"WHOLEFDS","merchants":[" Whole Foods ","Whole Foods Market"],"wellKnown":true},` +
+		`{"key":"1","matchText":"LUNAS","merchants":["Luna's Cafe"]},` +
+		`{"key":"2","matchText":"CORNER SHOP","merchants":[],"wellKnown":true}]}`)
+	require.NoError(t, err)
+	require.True(t, m["0"].WellKnown)
+	require.False(t, m["1"].WellKnown)
+	rows := []suggestRow{
+		sRow(sLink("WHOLEFDS MKT 10234", "", time.Time{})),
+		sRow(sLink("LUNAS CORNER CAFE", "", time.Time{})),
+		sRow(sLink("CORNER SHOP 12", "", time.Time{})),
+	}
+	for k, r := range m {
+		r.CategoryID = coffee.ID
+		m[k] = r
+	}
+	got := validateReply(rows, m, v)
+	require.Len(t, got, 3)
+	require.True(t, got[0].WellKnown)
+	require.Equal(t, "Whole Foods", got[0].MerchantName)
+	require.False(t, got[1].WellKnown)
+	require.Equal(t, "Luna's Cafe", got[1].MerchantName)
+	require.True(t, got[2].WellKnown)
+	require.Equal(t, "", got[2].MerchantName)
 }
 
 func TestExactPayeeAcrossMerchantNames(t *testing.T) {

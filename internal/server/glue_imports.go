@@ -313,8 +313,10 @@ func (f *ImportsOwnerFacts) OwnerFacts(ctx context.Context, userID vo.Id) (impor
 	}
 	return imports.OwnerInfo{
 		Language: language, Timezone: timezone,
-		Readonly: u.EffectiveAccessLevel(f.clk.Now()) == model.AccessLevelReadonly,
-		AIOff:    !u.AIEnabled(),
+		Readonly:     u.EffectiveAccessLevel(f.clk.Now()) == model.AccessLevelReadonly,
+		AIOff:        !u.AIEnabled(),
+		SuggestRules: u.AISuggestRules(),
+		SuggestFill:  u.AISuggestFill(),
 	}, nil
 }
 

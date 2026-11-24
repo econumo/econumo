@@ -1031,6 +1031,7 @@
     "suggestions": {
       "dismiss": "忽略",
       "hint": "AI 为自动导入的交易建议的规则。点按某条规则即可查看并保存。",
+      "new_payee": "{name}（新）",
       "prompt_summary": "建议用于 {count} 笔交易 | 建议用于 {count} 笔交易",
       "transactions": "{count} 笔交易 | {count} 笔交易"
     }
@@ -1281,7 +1282,10 @@
             "menu_item": "AI 功能",
             "label": "使用 AI 功能",
             "description": "AI 帮助您让财务井井有条，让 Econumo 更易于使用。",
-            "promise": "您的财务和个人数据始终保密，不会发送给 AI。"
+            "promise": "您的财务和个人数据始终保密，不会发送给 AI。",
+            "imports_heading": "导入",
+            "suggest_rules_label": "建议规则",
+            "suggest_fill_label": "自动分类"
           }
         }
       }

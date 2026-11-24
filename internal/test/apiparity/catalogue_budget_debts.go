@@ -8,42 +8,40 @@ import "time"
 // stay the element's own.
 //
 // The figures must not depend on the day the suite runs, so each debt is 100
-// paid back by one monthly payment of 105 on today's day of the next month
-// (clamped to its last day): a single due after today, whatever the date.
-// The current month then schedules nothing (today's day of the series is the
-// start day, which pays no due), has nothing still due and a balance of 100
-// with one payment left; the next month has the 105 due and closes at 0 (a
-// one-payment loan accrues 5 whatever the length of its prorated first
-// period). The owner's 50 payment today, the loan's start day, stays in the
-// loan category's spent and comes fully off the 100; with nothing scheduled
-// this month, 55 of the category's plan of 105 is extra, which pays off the
-// 50 left: that debt closes the current month at 0 with nothing scheduled
-// after. The plan window runs from the previous month, before the debts
-// start, so its first cells carry no debt. Months stay out of the recorded
-// paths (see budget_upcoming_recurring).
+// paid back by one monthly payment of 105 a month after its start: a single
+// due after today, whatever the date. The loan starts today, or on the 28th
+// from the 29th on, so the due is never clamped into a shorter month, whose
+// part-month period would change the implied rate and the payoff figures.
+// The current month then schedules nothing (the start day pays no due), has
+// nothing still due and a balance of 100 with one payment left; the next
+// month has the 105 due and closes at 0. The owner's 50 payment on the loan's
+// start day stays in the loan category's spent and comes fully off the 100;
+// with nothing scheduled this month, 55 of the category's plan of 105 is
+// extra, which pays off the 50 left: that debt closes the current month at 0
+// with nothing scheduled after. The plan window runs from the previous month,
+// before the debts start, so its first cells carry no debt. Months stay out
+// of the recorded paths (see budget_upcoming_recurring).
 //
 // An expense envelope carries a debt too (not set up). A category whose debt
 // is active cannot go into an envelope, by move-element or create-envelope.
 //
 // Last, the owner adds a debt with no terms (payment and schedule only) on a
-// third category and pays 30 into it today: get-budget and get-budget-plan
-// then show it not set up, with no balance and nothing scheduled.
+// third category and pays 30 into it on the same day as the 50 (so the two
+// rows share a day's sort keys): get-budget and get-budget-plan then show it
+// not set up, with no balance and nothing scheduled.
 func init() {
 	register(Scenario{Name: "budget_debts", Calls: func() []Call {
-		now := ClockTime.Format("2006-01-02 15:04:05")
 		current := time.Date(ClockTime.Year(), ClockTime.Month(), 1, 0, 0, 0, 0, time.UTC)
 		previous := current.AddDate(0, -1, 0).Format("2006-01-02")
-		day := ClockTime.Day()
-		if last := current.AddDate(0, 2, -1).Day(); day > last {
-			day = last
-		}
-		lastPayment := time.Date(current.Year(), current.Month()+1, day, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+		start := time.Date(current.Year(), current.Month(), min(ClockTime.Day(), 28), 0, 0, 0, 0, time.UTC)
+		lastPayment := start.AddDate(0, 1, 0).Format("2006-01-02")
+		paidAt := start.Format("2006-01-02") + ClockTime.Format(" 15:04:05")
 		month := current.Format("2006-01-02")
 		debt := func(categoryID *string) map[string]any {
 			return map[string]any{"budgetId": Budget, "elementId": categoryID, "payment": "105", "schedule": "monthly"}
 		}
 		setup := func(debtID *string) map[string]any {
-			return map[string]any{"id": debtID, "amountBorrowed": "100", "startDate": ClockTime.Format("2006-01-02"), "lastPaymentDate": lastPayment}
+			return map[string]any{"id": debtID, "amountBorrowed": "100", "startDate": start.Format("2006-01-02"), "lastPaymentDate": lastPayment}
 		}
 		const envelope = "d2000000-0000-0000-0000-0000000000e1"
 		var loanCat, bikeCat, studyCat, ownerDebt, partnerDebt string
@@ -59,7 +57,7 @@ func init() {
 			{Label: "owner-sets-up-debt", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner", Body: setup(&ownerDebt)},
 			{Label: "owner-pays", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b1", "type": "expense", "amount": "50.00",
-					"accountId": OwnerAccount, "categoryId": &loanCat, "date": now, "description": "loan"}},
+					"accountId": OwnerAccount, "categoryId": &loanCat, "date": paidAt, "description": "loan"}},
 			{Label: "owner-plans-current-month", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": &loanCat, "period": month, "amount": "105"}},
 			{Label: "partner-creates-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "guest",
@@ -94,7 +92,7 @@ func init() {
 				Body: map[string]any{"budgetId": Budget, "elementId": &studyCat, "payment": "200", "schedule": "monthly"}},
 			{Label: "owner-pays-debt-without-terms", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b2", "type": "expense", "amount": "30.00",
-					"accountId": OwnerAccount, "categoryId": &studyCat, "date": now, "description": "study"}},
+					"accountId": OwnerAccount, "categoryId": &studyCat, "date": paidAt, "description": "study"}},
 			{Label: "owner-get-budget-with-debt-without-terms", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 			{Label: "get-budget-plan-with-debt-without-terms", Method: "GET",
 				Path:       "/api/v1/budget/get-budget-plan?id=" + Budget + "&from=" + previous + "&months=4",

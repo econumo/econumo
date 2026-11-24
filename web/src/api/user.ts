@@ -93,6 +93,11 @@ export async function updateAi(enabled: boolean): Promise<CurrentUserDto> {
   return response.data.data.user
 }
 
+export async function updateAiSuggestions(body: { suggestRules: boolean; suggestFill: boolean }): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-ai-suggestions'), body)
+  return response.data.data.user
+}
+
 export async function updateOnboarding(value: string): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-onboarding'), { value })
   return response.data.data.user

@@ -421,6 +421,7 @@ func init() {
 			{Label: "update-last-seen-version", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "v1.6.0"}},
 			{Label: "err:update-last-seen-version-invalid", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "dev"}},
 			{Label: "update-ai", Method: "POST", Path: "/api/v1/user/update-ai", Auth: "owner", Body: map[string]any{"enabled": false}},
+			{Label: "update-ai-suggestions", Method: "POST", Path: "/api/v1/user/update-ai-suggestions", Auth: "owner", Body: map[string]any{"suggestRules": false, "suggestFill": true}},
 		}
 	}})
 

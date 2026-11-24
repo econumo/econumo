@@ -92,6 +92,7 @@ type Querier interface {
 	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
+	DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
@@ -433,6 +434,7 @@ type Querier interface {
 	InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error
 	InsertImportSuggestionLink(ctx context.Context, arg InsertImportSuggestionLinkParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
+	InsertImportTransactionSuggestion(ctx context.Context, arg InsertImportTransactionSuggestionParams) error
 	// Same generation fence as InsertAccessTokenIfGeneration, for tokens minted
 	// by the MCP OAuth server; grant_id lets a grant revoke drop them all.
 	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)

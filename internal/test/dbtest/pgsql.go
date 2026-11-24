@@ -14,6 +14,8 @@ package dbtest
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -87,9 +89,13 @@ func pgSchemaName(testName string) string {
 	r := strings.NewReplacer("/", "_", " ", "_", "-", "_", ".", "_")
 	name := strings.ToLower(r.Replace(testName))
 	// Keep it within Postgres' 63-char identifier limit, prefixed for clarity.
+	// A cut name ends in a hash of the whole one: subtests sharing a long
+	// prefix would otherwise share a schema and clobber each other in parallel.
 	const prefix = "test_"
 	if len(name) > 63-len(prefix) {
-		name = name[:63-len(prefix)]
+		sum := sha256.Sum256([]byte(name))
+		suffix := "_" + hex.EncodeToString(sum[:])[:8]
+		name = name[:63-len(prefix)-len(suffix)] + suffix
 	}
 	return prefix + name
 }

@@ -492,3 +492,20 @@ func TestAIOption(t *testing.T) {
 		t.Fatalf("options = %+v after opting in", u.Options)
 	}
 }
+
+func TestUserAISuggestionsDefaultOn(t *testing.T) {
+	now := time.Date(2026, 11, 22, 10, 0, 0, 0, time.UTC)
+	u := &User{}
+	if !u.AISuggestRules() || !u.AISuggestFill() {
+		t.Fatal("absent options must read as on")
+	}
+	off, empty := "0", ""
+	u.Options = append(u.Options, NewUserOption(vo.NewId(), OptionAISuggestRules, &off, now), NewUserOption(vo.NewId(), OptionAISuggestFill, &empty, now))
+	if u.AISuggestRules() || !u.AISuggestFill() {
+		t.Fatalf("rules=%v fill=%v", u.AISuggestRules(), u.AISuggestFill())
+	}
+	u.SetAISuggestions(true, false, vo.NewId(), vo.NewId(), now.Add(time.Hour))
+	if len(u.Options) != 2 || !u.AISuggestRules() || u.AISuggestFill() {
+		t.Fatalf("options = %+v", u.Options)
+	}
+}

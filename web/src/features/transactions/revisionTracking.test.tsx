@@ -691,3 +691,56 @@ it('a bucket write that never completes does not hold the first sync', async () 
     restore()
   }
 })
+
+// The AI import job creates payees on the server: a downloaded row naming one the cached list
+// lacks refetches the payee list.
+it('a downloaded row naming a payee the cached list lacks refetches the payee list', async () => {
+  const { queryClient, result } = await booted()
+  queryClient.setQueryData(queryKeys.payees, [{ id: 'p1', ownerUserId: 'u1', name: 'Grocer', position: 0, isArchived: 0, createdAt: '', updatedAt: '' }])
+  const assigned = { ...fixtureTransactions[0], id: 't-ai', accountId: 'a2', payeeId: 'p-ai' }
+  server.use(...coreHandlers({ accounts: withRevisions({ a2: 3 }), transactions: [...fixtureTransactions, assigned] }))
+  await act(() => queryClient.refetchQueries({ queryKey: queryKeys.accounts }))
+  await waitFor(() => expect(result.current.list.data!.map((t) => t.id)).toContain('t-ai'))
+  expect(queryClient.getQueryState(queryKeys.payees)?.isInvalidated).toBe(true)
+})
+
+const LEDGER_VIEWS = [
+  [...queryKeys.budget, 'b1'],
+  [...queryKeys.budgetPlan, 'b1'],
+  [...queryKeys.debts, 'd1'],
+  [...queryKeys.budgetTransactions, 'b1'],
+]
+
+function seedLedgerViews(queryClient: QueryClient) {
+  for (const key of LEDGER_VIEWS) queryClient.setQueryData(key, {})
+}
+
+function ledgerViewsInvalidated(queryClient: QueryClient): boolean[] {
+  return LEDGER_VIEWS.map((key) => queryClient.getQueryState(key)?.isInvalidated === true)
+}
+
+// A change made elsewhere (another device, an Apple Wallet tap and what the AI import job filled in
+// on it) reaches this page as a moved revision: the views computed from the ledger are stale too.
+it('a download of an account whose revision moved refreshes the budget, plan, debt and budget transaction views', async () => {
+  const { queryClient, result } = await booted()
+  seedLedgerViews(queryClient)
+  const moved = { ...fixtureTransactions[0], id: 't-a2', accountId: 'a2' }
+  server.use(...coreHandlers({ accounts: withRevisions({ a2: 3 }), transactions: [...fixtureTransactions, moved] }))
+  await act(() => queryClient.refetchQueries({ queryKey: queryKeys.accounts }))
+  await waitFor(() => expect(result.current.list.data!.map((t) => t.id)).toContain('t-a2'))
+  expect(ledgerViewsInvalidated(queryClient)).toEqual([true, true, true, true])
+})
+
+it('a sync that downloads nothing, or an own write at +1, leaves the ledger views alone', async () => {
+  const { queryClient, result } = await booted()
+  seedLedgerViews(queryClient)
+  await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
+  await settle()
+  expect(ledgerViewsInvalidated(queryClient)).toEqual([false, false, false, false])
+  act(() => result.current.apply({ item: created, accounts: withRevisions({ a1: 2 }) }, 'add'))
+  // the write itself refreshes them; the sync it triggers must not download
+  seedLedgerViews(queryClient)
+  await settle()
+  expect(calls).toEqual(COLD)
+  expect(ledgerViewsInvalidated(queryClient)).toEqual([false, false, false, false])
+})

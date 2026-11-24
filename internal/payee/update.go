@@ -21,6 +21,9 @@ func (s *Service) UpdatePayee(ctx context.Context, userID vo.Id, req model.Updat
 		return nil, err
 	}
 	if _, err := s.mutateChecked(ctx, id, userID, func(txCtx context.Context, p *model.Payee, now time.Time) error {
+		if lerr := s.repo.LockOwner(txCtx, userID); lerr != nil {
+			return lerr
+		}
 		if uerr := s.ensureNameUnique(txCtx, userID, name, id); uerr != nil {
 			return uerr
 		}

@@ -31,7 +31,7 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 	cat := f.Category(fixture.Category{UserID: user, Name: "Coffee"})
 
 	ai := &recordingCompleter{names: dbNames(db), reply: func() (string, error) {
-		return `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
+		return `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"wellKnown":true,"categoryId":"` + cat + `"}]}`, nil
 	}}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
 		Avatars:          appuser.FixedAvatarPicker(appuser.DefaultAvatar),
@@ -66,6 +66,14 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 		return resp.StatusCode, env
 	}
 
+	revision := func() int {
+		var n int
+		if err := db.Raw.QueryRow(db.Rebind(`SELECT transactions_revision FROM accounts WHERE id = ?`), account).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	before := revision()
 	occurred := time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
 	status, res := do(ingest, http.MethodPost, "/api/v1/import/ingest-apple-wallet-event", map[string]any{
 		"account": "Apple Card", "payee": "Blue Bottle", "amount": "4.75", "currency": "USD", "occurredAt": occurred, "eventId": "evt-1",
@@ -77,14 +85,29 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 		t.Fatalf("AI calls = %d", len(ai.prompts))
 	}
 
+	// the job assigned the category and created the well-known merchant's
+	// payee through the real transaction and payee services
+	var txID, gotCat, payee string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT CAST(id AS TEXT), COALESCE(CAST(category_id AS TEXT), ''), COALESCE(CAST(payee_id AS TEXT), '') FROM transactions WHERE account_id = ?`), account).Scan(&txID, &gotCat, &payee); err != nil || gotCat != cat || payee == "" {
+		t.Fatalf("assigned = category %q payee %q, %v", gotCat, payee, err)
+	}
+	// one bump for the import's create, one for the job's assignment
+	if got := revision(); got != before+2 {
+		t.Fatalf("transactions_revision = %d, want %d", got, before+2)
+	}
+	var payeeName, payeeOwner string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT name, CAST(user_id AS TEXT) FROM payees WHERE id = ?`), payee).Scan(&payeeName, &payeeOwner); err != nil || payeeName != "Blue Bottle" || payeeOwner != user {
+		t.Fatalf("payee = %q owned by %q, %v", payeeName, payeeOwner, err)
+	}
+
 	status, list := do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)
 	items, _ := list["items"].([]any)
 	if status != http.StatusOK || len(items) != 1 {
 		t.Fatalf("list: %d %v", status, list)
 	}
 	item := items[0].(map[string]any)
-	txID := item["transactions"].([]any)[0].(map[string]any)["transactionId"].(string)
-	if item["categoryId"] != cat || item["matchField"] != "external_payee" {
+	if item["categoryId"] != cat || item["payeeId"] != payee || item["payeeName"] != "" || item["matchField"] != "external_payee" ||
+		item["transactions"].([]any)[0].(map[string]any)["transactionId"] != txID {
 		t.Fatalf("item = %v", item)
 	}
 
@@ -95,13 +118,10 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("create-rule: %d %v", status, res)
 	}
+	// the assigned row has nothing left to fill: accept releases it
 	status, res = do(full, http.MethodPost, "/api/v1/import/accept-suggestion", map[string]any{"id": item["id"], "ruleId": ruleID})
-	if status != http.StatusOK || res["updated"] != float64(1) {
+	if status != http.StatusOK || res["updated"] != float64(0) {
 		t.Fatalf("accept: %d %v", status, res)
-	}
-	var got string
-	if err := db.Raw.QueryRow(db.Rebind(`SELECT COALESCE(CAST(category_id AS TEXT), '') FROM transactions WHERE id = ?`), txID).Scan(&got); err != nil || got != cat {
-		t.Fatalf("category = %q, %v", got, err)
 	}
 	status, list = do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)
 	if items, _ = list["items"].([]any); status != http.StatusOK || len(items) != 0 {

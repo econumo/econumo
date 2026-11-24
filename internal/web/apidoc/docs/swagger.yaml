@@ -2140,6 +2140,10 @@ definitions:
         type: string
       payeeId:
         type: string
+      payeeName:
+        description: a payee to create on save, for a well-known merchant; "" when
+          none
+        type: string
       transactions:
         description: newest first
         items:
@@ -3648,6 +3652,18 @@ definitions:
         type: boolean
     type: object
   model.UpdateAIResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateAISuggestionsRequest:
+    properties:
+      suggestFill:
+        type: boolean
+      suggestRules:
+        type: boolean
+    type: object
+  model.UpdateAISuggestionsResult:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
@@ -12924,6 +12940,49 @@ paths:
       security:
       - Bearer: []
       summary: Update AI preference
+      tags:
+      - User
+  /api/v1/user/update-ai-suggestions:
+    post:
+      consumes:
+      - application/json
+      description: Turns AI rule suggestions and AI suggestions for blank fields of
+        imported transactions on or off for the authenticated user (nothing is deleted
+        when one is turned off) and returns the refreshed user.
+      parameters:
+      - description: Update AI suggestions request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAISuggestionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateAISuggestionsResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update AI import suggestion switches
       tags:
       - User
   /api/v1/user/update-analytics:

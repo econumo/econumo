@@ -38,48 +38,37 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 			s.dropSuggestions(ctx, userID, open)
 			return out, nil
 		}
-		// hidden, not dropped: restoring access brings them back
-		if facts.Readonly {
+		// hidden, not dropped: restoring access or the switch brings them back
+		if facts.Readonly || !facts.SuggestRules {
 			return out, nil
 		}
 	}
-	categories, err := s.entities.CategoriesByOwner(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	payees, err := s.entities.PayeesByOwner(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	activeCategories, income := map[vo.Id]bool{}, map[vo.Id]bool{}
-	for _, c := range categories {
-		id, perr := vo.ParseId(c.ID)
-		if perr != nil {
-			continue
-		}
-		if !c.Archived {
-			activeCategories[id] = true
-		}
-		if c.Income {
-			income[id] = true
-		}
-	}
-	activePayees, err := idSet(activeNamed(payees), nil)
+	vocab, err := s.activeEntities(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	look := &suggestionLookup{codes: map[vo.Id]string{}, owned: map[vo.Id]bool{}}
 	for i := range open {
 		sg := &open[i]
-		if sg.CategoryID != nil && !activeCategories[*sg.CategoryID] {
+		if sg.CategoryID != nil && !vocab.categories[*sg.CategoryID] {
 			sg.CategoryID = nil
 		}
-		if sg.PayeeID != nil && !activePayees[*sg.PayeeID] {
+		if sg.PayeeID != nil && !vocab.payees[*sg.PayeeID] {
 			sg.PayeeID = nil
 		}
+		// a new-payee name agrees with any payee of that name, not only the
+		// one it resolves to
+		var payeeName string
+		if sg.PayeeID == nil && sg.PayeeName != nil {
+			payeeName = similarityText(*sg.PayeeName)
+		}
+		vocab.names.resolveName(sg)
+		if sg.PayeeID == nil && sg.PayeeName == nil {
+			payeeName = ""
+		}
 		var rows []model.ImportSuggestionTransactionResult
-		if sg.CategoryID != nil || sg.PayeeID != nil {
-			rows, err = s.pendingSuggestionRows(ctx, userID, sg, income, look)
+		if sg.CategoryID != nil || sg.PayeeID != nil || sg.PayeeName != nil {
+			rows, err = s.pendingSuggestionRows(ctx, userID, sg, suggestionPayee{id: sg.PayeeID, name: payeeName, keys: vocab.names.keys}, vocab.income, look)
 			if err != nil {
 				return nil, err
 			}
@@ -99,41 +88,85 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 		}
 		out.Items = append(out.Items, model.ImportSuggestionResult{
 			Id: sg.ID.String(), MatchField: sg.MatchField, MatchText: sg.MatchText, Type: sg.Type.Alias(),
-			CategoryId: idString(sg.CategoryID), PayeeId: idString(sg.PayeeID), Transactions: rows,
+			CategoryId: idString(sg.CategoryID), PayeeId: idString(sg.PayeeID), PayeeName: derefString(sg.PayeeName), Transactions: rows,
 		})
 	}
 	return out, nil
 }
 
 // dropSuggestions deletes the open suggestions of a user who opted out of AI,
-// best effort: they are hidden either way and the next read retries.
+// both kinds, best effort: they are hidden either way and the next read retries.
 func (s *Service) dropSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) {
-	if err := s.deleteSuggestions(ctx, open); err != nil {
+	if err := s.deleteSuggestions(ctx, userID, open); err != nil {
 		slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 	}
 }
 
-// ClearSuggestions deletes the user's open suggestions: they turned AI off.
+// ClearSuggestions deletes the user's open suggestions of both kinds: they
+// turned AI off.
 func (s *Service) ClearSuggestions(ctx context.Context, userID vo.Id) error {
 	open, err := s.repo.ListOpenSuggestionsByUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-	return s.deleteSuggestions(ctx, open)
+	return s.deleteSuggestions(ctx, userID, open)
 }
 
-func (s *Service) deleteSuggestions(ctx context.Context, open []model.ImportSuggestion) error {
-	if len(open) == 0 {
-		return nil
+// deleteSuggestions keeps the filled records: they are what the rule-suggestion
+// list reads to tell the AI job's assignment from a hand edit. Open ones are
+// leftovers of earlier builds. Deleted in id order, the order a job locks
+// them in.
+func (s *Service) deleteSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) error {
+	ids := make([]vo.Id, 0, len(open))
+	for _, sg := range open {
+		ids = append(ids, sg.ID)
 	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		for _, sg := range open {
-			if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
+		for _, id := range ids {
+			if err := s.repo.DeleteSuggestion(ctx, id); err != nil {
 				return err
 			}
 		}
-		return nil
+		return s.repo.DeleteOpenTransactionSuggestionsByUser(ctx, userID)
 	})
+}
+
+// activeIDs is the caller's non-archived categories and payees, as
+// a suggestion may name them, plus which categories are income ones, and
+// every payee's name for a suggestion's new-payee name.
+type activeIDs struct {
+	categories, payees, income map[vo.Id]bool
+	names                      payeeNames
+}
+
+func (s *Service) activeEntities(ctx context.Context, userID vo.Id) (activeIDs, error) {
+	categories, err := s.entities.CategoriesByOwner(ctx, userID)
+	if err != nil {
+		return activeIDs{}, err
+	}
+	payees, err := s.entities.PayeesByOwner(ctx, userID)
+	if err != nil {
+		return activeIDs{}, err
+	}
+	v := activeIDs{categories: map[vo.Id]bool{}, income: map[vo.Id]bool{}}
+	for _, c := range categories {
+		id, perr := vo.ParseId(c.ID)
+		if perr != nil {
+			continue
+		}
+		if !c.Archived {
+			v.categories[id] = true
+		}
+		if c.Income {
+			v.income[id] = true
+		}
+	}
+	if v.payees, err = idSet(activeNamed(payees), nil); err != nil {
+		return activeIDs{}, err
+	}
+	v.names = newPayeeNames(payees)
+	return v, nil
 }
 
 // suggestionLookup caches per-account answers within one list read: many
@@ -145,13 +178,19 @@ type suggestionLookup struct {
 
 // pendingSuggestionRows keeps a transaction while it is live, on an account
 // the caller owns, still of the suggestion's type (an edit can change it) and
-// still empty in a field the suggestion would set.
-func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
+// still empty in a field the suggestion would set. A row the AI job filled in
+// also stays while it carries every value the suggestion sets: the rule is
+// still worth offering for it. A filled row that carries a different value
+// than the suggestion sets counts against it and goes, even with another
+// field still empty. A new-payee name sets the payee and is carried by any
+// payee of that name (normalized).
+func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, payee suggestionPayee, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
 	type pending struct {
 		live *model.Transaction
 		link *model.ImportTransactionLink
 	}
-	var kept []pending
+	// agreeing rows stay only when filled; disputed ones only when not filled
+	var kept, agreeing, disputed []pending
 	for _, linkID := range sg.LinkIDs {
 		l, live, err := s.suggestionTargetCached(ctx, userID, linkID, look.owned)
 		if err != nil {
@@ -160,10 +199,36 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		if live == nil || live.Type != sg.Type {
 			continue
 		}
+		p := pending{live: live, link: l}
 		wantsCategory := sg.CategoryID != nil && live.CategoryID == nil && categoryFits(*sg.CategoryID, income, live.Type)
-		wantsPayee := sg.PayeeID != nil && live.PayeeID == nil
-		if wantsCategory || wantsPayee {
-			kept = append(kept, pending{live: live, link: l})
+		wantsPayee := (sg.PayeeID != nil || sg.PayeeName != nil) && live.PayeeID == nil
+		switch {
+		case (wantsCategory || wantsPayee) && carriedAgrees(sg.CategoryID, live.CategoryID) && (live.PayeeID == nil || payee.agrees(live.PayeeID)):
+			kept = append(kept, p)
+		case wantsCategory || wantsPayee:
+			disputed = append(disputed, p)
+		case agrees(sg.CategoryID, live.CategoryID) && payee.agrees(live.PayeeID):
+			agreeing = append(agreeing, p)
+		}
+	}
+	if len(agreeing)+len(disputed) > 0 {
+		ids := make([]vo.Id, 0, len(agreeing)+len(disputed))
+		for _, p := range append(append([]pending{}, agreeing...), disputed...) {
+			ids = append(ids, p.link.ID)
+		}
+		filled, err := s.repo.FilledTransactionSuggestionLinks(ctx, ids)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range agreeing {
+			if filled[p.link.ID] {
+				kept = append(kept, p)
+			}
+		}
+		for _, p := range disputed {
+			if !filled[p.link.ID] {
+				kept = append(kept, p)
+			}
 		}
 	}
 	if len(kept) == 0 {
@@ -192,6 +257,32 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		})
 	}
 	return rows, nil
+}
+
+// agrees: a field the suggestion does not set agrees with any value.
+func agrees(want, have *vo.Id) bool {
+	return want == nil || (have != nil && *have == *want)
+}
+
+// suggestionPayee is the payee a suggestion sets: an id, or a new-payee name
+// (normalized), which also names the payee it resolved to, if any.
+type suggestionPayee struct {
+	id   *vo.Id
+	name string
+	keys map[vo.Id]string
+}
+
+// agrees: a name agrees with a payee of that name, whichever one.
+func (p suggestionPayee) agrees(have *vo.Id) bool {
+	if p.name != "" {
+		return have != nil && p.keys[*have] == p.name
+	}
+	return agrees(p.id, have)
+}
+
+// carriedAgrees: an empty field does not disagree.
+func carriedAgrees(want, have *vo.Id) bool {
+	return have == nil || agrees(want, have)
 }
 
 // suggestionTarget resolves a suggestion's link to its live transaction, or

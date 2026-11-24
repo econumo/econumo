@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import * as userApi from '@/api/user'
 import { getUserData } from '@/api/user'
 import { UserOptions } from '@/api/dto/user'
@@ -9,6 +9,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { getBillingUrl } from '@/lib/config'
 import { accessDaysLeft, deriveAccessState } from '@/lib/access'
+import { toastWriteError } from '@/lib/apiError'
 import type { AccessState } from '@/lib/access'
 
 export function useUserData() {
@@ -177,11 +178,108 @@ export function useUpdateAi() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (enabled: boolean) => userApi.updateAi(enabled),
+    // Only the ai row: a whole user from this write could revert another write in between, such as
+    // a suggestion switch.
     onSuccess: (user, enabled) => {
-      queryClient.setQueryData(queryKeys.user, user)
+      queryClient.setQueryData<CurrentUserDto>(queryKeys.user, (current) => withOptionsFrom(current, user, [UserOptions.AI]))
       // the server drops an opted-out user's open suggestions on the next read
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.USER_UPDATE_AI, { enabled })
+    },
+  })
+}
+
+// The import suggestion switches are on unless turned off, like the main AI switch.
+export function userAiSuggestRules(user: CurrentUserDto | undefined): boolean {
+  return userOption(user, UserOptions.AI_SUGGEST_RULES) !== '0'
+}
+
+export function userAiSuggestFill(user: CurrentUserDto | undefined): boolean {
+  return userOption(user, UserOptions.AI_SUGGEST_FILL) !== '0'
+}
+
+function withOption(user: CurrentUserDto, name: UserOptions, value: string): CurrentUserDto {
+  const options = user.options.some((o) => o.name === name)
+    ? user.options.map((o) => (o.name === name ? { ...o, value } : o))
+    : [...user.options, { name, value }]
+  return { ...user, options }
+}
+
+const aiSuggestionOptions = [UserOptions.AI_SUGGEST_RULES, UserOptions.AI_SUGGEST_FILL]
+
+// The cached user with only the named option rows taken from another copy of the user.
+function withOptionsFrom(current: CurrentUserDto | undefined, from: CurrentUserDto, names: UserOptions[]): CurrentUserDto {
+  if (!current) return from
+  return names.reduce((user, name) => {
+    const value = userOption(from, name)
+    // absent reads as on, like the row it replaces
+    return value === null ? { ...user, options: user.options.filter((o) => o.name !== name) } : withOption(user, name, value)
+  }, current)
+}
+
+// Only the two switch rows: a whole user from this write could revert another write in between,
+// such as the main AI switch.
+function withAiSuggestionOptions(current: CurrentUserDto | undefined, from: CurrentUserDto): CurrentUserDto {
+  return withOptionsFrom(current, from, aiSuggestionOptions)
+}
+
+// A batch of queued switch writes, per query client: the switches as the server last had them (the
+// cache before the batch's first change, then each taken write's answer) and the first error of
+// the batch, shown once when it settles. Each write's own previous value already carries the
+// earlier writes' optimistic changes, so only this can undo one the server never took.
+const suggestionBatches = new WeakMap<QueryClient, { server: CurrentUserDto | undefined; error?: { err: unknown } }>()
+
+const updateAiSuggestionsKey = ['user', 'update-ai-suggestions'] as const
+
+// Each switch posts both values, taking the other from the cached user, so the cache changes at
+// once (onMutate runs at the click, even for a queued write): a second toggle before the first
+// answer must read the first one's value. The writes are queued in one scope so the server
+// commits them in click order and the latest toggle wins.
+export function useUpdateAiSuggestions() {
+  const queryClient = useQueryClient()
+  // the mutation calling this still counts itself; a queued one counts too
+  const othersPending = () => queryClient.isMutating({ mutationKey: updateAiSuggestionsKey }) > 1
+  const settleSuggestionBatch = () => {
+    const batch = suggestionBatches.get(queryClient)
+    suggestionBatches.delete(queryClient)
+    const server = batch?.server
+    if (server) queryClient.setQueryData<CurrentUserDto>(queryKeys.user, (current) => withAiSuggestionOptions(current, server))
+    if (batch?.error) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      toastWriteError(batch.error.err)
+    }
+  }
+  return useMutation({
+    mutationKey: updateAiSuggestionsKey,
+    scope: { id: 'user-update-ai-suggestions' },
+    mutationFn: (body: { suggestRules: boolean; suggestFill: boolean }) => userApi.updateAiSuggestions(body),
+    onMutate: async ({ suggestRules, suggestFill }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.user })
+      const previous = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
+      if (!othersPending() || !suggestionBatches.has(queryClient)) {
+        suggestionBatches.set(queryClient, { server: previous })
+      }
+      if (previous) {
+        const next = withOption(withOption(previous, UserOptions.AI_SUGGEST_RULES, suggestRules ? '1' : '0'), UserOptions.AI_SUGGEST_FILL, suggestFill ? '1' : '0')
+        queryClient.setQueryData(queryKeys.user, next)
+      }
+    },
+    // While a later toggle is queued, the cache keeps the optimistic state; the last write of the
+    // batch settles it from what the server took and shows the batch's first error, even when a
+    // later write was taken. Having an onError of its own, this write gets no global no-response
+    // toast: a refused write must not go unnoticed.
+    onError: (err) => {
+      const batch = suggestionBatches.get(queryClient)
+      if (batch) batch.error ??= { err }
+      else toastWriteError(err)
+      if (!othersPending()) settleSuggestionBatch()
+    },
+    onSuccess: (user, { suggestRules, suggestFill }) => {
+      const batch = suggestionBatches.get(queryClient)
+      if (batch) batch.server = withAiSuggestionOptions(batch.server, user)
+      if (!othersPending()) settleSuggestionBatch()
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+      trackEvent(METRICS.USER_AI_SUGGESTIONS_UPDATE, { rules: suggestRules, fill: suggestFill })
     },
   })
 }
