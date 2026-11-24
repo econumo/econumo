@@ -190,9 +190,11 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		}
 		rest = append(rest, r)
 	}
-	// Every write of this run is undone when the owner turns out to have opted
-	// out once it committed, the joins made before the AI call included.
-	var inserted, filled, preFilled []vo.Id
+	// The rule suggestions of this run are undone when the owner turns out to
+	// have opted out once it committed, the joins made before the AI call
+	// included. Assignments stay: by then they are ordinary data, like a
+	// rule's write.
+	var inserted []vo.Id
 	joined := map[vo.Id][]vo.Id{}
 	preJoined := map[vo.Id][]vo.Id{}
 	defer func() {
@@ -203,13 +205,13 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		for id, links := range joined {
 			all[id] = append(all[id], links...)
 		}
-		s.undoIfOptedOut(ctx, owner, inserted, all, append(slices.Clone(preFilled), filled...))
+		s.undoIfOptedOut(ctx, owner, inserted, all)
 	}()
 	if len(covered) > 0 {
-		var gone, txFilled []vo.Id
+		var gone []vo.Id
 		off := false
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-			gone, txFilled, off = nil, nil, false
+			gone, off = nil, false
 			facts, err := s.facts.OwnerFacts(ctx, owner)
 			if err != nil {
 				return err
@@ -231,16 +233,14 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			if gone, err = s.addSuggestionLinks(ctx, live); err != nil {
 				return err
 			}
-			if !facts.SuggestFill {
-				return nil
+			if facts.SuggestFill {
+				s.assign(ctx, owner, openAssignments(live, gone, open, rows))
 			}
-			txFilled, err = s.copyOpenToTransactions(ctx, owner, live, gone, open, rows)
-			return err
+			return nil
 		})
 		if err != nil || off {
 			return err
 		}
-		preFilled = txFilled
 		// A suggestion the list read deleted meanwhile covers nothing: its rows
 		// go to the AI like any other.
 		goneSet := map[vo.Id]bool{}
@@ -285,7 +285,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		return err
 	}
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		inserted, joined, filled = nil, map[vo.Id][]vo.Id{}, nil
+		inserted, joined = nil, map[vo.Id][]vo.Id{}
 		// The call took seconds: a user who opted out meanwhile gets nothing
 		// stored, a kind of suggestion turned off meanwhile is not written, and
 		// one who settled suggestions gets them re-read, as do categories and
@@ -303,16 +303,16 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			return err
 		}
 		if facts.SuggestFill {
-			now := s.clk.Now().UTC()
-			list := make([]model.ImportTransactionSuggestion, 0, len(valid))
+			list := make([]assignment, 0, len(valid))
 			for _, v := range valid {
-				list = append(list, newTransactionSuggestion(owner, v.Row, v.CategoryID, v.PayeeID, now))
+				list = append(list, assignment{row: v.Row, categoryID: v.CategoryID, payeeID: v.PayeeID, payeeName: v.PayeeName})
 			}
-			if err := s.repo.InsertTransactionSuggestions(ctx, list); err != nil {
-				return err
-			}
-			for _, t := range list {
-				filled = append(filled, t.LinkID)
+			// the rule suggestion carries the payee its rows were given
+			created := s.assign(ctx, owner, list)
+			for i := range valid {
+				if id, ok := created[similarityText(valid[i].PayeeName)]; valid[i].PayeeName != "" && ok {
+					valid[i].PayeeID, valid[i].PayeeName = &id, ""
+				}
 			}
 		}
 		if !facts.SuggestRules {
@@ -367,14 +367,15 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	})
 	if err != nil {
 		// rolled back: nothing of it to undo
-		inserted, joined, filled = nil, nil, nil
+		inserted, joined = nil, nil
 	}
 	return err
 }
 
-// fillable keeps the rows a suggestion could fill: a missing payee needs some
-// active payee to pick, a missing category an active category of the row's
-// type. The others would cost an AI call and a cap slot for nothing.
+// fillable keeps the rows a suggestion could fill: a missing payee (an
+// existing one, or a new one for a well-known merchant), a missing category
+// when there is an active category of the row's type. The others would cost
+// an AI call and a cap slot for nothing.
 func fillable(rows []suggestRow, vocab suggestVocabulary) []suggestRow {
 	hasType := map[bool]bool{}
 	for _, c := range vocab.Categories {
@@ -382,7 +383,7 @@ func fillable(rows []suggestRow, vocab suggestVocabulary) []suggestRow {
 	}
 	out := rows[:0:0]
 	for _, r := range rows {
-		if (r.Missing.Payee && len(vocab.Payees) > 0) || (r.Missing.Category && hasType[r.Type.IsIncome()]) {
+		if r.Missing.Payee || (r.Missing.Category && hasType[r.Type.IsIncome()]) {
 			out = append(out, r)
 		}
 	}
@@ -482,11 +483,11 @@ func mustAtoi(s string) int {
 }
 
 // undoIfOptedOut covers an opt-out (and its suggestion cleanup) that committed
-// while the write was in flight, unseen by the write's own read: what this job
-// stored is removed again, best effort. A switch turned off only hides its
-// kind of suggestion, so it undoes nothing.
-func (s *Service) undoIfOptedOut(ctx context.Context, owner vo.Id, inserted []vo.Id, joined map[vo.Id][]vo.Id, filled []vo.Id) {
-	if len(inserted) == 0 && len(joined) == 0 && len(filled) == 0 {
+// while the write was in flight, unseen by the write's own read: the rule
+// suggestions this job stored are removed again, best effort. A switch turned
+// off only hides its kind of suggestion, so it undoes nothing.
+func (s *Service) undoIfOptedOut(ctx context.Context, owner vo.Id, inserted []vo.Id, joined map[vo.Id][]vo.Id) {
+	if len(inserted) == 0 && len(joined) == 0 {
 		return
 	}
 	// The owner's 60 s may be all but spent by the AI call: the undo gets a
@@ -497,11 +498,6 @@ func (s *Service) undoIfOptedOut(ctx context.Context, owner vo.Id, inserted []vo
 		return
 	}
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if len(filled) > 0 {
-			if err := s.repo.DeleteTransactionSuggestionsByLinks(ctx, filled); err != nil {
-				return err
-			}
-		}
 		for _, id := range inserted {
 			if err := s.repo.DeleteSuggestion(ctx, id); err != nil {
 				return err
@@ -524,63 +520,9 @@ func stopped(facts OwnerInfo) bool {
 	return facts.AIOff || (!facts.SuggestRules && !facts.SuggestFill)
 }
 
-func newTransactionSuggestion(owner vo.Id, row suggestRow, categoryID, payeeID *vo.Id, now time.Time) model.ImportTransactionSuggestion {
-	return model.ImportTransactionSuggestion{
-		LinkID: row.Link.ID, UserID: owner, CategoryID: categoryID, PayeeID: payeeID, Type: row.Type,
-		Status: model.ImportTransactionSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
-	}
-}
-
-// copyOpenToTransactions gives each row joined to an open suggestion before
-// the AI call a transaction suggestion with that suggestion's values, only for
-// the fields the row lacks. A suggestion found gone covers nothing: its rows
-// go to the AI. It returns the links written.
-func (s *Service) copyOpenToTransactions(ctx context.Context, owner vo.Id, joins map[vo.Id][]vo.Id, gone []vo.Id, open []model.ImportSuggestion, rows []suggestRow) ([]vo.Id, error) {
-	byID := make(map[vo.Id]model.ImportSuggestion, len(open))
-	for _, o := range open {
-		byID[o.ID] = o
-	}
-	byLink := make(map[vo.Id]suggestRow, len(rows))
-	for _, r := range rows {
-		byLink[r.Link.ID] = r
-	}
-	now := s.clk.Now().UTC()
-	var list []model.ImportTransactionSuggestion
-	for id, links := range joins {
-		o, ok := byID[id]
-		if !ok || slices.Contains(gone, id) {
-			continue
-		}
-		for _, l := range links {
-			r := byLink[l]
-			var categoryID, payeeID *vo.Id
-			if r.Missing.Category {
-				categoryID = o.CategoryID
-			}
-			if r.Missing.Payee {
-				payeeID = o.PayeeID
-			}
-			if categoryID == nil && payeeID == nil {
-				continue
-			}
-			list = append(list, newTransactionSuggestion(owner, r, categoryID, payeeID, now))
-		}
-	}
-	if len(list) == 0 {
-		return nil, nil
-	}
-	if err := s.repo.InsertTransactionSuggestions(ctx, list); err != nil {
-		return nil, err
-	}
-	out := make([]vo.Id, 0, len(list))
-	for _, t := range list {
-		out = append(out, t.LinkID)
-	}
-	return out, nil
-}
-
 // suggestVocabulary is the owner's non-archived categories and payees, payees
-// by name so candidates of equal score come in a stable order.
+// by name so candidates of equal score come in a stable order, plus every
+// payee's name, archived ones included, for new-payee names.
 func (s *Service) suggestVocabulary(ctx context.Context, owner vo.Id) (suggestVocabulary, error) {
 	categories, err := s.entities.CategoriesByOwner(ctx, owner)
 	if err != nil {
@@ -590,9 +532,10 @@ func (s *Service) suggestVocabulary(ctx context.Context, owner vo.Id) (suggestVo
 	if err != nil {
 		return suggestVocabulary{}, err
 	}
-	categories, payees = activeNamed(categories), activeNamed(payees)
 	sort.SliceStable(payees, func(i, j int) bool { return strings.ToLower(payees[i].Name) < strings.ToLower(payees[j].Name) })
-	return newSuggestVocabulary(categories, payees), nil
+	v := newSuggestVocabulary(activeNamed(categories), activeNamed(payees))
+	v.names = newPayeeNames(payees)
+	return v, nil
 }
 
 func activeNamed(list []model.ImportNamed) []model.ImportNamed {

@@ -67,6 +67,13 @@ type ClassificationLister interface {
 	LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 }
 
+// PayeeCreator creates a payee owned by ownerID: the AI job's new payee for a
+// well-known merchant. It goes through the payee feature's own checks (name
+// length, uniqueness).
+type PayeeCreator interface {
+	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
+}
+
 // Completer is one chat completion. nil = AI disabled. userID names the
 // requesting user so a metering endpoint can attribute the call.
 type Completer interface {
@@ -81,7 +88,8 @@ type OwnerFacts interface {
 // OwnerInfo: the stored language and timezone ("" when unknown) for the
 // prompt; Readonly when the effective access level is readonly and AIOff when
 // the user opted out of AI. Either one means no AI call with their data.
-// SuggestRules and SuggestFill are the user's two suggestion switches.
+// SuggestRules and SuggestFill are the user's two switches: suggest rules, and
+// assign category and payee automatically.
 type OwnerInfo struct {
 	Language, Timezone string
 	Readonly, AIOff    bool

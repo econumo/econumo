@@ -18255,6 +18255,10 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "payeeName": {
+                    "description": "a payee to create on save, for a well-known merchant; \"\" when none",
+                    "type": "string"
+                },
                 "transactions": {
                     "description": "newest first",
                     "type": "array",

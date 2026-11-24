@@ -134,8 +134,13 @@ func (d denyScope) Allow(_ context.Context, scope, _ string) error {
 func (d denyScope) Reserve(string, string) error { return nil }
 
 func (h *harness) wireSuggest(c imports.Completer, facts imports.OwnerFacts) {
+	h.facts = facts
 	h.svc.SetSuggester(c, facts)
 	h.svc.SetJobRunner(func(run func()) { run() })
+	if h.payees == nil {
+		h.payees = &fakePayees{h: h}
+	}
+	h.svc.SetPayeeCreator(h.payees)
 }
 
 func suggestSetup(t *testing.T) (*harness, *fakeCompleter, fakeFacts) {
@@ -1227,26 +1232,28 @@ func TestSuggestSkipsASimpleFINRowWhosePayeeIsTheMemo(t *testing.T) {
 	}
 }
 
-// A row nothing could be suggested for (no payees to pick from, no category
-// of its type) costs no AI call and no cap slot.
+// A row nothing could be suggested for (its payee set, no category of its
+// type) costs no AI call and no cap slot. A missing payee always qualifies: a
+// well-known merchant may get a new one.
 func TestSuggestSkipsRowsNothingCanFill(t *testing.T) {
 	h, _, _ := suggestSetup(t)
 	c := &fakeCompleter{reply: `{"rows":[]}`}
 	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
 	h.mapCard(t, "Apple Card")
 	h.incomeCategory(t, userA, "Salary")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", PayeeID: py})
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
 	if len(c.calls) != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
-		t.Fatalf("an expense with no expense category and no payees: calls = %d, reservations = %v", len(c.calls), l.reserve)
+		t.Fatalf("an expense with its payee and no expense category: calls = %d, reservations = %v", len(c.calls), l.reserve)
 	}
-	h.payee(t, userA, "Blue Bottle")
 	if res := ingest(t, h, pushWithPayee("Philz", "evt-2")); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
 	if len(c.calls) != 1 || l.reserve[imports.RateScopeSuggest] != 1 {
-		t.Fatalf("with a payee to pick: calls = %d, reservations = %v", len(c.calls), l.reserve)
+		t.Fatalf("with the payee missing: calls = %d, reservations = %v", len(c.calls), l.reserve)
 	}
 }
 
@@ -1466,13 +1473,79 @@ func TestSuggestVanishedLinkKeepsTheOtherSuggestions(t *testing.T) {
 	}
 }
 
-func txSuggestions(t *testing.T, h *harness, owner string) []model.ImportTransactionSuggestion {
+// assignRecords reads the owner's import_transaction_suggestions rows: the
+// record of what the job assigned.
+func assignRecords(t *testing.T, h *harness, owner string) []model.ImportTransactionSuggestion {
 	t.Helper()
-	list, err := h.repo.ListOpenTransactionSuggestionsByUser(context.Background(), vo.MustParseId(owner))
+	rows, err := h.db.Raw.QueryContext(context.Background(), h.db.Rebind(
+		`SELECT link_id, user_id, category_id, payee_id, transaction_type, status FROM import_transaction_suggestions WHERE user_id = ? ORDER BY link_id`), owner)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return list
+	defer rows.Close()
+	var out []model.ImportTransactionSuggestion
+	for rows.Next() {
+		var link, user, typ, status string
+		var cat, payee *string
+		if err := rows.Scan(&link, &user, &cat, &payee, &typ, &status); err != nil {
+			t.Fatal(err)
+		}
+		r := model.ImportTransactionSuggestion{LinkID: vo.MustParseId(link), UserID: vo.MustParseId(user), CategoryID: parseOptID(cat), PayeeID: parseOptID(payee), Status: status}
+		if typ == "income" {
+			r.Type = model.TransactionTypeIncome
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// fakePayees creates payees as the payee feature would: a real row
+// (transactions.payee_id is a foreign key) written through the job's own
+// transaction (the fixture builder's connection would deadlock on the pool of
+// one), also added to the owner's vocabulary.
+type fakePayees struct {
+	h       *harness
+	created []string
+	fail    error
+}
+
+func (f *fakePayees) CreatePayee(ctx context.Context, owner vo.Id, name string) (model.ImportNamed, error) {
+	id := vo.NewId().String()
+	if f.fail != nil {
+		// a real failing statement, so PostgreSQL shows whether the failed row
+		// leaves the job's transaction usable
+		if _, err := f.h.db.TX.Querier(ctx).ExecContext(ctx, f.h.db.Rebind(
+			`INSERT INTO payees (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, FALSE, ?, ?)`),
+			id, vo.NewId().String(), name, "a0", now, now); err != nil {
+			return model.ImportNamed{}, err
+		}
+		return model.ImportNamed{}, f.fail
+	}
+	if _, err := f.h.db.TX.Querier(ctx).ExecContext(ctx, f.h.db.Rebind(
+		`INSERT INTO payees (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, FALSE, ?, ?)`),
+		id, owner.String(), name, "a0", now, now); err != nil {
+		return model.ImportNamed{}, err
+	}
+	f.h.entities.add(f.h.entities.payees, owner, id, name)
+	f.created = append(f.created, name)
+	return model.ImportNamed{ID: id, Name: name, OwnerID: owner.String()}, nil
+}
+
+// txOf reads the live transaction behind a ledger link.
+func txOf(t *testing.T, h *harness, linkID vo.Id) *model.Transaction {
+	t.Helper()
+	l, err := h.repo.GetLink(context.Background(), linkID)
+	if err != nil || l.TransactionID == nil {
+		t.Fatalf("link %s: %+v, %v", linkID, l, err)
+	}
+	tx, err := h.txns.GetByID(context.Background(), *l.TransactionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tx
 }
 
 func bankLinkID(t *testing.T, h *harness, externalID string) vo.Id {
@@ -1497,7 +1570,7 @@ func idIs(id *vo.Id, want string) bool {
 	return id != nil && id.String() == want
 }
 
-func TestSuggestWritesTransactionSuggestionsPerRow(t *testing.T) {
+func TestSuggestAssignsEachRowItsOwnValues(t *testing.T) {
 	h, p := bankHarness(t)
 	c := &fakeCompleter{}
 	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
@@ -1523,15 +1596,18 @@ func TestSuggestWritesTransactionSuggestionsPerRow(t *testing.T) {
 		bankLinkID(t, h, "b"): coffee,
 		bankLinkID(t, h, "c"): restaurants,
 	}
-	got := txSuggestions(t, h, userA)
+	got := assignRecords(t, h, userA)
 	if len(got) != 3 {
-		t.Fatalf("transaction suggestions = %+v", got)
+		t.Fatalf("records = %+v", got)
 	}
 	for _, s := range got {
 		cat, ok := want[s.LinkID]
 		if !ok || !idIs(s.CategoryID, cat) || s.PayeeID != nil || s.UserID.String() != userA ||
-			s.Type != model.TransactionTypeExpense || s.Status != model.ImportTransactionSuggestionStatusOpen || s.CreatedAt.IsZero() {
-			t.Fatalf("transaction suggestion = %+v, want category %s", s, cat)
+			s.Type != model.TransactionTypeExpense || s.Status != model.ImportTransactionSuggestionStatusFilled {
+			t.Fatalf("record = %+v, want category %s", s, cat)
+		}
+		if tx := txOf(t, h, s.LinkID); !idIs(tx.CategoryID, cat) || tx.PayeeID != nil {
+			t.Fatalf("transaction = %+v, want category %s", tx, cat)
 		}
 	}
 }
@@ -1558,7 +1634,7 @@ func TestSuggestRulesOffWritesNoRuleSuggestion(t *testing.T) {
 	if len(rules) != 1 || rules[0].ID != open.ID || len(rules[0].LinkIDs) != 0 {
 		t.Fatalf("rule suggestions = %+v, want only the untouched seeded one", rules)
 	}
-	got := txSuggestions(t, h, userA)
+	got := assignRecords(t, h, userA)
 	if len(got) != 1 || !idIs(got[0].CategoryID, cat) {
 		t.Fatalf("transaction suggestions = %+v", got)
 	}
@@ -1574,23 +1650,8 @@ func TestSuggestRulesOffWritesNoRuleSuggestionFromScratch(t *testing.T) {
 	if n := len(openSuggestions(t, h, userA)); n != 0 {
 		t.Fatalf("rule suggestions = %d, want none", n)
 	}
-	if got := txSuggestions(t, h, userA); len(got) != 1 {
+	if got := assignRecords(t, h, userA); len(got) != 1 {
 		t.Fatalf("transaction suggestions = %+v", got)
-	}
-}
-
-func TestSuggestFillOffWritesNoTransactionSuggestion(t *testing.T) {
-	h, c, facts := suggestSetup(t)
-	facts[userA] = ownerFact{language: "en", fillOff: true}
-	h.mapCard(t, "Apple Card")
-	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
-	ingest(t, h, tap)
-	if got := openSuggestions(t, h, userA); len(got) != 1 || !idIs(got[0].CategoryID, cat) {
-		t.Fatalf("rule suggestions = %+v", got)
-	}
-	if got := txSuggestions(t, h, userA); len(got) != 0 {
-		t.Fatalf("transaction suggestions = %+v, want none", got)
 	}
 }
 
@@ -1606,40 +1667,14 @@ func TestSuggestBothOffMakesNoCall(t *testing.T) {
 	if len(c.calls) != 0 || l.allow[imports.RateScopeSuggest] != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
 		t.Fatalf("calls = %d, limiter allow = %d, reserve = %d", len(c.calls), l.allow[imports.RateScopeSuggest], l.reserve[imports.RateScopeSuggest])
 	}
-	if len(openSuggestions(t, h, userA)) != 0 || len(txSuggestions(t, h, userA)) != 0 {
+	if len(openSuggestions(t, h, userA)) != 0 || len(assignRecords(t, h, userA)) != 0 {
 		t.Fatal("nothing may be stored with both switches off")
 	}
 }
 
-func TestSuggestReuseCopiesOpenSuggestionToTransaction(t *testing.T) {
-	h, c, _ := suggestSetup(t)
-	h.mapCard(t, "Apple Card")
-	cat := h.category(t, userA, "Coffee")
-	ruled := h.payee(t, userA, "Blue Bottle Coffee")
-	other := h.payee(t, userA, "Some Cafe")
-	// the row arrives with its payee set, so only the category is missing
-	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", PayeeID: ruled})
-	catID, otherID := vo.MustParseId(cat), vo.MustParseId(other)
-	open := &model.ImportSuggestion{
-		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
-		CategoryID: &catID, PayeeID: &otherID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
-	}
-	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
-		t.Fatal(err)
-	}
-	ingest(t, h, tap)
-	if len(c.calls) != 0 {
-		t.Fatalf("an open suggestion covers the row: %+v", c.calls)
-	}
-	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
-	got := txSuggestions(t, h, userA)
-	if len(links) != 1 || len(got) != 1 || got[0].LinkID != links[0].ID || !idIs(got[0].CategoryID, cat) || got[0].PayeeID != nil ||
-		got[0].Type != model.TransactionTypeExpense || got[0].UserID.String() != userA {
-		t.Fatalf("transaction suggestions = %+v, want the category only", got)
-	}
-}
-
-func TestSuggestOptOutUndoRemovesTransactionSuggestions(t *testing.T) {
+// An opt-out found after the write committed removes the run's rule
+// suggestion; what was assigned stays, as ordinary data.
+func TestSuggestOptOutUndoKeepsAssignments(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.wireSuggest(c, &optOutAfter{n: 3})
 	h.mapCard(t, "Apple Card")
@@ -1648,12 +1683,16 @@ func TestSuggestOptOutUndoRemovesTransactionSuggestions(t *testing.T) {
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
-	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 || len(txSuggestions(t, h, userA)) != 0 {
-		t.Fatalf("calls = %d, rules = %+v, transactions = %+v", len(c.calls), openSuggestions(t, h, userA), txSuggestions(t, h, userA))
+	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 {
+		t.Fatalf("calls = %d, rules = %+v", len(c.calls), openSuggestions(t, h, userA))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(txOf(t, h, links[0].ID).CategoryID, cat) {
+		t.Fatalf("records = %+v, want the assignment kept", got)
 	}
 }
 
-func TestSuggestOptOutUndoRemovesReusedTransactionSuggestions(t *testing.T) {
+func TestSuggestOptOutUndoKeepsReusedAssignments(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
@@ -1668,32 +1707,13 @@ func TestSuggestOptOutUndoRemovesReusedTransactionSuggestions(t *testing.T) {
 	// reads: the first look, the pre-join write, then the undo's check
 	h.wireSuggest(c, &optOutAfter{n: 2})
 	ingest(t, h, tap)
-	if len(c.calls) != 0 || len(txSuggestions(t, h, userA)) != 0 {
-		t.Fatalf("calls = %d, transactions = %+v", len(c.calls), txSuggestions(t, h, userA))
+	if len(c.calls) != 0 || len(assignRecords(t, h, userA)) != 1 {
+		t.Fatalf("calls = %d, records = %+v, want the assignment kept", len(c.calls), assignRecords(t, h, userA))
 	}
 	for _, s := range openSuggestions(t, h, userA) {
 		if len(s.LinkIDs) != 0 {
 			t.Fatalf("links = %v, want the join undone", s.LinkIDs)
 		}
-	}
-}
-
-func TestSuggestSharedAccountTransactionSuggestionGoesToOwner(t *testing.T) {
-	h, c, _ := suggestSetup(t)
-	h.accounts.shared = true
-	if _, err := h.svc.LinkAccount(context.Background(), vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Apple Card", AccountId: acctB}); err != nil {
-		t.Fatal(err)
-	}
-	kaffee := h.category(t, userB, "Kaffee")
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + kaffee + `"}]}`
-	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
-		t.Fatalf("status = %s", res.Status)
-	}
-	if got := txSuggestions(t, h, userB); len(got) != 1 || got[0].UserID.String() != userB || !idIs(got[0].CategoryID, kaffee) {
-		t.Fatalf("owner transaction suggestions = %+v", got)
-	}
-	if got := txSuggestions(t, h, userA); len(got) != 0 {
-		t.Fatalf("importer transaction suggestions = %+v", got)
 	}
 }
 
@@ -1716,8 +1736,8 @@ func TestSuggestFillTurnedOffDuringTheCallStoresOnlyRules(t *testing.T) {
 	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	c.onCall = func() { facts[userA] = ownerFact{language: "en", fillOff: true} }
 	ingest(t, h, tap)
-	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 1 || len(txSuggestions(t, h, userA)) != 0 {
-		t.Fatalf("calls = %d, rules = %+v, transactions = %+v", len(c.calls), openSuggestions(t, h, userA), txSuggestions(t, h, userA))
+	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 1 || len(assignRecords(t, h, userA)) != 0 {
+		t.Fatalf("calls = %d, rules = %+v, transactions = %+v", len(c.calls), openSuggestions(t, h, userA), assignRecords(t, h, userA))
 	}
 }
 
@@ -1748,7 +1768,7 @@ func TestSuggestRulesTurnedOffBeforeTheJoinSendsRowsToAI(t *testing.T) {
 	if len(rules) != 1 || rules[0].ID != open.ID || len(rules[0].LinkIDs) != 0 {
 		t.Fatalf("rule suggestions = %+v, want only the untouched seeded one", rules)
 	}
-	if got := txSuggestions(t, h, userA); len(got) != 1 || !idIs(got[0].CategoryID, cat) {
+	if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(got[0].CategoryID, cat) {
 		t.Fatalf("transaction suggestions = %+v", got)
 	}
 }

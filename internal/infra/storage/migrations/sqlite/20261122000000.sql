@@ -11,3 +11,5 @@ CREATE TABLE import_transaction_suggestions (
     CONSTRAINT FK_import_transaction_suggestions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 CREATE INDEX IDX_import_transaction_suggestions_user_status ON import_transaction_suggestions (user_id, status);
+
+ALTER TABLE import_suggestions ADD COLUMN payee_name TEXT DEFAULT NULL;

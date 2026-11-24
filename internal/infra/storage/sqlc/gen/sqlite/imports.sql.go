@@ -105,15 +105,6 @@ func (q *Queries) DeleteImportTransactionLink(ctx context.Context, id string) er
 	return err
 }
 
-const deleteImportTransactionSuggestion = `-- name: DeleteImportTransactionSuggestion :exec
-DELETE FROM import_transaction_suggestions WHERE link_id = ?
-`
-
-func (q *Queries) DeleteImportTransactionSuggestion(ctx context.Context, linkID string) error {
-	_, err := q.db.ExecContext(ctx, deleteImportTransactionSuggestion, linkID)
-	return err
-}
-
 const deleteOpenImportTransactionSuggestionsByUser = `-- name: DeleteOpenImportTransactionSuggestionsByUser :exec
 DELETE FROM import_transaction_suggestions WHERE user_id = ? AND status = 'open'
 `
@@ -332,7 +323,7 @@ func (q *Queries) GetImportSourceByUserProvider(ctx context.Context, arg GetImpo
 }
 
 const getImportSuggestionByID = `-- name: GetImportSuggestionByID :one
-SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name
 FROM import_suggestions
 WHERE id = ?
 `
@@ -351,6 +342,7 @@ func (q *Queries) GetImportSuggestionByID(ctx context.Context, id string) (Impor
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PayeeName,
 	)
 	return i, err
 }
@@ -424,28 +416,6 @@ func (q *Queries) GetImportTransactionLinkByID(ctx context.Context, id string) (
 		&i.AppliedTagID,
 		&i.AppliedRuleID,
 		&i.ImportedAt,
-	)
-	return i, err
-}
-
-const getImportTransactionSuggestion = `-- name: GetImportTransactionSuggestion :one
-SELECT link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at
-FROM import_transaction_suggestions
-WHERE link_id = ?
-`
-
-func (q *Queries) GetImportTransactionSuggestion(ctx context.Context, linkID string) (ImportTransactionSuggestion, error) {
-	row := q.db.QueryRowContext(ctx, getImportTransactionSuggestion, linkID)
-	var i ImportTransactionSuggestion
-	err := row.Scan(
-		&i.LinkID,
-		&i.UserID,
-		&i.CategoryID,
-		&i.PayeeID,
-		&i.TransactionType,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -670,8 +640,8 @@ func (q *Queries) InsertImportSource(ctx context.Context, arg InsertImportSource
 }
 
 const insertImportSuggestion = `-- name: InsertImportSuggestion :exec
-INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertImportSuggestionParams struct {
@@ -685,6 +655,7 @@ type InsertImportSuggestionParams struct {
 	Status          string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	PayeeName       *string
 }
 
 func (q *Queries) InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error {
@@ -699,6 +670,7 @@ func (q *Queries) InsertImportSuggestion(ctx context.Context, arg InsertImportSu
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.PayeeName,
 	)
 	return err
 }
@@ -1564,7 +1536,7 @@ func (q *Queries) ListOpenImportSuggestionLinksByUser(ctx context.Context, userI
 }
 
 const listOpenImportSuggestionsByUser = `-- name: ListOpenImportSuggestionsByUser :many
-SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name
 FROM import_suggestions
 WHERE user_id = ? AND status = 'open'
 ORDER BY created_at, id
@@ -1590,45 +1562,7 @@ func (q *Queries) ListOpenImportSuggestionsByUser(ctx context.Context, userID st
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listOpenImportTransactionSuggestionsByUser = `-- name: ListOpenImportTransactionSuggestionsByUser :many
-SELECT link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at
-FROM import_transaction_suggestions
-WHERE user_id = ? AND status = 'open'
-ORDER BY created_at, link_id
-`
-
-func (q *Queries) ListOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) ([]ImportTransactionSuggestion, error) {
-	rows, err := q.db.QueryContext(ctx, listOpenImportTransactionSuggestionsByUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ImportTransactionSuggestion{}
-	for rows.Next() {
-		var i ImportTransactionSuggestion
-		if err := rows.Scan(
-			&i.LinkID,
-			&i.UserID,
-			&i.CategoryID,
-			&i.PayeeID,
-			&i.TransactionType,
-			&i.Status,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PayeeName,
 		); err != nil {
 			return nil, err
 		}
@@ -1653,32 +1587,6 @@ func (q *Queries) LockImportSuggestion(ctx context.Context, id string) (int64, e
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const lockImportTransactionSuggestion = `-- name: LockImportTransactionSuggestion :execrows
-UPDATE import_transaction_suggestions SET status = status WHERE link_id = ?
-`
-
-func (q *Queries) LockImportTransactionSuggestion(ctx context.Context, linkID string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, lockImportTransactionSuggestion, linkID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const markImportTransactionSuggestionFilled = `-- name: MarkImportTransactionSuggestionFilled :exec
-UPDATE import_transaction_suggestions SET status = 'filled', updated_at = ? WHERE link_id = ?
-`
-
-type MarkImportTransactionSuggestionFilledParams struct {
-	UpdatedAt time.Time
-	LinkID    string
-}
-
-func (q *Queries) MarkImportTransactionSuggestionFilled(ctx context.Context, arg MarkImportTransactionSuggestionFilledParams) error {
-	_, err := q.db.ExecContext(ctx, markImportTransactionSuggestionFilled, arg.UpdatedAt, arg.LinkID)
-	return err
 }
 
 const touchOpenImportSuggestion = `-- name: TouchOpenImportSuggestion :execrows

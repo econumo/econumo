@@ -2,20 +2,15 @@ package repo
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/econumo/econumo/internal/model"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // InsertTransactionSuggestions keeps the first row stored for a link: a later
-// job never rewrites a suggestion the user may already have seen or filled.
+// job never rewrites the record of what an earlier one assigned.
 func (r *Repo) InsertTransactionSuggestions(ctx context.Context, rows []model.ImportTransactionSuggestion) error {
 	for _, s := range rows {
 		err := r.q.InsertImportTransactionSuggestion(ctx, r.db(ctx), insertTxSuggestionParams{
@@ -30,69 +25,16 @@ func (r *Repo) InsertTransactionSuggestions(ctx context.Context, rows []model.Im
 	return nil
 }
 
-func (r *Repo) ListOpenTransactionSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionSuggestion, error) {
-	rows, err := r.q.ListOpenImportTransactionSuggestionsByUser(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return nil, err
-	}
-	out := make([]model.ImportTransactionSuggestion, 0, len(rows))
-	for _, row := range rows {
-		s, err := transactionSuggestionFromRow(row)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, *s)
-	}
-	return out, nil
-}
-
-func (r *Repo) LockTransactionSuggestion(ctx context.Context, linkID vo.Id) (*model.ImportTransactionSuggestion, error) {
-	n, err := r.q.LockImportTransactionSuggestion(ctx, r.db(ctx), linkID.String())
-	if err != nil {
-		return nil, err
-	}
-	if n == 0 {
-		return nil, errs.NewNotFound("Import suggestion not found")
-	}
-	row, err := r.q.GetImportTransactionSuggestion(ctx, r.db(ctx), linkID.String())
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errs.NewNotFound("Import suggestion not found")
-		}
-		return nil, err
-	}
-	return transactionSuggestionFromRow(row)
-}
-
 func (r *Repo) LockTransactionRow(ctx context.Context, transactionID vo.Id) error {
 	return r.q.LockImportTransactionRow(ctx, r.db(ctx), transactionID.String())
-}
-
-func (r *Repo) MarkTransactionSuggestionFilled(ctx context.Context, linkID vo.Id, now time.Time) error {
-	return r.q.MarkImportTransactionSuggestionFilled(ctx, r.db(ctx), markTxSuggestionFilledPs{UpdatedAt: now, LinkID: linkID.String()})
-}
-
-func (r *Repo) DeleteTransactionSuggestion(ctx context.Context, linkID vo.Id) error {
-	return r.q.DeleteImportTransactionSuggestion(ctx, r.db(ctx), linkID.String())
 }
 
 func (r *Repo) DeleteOpenTransactionSuggestionsByUser(ctx context.Context, userID vo.Id) error {
 	return r.q.DeleteOpenImportTransactionSuggestionsByUser(ctx, r.db(ctx), userID.String())
 }
 
-// DeleteTransactionSuggestionsByLinks deletes only open rows: a row the user
-// filled meanwhile must survive a cleanup that read it while still open.
-// It and FilledTransactionSuggestionLinks take a variadic IN list, which sqlc
-// cannot express on both engines.
-func (r *Repo) DeleteTransactionSuggestionsByLinks(ctx context.Context, linkIDs []vo.Id) error {
-	if len(linkIDs) == 0 {
-		return nil
-	}
-	query, args := r.inList("DELETE FROM import_transaction_suggestions WHERE status = 'open' AND link_id IN (", linkIDs)
-	_, err := r.db(ctx).ExecContext(ctx, query, args...)
-	return err
-}
-
+// FilledTransactionSuggestionLinks takes a variadic IN list, which sqlc cannot
+// express on both engines.
 func (r *Repo) FilledTransactionSuggestionLinks(ctx context.Context, linkIDs []vo.Id) (map[vo.Id]bool, error) {
 	out := map[vo.Id]bool{}
 	if len(linkIDs) == 0 {
@@ -135,33 +77,4 @@ func (r *Repo) inList(prefix string, ids []vo.Id) (string, []any) {
 	}
 	sb.WriteByte(')')
 	return sb.String(), args
-}
-
-func transactionSuggestionFromRow(row txSuggestionRow) (*model.ImportTransactionSuggestion, error) {
-	linkID, err := vo.ParseId(row.LinkID)
-	if err != nil {
-		return nil, err
-	}
-	userID, err := vo.ParseId(row.UserID)
-	if err != nil {
-		return nil, err
-	}
-	s := &model.ImportTransactionSuggestion{
-		LinkID: linkID, UserID: userID, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-	}
-	if s.CategoryID, err = parseOptionalID(row.CategoryID); err != nil {
-		return nil, err
-	}
-	if s.PayeeID, err = parseOptionalID(row.PayeeID); err != nil {
-		return nil, err
-	}
-	switch row.TransactionType {
-	case model.TransactionTypeExpense.Alias():
-		s.Type = model.TransactionTypeExpense
-	case model.TransactionTypeIncome.Alias():
-		s.Type = model.TransactionTypeIncome
-	default:
-		return nil, fmt.Errorf("import transaction suggestion %s: unknown transaction type", row.LinkID)
-	}
-	return s, nil
 }

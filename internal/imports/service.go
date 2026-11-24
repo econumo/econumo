@@ -22,6 +22,7 @@ type Service struct {
 	limiter   AttemptLimiter
 	completer Completer
 	facts     OwnerFacts
+	payees    PayeeCreator
 	run       func(func())
 	tx        port.TxRunner
 	clk       port.Clock
@@ -65,6 +66,10 @@ func (s *Service) enabledSources(ctx context.Context, userID vo.Id) ([]model.Imp
 
 // SetSuggester turns on AI rule suggestions for newly imported transactions.
 func (s *Service) SetSuggester(c Completer, facts OwnerFacts) { s.completer, s.facts = c, facts }
+
+// SetPayeeCreator lets the AI job create a payee for a well-known merchant;
+// without one it assigns existing payees only.
+func (s *Service) SetPayeeCreator(p PayeeCreator) { s.payees = p }
 
 // SetJobRunner replaces how background jobs start (tests run them inline).
 func (s *Service) SetJobRunner(run func(func())) { s.run = run }

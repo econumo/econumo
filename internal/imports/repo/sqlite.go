@@ -263,30 +263,10 @@ func (sqliteQuerier) InsertImportTransactionSuggestion(ctx context.Context, db b
 	return sqlitegen.New(db).InsertImportTransactionSuggestion(ctx, p)
 }
 
-func (sqliteQuerier) ListOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]txSuggestionRow, error) {
-	return sqlitegen.New(db).ListOpenImportTransactionSuggestionsByUser(ctx, userID)
-}
-
-func (sqliteQuerier) GetImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (txSuggestionRow, error) {
-	return sqlitegen.New(db).GetImportTransactionSuggestion(ctx, linkID)
-}
-
-// SQLite has no row locks: the suggestion's no-op UPDATE already took the
-// database write lock, which serializes every other writer.
+// SQLite has no row locks: the pool's one connection already serializes
+// every transaction.
 func (sqliteQuerier) LockImportTransactionRow(context.Context, backend.DBTX, string) error {
 	return nil
-}
-
-func (sqliteQuerier) LockImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (int64, error) {
-	return sqlitegen.New(db).LockImportTransactionSuggestion(ctx, linkID)
-}
-
-func (sqliteQuerier) MarkImportTransactionSuggestionFilled(ctx context.Context, db backend.DBTX, p markTxSuggestionFilledPs) error {
-	return sqlitegen.New(db).MarkImportTransactionSuggestionFilled(ctx, p)
-}
-
-func (sqliteQuerier) DeleteImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) error {
-	return sqlitegen.New(db).DeleteImportTransactionSuggestion(ctx, linkID)
 }
 
 func (sqliteQuerier) DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error {

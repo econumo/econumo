@@ -269,11 +269,14 @@ type ImportSuggestion struct {
 	MatchText  string // normalized
 	CategoryID *vo.Id
 	PayeeID    *vo.Id
-	Type       TransactionType // expense or income: every row it offers is of this type
-	Status     string
-	LinkIDs    []vo.Id // filled by the read methods
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// PayeeName is a payee the owner does not have yet, for a well-known
+	// merchant; set only when PayeeID is nil.
+	PayeeName *string
+	Type      TransactionType // expense or income: every row it offers is of this type
+	Status    string
+	LinkIDs   []vo.Id // filled by the read methods
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 const (

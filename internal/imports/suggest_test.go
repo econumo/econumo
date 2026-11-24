@@ -80,6 +80,39 @@ func TestValidateReplyDropsFieldAlreadySet(t *testing.T) {
 	require.NotNil(t, got[0].CategoryID)
 }
 
+// A well-known merchant the owner has no payee for keeps its row with a
+// new-payee name, even with no category; a local shop, a name the payee
+// feature would refuse or one only an archived payee carries does not.
+func TestValidateReplyNewPayeeName(t *testing.T) {
+	v, _, _, _, _ := sVocab()
+	v.names = newPayeeNames([]model.ImportNamed{{ID: vo.NewId().String(), Name: "Whole Foods", Archived: true}})
+	reply := func(merchant string, wellKnown bool) map[string]suggestReplyRow {
+		return map[string]suggestReplyRow{"0": {MatchText: "UBER", Merchants: []string{merchant}, WellKnown: wellKnown}}
+	}
+	rows := []suggestRow{sRow(sLink("UBER *TRIP", "", time.Time{}))}
+	got := validateReply(rows, reply("Uber", true), v)
+	require.Len(t, got, 1)
+	require.Equal(t, "Uber", got[0].PayeeName)
+	require.Nil(t, got[0].PayeeID)
+	require.Nil(t, got[0].CategoryID)
+	require.Empty(t, validateReply(rows, reply("Uber", false), v))
+	require.Empty(t, validateReply(rows, reply("UB", true), v))
+	require.Empty(t, validateReply(rows, reply(strings.Repeat("u", 65), true), v))
+	require.Empty(t, validateReply(rows, reply("WHOLE FOODS", true), v))
+	row := sRow(sLink("UBER *TRIP", "", time.Time{}))
+	row.Missing.Payee = false
+	require.Empty(t, validateReply([]suggestRow{row}, reply("Uber", true), v))
+}
+
+func TestValidateReplyNewPayeeNameReusesActivePayee(t *testing.T) {
+	v, _, _, _, bb := sVocab()
+	rows := []suggestRow{sRow(sLink("BLUE BOTTLE #4", "", time.Time{}))}
+	got := validateReply(rows, map[string]suggestReplyRow{"0": {MatchText: "BLUE BOTTLE", Merchants: []string{"blue-bottle"}, WellKnown: true}}, v)
+	require.Len(t, got, 1)
+	require.Equal(t, bb.ID, got[0].PayeeID.String())
+	require.Empty(t, got[0].PayeeName)
+}
+
 func TestParseSuggestReplyRejectsGarbage(t *testing.T) {
 	_, err := parseSuggestReply("sorry, no")
 	require.Error(t, err)
@@ -269,6 +302,37 @@ func TestLiveOpenDropsArchivedFields(t *testing.T) {
 	require.Equal(t, bbID, *got[0].PayeeID)
 	require.Equal(t, coffeeID, *got[1].CategoryID)
 	require.Equal(t, gone, *open[0].CategoryID)
+}
+
+// A new-payee name counts as a payee value, compared normalized, when the
+// majority classification is picked.
+func TestGroupRowsCountsPayeeNames(t *testing.T) {
+	row := func(payee, name string) validSuggestion {
+		return validSuggestion{Row: sRow(sLink(payee, "", time.Time{})), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "SQ *SHOP", PayeeName: name}
+	}
+	got := groupRows([]validSuggestion{row("SQ *SHOP 1", "Shop Two"), row("SQ *SHOP 2", "Shop One"), row("SQ *SHOP 3", "SHOP ONE")})
+	require.Len(t, got, 1)
+	require.Equal(t, "Shop One", *got[0].PayeeName)
+	require.Nil(t, got[0].PayeeID)
+	require.Len(t, got[0].LinkIDs, 3)
+}
+
+func TestLiveOpenResolvesPayeeName(t *testing.T) {
+	v, _, _, _, bb := sVocab()
+	v.names = newPayeeNames([]model.ImportNamed{bb, {ID: vo.NewId().String(), Name: "Old Shop", Archived: true}})
+	name := func(s string) *string { return &s }
+	open := []model.ImportSuggestion{
+		{ID: vo.NewId(), PayeeName: name("BLUE BOTTLE")},
+		{ID: vo.NewId(), PayeeName: name("old shop")},
+		{ID: vo.NewId(), PayeeName: name("Uber")},
+	}
+	got := v.liveOpen(open)
+	require.Len(t, got, 2)
+	require.Equal(t, bb.ID, got[0].PayeeID.String())
+	require.Nil(t, got[0].PayeeName)
+	require.Equal(t, "Uber", *got[1].PayeeName)
+	require.Nil(t, got[1].PayeeID)
+	require.True(t, missingFields{Payee: true}.filledBy(got[1]))
 }
 
 func TestOpenForRequiresAFieldTheRowLacks(t *testing.T) {

@@ -340,6 +340,7 @@ type ImportSuggestion struct {
 	Status          string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	PayeeName       *string
 }
 
 type ImportSuggestionLink struct {

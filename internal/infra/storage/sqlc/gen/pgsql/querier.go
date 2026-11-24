@@ -77,7 +77,6 @@ type Querier interface {
 	DeleteImportSuggestion(ctx context.Context, id string) error
 	DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error
 	DeleteImportTransactionLink(ctx context.Context, id string) error
-	DeleteImportTransactionSuggestion(ctx context.Context, linkID string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthClient(ctx context.Context, id string) (int64, error)
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
@@ -200,7 +199,6 @@ type Querier interface {
 	// folds case; external_transaction_id stays exact.
 	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
 	GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error)
-	GetImportTransactionSuggestion(ctx context.Context, linkID string) (ImportTransactionSuggestion, error)
 	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
 	// persisted from the start.
@@ -437,7 +435,6 @@ type Querier interface {
 	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
 	ListOpenImportSuggestionLinksByUser(ctx context.Context, userID string) ([]ImportSuggestionLink, error)
 	ListOpenImportSuggestionsByUser(ctx context.Context, userID string) ([]ImportSuggestion, error)
-	ListOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) ([]ImportTransactionSuggestion, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -475,10 +472,9 @@ type Querier interface {
 	// unblocked.
 	LockDebtBudget(ctx context.Context, id string) (string, error)
 	LockImportSuggestion(ctx context.Context, id string) (int64, error)
-	// Fill in reads the transaction and writes it back whole: the row lock keeps a
-	// concurrent edit from landing between the read and the write.
+	// The AI assignment reads the transaction and writes it back whole: the row
+	// lock keeps a concurrent edit from landing between the read and the write.
 	LockImportTransactionRow(ctx context.Context, id string) error
-	LockImportTransactionSuggestion(ctx context.Context, linkID string) (int64, error)
 	// The merge target's lock. The target is kept, so it needs no FOR UPDATE, and
 	// FOR NO KEY UPDATE lets the FOR KEY SHARE of a foreign key check pass: a
 	// transaction moved onto the target while the merge runs does not wait on it
@@ -504,7 +500,6 @@ type Querier interface {
 	// user must keep succeeding silently.
 	LockUserRow(ctx context.Context, id string) (string, error)
 	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
-	MarkImportTransactionSuggestionFilled(ctx context.Context, arg MarkImportTransactionSuggestionFilledParams) error
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error

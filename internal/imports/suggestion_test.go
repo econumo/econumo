@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/econumo/econumo/internal/imports"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
@@ -21,8 +20,27 @@ import (
 
 // seedSuggestion imports one Blue Bottle tap per payee text through the AI
 // job, which answers with the given category and payee; later taps join the
-// open suggestion without a new call.
+// open suggestion without a new call. Automatic assignment is off, so the
+// rows stay empty for the suggestion to fill.
 func seedSuggestion(t *testing.T, h *harness, c *fakeCompleter, cat, payee string, payees ...string) (model.ImportSuggestion, []model.ImportTransactionLink) {
+	t.Helper()
+	h.svc.SetSuggester(c, assignOff{h.facts})
+	defer h.svc.SetSuggester(c, h.facts)
+	return seedAssigned(t, h, c, cat, payee, payees...)
+}
+
+// assignOff reads the owner's facts with automatic assignment turned off.
+type assignOff struct{ inner imports.OwnerFacts }
+
+func (a assignOff) OwnerFacts(ctx context.Context, userID vo.Id) (imports.OwnerInfo, error) {
+	info, err := a.inner.OwnerFacts(ctx, userID)
+	info.SuggestFill = false
+	return info, err
+}
+
+// seedAssigned is seedSuggestion with automatic assignment on: the job also
+// writes the values into the rows.
+func seedAssigned(t *testing.T, h *harness, c *fakeCompleter, cat, payee string, payees ...string) (model.ImportSuggestion, []model.ImportTransactionLink) {
 	t.Helper()
 	h.mapCard(t, "Apple Card")
 	reply := `{"rows":[{"key":"0","matchText":"Blue Bottle"`
@@ -881,47 +899,18 @@ func releaseInTx(t *testing.T, h *harness, id vo.Id, links []vo.Id) {
 	}
 }
 
-func (h *harness) setTxSuggestion(t *testing.T, linkID vo.Id, column, value string) {
-	t.Helper()
-	if _, err := h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE import_transaction_suggestions SET `+column+` = ? WHERE link_id = ?`), value, linkID.String()); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// fillIn stands in for the job's assignment: it writes the stored suggestion's
-// values into the transaction's empty fields and settles the row.
-func fillIn(t *testing.T, h *harness, linkID vo.Id) {
-	t.Helper()
-	for _, sg := range txSuggestions(t, h, userA) {
-		if sg.LinkID != linkID {
-			continue
-		}
-		l, err := h.repo.GetLink(context.Background(), linkID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if sg.CategoryID != nil {
-			h.setTx(t, l.TransactionID, "category_id", sg.CategoryID.String())
-		}
-		if sg.PayeeID != nil {
-			h.setTx(t, l.TransactionID, "payee_id", sg.PayeeID.String())
-		}
-		if err := h.repo.MarkTransactionSuggestionFilled(context.Background(), linkID, time.Now()); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	t.Fatalf("no open transaction suggestion for %s", linkID)
-}
-
-// Taking the AI's values confirms its guess, so the rule
-// suggestion keeps offering the row while the transaction agrees with it.
+// The AI job assigned the rows: the rule suggestion keeps offering them while
+// the transactions agree with it.
 func TestRuleSuggestionKeepsAgreeingFilledRow(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
-	s, links := seedSuggestion(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
-	fillIn(t, h, links[0].ID)
+	s, links := seedAssigned(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
+	for _, l := range links {
+		if tx := txOf(t, h, l.ID); !idIs(tx.CategoryID, cat) || !idIs(tx.PayeeID, py) {
+			t.Fatalf("assigned = %+v", tx)
+		}
+	}
 
 	items := suggestionList(t, h, userA)
 	if len(items) != 1 || items[0].Id != s.ID.String() || len(items[0].Transactions) != 2 {
@@ -941,12 +930,8 @@ func TestRuleSuggestionDropsDisagreeingFilledRow(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")
 	restaurants := h.category(t, userA, "Restaurants")
-	s, links := seedSuggestion(t, h, c, cat, "")
-	h.setTxSuggestion(t, links[0].ID, "category_id", restaurants)
-	fillIn(t, h, links[0].ID)
-	if tx, err := h.txns.GetByID(context.Background(), *links[0].TransactionID); err != nil || tx.CategoryID == nil || tx.CategoryID.String() != restaurants {
-		t.Fatalf("filled transaction = %+v, %v", tx, err)
-	}
+	s, links := seedAssigned(t, h, c, cat, "")
+	h.setTx(t, links[0].TransactionID, "category_id", restaurants)
 
 	if items := suggestionList(t, h, userA); len(items) != 0 {
 		t.Fatalf("list = %+v", items)
@@ -955,16 +940,15 @@ func TestRuleSuggestionDropsDisagreeingFilledRow(t *testing.T) {
 	wantNotFound(t, err)
 }
 
-// Fill in wrote a different category and the payee is empty again: the row
-// still wants the payee, but the category it took counts against the rule.
+// An assigned row whose category changed and whose payee is empty again: the
+// row still wants the payee, but its category counts against the rule.
 func TestRuleSuggestionDropsFilledRowDisagreeingWhileAFieldIsEmpty(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
 	restaurants := h.category(t, userA, "Restaurants")
-	s, links := seedSuggestion(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
-	h.setTxSuggestion(t, links[0].ID, "category_id", restaurants)
-	fillIn(t, h, links[0].ID)
+	s, links := seedAssigned(t, h, c, cat, py, "Blue Bottle", "Blue Bottle Mission")
+	h.setTx(t, links[0].TransactionID, "category_id", restaurants)
 	if _, err := h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE transactions SET payee_id = NULL WHERE id = ?`), links[0].TransactionID.String()); err != nil {
 		t.Fatal(err)
 	}
@@ -1005,13 +989,12 @@ func TestRuleSuggestionListHiddenWhenRulesOff(t *testing.T) {
 	}
 }
 
-// A filled row has nothing left for the rule to write: accept still walks and
-// releases it, without counting it as updated.
+// An assigned row has nothing left for the rule to write: accept still walks
+// and releases it, without counting it as updated.
 func TestRuleSuggestionAcceptReleasesAgreeingFilledRow(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")
-	s, links := seedSuggestion(t, h, c, cat, "")
-	fillIn(t, h, links[0].ID)
+	s, _ := seedAssigned(t, h, c, cat, "")
 	rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat})
 
 	res, err := h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})

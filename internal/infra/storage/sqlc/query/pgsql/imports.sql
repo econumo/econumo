@@ -271,8 +271,8 @@ WHERE a.user_id = $1 AND s.user_id <> a.user_id
 ORDER BY l.imported_at, l.id;
 
 -- name: InsertImportSuggestion :exec
-INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: TouchOpenImportSuggestion :execrows
 UPDATE import_suggestions SET updated_at = $1 WHERE id = $2 AND status = 'open';
@@ -281,12 +281,12 @@ UPDATE import_suggestions SET updated_at = $1 WHERE id = $2 AND status = 'open';
 INSERT INTO import_suggestion_links (suggestion_id, link_id) VALUES ($1, $2) ON CONFLICT (suggestion_id, link_id) DO NOTHING;
 
 -- name: GetImportSuggestionByID :one
-SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name
 FROM import_suggestions
 WHERE id = $1;
 
 -- name: ListOpenImportSuggestionsByUser :many
-SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at, payee_name
 FROM import_suggestions
 WHERE user_id = $1 AND status = 'open'
 ORDER BY created_at, id;
@@ -315,30 +315,10 @@ INSERT INTO import_transaction_suggestions (link_id, user_id, category_id, payee
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (link_id) DO NOTHING;
 
--- name: ListOpenImportTransactionSuggestionsByUser :many
-SELECT link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at
-FROM import_transaction_suggestions
-WHERE user_id = $1 AND status = 'open'
-ORDER BY created_at, link_id;
-
--- name: GetImportTransactionSuggestion :one
-SELECT link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at
-FROM import_transaction_suggestions
-WHERE link_id = $1;
-
--- name: LockImportTransactionSuggestion :execrows
-UPDATE import_transaction_suggestions SET status = status WHERE link_id = $1;
-
 -- name: LockImportTransactionRow :exec
--- Fill in reads the transaction and writes it back whole: the row lock keeps a
--- concurrent edit from landing between the read and the write.
+-- The AI assignment reads the transaction and writes it back whole: the row
+-- lock keeps a concurrent edit from landing between the read and the write.
 SELECT id FROM transactions WHERE id = $1 FOR UPDATE;
-
--- name: MarkImportTransactionSuggestionFilled :exec
-UPDATE import_transaction_suggestions SET status = 'filled', updated_at = $1 WHERE link_id = $2;
-
--- name: DeleteImportTransactionSuggestion :exec
-DELETE FROM import_transaction_suggestions WHERE link_id = $1;
 
 -- name: DeleteOpenImportTransactionSuggestionsByUser :exec
 DELETE FROM import_transaction_suggestions WHERE user_id = $1 AND status = 'open';

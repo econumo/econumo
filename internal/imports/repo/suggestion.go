@@ -18,7 +18,7 @@ func (r *Repo) InsertSuggestion(ctx context.Context, s *model.ImportSuggestion) 
 	err := r.q.InsertImportSuggestion(ctx, r.db(ctx), insertSuggestionParams{
 		ID: s.ID.String(), UserID: s.UserID.String(), MatchField: s.MatchField, MatchText: s.MatchText,
 		CategoryID: optionalID(s.CategoryID), PayeeID: optionalID(s.PayeeID), TransactionType: s.Type.Alias(), Status: s.Status,
-		CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
+		CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt, PayeeName: s.PayeeName,
 	})
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func suggestionFromRow(row suggestionRow) (*model.ImportSuggestion, error) {
 		return nil, err
 	}
 	s := &model.ImportSuggestion{
-		ID: id, UserID: userID, MatchField: row.MatchField, MatchText: row.MatchText,
+		ID: id, UserID: userID, MatchField: row.MatchField, MatchText: row.MatchText, PayeeName: row.PayeeName,
 		Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if s.CategoryID, err = parseOptionalID(row.CategoryID); err != nil {

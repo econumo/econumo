@@ -56,8 +56,9 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 		if sg.PayeeID != nil && !vocab.payees[*sg.PayeeID] {
 			sg.PayeeID = nil
 		}
+		vocab.names.resolveName(sg)
 		var rows []model.ImportSuggestionTransactionResult
-		if sg.CategoryID != nil || sg.PayeeID != nil {
+		if sg.CategoryID != nil || sg.PayeeID != nil || sg.PayeeName != nil {
 			rows, err = s.pendingSuggestionRows(ctx, userID, sg, vocab.income, look)
 			if err != nil {
 				return nil, err
@@ -78,7 +79,7 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 		}
 		out.Items = append(out.Items, model.ImportSuggestionResult{
 			Id: sg.ID.String(), MatchField: sg.MatchField, MatchText: sg.MatchText, Type: sg.Type.Alias(),
-			CategoryId: idString(sg.CategoryID), PayeeId: idString(sg.PayeeID), Transactions: rows,
+			CategoryId: idString(sg.CategoryID), PayeeId: idString(sg.PayeeID), PayeeName: derefString(sg.PayeeName), Transactions: rows,
 		})
 	}
 	return out, nil
@@ -102,8 +103,9 @@ func (s *Service) ClearSuggestions(ctx context.Context, userID vo.Id) error {
 	return s.deleteSuggestions(ctx, userID, open)
 }
 
-// deleteSuggestions keeps filled transaction suggestions: they are what the
-// rule-suggestion list reads to tell a Fill in from a hand edit.
+// deleteSuggestions keeps the filled records: they are what the rule-suggestion
+// list reads to tell the AI job's assignment from a hand edit. Open ones are
+// leftovers of earlier builds.
 func (s *Service) deleteSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) error {
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, sg := range open {
@@ -116,9 +118,11 @@ func (s *Service) deleteSuggestions(ctx context.Context, userID vo.Id, open []mo
 }
 
 // activeIDs is the caller's non-archived categories and payees, as
-// a suggestion may name them, plus which categories are income ones.
+// a suggestion may name them, plus which categories are income ones, and
+// every payee's name for a suggestion's new-payee name.
 type activeIDs struct {
 	categories, payees, income map[vo.Id]bool
+	names                      payeeNames
 }
 
 func (s *Service) activeEntities(ctx context.Context, userID vo.Id) (activeIDs, error) {
@@ -146,6 +150,7 @@ func (s *Service) activeEntities(ctx context.Context, userID vo.Id) (activeIDs, 
 	if v.payees, err = idSet(activeNamed(payees), nil); err != nil {
 		return activeIDs{}, err
 	}
+	v.names = newPayeeNames(payees)
 	return v, nil
 }
 
@@ -158,11 +163,12 @@ type suggestionLookup struct {
 
 // pendingSuggestionRows keeps a transaction while it is live, on an account
 // the caller owns, still of the suggestion's type (an edit can change it) and
-// still empty in a field the suggestion would set. A row filled through Fill
-// in also stays while it carries every value the suggestion sets: taking the
-// AI's values confirms the guess, so the rule is still worth offering. A
-// filled row that carries a different value than the suggestion sets counts
-// against it and goes, even with another field still empty.
+// still empty in a field the suggestion would set. A row the AI job filled in
+// also stays while it carries every value the suggestion sets: the rule is
+// still worth offering for it. A filled row that carries a different value
+// than the suggestion sets counts against it and goes, even with another
+// field still empty. A new-payee name sets the payee; no payee carries it
+// (resolveName has turned an existing one into its id).
 func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
 	type pending struct {
 		live *model.Transaction
@@ -180,13 +186,13 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		}
 		p := pending{live: live, link: l}
 		wantsCategory := sg.CategoryID != nil && live.CategoryID == nil && categoryFits(*sg.CategoryID, income, live.Type)
-		wantsPayee := sg.PayeeID != nil && live.PayeeID == nil
+		wantsPayee := (sg.PayeeID != nil || sg.PayeeName != nil) && live.PayeeID == nil
 		switch {
-		case (wantsCategory || wantsPayee) && carriedAgrees(sg.CategoryID, live.CategoryID) && carriedAgrees(sg.PayeeID, live.PayeeID):
+		case (wantsCategory || wantsPayee) && carriedAgrees(sg.CategoryID, live.CategoryID) && (live.PayeeID == nil || payeeAgrees(sg, live.PayeeID)):
 			kept = append(kept, p)
 		case wantsCategory || wantsPayee:
 			disputed = append(disputed, p)
-		case agrees(sg.CategoryID, live.CategoryID) && agrees(sg.PayeeID, live.PayeeID):
+		case agrees(sg.CategoryID, live.CategoryID) && payeeAgrees(sg, live.PayeeID):
 			agreeing = append(agreeing, p)
 		}
 	}
@@ -241,6 +247,11 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 // agrees: a field the suggestion does not set agrees with any value.
 func agrees(want, have *vo.Id) bool {
 	return want == nil || (have != nil && *have == *want)
+}
+
+// payeeAgrees: a new-payee name agrees with no payee.
+func payeeAgrees(sg *model.ImportSuggestion, have *vo.Id) bool {
+	return sg.PayeeName == nil && agrees(sg.PayeeID, have)
 }
 
 // carriedAgrees: an empty field does not disagree.

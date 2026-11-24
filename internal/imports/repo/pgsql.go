@@ -404,37 +404,8 @@ func (pgsqlQuerier) InsertImportTransactionSuggestion(ctx context.Context, db ba
 	return pgsqlgen.New(db).InsertImportTransactionSuggestion(ctx, pgsqlgen.InsertImportTransactionSuggestionParams(p))
 }
 
-func (pgsqlQuerier) ListOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]txSuggestionRow, error) {
-	rows, err := pgsqlgen.New(db).ListOpenImportTransactionSuggestionsByUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]txSuggestionRow, len(rows))
-	for i, row := range rows {
-		out[i] = txSuggestionRow(row)
-	}
-	return out, nil
-}
-
-func (pgsqlQuerier) GetImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (txSuggestionRow, error) {
-	row, err := pgsqlgen.New(db).GetImportTransactionSuggestion(ctx, linkID)
-	return txSuggestionRow(row), err
-}
-
-func (pgsqlQuerier) LockImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) (int64, error) {
-	return pgsqlgen.New(db).LockImportTransactionSuggestion(ctx, linkID)
-}
-
 func (pgsqlQuerier) LockImportTransactionRow(ctx context.Context, db backend.DBTX, transactionID string) error {
 	return pgsqlgen.New(db).LockImportTransactionRow(ctx, transactionID)
-}
-
-func (pgsqlQuerier) MarkImportTransactionSuggestionFilled(ctx context.Context, db backend.DBTX, p markTxSuggestionFilledPs) error {
-	return pgsqlgen.New(db).MarkImportTransactionSuggestionFilled(ctx, pgsqlgen.MarkImportTransactionSuggestionFilledParams(p))
-}
-
-func (pgsqlQuerier) DeleteImportTransactionSuggestion(ctx context.Context, db backend.DBTX, linkID string) error {
-	return pgsqlgen.New(db).DeleteImportTransactionSuggestion(ctx, linkID)
 }
 
 func (pgsqlQuerier) DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error {
