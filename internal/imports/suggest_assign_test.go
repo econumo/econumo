@@ -1048,3 +1048,29 @@ func TestAssignAfterAILocksSuggestionBeforeRows(t *testing.T) {
 	}
 	lockedBeforeRows(t, rec.events, open.ID)
 }
+
+// A new-payee name agrees with a row whose payee carries that name, even when
+// two active payees do and the name reads as the other one.
+func TestRuleSuggestionAgreesOnPayeeNameWithTwoSuchPayees(t *testing.T) {
+	h, p, c, facts := assignSetup(t)
+	facts[userA] = ownerFact{language: "en", fillOff: true}
+	groceries := h.category(t, userA, "Groceries")
+	c.reply = `{"rows":[{"key":"0","matchText":"WHOLEFDS","merchants":["Whole Foods"],"wellKnown":true,"categoryId":"` + groceries + `"}]}`
+	syncRows(t, h, p, extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "WHOLEFDS MKT 10234"))
+	link := bankLinkID(t, h, "a")
+	tx := txOf(t, h, link)
+	first := h.payee(t, userA, "Whole Foods")
+	second := h.payee(t, userA, "WHOLE FOODS")
+	h.setTx(t, &tx.ID, "category_id", groceries)
+	h.setTx(t, &tx.ID, "payee_id", second)
+	catID, secondID := vo.MustParseId(groceries), vo.MustParseId(second)
+	if err := h.repo.InsertTransactionSuggestions(context.Background(), []model.ImportTransactionSuggestion{{
+		LinkID: link, UserID: vo.MustParseId(userA), CategoryID: &catID, PayeeID: &secondID, Type: model.TransactionTypeExpense,
+		Status: model.ImportTransactionSuggestionStatusFilled, CreatedAt: now, UpdatedAt: now,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if items := suggestionList(t, h, userA); len(items) != 1 || items[0].PayeeId != first || len(items[0].Transactions) != 1 {
+		t.Fatalf("list = %+v, want the agreeing row kept", items)
+	}
+}

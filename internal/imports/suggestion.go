@@ -56,10 +56,19 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 		if sg.PayeeID != nil && !vocab.payees[*sg.PayeeID] {
 			sg.PayeeID = nil
 		}
+		// a new-payee name agrees with any payee of that name, not only the
+		// one it resolves to
+		var payeeName string
+		if sg.PayeeID == nil && sg.PayeeName != nil {
+			payeeName = similarityText(*sg.PayeeName)
+		}
 		vocab.names.resolveName(sg)
+		if sg.PayeeID == nil && sg.PayeeName == nil {
+			payeeName = ""
+		}
 		var rows []model.ImportSuggestionTransactionResult
 		if sg.CategoryID != nil || sg.PayeeID != nil || sg.PayeeName != nil {
-			rows, err = s.pendingSuggestionRows(ctx, userID, sg, vocab.income, look)
+			rows, err = s.pendingSuggestionRows(ctx, userID, sg, suggestionPayee{id: sg.PayeeID, name: payeeName, keys: vocab.names.keys}, vocab.income, look)
 			if err != nil {
 				return nil, err
 			}
@@ -173,9 +182,9 @@ type suggestionLookup struct {
 // also stays while it carries every value the suggestion sets: the rule is
 // still worth offering for it. A filled row that carries a different value
 // than the suggestion sets counts against it and goes, even with another
-// field still empty. A new-payee name sets the payee; no payee carries it
-// (resolveName has turned an existing one into its id).
-func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
+// field still empty. A new-payee name sets the payee and is carried by any
+// payee of that name (normalized).
+func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, payee suggestionPayee, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
 	type pending struct {
 		live *model.Transaction
 		link *model.ImportTransactionLink
@@ -194,11 +203,11 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		wantsCategory := sg.CategoryID != nil && live.CategoryID == nil && categoryFits(*sg.CategoryID, income, live.Type)
 		wantsPayee := (sg.PayeeID != nil || sg.PayeeName != nil) && live.PayeeID == nil
 		switch {
-		case (wantsCategory || wantsPayee) && carriedAgrees(sg.CategoryID, live.CategoryID) && (live.PayeeID == nil || payeeAgrees(sg, live.PayeeID)):
+		case (wantsCategory || wantsPayee) && carriedAgrees(sg.CategoryID, live.CategoryID) && (live.PayeeID == nil || payee.agrees(live.PayeeID)):
 			kept = append(kept, p)
 		case wantsCategory || wantsPayee:
 			disputed = append(disputed, p)
-		case agrees(sg.CategoryID, live.CategoryID) && payeeAgrees(sg, live.PayeeID):
+		case agrees(sg.CategoryID, live.CategoryID) && payee.agrees(live.PayeeID):
 			agreeing = append(agreeing, p)
 		}
 	}
@@ -255,9 +264,20 @@ func agrees(want, have *vo.Id) bool {
 	return want == nil || (have != nil && *have == *want)
 }
 
-// payeeAgrees: a new-payee name agrees with no payee.
-func payeeAgrees(sg *model.ImportSuggestion, have *vo.Id) bool {
-	return sg.PayeeName == nil && agrees(sg.PayeeID, have)
+// suggestionPayee is the payee a suggestion sets: an id, or a new-payee name
+// (normalized), which also names the payee it resolved to, if any.
+type suggestionPayee struct {
+	id   *vo.Id
+	name string
+	keys map[vo.Id]string
+}
+
+// agrees: a name agrees with a payee of that name, whichever one.
+func (p suggestionPayee) agrees(have *vo.Id) bool {
+	if p.name != "" {
+		return have != nil && p.keys[*have] == p.name
+	}
+	return agrees(p.id, have)
 }
 
 // carriedAgrees: an empty field does not disagree.

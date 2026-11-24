@@ -75,14 +75,19 @@ type validSuggestion struct {
 type payeeNames struct {
 	active   map[string]vo.Id
 	archived map[string]bool
+	// keys is every payee's normalized name, by id
+	keys map[vo.Id]string
 }
 
 func newPayeeNames(payees []model.ImportNamed) payeeNames {
-	n := payeeNames{active: map[string]vo.Id{}, archived: map[string]bool{}}
+	n := payeeNames{active: map[string]vo.Id{}, archived: map[string]bool{}, keys: map[vo.Id]string{}}
 	for _, p := range payees {
 		key := similarityText(p.Name)
 		if key == "" {
 			continue
+		}
+		if id, err := vo.ParseId(p.ID); err == nil {
+			n.keys[id] = key
 		}
 		if p.Archived {
 			n.archived[key] = true
