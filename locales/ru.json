@@ -539,6 +539,8 @@
       "rows": "{count} строка | {count} строки | {count} строк",
       "all_steps": "Все шаги",
       "column_empty": "пусто",
+      "column_reference": "Длинный номер-ссылка",
+      "already_used": "Уже используется",
       "show_all": "Показать все",
       "now_used": "используется как {role}",
       "summary": {

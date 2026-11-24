@@ -539,6 +539,8 @@
       "rows": "{count} 行",
       "all_steps": "全部步骤",
       "column_empty": "空",
+      "column_reference": "一长串参考编号",
+      "already_used": "已使用",
       "show_all": "显示全部",
       "now_used": "已用作{role}",
       "summary": {

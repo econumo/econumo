@@ -539,6 +539,8 @@
       "rows": "{count} Zeile | {count} Zeilen",
       "all_steps": "Alle Schritte",
       "column_empty": "leer",
+      "column_reference": "Eine lange Referenznummer",
+      "already_used": "Bereits verwendet",
       "show_all": "Alle anzeigen",
       "now_used": "verwendet für {role}",
       "summary": {

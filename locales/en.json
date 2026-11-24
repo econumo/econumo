@@ -539,6 +539,8 @@
       "rows": "{count} row | {count} rows",
       "all_steps": "All steps",
       "column_empty": "empty",
+      "column_reference": "A long reference number",
+      "already_used": "Already used",
       "show_all": "Show all",
       "now_used": "used for {role}",
       "summary": {

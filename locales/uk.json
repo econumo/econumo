@@ -539,6 +539,8 @@
       "rows": "{count} рядок | {count} рядки | {count} рядків",
       "all_steps": "Усі кроки",
       "column_empty": "порожньо",
+      "column_reference": "Довгий номер-посилання",
+      "already_used": "Уже використовується",
       "show_all": "Показати все",
       "now_used": "використовується як {role}",
       "summary": {

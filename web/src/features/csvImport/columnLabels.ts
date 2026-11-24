@@ -73,7 +73,18 @@ export function displaySamples(profile: ColumnProfile, language: string): string
       return parsed === null ? v : format.format(Number(parsed))
     })
   }
-  return samples
+  return samples.map(splitList)
+}
+
+const HASHTAGS = /^#?[^\s,;#]+(?:\s*,\s*#[^\s,;#]+)+$/
+
+// labels are kept as one cell joined by ";" (or hashtags by commas); shown apart, uploaded untouched
+function splitList(value: string): string {
+  if (value.includes(';')) {
+    const parts = value.split(';').map((v) => v.trim()).filter((v) => v !== '')
+    return parts.length > 1 ? parts.join(' · ') : value
+  }
+  return HASHTAGS.test(value) ? value.split(',').map((v) => v.trim()).join(' · ') : value
 }
 
 export function roleLabel(role: Role, t: TFunction): string {

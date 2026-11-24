@@ -539,6 +539,8 @@
       "rows": "{count} wiersz | {count} wiersze | {count} wierszy",
       "all_steps": "Wszystkie kroki",
       "column_empty": "pusta",
+      "column_reference": "Długi numer referencyjny",
+      "already_used": "Już używane",
       "show_all": "Pokaż wszystko",
       "now_used": "używane jako: {role}",
       "summary": {

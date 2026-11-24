@@ -539,6 +539,8 @@
       "rows": "{count} regel | {count} regels",
       "all_steps": "Alle stappen",
       "column_empty": "leeg",
+      "column_reference": "Een lang referentienummer",
+      "already_used": "Al in gebruik",
       "show_all": "Alles tonen",
       "now_used": "gebruikt voor {role}",
       "summary": {

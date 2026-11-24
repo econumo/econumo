@@ -539,6 +539,8 @@
       "rows": "{count} linha | {count} linhas",
       "all_steps": "Todos os passos",
       "column_empty": "vazia",
+      "column_reference": "Um número de referência longo",
+      "already_used": "Já utilizados",
       "show_all": "Mostrar tudo",
       "now_used": "usado para {role}",
       "summary": {

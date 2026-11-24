@@ -47,51 +47,62 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
   const all = showAll || candidates.length === 0
   const shown = all ? [...likely, ...filled.filter((c) => !likely.includes(c))] : likely
   const hidden = filled.filter((c) => !shown.includes(c)).length
+  // in the full list, parts another step already reads go last under their own heading
+  const grouped = all ? shown.filter((c) => c !== selected && tags[c]) : []
+  const main = shown.filter((c) => !grouped.includes(c))
+
+  const renderRow = (index: number) => {
+    const p = profiles[index]
+    const on = selected === index
+    const id = `${name}-${index}`
+    const from = fromName(p, profiles, t)
+    const values = displaySamples(p, i18n.language)
+    const reference = p.internal && values.length > 0
+    const empty = values.length === 0 || reference
+    return (
+      <button
+        key={index}
+        type="button"
+        role="radio"
+        aria-checked={on}
+        className={rowClass(on)}
+        onClick={() => onSelect(index)}
+        aria-labelledby={from ? `${id}-values ${id}-from` : `${id}-values`}
+        aria-describedby={tags[index] ? `${id}-tag` : undefined}
+      >
+        <Dot on={on} />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span id={`${id}-values`} className={cn('truncate text-sm', empty && 'text-muted-foreground')}>
+            {reference
+              ? t('transactions.import_wizard.column_reference')
+              : values.length > 0
+                ? values.join(' · ')
+                : t('transactions.import_wizard.column_empty')}
+          </span>
+          {from || tags[index] ? (
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              {from ? (
+                <span id={`${id}-from`} className="truncate text-xs text-muted-foreground/60">
+                  {from}
+                </span>
+              ) : null}
+              {tags[index] ? (
+                <span id={`${id}-tag`} className="shrink-0 rounded-full bg-econumo-card px-2 py-0.5 text-[11px] text-muted-foreground">
+                  {tags[index]}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+        </span>
+      </button>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm">{label}</p>
       <div role="radiogroup" aria-label={label} className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border">
-        {shown.map((index) => {
-          const p = profiles[index]
-          const on = selected === index
-          const id = `${name}-${index}`
-          const from = fromName(p, profiles, t)
-          const values = displaySamples(p, i18n.language)
-          return (
-            <button
-              key={index}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              className={rowClass(on)}
-              onClick={() => onSelect(index)}
-              aria-labelledby={from ? `${id}-values ${id}-from` : `${id}-values`}
-              aria-describedby={tags[index] ? `${id}-tag` : undefined}
-            >
-              <Dot on={on} />
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span id={`${id}-values`} className={cn('truncate text-sm', values.length === 0 && 'text-muted-foreground')}>
-                  {values.length > 0 ? values.join(' · ') : t('transactions.import_wizard.column_empty')}
-                </span>
-                {from || tags[index] ? (
-                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    {from ? (
-                      <span id={`${id}-from`} className="truncate text-xs text-muted-foreground/60">
-                        {from}
-                      </span>
-                    ) : null}
-                    {tags[index] ? (
-                      <span id={`${id}-tag`} className="shrink-0 rounded-full bg-econumo-card px-2 py-0.5 text-[11px] text-muted-foreground">
-                        {tags[index]}
-                      </span>
-                    ) : null}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          )
-        })}
+        {main.map(renderRow)}
         {noneLabel ? (
           <button
             type="button"
@@ -103,6 +114,14 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
             <Dot on={selected === null} />
             <span className="text-sm">{noneLabel}</span>
           </button>
+        ) : null}
+        {grouped.length > 0 ? (
+          <>
+            <div role="presentation" aria-hidden className="bg-econumo-card/40 px-4 py-1.5 text-xs text-muted-foreground">
+              {t('transactions.import_wizard.already_used')}
+            </div>
+            {grouped.map(renderRow)}
+          </>
         ) : null}
       </div>
       {hidden > 0 ? (

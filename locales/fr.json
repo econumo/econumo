@@ -539,6 +539,8 @@
       "rows": "{count} ligne | {count} lignes",
       "all_steps": "Toutes les étapes",
       "column_empty": "vide",
+      "column_reference": "Un long numéro de référence",
+      "already_used": "Déjà utilisés",
       "show_all": "Tout afficher",
       "now_used": "utilisé pour : {role}",
       "summary": {

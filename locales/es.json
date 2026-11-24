@@ -539,6 +539,8 @@
       "rows": "{count} fila | {count} filas",
       "all_steps": "Todos los pasos",
       "column_empty": "vacía",
+      "column_reference": "Un número de referencia largo",
+      "already_used": "Ya en uso",
       "show_all": "Mostrar todo",
       "now_used": "usado para {role}",
       "summary": {
