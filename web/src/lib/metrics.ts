@@ -209,6 +209,7 @@ export const METRICS = {
   INBOX_OPEN: 'appInboxOpen',
   GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
   GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
+  SEARCH_CLEAR: 'appSearchClear',
   REPORTS_OPEN: 'appReportsOpen',
   REPORTS_OPEN_REPORT: 'appReportsOpenReport',
   REPORTS_TAB_NEW: 'appReportsTabNew',

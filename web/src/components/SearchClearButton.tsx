@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 // Clears a search field in one tap and hands focus back to it, so a new query
 // can be typed straight away. Rendered only while the field has text.
@@ -18,6 +19,7 @@ export function SearchClearButton({ onClear, className }: { onClear: () => void;
       onMouseDown={(e) => e.preventDefault()}
       onClick={(e) => {
         onClear()
+        trackEvent(METRICS.SEARCH_CLEAR)
         let box = e.currentTarget.parentElement
         while (box && !box.querySelector('input')) box = box.parentElement
         box?.querySelector('input')?.focus()
