@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -24,8 +25,9 @@ type assignment struct {
 // assign writes each row's values into the fields its transaction still has
 // empty, one savepoint per row: a row that fails is skipped with a WARN and
 // the others proceed. Rows of one merchant share the payee created for it.
-// It returns the payees created, by similarityText of their names, and the
-// links of the rows it wrote.
+// It returns the payee each new-payee name got (created, or found when the
+// create lost a race), by similarityText of the name, and the links of the
+// rows it wrote.
 func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]bool, error) {
 	created := map[string]vo.Id{}
 	written := map[vo.Id]bool{}
@@ -134,15 +136,11 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		if id, ok := created[similarityText(a.payeeName)]; ok {
 			payeeID = &id
 		} else if s.payees != nil {
-			p, err := s.payees.CreatePayee(ctx, owner, a.payeeName)
+			id, err := s.createPayee(ctx, owner, a.payeeName)
 			if err != nil {
 				return nil, false, err
 			}
-			id, err := vo.ParseId(p.ID)
-			if err != nil {
-				return nil, false, err
-			}
-			payeeID, newPayee = &id, &id
+			payeeID, newPayee = id, id
 		}
 	}
 	if !fillCategory && payeeID == nil {
@@ -169,6 +167,29 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		return nil, false, err
 	}
 	return newPayee, true, nil
+}
+
+// createPayee creates the payee of a new-payee name. A refusal because that
+// exact name exists by now (created meanwhile) reuses the payee if it is
+// active, and otherwise gives none (nil), so the row still gets its category.
+func (s *Service) createPayee(ctx context.Context, owner vo.Id, name string) (*vo.Id, error) {
+	p, err := s.payees.CreatePayee(ctx, owner, name)
+	if err != nil {
+		if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodePayeeAlreadyExists {
+			return nil, err
+		}
+		payees, err := s.entities.PayeesByOwner(ctx, owner)
+		if err != nil {
+			return nil, err
+		}
+		id, _ := newPayeeNames(payees).resolve(name)
+		return id, nil
+	}
+	id, err := vo.ParseId(p.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }
 
 // openAssignments gives each uncategorised row to be joined to an open

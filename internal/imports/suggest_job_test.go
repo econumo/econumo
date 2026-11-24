@@ -1513,10 +1513,30 @@ type fakePayees struct {
 	h       *harness
 	created []string
 	fail    error
+	// raced, when set, makes the create lose a race: another writer has just
+	// stored a payee of that exact name (archived when raced is "archived")
+	// and the payee feature refuses the name.
+	raced   string
+	racedID string
 }
 
 func (f *fakePayees) CreatePayee(ctx context.Context, owner vo.Id, name string) (model.ImportNamed, error) {
 	id := vo.NewId().String()
+	if f.raced != "" {
+		archived := f.raced == "archived"
+		flag := "FALSE"
+		if archived {
+			flag = "TRUE"
+		}
+		if _, err := f.h.db.TX.Querier(ctx).ExecContext(ctx, f.h.db.Rebind(
+			`INSERT INTO payees (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+flag+`, ?, ?)`),
+			id, owner.String(), name, "a0", now, now); err != nil {
+			return model.ImportNamed{}, err
+		}
+		f.h.entities.payees[owner] = append(f.h.entities.payees[owner], model.ImportNamed{ID: id, Name: name, OwnerID: owner.String(), Archived: archived})
+		f.racedID = id
+		return model.ImportNamed{}, &errs.ValidationError{Msg: "Payee already exists.", MsgCode: errs.CodePayeeAlreadyExists}
+	}
 	if f.fail != nil {
 		// a real failing statement, so PostgreSQL shows whether the failed row
 		// leaves the job's transaction usable

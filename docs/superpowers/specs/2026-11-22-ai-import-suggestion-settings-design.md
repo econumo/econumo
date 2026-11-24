@@ -120,7 +120,9 @@ match text placeable, category of the right type), under the owner's job lock:
 2. Create the new payee if the row needs one (through a new imports port
    `PayeeCreator.CreatePayee(ctx, ownerID, name) (model.ImportNamed, error)`, wired in
    `internal/server` to the payee service like `TransactionImportPayees.CreatePayee`). One
-   payee per normalised name per run (rows of the same merchant share it).
+   payee per normalised name per run (rows of the same merchant share it). A create the payee
+   feature refuses because that exact name exists by now (created meanwhile) reuses that payee
+   when it is active; when it is archived, the row still gets its category, without a payee.
 3. Write only empty fields through `txns.UpdateTransaction` (revision bump, sort keys untouched)
    and move the ledger's `applied_category_id` / `applied_payee_id` snapshot for the fields
    written (like a rule's write: a later apply-rule may replace them; `applied_rule_id` stays

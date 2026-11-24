@@ -905,3 +905,34 @@ func TestAssignRereadsVocabularyAfterTheRowLocks(t *testing.T) {
 		})
 	}
 }
+
+// A payee of the new name created by someone else while the row was being
+// written: the refused create reuses it, or, when that payee is archived,
+// the row still gets its category, without a payee.
+func TestAssignPayeeNameTakenMeanwhile(t *testing.T) {
+	for _, tc := range []struct {
+		raced     string
+		wantPayee bool
+	}{{"active", true}, {"archived", false}} {
+		t.Run(tc.raced, func(t *testing.T) {
+			h, c, _ := suggestSetup(t)
+			h.mapCard(t, "Apple Card")
+			cat := h.category(t, userA, "Cafes")
+			h.payees.raced = tc.raced
+			c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"wellKnown":true,"categoryId":"` + cat + `"}]}`
+			ingest(t, h, tap)
+			links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+			tx := txOf(t, h, links[0].ID)
+			want := ""
+			if tc.wantPayee {
+				want = h.payees.racedID
+			}
+			if !idIs(tx.CategoryID, cat) || !idIs(tx.PayeeID, want) {
+				t.Fatalf("transaction = %+v, want category %s and payee %q", tx, cat, want)
+			}
+			if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(got[0].PayeeID, want) {
+				t.Fatalf("records = %+v", got)
+			}
+		})
+	}
+}
