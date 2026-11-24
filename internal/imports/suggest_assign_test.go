@@ -5,9 +5,12 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 
+	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -563,5 +566,57 @@ func TestRuleSuggestionsStayListedForAssignedRows(t *testing.T) {
 	items := suggestionList(t, h, userA)
 	if len(items) != 1 || items[0].PayeeId != a.PayeeID.String() || items[0].PayeeName != "" || items[0].CategoryId != groceries || len(items[0].Transactions) != 2 {
 		t.Fatalf("list = %+v", items)
+	}
+}
+
+// lockOrderRepo records the transaction row locks and the link writes, in order.
+type lockOrderRepo struct {
+	imports.Repository
+	events []string
+}
+
+func (r *lockOrderRepo) LockTransactionRow(ctx context.Context, id vo.Id) error {
+	r.events = append(r.events, "lock "+id.String())
+	return r.Repository.LockTransactionRow(ctx, id)
+}
+
+func (r *lockOrderRepo) UpdateLink(ctx context.Context, l *model.ImportTransactionLink) error {
+	r.events = append(r.events, "write")
+	return r.Repository.UpdateLink(ctx, l)
+}
+
+// Every row of a run is locked, in id order, before the first write: a write
+// bumps the account, and waiting for a later row's lock while holding the
+// account could deadlock with a hand edit holding that row (PostgreSQL).
+func TestAssignLocksAllRowsInIdOrderBeforeWriting(t *testing.T) {
+	h, p, c, facts := assignSetup(t)
+	rec := &lockOrderRepo{Repository: h.repo}
+	h.withRepo(rec)
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	h.wireSuggest(c, facts)
+	groceries := h.category(t, userA, "Groceries")
+	c.reply = `{"rows":[` +
+		`{"key":"0","matchText":"WHOLEFDS","categoryId":"` + groceries + `"},` +
+		`{"key":"1","matchText":"WHOLEFDS","categoryId":"` + groceries + `"},` +
+		`{"key":"2","matchText":"WHOLEFDS","categoryId":"` + groceries + `"}]}`
+	// the job takes the newest row first: the reverse of the order the rows were created in
+	syncRows(t, h, p,
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -3).Unix(), "WHOLEFDS MKT 10234"),
+		extTx("ACT-1", "b", "-6.00", now.AddDate(0, 0, -2).Unix(), "WHOLEFDS MKT 555"),
+		extTx("ACT-1", "c", "-7.00", now.AddDate(0, 0, -1).Unix(), "WHOLEFDS #3"),
+	)
+	var want []string
+	for _, id := range []string{"a", "b", "c"} {
+		tx := txOf(t, h, bankLinkID(t, h, id))
+		if !idIs(tx.CategoryID, groceries) {
+			t.Fatalf("row %s = %+v, want it filled", id, tx)
+		}
+		want = append(want, "lock "+tx.ID.String())
+	}
+	sort.Strings(want)
+	first := slices.Index(rec.events, "write")
+	// each row locks again on its own (a no-op by then)
+	if first < len(want) || !slices.Equal(rec.events[:len(want)], want) {
+		t.Fatalf("events = %v, want the locks %v before the first write", rec.events, want)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -27,6 +28,7 @@ type assignment struct {
 func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) map[string]vo.Id {
 	created := map[string]vo.Id{}
 	now := s.clk.Now().UTC()
+	s.lockAssignRows(ctx, owner, list)
 	for _, a := range list {
 		var newPayee *vo.Id
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -46,6 +48,29 @@ func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) ma
 		}
 	}
 	return created
+}
+
+// lockAssignRows takes every row lock of the run, in id order, before the first
+// write. Each write bumps its account's revision (locking the account row);
+// waiting for a later row's lock while holding the account would deadlock with a
+// hand edit that holds that row and waits for the account. A lock that fails is
+// left to the row's own savepoint, which skips the row.
+func (s *Service) lockAssignRows(ctx context.Context, owner vo.Id, list []assignment) {
+	seen := map[vo.Id]bool{}
+	var ids []vo.Id
+	for _, a := range list {
+		if id := a.row.Link.TransactionID; id != nil && !seen[*id] {
+			seen[*id] = true
+			ids = append(ids, *id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	for _, id := range ids {
+		err := s.tx.WithTx(ctx, func(ctx context.Context) error { return s.repo.LockTransactionRow(ctx, id) })
+		if err != nil {
+			slog.Warn("import assign lock failed", "user_id", owner.String(), "transaction_id", id.String(), "err_type", fmt.Sprintf("%T", err))
+		}
+	}
 }
 
 // assignRow locks the transaction and reads it and its link again, so a hand
