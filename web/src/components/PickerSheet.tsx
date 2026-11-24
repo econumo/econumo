@@ -138,6 +138,7 @@ export function PickerSheet({
         placeholder={searchPlaceholder ?? searchLabel}
         value={query}
         onChange={(e) => changeQuery(e.target.value)}
+        onClear={() => changeQuery('')}
         onKeyDown={onPhoneKeyDown}
       />
       {onNavigate ? <input aria-hidden inputMode="none" className={`${NAV_STOP} absolute top-0 left-0`} onFocus={() => onNavigate(1)} /> : null}
@@ -186,7 +187,7 @@ export function PickerSheet({
         className={isPhone ? 'h-auto! shrink-0' : undefined}
       >
         {!isPhone && searchable ? (
-          <CommandInput autoFocus={focusSearch} aria-label={searchLabel} placeholder={searchPlaceholder ?? searchLabel} value={query} onValueChange={changeQuery} />
+          <CommandInput autoFocus={focusSearch} aria-label={searchLabel} placeholder={searchPlaceholder ?? searchLabel} value={query} onValueChange={changeQuery} onClear={() => changeQuery('')} />
         ) : null}
         <CommandList
           label={listLabel ?? title}

@@ -49,7 +49,7 @@ export function CurrencySelect({ value, onChange, disabled, id, 'aria-label': ar
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput value={search} onValueChange={setSearch} />
+          <CommandInput value={search} onValueChange={setSearch} onClear={() => setSearch('')} />
           <CommandList>
             <CommandEmpty />
             {options.map((currency) => (

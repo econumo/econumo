@@ -7,6 +7,7 @@
     "list": {
       "list_empty": "Список порожній",
       "search": "Пошук",
+      "clear_search": "Очистити пошук",
       "search_empty": "Нічого не знайдено",
       "order_list": "Змінити порядок",
       "active_only": "Лише активні"

@@ -7,6 +7,7 @@
     "list": {
       "list_empty": "L'elenco è vuoto",
       "search": "Cerca",
+      "clear_search": "Cancella la ricerca",
       "search_empty": "Nessun risultato",
       "order_list": "Riordina l'elenco",
       "active_only": "Solo attivi"

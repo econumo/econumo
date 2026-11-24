@@ -16,6 +16,7 @@ import {
   InputGroupAddon,
 } from "@/components/ui/input-group"
 import { SearchIcon, CheckIcon } from "lucide-react"
+import { SearchClearButton } from "@/components/SearchClearButton"
 
 function Command({
   className,
@@ -67,8 +68,9 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  onClear,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & { onClear?: () => void }) {
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2! max-md:h-11!">
@@ -83,6 +85,14 @@ function CommandInput({
         <InputGroupAddon>
           <SearchIcon className="size-4 shrink-0 opacity-50" />
         </InputGroupAddon>
+        {onClear && props.value ? (
+          <InputGroupAddon align="inline-end">
+            <SearchClearButton
+              className="size-7 max-md:size-9"
+              onClear={onClear}
+            />
+          </InputGroupAddon>
+        ) : null}
       </InputGroup>
     </div>
   )

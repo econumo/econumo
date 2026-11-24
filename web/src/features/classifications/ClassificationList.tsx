@@ -3,7 +3,7 @@ import { ArrowDownUp, GripVertical, MoreVertical, Plus, Search } from 'lucide-re
 import { useTranslation } from 'react-i18next'
 import { compareNames } from '@/lib/collate'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/SearchInput'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -262,13 +262,15 @@ export function ClassificationList<T extends ClassificationItem>({
   )
 
   const searchField = (className: string, autoFocus?: boolean) => (
-    <Input
+    <SearchInput
       aria-label={t('common.list.search')}
       placeholder={t('common.list.search')}
-      className={`border-0 bg-econumo-card shadow-none ${className}`}
+      wrapperClassName={className}
+      className="border-0 bg-econumo-card shadow-none"
       value={query}
       autoFocus={autoFocus}
       onChange={(e) => handleSearch(e.target.value)}
+      onClear={() => handleSearch('')}
       // an empty field that lost focus has nothing to show for the space it takes
       onBlur={() => !query.trim() && setSearchOpen(false)}
       onKeyDown={(e) => {

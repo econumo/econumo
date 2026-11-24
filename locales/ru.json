@@ -7,6 +7,7 @@
     "list": {
       "list_empty": "Список пуст",
       "search": "Поиск",
+      "clear_search": "Очистить поиск",
       "search_empty": "Ничего не найдено",
       "order_list": "Изменить порядок",
       "active_only": "Только активные"

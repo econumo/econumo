@@ -7,6 +7,7 @@
     "list": {
       "list_empty": "Liste ist leer",
       "search": "Suchen",
+      "clear_search": "Suche löschen",
       "search_empty": "Nichts gefunden",
       "order_list": "Liste neu anordnen",
       "active_only": "Nur aktive"
