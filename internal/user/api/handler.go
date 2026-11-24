@@ -11,9 +11,10 @@ type Handlers struct {
 	read *appuser.ReadService
 	now  port.Clock
 
-	billing *appuser.BillingService
+	billing       *appuser.BillingService
+	billingAccess *appuser.BillingAccessService
 }
 
-func NewHandlers(svc *appuser.Service, read *appuser.ReadService, now port.Clock, billing *appuser.BillingService) *Handlers {
-	return &Handlers{svc: svc, read: read, now: now, billing: billing}
+func NewHandlers(svc *appuser.Service, read *appuser.ReadService, now port.Clock, billing *appuser.BillingService, billingAccess *appuser.BillingAccessService) *Handlers {
+	return &Handlers{svc: svc, read: read, now: now, billing: billing, billingAccess: billingAccess}
 }

@@ -8,33 +8,69 @@ import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { getBillingUrl } from '@/lib/config'
-import { accessDaysLeft, deriveAccessState } from '@/lib/access'
+import { accessDaysLeft, deriveAccessState, isFutureUtc, isRenewing } from '@/lib/access'
 import type { AccessState } from '@/lib/access'
 
 export function useUserData() {
   return useQuery({ queryKey: queryKeys.user, queryFn: getUserData, staleTime: TEN_MINUTES })
 }
 
+// The payment portal's view of the subscription, asked only where billing is
+// configured. Without an answer (billing off, an older portal, a failure) the
+// server reports available: false and the app behaves as it always has.
+export function useBillingAccess() {
+  return useQuery({
+    queryKey: queryKeys.billingAccess,
+    queryFn: userApi.getBillingAccess,
+    staleTime: 5 * 60_000,
+    enabled: getBillingUrl() !== '',
+  })
+}
+
 export interface AccessStateView {
   state: AccessState | undefined
   accessUntil: string
+  // null while renewing: a renewing subscription counts down to nothing
   daysLeft: number | null
+  // billing's view: a subscription still billing; renewsAt is its next
+  // renewal while that is ahead ('' otherwise); endsAt a scheduled end
+  renewing: boolean
+  renewsAt: string
+  endsAt: string
+  // false while billing's view is still loading: ending warnings wait for it,
+  // or a renewing subscriber would see one flash
+  billingSettled: boolean
   billingEnabled: boolean
 }
 
 export function useAccessState(): AccessStateView {
   const { data: user } = useUserData()
+  const { data: billing, isPending: billingPending } = useBillingAccess()
   const billingEnabled = getBillingUrl() !== ''
+  const billingSettled = !billingEnabled || !billingPending
   if (!user) {
-    return { state: undefined, accessUntil: '', daysLeft: null, billingEnabled }
+    return { state: undefined, accessUntil: '', daysLeft: null, renewing: false, renewsAt: '', endsAt: '', billingSettled, billingEnabled }
   }
   const state = deriveAccessState(user.accessLevel, user.accessUntil)
+  const billingUser = billingEnabled && billing?.available ? billing.user : null
+  const renewing = state !== 'readonly' && isRenewing(billingUser)
   return {
     state,
     accessUntil: user.accessUntil,
-    daysLeft: state === 'trial' ? accessDaysLeft(user.accessUntil) : null,
+    daysLeft: state === 'trial' && !renewing ? accessDaysLeft(user.accessUntil) : null,
+    renewing,
+    renewsAt: renewing && isFutureUtc(billingUser!.renewsAt) ? billingUser!.renewsAt : '',
+    endsAt: state !== 'readonly' && !renewing && billingUser?.endsAt ? billingUser.endsAt : '',
+    billingSettled,
     billingEnabled,
   }
+}
+
+// Ids of the connections billing reports as renewing subscribers.
+export function useRenewingConnectionIds(): ReadonlySet<string> {
+  const { data: billing } = useBillingAccess()
+  if (getBillingUrl() === '' || !billing?.available) return new Set()
+  return new Set(billing.connections.filter((c) => c.renewing).map((c) => c.id))
 }
 
 export function userOption(user: CurrentUserDto | undefined, name: UserOptions): string | null {

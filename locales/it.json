@@ -2337,6 +2337,8 @@
       "portal": "Gestisci l'abbonamento",
       "status": {
         "trial": "L'abbonamento scade il {date}",
+        "renews": "Si rinnova il {date}",
+        "active": "Abbonamento attivo",
         "readonly": "Scaduto"
       }
     },

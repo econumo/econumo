@@ -1,4 +1,4 @@
-import { accessDaysLeft, deriveAccessState, worstConnectionAttention } from './access'
+import { accessDaysLeft, deriveAccessState, isFutureUtc, isRenewing, worstConnectionAttention } from './access'
 
 describe('deriveAccessState', () => {
   // Frozen wire contract: accessUntil === '' means no expiry (never null).
@@ -49,7 +49,7 @@ describe('accessDaysLeft', () => {
 describe('worstConnectionAttention', () => {
   const now = new Date('2026-07-21T12:00:00Z')
   const conn = (name: string, accessLevel: 'full' | 'readonly', accessUntil: string) => ({
-    user: { name },
+    user: { id: 'id-' + name, name },
     accessLevel,
     accessUntil,
   })
@@ -93,5 +93,37 @@ describe('worstConnectionAttention', () => {
       now,
     )
     expect(result).toEqual({ state: 'trial', name: 'B', daysLeft: 1 })
+  })
+
+  it('skips a partner billing reports as renewing', () => {
+    const result = worstConnectionAttention(
+      [conn('A', 'full', '2026-07-22 00:00:00'), conn('B', 'full', '2026-07-23 00:00:00')],
+      now,
+      new Set(['id-A']),
+    )
+    expect(result).toEqual({ state: 'trial', name: 'B', daysLeft: 2 })
+  })
+})
+
+describe('isRenewing', () => {
+  it('follows billing\'s renewing flag', () => {
+    expect(isRenewing({ renewing: true, paymentFailed: false })).toBe(true)
+    expect(isRenewing({ renewing: false, paymentFailed: false })).toBe(false)
+    expect(isRenewing(null)).toBe(false)
+  })
+
+  it('does not hold while a renewal charge has failed', () => {
+    expect(isRenewing({ renewing: true, paymentFailed: true })).toBe(false)
+  })
+})
+
+describe('isFutureUtc', () => {
+  const now = new Date(Date.UTC(2026, 11, 20, 12, 0, 0))
+
+  it('compares a frozen-layout date as UTC', () => {
+    expect(isFutureUtc('2026-12-20 12:00:01', now)).toBe(true)
+    expect(isFutureUtc('2026-12-20 12:00:00', now)).toBe(false)
+    expect(isFutureUtc('2026-12-01 00:00:00', now)).toBe(false)
+    expect(isFutureUtc('', now)).toBe(false)
   })
 })

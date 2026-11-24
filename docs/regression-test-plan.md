@@ -3846,6 +3846,26 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Readonly/trial gating (cloud only, `ECONUMO_TRIAL` set): expired user
       gets 402 toasts on writes, subscription banner shows; security actions
       (logout, password, sessions) still work.
+- [ ] Subscription view (cloud only, billing answering
+      `get-access`): for a subscriber billing reports as renewing, with access
+      ending within 3 days, no "Your subscription ends in N days" banner shows,
+      not even for a moment while the page loads. Settings > Billing > Manage
+      subscription reads "Renews <date>" (ru "Продлевается …"), or "Active
+      subscription" (ru "Подписка активна") while the renewal date has just
+      passed and the payment is landing. A partner who
+      renews shows no "ends in" status and no Pay button on Connections, and
+      gets no partner banner. A scheduled cancellation reads "Subscription
+      ends <endsAt>". A failed renewal payment brings the dated warnings
+      back. With billing unreachable, an older billing, or no
+      `ECONUMO_BILLING_URL`, everything looks as before (`get-billing-access`
+      answers `available: false`, and without the URL the server makes no
+      outbound call). After a purchase changes the access, the next
+      `get-billing-access` asks billing again instead of serving the cached
+      answer.
+- [ ] Sale banner request (DevTools > Network, `get-offer`): it is sent only
+      after `get-billing-access` has answered, and each entry, the user's and
+      every connection's, carries `paid` (true for one who already pays) and
+      no user id.
 - [ ] 404 page renders for an unknown route; deep links (e.g. `/settings/
       profile/sessions`, `/account/<id>`) survive a hard reload.
 - [ ] API docs reachable from settings footer (`/api/doc`).

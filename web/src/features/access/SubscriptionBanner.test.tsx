@@ -173,6 +173,87 @@ it('own trial outranks a read-only connection', async () => {
   expect(screen.queryByText(/Megan's subscription/)).not.toBeInTheDocument()
 })
 
+function billingAccess(user: Record<string, unknown> | null, connections: Record<string, unknown>[] = []) {
+  return { available: true, user, connections }
+}
+
+describe('with billing access', () => {
+  beforeEach(() => {
+    window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  })
+
+  it('gives a renewing subscriber no ending warning', async () => {
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessUntil: utcIn(2) },
+        billingAccess: billingAccess({ paid: true, renewing: true, renewsAt: utcIn(1), endsAt: '', paymentFailed: false, discountUntil: '' }),
+        connections: partnerConn('readonly', ''),
+      }),
+    )
+    renderBanner()
+    // the partner's banner shows once the user's own state has given up the slot
+    expect(await screen.findByText(/Megan's subscription has ended/)).toBeInTheDocument()
+    expect(screen.queryByText(/Your subscription ends/)).not.toBeInTheDocument()
+    // never shown, not even while billing's answer was loading
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.SUBSCRIPTION_BANNER_SHOW, { variant: 'trial' })
+  })
+
+  it('holds the ending warning until billing has answered', async () => {
+    let release = () => {}
+    const answered = new Promise<void>((resolve) => (release = resolve))
+    server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
+    server.use(
+      http.get('*/api/v1/user/get-billing-access', async () => {
+        await answered
+        return HttpResponse.json({ success: true, message: '', data: billingAccess(null) })
+      }),
+    )
+    renderBanner()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByText(/Your subscription ends/)).not.toBeInTheDocument()
+    release()
+    // unavailable: today's warning
+    expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
+  })
+
+  it('reads renewing from billing, not from a renewal date', async () => {
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessUntil: utcIn(2) },
+        billingAccess: billingAccess({ paid: true, renewing: false, renewsAt: utcIn(1), endsAt: '', paymentFailed: false, discountUntil: '' }),
+      }),
+    )
+    renderBanner()
+    expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
+  })
+
+  it('warns as before when the renewal payment failed', async () => {
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessUntil: utcIn(2) },
+        billingAccess: billingAccess({ paid: true, renewing: true, renewsAt: utcIn(1), endsAt: '', paymentFailed: true, discountUntil: '' }),
+      }),
+    )
+    renderBanner()
+    expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
+  })
+
+  it('skips a renewing partner for one whose access really ends', async () => {
+    server.use(
+      ...coreHandlers({
+        connections: [
+          { ...partnerConn('full', utcIn(1))[0], user: { id: 'u2', avatar: 'pets:sky', name: 'Megan' } },
+          { ...partnerConn('full', utcIn(3))[0], user: { id: 'u3', avatar: 'pets:sky', name: 'Sam' } },
+        ],
+        billingAccess: billingAccess(null, [{ id: 'u2', paid: true, renewing: true }]),
+      }),
+    )
+    renderBanner()
+    expect(await screen.findByText("Sam's subscription ends in 3 days")).toBeInTheDocument()
+    expect(screen.queryByText(/Megan's subscription/)).not.toBeInTheDocument()
+  })
+})
+
 it('shows no partner variants when billing is disabled', async () => {
   server.use(...coreHandlers({ connections: partnerConn('readonly', '') }))
   renderBanner()

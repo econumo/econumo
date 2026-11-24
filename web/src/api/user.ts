@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, LogoutResultDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
+import type { BillingAccessDto, CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, LogoutResultDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
 import { UserOptions } from './dto/user'
 import { deriveAccessState } from '@/lib/access'
 import { analyticsUserId } from '@/lib/analyticsId'
@@ -186,4 +186,9 @@ export async function createPersonalToken(
 
 export async function revokePersonalToken(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/user/revoke-personal-token'), { id })
+}
+
+export async function getBillingAccess(): Promise<BillingAccessDto> {
+  const response = await api.get<Envelope<BillingAccessDto>>(apiUrl('/api/v1/user/get-billing-access'))
+  return response.data.data
 }

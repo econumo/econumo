@@ -634,3 +634,35 @@ func (r CreateBillingLinkRequest) Validate() error { return nil }
 type CreateBillingLinkResult struct {
 	URL string `json:"url"`
 }
+
+// BillingAccessUser is billing's subscription view of the caller. Dates use
+// the frozen datetime layout, "" when none. Paid is paid access in effect
+// now; Renewing a subscription still billing, whose next renewal is RenewsAt
+// (which can be just behind us until the payment lands); EndsAt when
+// paid access ends without renewing (a scheduled cancellation);
+// PaymentFailed a renewal charge that failed and is being retried;
+// DiscountUntil the last discounted period of the subscription.
+type BillingAccessUser struct {
+	Paid          bool   `json:"paid"`
+	Renewing      bool   `json:"renewing"`
+	RenewsAt      string `json:"renewsAt"`
+	EndsAt        string `json:"endsAt"`
+	PaymentFailed bool   `json:"paymentFailed"`
+	DiscountUntil string `json:"discountUntil"`
+}
+
+// BillingAccessConnection is billing's view of one of the caller's connections.
+type BillingAccessConnection struct {
+	Id       string `json:"id"`
+	Paid     bool   `json:"paid"`
+	Renewing bool   `json:"renewing"`
+}
+
+// GetBillingAccessResult is get-billing-access. Available is false when billing
+// is not configured or did not answer; User is then null and Connections
+// empty, and clients behave as without billing data.
+type GetBillingAccessResult struct {
+	Available   bool                      `json:"available"`
+	User        *BillingAccessUser        `json:"user"`
+	Connections []BillingAccessConnection `json:"connections"`
+}

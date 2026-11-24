@@ -41,6 +41,17 @@ func init() {
 		}
 	}})
 
+	// user_billing_access: billing's view through Econumo. The stub portal
+	// reports the owner as a renewing subscriber and the guest as unpaid,
+	// each with the other as their connection.
+	register(Scenario{Name: "user_billing_access", Calls: func() []Call {
+		return []Call{
+			{Label: "get-billing-access", Method: "GET", Path: "/api/v1/user/get-billing-access", Auth: "owner"},
+			{Label: "get-billing-access-cached", Method: "GET", Path: "/api/v1/user/get-billing-access", Auth: "owner"},
+			{Label: "get-billing-access-guest", Method: "GET", Path: "/api/v1/user/get-billing-access", Auth: "guest"},
+		}
+	}})
+
 	register(Scenario{Name: "user_auth_flows", Calls: func() []Call {
 		return []Call{
 			// Public login: returns {token, user}; the token is redacted in goldens.

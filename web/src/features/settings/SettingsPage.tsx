@@ -144,7 +144,17 @@ export function SettingsPage() {
                   if (!portal.disabled) portal.open()
                 }}
                 trailing={
-                  access.state === 'trial' ? (
+                  access.renewing ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {access.renewsAt
+                        ? t('subscription.settings.status.renews', { date: formatDayHeading(dayKey(access.renewsAt), i18n.language) })
+                        : t('subscription.settings.status.active')}
+                    </span>
+                  ) : access.endsAt ? (
+                    <span className="shrink-0 text-xs text-econumo-link/80">
+                      {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.endsAt), i18n.language) })}
+                    </span>
+                  ) : access.state === 'trial' ? (
                     <span className="shrink-0 text-xs text-econumo-link/80">
                       {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
                     </span>

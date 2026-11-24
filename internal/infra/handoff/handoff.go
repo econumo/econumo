@@ -27,6 +27,13 @@ const aiDomain = "econumo-ai:v1"
 // AITTL is short: the token rides one completion call (≤ 90 s) plus skew.
 const AITTL = 5 * time.Minute
 
+// accessDomain separates the token Econumo's backend sends when it asks
+// billing for a user's subscription view.
+const accessDomain = "econumo-access:v1"
+
+// AccessTTL covers one get-access call (3 s) plus skew.
+const AccessTTL = 5 * time.Minute
+
 var (
 	ErrInvalid = errors.New("handoff: invalid token")
 	ErrExpired = errors.New("handoff: token expired")
@@ -50,6 +57,11 @@ func (s *Signer) SignAI(uid string, now time.Time) (string, error) {
 	return sign(s.key, aiDomain, uid, now.Add(AITTL))
 }
 
+// SignAccess mints the bearer for billing's get-access call.
+func (s *Signer) SignAccess(uid string, now time.Time) (string, error) {
+	return sign(s.key, accessDomain, uid, now.Add(AccessTTL))
+}
+
 func sign(key []byte, dom, uid string, exp time.Time) (string, error) {
 	body, err := json.Marshal(payload{UID: uid, Exp: exp.Unix()})
 	if err != nil {
@@ -69,6 +81,11 @@ func Verify(token, key string, now time.Time) (string, error) {
 // VerifyAI has no production caller here either; see Verify.
 func VerifyAI(token, key string, now time.Time) (string, error) {
 	return verify(aiDomain, token, key, now)
+}
+
+// VerifyAccess has no production caller here either; see Verify.
+func VerifyAccess(token, key string, now time.Time) (string, error) {
+	return verify(accessDomain, token, key, now)
 }
 
 func verify(dom, token, key string, now time.Time) (string, error) {

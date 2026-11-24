@@ -355,6 +355,8 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     budgets: fixtureBudgets,
     user: fixtureUser,
     connections: [],
+    // billing's view: unavailable unless a test says otherwise
+    billingAccess: { available: false, user: null, connections: [] } as unknown,
     recurring: [],
     importSources: [] as unknown[],
     importQueue: { queued: [], skipped: [], failed: [] } as unknown,
@@ -397,6 +399,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/currency/get-currency-list', () => envelope({ items: data.currencies })),
     http.get('*/api/v1/currency/get-currency-rate-list', () => envelope({ items: data.rates })),
     http.get('*/api/v1/user/get-user-data', () => envelope({ user: data.user })),
+    http.get('*/api/v1/user/get-billing-access', () => envelope(data.billingAccess)),
     http.get('*/api/v1/budget/get-budget-list', () => envelope({ items: data.budgets })),
     http.get('*/api/v1/recurring/get-recurring-transaction-list', () => envelope({ items: data.recurring })),
     http.get('*/api/v1/import/get-source-list', () => envelope({ items: data.importSources })),

@@ -10,6 +10,7 @@ export const queryKeys = {
   currencyRates: ['currencyRates'] as const,
   user: ['user'] as const,
   connections: ['connections'] as const,
+  billingAccess: ['billingAccess'] as const,
   budget: ['budget'] as const,
   budgetPlan: ['budgetPlan'] as const,
   reportNetWorth: ['reportNetWorth'] as const,

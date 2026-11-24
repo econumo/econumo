@@ -8,7 +8,7 @@ vi.mock('./config', async (importOriginal) => ({
   backendHost: () => backendHost(),
 }))
 
-const entry = { accessLevel: 'full' as const, accessUntil: '2026-12-10 00:00:00', registeredAt: '2025-01-01 00:00:00' }
+const entry = { accessLevel: 'full' as const, accessUntil: '2026-12-10 00:00:00', registeredAt: '2025-01-01 00:00:00', paid: false }
 const input = { locale: 'en', user: entry, connections: [entry] }
 const banner = { id: 'bf', name: 'Black Friday', percent: 30, startsAt: '2026-11-27T00:00:00Z', endsAt: '2026-11-30T00:00:00Z' }
 const ENDPOINT = 'https://billing.example/api/v1/public/get-offer'
@@ -41,6 +41,28 @@ describe('getSaleBanner', () => {
     )
     expect(await getSaleBanner(input)).toEqual(banner)
     expect(body).toEqual(input)
+  })
+
+  // Billing's get-offer reads exactly these keys; paid true means the person
+  // already pays and gets no banner. No user id ever goes out.
+  it('sends the exact request body billing reads', async () => {
+    let raw = ''
+    server.use(
+      http.post(ENDPOINT, async ({ request }) => {
+        raw = await request.text()
+        return answer({ banner })
+      }),
+    )
+    await getSaleBanner({
+      locale: 'ru',
+      user: { accessLevel: 'full', accessUntil: '2027-01-01 00:00:00', registeredAt: '2025-01-01 00:00:00', paid: true },
+      connections: [{ accessLevel: 'readonly', accessUntil: '', registeredAt: '2025-02-01 00:00:00', paid: false }],
+    })
+    expect(raw).toBe(
+      '{"locale":"ru",' +
+        '"user":{"accessLevel":"full","accessUntil":"2027-01-01 00:00:00","registeredAt":"2025-01-01 00:00:00","paid":true},' +
+        '"connections":[{"accessLevel":"readonly","accessUntil":"","registeredAt":"2025-02-01 00:00:00","paid":false}]}',
+    )
   })
 
   it('keeps a trailing slash and a query on BILLING_URL out of the path', async () => {

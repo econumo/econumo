@@ -120,6 +120,20 @@ it('shows an ends-in status without a pay button for a far-off trial connection'
   expect(screen.queryByRole('button', { name: 'Pay for Partner' })).not.toBeInTheDocument()
 })
 
+it('shows no ending status or pay button for a partner billing reports as renewing', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      connections: partner({ accessUntil: utcIn(2) }),
+      billingAccess: { available: true, user: null, connections: [{ id: 'u2', paid: true, renewing: true }] },
+    }),
+  )
+  renderPage()
+  expect(await screen.findByText('Partner')).toBeInTheDocument()
+  await waitFor(() => expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument())
+  expect(screen.queryByRole('button', { name: 'Pay for Partner' })).not.toBeInTheDocument()
+})
+
 it('shows the pay button for a readonly connection and mints a link with the for hint', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   let body: unknown
