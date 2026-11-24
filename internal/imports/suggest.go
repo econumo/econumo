@@ -36,6 +36,11 @@ func (m missingFields) filledBy(o model.ImportSuggestion) bool {
 	return (m.Category && o.CategoryID != nil) || (m.Payee && (o.PayeeID != nil || o.PayeeName != nil))
 }
 
+// covers: every field m lacks is set.
+func (set missingFields) covers(m missingFields) bool {
+	return (!m.Category || set.Category) && (!m.Payee || set.Payee)
+}
+
 // coveredBy is whether an open suggestion takes the row before the AI call.
 // With whole (assignment on) it must fill every field the row lacks: a row it
 // would leave half done goes to the AI, which may find the rest.

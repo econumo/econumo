@@ -26,11 +26,11 @@ type assignment struct {
 // empty, one savepoint per row: a row that fails is skipped with a WARN and
 // the others proceed. Rows of one merchant share the payee created for it.
 // It returns the payee each new-payee name got (created, or found when the
-// create lost a race), by similarityText of the name, and the links of the
-// rows it wrote.
-func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]bool, error) {
+// create lost a race), by similarityText of the name, and, by link, which
+// fields of the rows it wrote are set by now.
+func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]missingFields, error) {
 	created := map[string]vo.Id{}
-	written := map[vo.Id]bool{}
+	written := map[vo.Id]missingFields{}
 	now := s.clk.Now().UTC()
 	s.lockAssignRows(ctx, owner, list)
 	// The locks can take a while: a category or payee archived meanwhile is
@@ -42,10 +42,11 @@ func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (m
 	for _, a := range list {
 		a = vocab.current(a)
 		var newPayee *vo.Id
+		var set missingFields
 		var wrote bool
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 			var err error
-			newPayee, wrote, err = s.assignRow(ctx, owner, a, created, now)
+			newPayee, set, wrote, err = s.assignRow(ctx, owner, a, created, now)
 			return err
 		})
 		if err != nil {
@@ -59,7 +60,7 @@ func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (m
 			created[similarityText(a.payeeName)] = *newPayee
 		}
 		if wrote {
-			written[a.row.Link.ID] = true
+			written[a.row.Link.ID] = set
 		}
 	}
 	return created, written, nil
@@ -85,10 +86,12 @@ func (v suggestVocabulary) current(a assignment) assignment {
 }
 
 // lockAssignRows takes every row lock of the run, in id order, before the first
-// write. Each write bumps its account's revision (locking the account row);
-// waiting for a later row's lock while holding the account would deadlock with a
-// hand edit that holds that row and waits for the account. A lock that fails is
-// left to the row's own savepoint, which skips the row.
+// write. Each write holds its transaction row until commit (the account rows are
+// locked only at commit, by the revision bump); taking the rows one by one in
+// the run's own order while holding earlier ones could deadlock with another
+// writer holding several of the same rows (a bulk edit, apply-rule, an accept)
+// on PostgreSQL. A lock that fails is left to the row's own savepoint, which
+// skips the row.
 func (s *Service) lockAssignRows(ctx context.Context, owner vo.Id, list []assignment) {
 	seen := map[vo.Id]bool{}
 	var ids []vo.Id
@@ -113,18 +116,19 @@ func (s *Service) lockAssignRows(ctx context.Context, owner vo.Id, list []assign
 // with a category by now is left alone: a transaction a rule or the user
 // categorised keeps its empty payee (the owner's call). The applied snapshot
 // moves for the fields written, as a rule's write does, so a later apply-rule
-// may replace them.
-func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id, now time.Time) (*vo.Id, bool, error) {
+// may replace them. It reports which of the two fields the row has once
+// written; a value archived meanwhile leaves its field empty.
+func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id, now time.Time) (*vo.Id, missingFields, bool, error) {
 	if a.row.Link.TransactionID == nil {
-		return nil, false, nil
+		return nil, missingFields{}, false, nil
 	}
 	txID := *a.row.Link.TransactionID
 	if err := s.repo.LockTransactionRow(ctx, txID); err != nil {
-		return nil, false, err
+		return nil, missingFields{}, false, err
 	}
 	l, live, err := s.suggestionTarget(ctx, owner, a.row.Link.ID)
 	if err != nil || live == nil || live.ID != txID || live.Type != a.row.Type || live.CategoryID != nil {
-		return nil, false, err
+		return nil, missingFields{}, false, err
 	}
 	fillCategory := a.categoryID != nil
 	payeeID := a.payeeID
@@ -138,13 +142,13 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		} else if s.payees != nil {
 			id, err := s.createPayee(ctx, owner, a.payeeName)
 			if err != nil {
-				return nil, false, err
+				return nil, missingFields{}, false, err
 			}
 			payeeID, newPayee = id, id
 		}
 	}
 	if !fillCategory && payeeID == nil {
-		return nil, false, nil
+		return nil, missingFields{}, false, nil
 	}
 	next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: live.LabelIDs}
 	record := model.ImportTransactionSuggestion{
@@ -158,15 +162,15 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		next.PayeeID, record.PayeeID, l.AppliedPayeeID = payeeID, payeeID, payeeID
 	}
 	if _, err := s.txns.UpdateTransaction(ctx, owner, updateRequest(live, next)); err != nil {
-		return nil, false, err
+		return nil, missingFields{}, false, err
 	}
 	if err := s.repo.UpdateLink(ctx, l); err != nil {
-		return nil, false, err
+		return nil, missingFields{}, false, err
 	}
 	if err := s.repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{record}); err != nil {
-		return nil, false, err
+		return nil, missingFields{}, false, err
 	}
-	return newPayee, true, nil
+	return newPayee, missingFields{Category: next.CategoryID != nil, Payee: next.PayeeID != nil}, true, nil
 }
 
 // createPayee creates the payee of a new-payee name. A refusal because that

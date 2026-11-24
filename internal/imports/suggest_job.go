@@ -277,9 +277,10 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				delete(joins, id)
 			}
 			if facts.SuggestFill {
-				// an uncategorised row the reuse could not fill (edited, moved,
-				// failed) is left to the AI, not joined; a categorised one is
-				// never assigned and joins as it is
+				// an uncategorised row the reuse could not fill in full
+				// (edited, moved, failed, a value archived meanwhile) is left
+				// to the AI, not joined; a categorised one is never assigned
+				// and joins as it is
 				_, written, err := s.assign(ctx, owner, openAssignments(joins, freshOpen, rows))
 				if err != nil {
 					return err
@@ -287,7 +288,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				for id, links := range joins {
 					var kept []vo.Id
 					for _, l := range links {
-						if written[l] || !byLink[l].Missing.Category {
+						if m := byLink[l].Missing; !m.Category || written[l].covers(m) {
 							kept = append(kept, l)
 						} else {
 							back[l] = true

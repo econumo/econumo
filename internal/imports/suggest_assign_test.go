@@ -681,9 +681,9 @@ func (r *lockOrderRepo) UpdateLink(ctx context.Context, l *model.ImportTransacti
 	return r.Repository.UpdateLink(ctx, l)
 }
 
-// Every row of a run is locked, in id order, before the first write: a write
-// bumps the account, and waiting for a later row's lock while holding the
-// account could deadlock with a hand edit holding that row (PostgreSQL).
+// Every row of a run is locked, in id order, before the first write: taking
+// them in the run's own order while holding earlier ones could deadlock with
+// another writer holding several of the same rows (PostgreSQL).
 func TestAssignLocksAllRowsInIdOrderBeforeWriting(t *testing.T) {
 	h, p, c, facts := assignSetup(t)
 	rec := &lockOrderRepo{Repository: h.repo}
@@ -1072,5 +1072,31 @@ func TestRuleSuggestionAgreesOnPayeeNameWithTwoSuchPayees(t *testing.T) {
 	}
 	if items := suggestionList(t, h, userA); len(items) != 1 || items[0].PayeeId != first || len(items[0].Transactions) != 1 {
 		t.Fatalf("list = %+v, want the agreeing row kept", items)
+	}
+}
+
+// A reuse row the open suggestion could only half fill, its category archived
+// while the job waited for the row lock, is not joined before the AI call: it
+// goes to the AI, which finds its category.
+func TestAssignReuseHalfFilledRowGoesToAI(t *testing.T) {
+	owner := vo.MustParseId(userA)
+	h, c, facts := suggestSetup(t)
+	rec := &onLockRepo{Repository: h.repo}
+	h.withRepo(rec)
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	coffee := h.category(t, userA, "Coffee")
+	cafes := h.category(t, userA, "Cafes")
+	payee := h.payee(t, userA, "Blue Bottle Coffee")
+	seedOpenSuggestion(t, h, coffee, payee)
+	rec.onLock = func() { archiveNamed(h.entities.categories[owner], coffee) }
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cafes + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the half-filled row sent to the AI", len(c.calls))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if tx := txOf(t, h, links[0].ID); !idIs(tx.CategoryID, cafes) || !idIs(tx.PayeeID, payee) {
+		t.Fatalf("transaction = %+v, want the AI's category and the suggestion's payee", tx)
 	}
 }
