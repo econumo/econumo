@@ -382,19 +382,26 @@ func init() {
 		)
 	}})
 
-	// debt_forecast lists a debt's payments still to come. The weekly debt has
-	// one due left, so the golden does not depend on the day the suite runs;
-	// its element plans nothing, so the regular payments stay and no budget is
-	// named. Planned extras are pinned by the debt service's tests, whose
-	// clock is fixed. A pending invite to the budget reads nothing.
+	// debt_forecast lists a debt's payments still to come. Its element plans
+	// nothing, so the regular payments stay and no budget is named. The debt
+	// is monthly with one due, in the next month: a weekly due a week out
+	// would land in the current month or the next depending on the day, and
+	// flip what get-budget shows for the current month (reading the due's
+	// month instead flips its balances, null for a future month). The loan
+	// starts today, or on the 28th from the 29th on, so its one period is a
+	// whole month and the implied rate never changes with a clamped due day.
+	// Planned extras are pinned by the debt service's tests, whose clock is
+	// fixed. A pending invite to the budget reads nothing.
 	register(Scenario{Name: "debt_forecast", Calls: func() []Call {
 		const unknownDebt = "d0000000-0000-0000-0000-0000000000ff"
 		var debtID, draftID, categoryID string
+		start := time.Date(ClockTime.Year(), ClockTime.Month(), min(ClockTime.Day(), 28), 0, 0, 0, 0, time.UTC)
+		terms := map[string]any{"startDate": start.Format("2006-01-02"), "lastPaymentDate": start.AddDate(0, 1, 0).Format("2006-01-02")}
 		forecast := func(label, auth string, id *string) Call {
 			return Call{Label: label, Method: "GET", Auth: auth, Path: "/api/v1/debt/get-debt-forecast?id=", PathID: id}
 		}
 		return calls(
-			setUp("create-debt", "owner", &debtID, nil, nil),
+			setUp("create-debt", "owner", &debtID, map[string]any{"schedule": "monthly"}, terms),
 			[]Call{
 				forecast("forecast", "owner", &debtID),
 				{Label: "get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
