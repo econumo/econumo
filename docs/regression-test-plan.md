@@ -1067,7 +1067,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       off nothing is assigned or suggested.
 - [ ] Rule suggestions for auto-filled taps 📱: with both switches on, taps at the same merchant
       are filled AND listed under Suggested rules ("<n> transactions"); saving the rule fills
-      nothing more on them. Changing one tap's category by hand removes it from that suggestion.
+      nothing more on them and closes with no "Updated 0 transactions" toast. Changing one tap's
+      category by hand removes it from that suggestion.
 - [ ] Two taps at the same new merchant a second apart give ONE Suggested rules row with
       "2 transactions". 📱
 - [ ] A payee-only expense suggestion never takes an income row from the same merchant (a refund

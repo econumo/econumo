@@ -405,6 +405,20 @@ describe('suggestion mode', () => {
     expect(vi.mocked(toast.success)).toHaveBeenCalledWith('Updated 2 transactions')
   })
 
+  // the AI job usually filled the suggestion's rows already: "Updated 0 transactions" would read as
+  // a failure
+  it('saving closes without a toast when the accept updated nothing', async () => {
+    renderPrompt()
+    previewCounts(0, 0)
+    acceptHandler(0)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.accept).toEqual([{ id: 'sg1', ruleId: 'rule-new' }])
+    expect(vi.mocked(toast.success)).not.toHaveBeenCalled()
+  })
+
   it('saving asks to apply to others when the all preview matches 2', async () => {
     renderPrompt()
     previewCounts(0, 2)

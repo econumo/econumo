@@ -49,6 +49,10 @@ export function useImportSuggestions() {
     queryFn: async () => {
       const items = await importsApi.getImportSuggestionList()
       refetchPayeesIfUnknown(queryClient, items.map((s) => s.payeeId))
+      // a suggestion no longer listed (accepted or dismissed elsewhere) never saves again
+      for (const id of suggestedPayees.keys()) {
+        if (!items.some((s) => s.id === id)) suggestedPayees.delete(id)
+      }
       const accounts = queryClient.getQueryState(queryKeys.accounts)
       if (accounts && Date.now() - accounts.dataUpdatedAt > SUGGESTIONS_STALE_MS) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
@@ -79,7 +83,8 @@ export interface SuggestionChanges {
 // Per suggestion: the create-payee operation id, minted once so a Save retried after a lost answer
 // is refused as a replay instead of making a second payee; whether a request went out with it
 // whose outcome is unknown; and whether the payee is one this suggestion's Save created. Module
-// level, so Cancel and a reopen of the prompt keep it; dropped once the suggestion is accepted or dismissed.
+// level, so Cancel and a reopen of the prompt keep it; dropped once the suggestion is accepted,
+// dismissed or no longer listed.
 const suggestedPayees = new Map<Id, { opId: Id; unsettled: boolean; created: boolean }>()
 
 // The payee a suggestion proposes by name, created unless the owner already has one of that name;

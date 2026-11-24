@@ -459,8 +459,9 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
         setStep('all')
         return
       }
-      // an accept that had already landed (its answer lost) has no count to report
-      if (!accepted.alreadyGone) {
+      // an accept that had already landed (its answer lost) has no count to report, and one that
+      // updated nothing (the AI job had already filled the rows) has nothing to report
+      if (!accepted.alreadyGone && accepted.updated > 0) {
         toast.success(t('imports.rules.prompt.applied_toast', { count: accepted.updated }))
       }
       onDone()

@@ -15,6 +15,7 @@ import {
   suggestionRetry,
   useAcceptImportSuggestion,
   useApplyImportRule,
+  useCreateSuggestedPayee,
   useDismissImportSuggestion,
   useImportSuggestions,
   useCreateImportRule,
@@ -230,6 +231,31 @@ it('a suggestion list fetch leaves a fresh accounts list alone', async () => {
   expect(queryClient.getQueryState(queryKeys.accounts)?.isInvalidated).toBe(false)
 })
 
+// the create-payee state of a suggestion no longer listed (accepted or dismissed elsewhere) is dropped
+it('a suggestion gone from the list forgets its create-payee operation id', async () => {
+  const ids: string[] = []
+  server.use(
+    http.get('*/api/v1/payee/get-payee-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+    http.post('*/api/v1/payee/create-payee', async ({ request }) => {
+      const body = (await request.json()) as { id: string; name: string }
+      ids.push(body.id)
+      return ids.length === 1
+        ? HttpResponse.error()
+        : HttpResponse.json({ success: true, message: '', data: { item: { id: 'p-new', ownerUserId: 'u1', name: body.name, position: 0, isArchived: 0, createdAt: '', updatedAt: '' } } })
+    }),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const { wrapper } = makeWrapper()
+  const create = renderHook(() => useCreateSuggestedPayee(), { wrapper })
+  const vars = { suggestionId: 'sg-pruned', name: 'Blue Bottle', ownerUserId: 'u1' }
+  await expect(act(() => create.result.current.mutateAsync(vars))).rejects.toBeDefined()
+  const list = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(list.result.current.isSuccess).toBe(true))
+  await act(() => create.result.current.mutateAsync(vars))
+  expect(ids).toHaveLength(2)
+  expect(ids[1]).not.toBe(ids[0])
+})
+
 it('a suggestion naming a payee the cached list lacks refetches the payee list', async () => {
   server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1', payeeId: 'p-job', payeeName: '' }] } })))
   const { queryClient, wrapper } = makeWrapper()
@@ -365,7 +391,7 @@ describe('suggestion refresh after a sync', () => {
     vi.advanceTimersByTime(14_999)
     expect(spy).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    const keys = [queryKeys.importSuggestions, queryKeys.payees, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.debts, queryKeys.budgetTransactions]
+    const keys = [queryKeys.importSuggestions, queryKeys.payees, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.debts, queryKeys.budgetTransactions]
     expect(spy.mock.calls).toEqual(keys.map((queryKey) => [{ queryKey }]))
     vi.advanceTimersByTime(45_000)
     expect(spy).toHaveBeenCalledTimes(keys.length * 2)

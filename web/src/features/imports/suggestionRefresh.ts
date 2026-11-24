@@ -11,7 +11,7 @@ let suggestionRefresh: ReturnType<typeof setTimeout>[] = []
 // What an import writes on the ledger. The accounts list carries the revisions that make the
 // transaction sync download the changed accounts.
 export function invalidateLedgerViews(queryClient: QueryClient): void {
-  for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.debts, queryKeys.budgetTransactions]) {
+  for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.debts, queryKeys.budgetTransactions]) {
     void queryClient.invalidateQueries({ queryKey })
   }
 }
