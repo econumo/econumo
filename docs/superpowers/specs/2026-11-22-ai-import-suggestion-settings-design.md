@@ -21,8 +21,12 @@ should still get one when it is a well-known brand.
 ## Decisions made with the owner
 
 1. Two switches under "Use AI features", both **on** by default:
-   **Assign category and payee automatically** and **Suggest rules**.
-2. Automatic assignment writes straight onto the transaction (no Inbox step), empty fields only.
+   **Auto-categorize** (assign category and payee) and **Suggest rules**, under a heading
+   "Imports" (shortened 2026-11-24 at the owner's request).
+2. Automatic assignment writes straight onto the transaction (no Inbox step), empty fields only,
+   and only when the transaction still has **no category** after the owner's import rules ran
+   (2026-11-24, decided by the owner): a transaction a rule or the user categorised is left
+   alone even if its payee is empty. Rules always run first, at import time.
 3. A missing payee is **created** only when the merchant is a major, well-known brand
    (Starbucks, Uber, Whole Foods); an unknown local shop gets a category and no payee.
 4. Suggested rules may carry a new payee (same well-known-only limit, *my proposal, accepted*);
@@ -73,8 +77,8 @@ should still get one when it is a well-known brand.
   `ai_suggest_fill` (unreleased, but already wired through route, goldens and SPA; *my call*).
 - `POST /api/v1/user/update-ai-suggestions {suggestRules, suggestFill}` unchanged, on the
   read-only allowlist.
-- AiDialog labels: "Suggest rules" and "Assign category and payee automatically" (new key
-  text in all 11 catalogues). Shown only while "Use AI features" is on.
+- AiDialog: heading "Imports", switches "Suggest rules" and "Auto-categorize" (all 11
+  catalogues). Shown only while "Use AI features" is on.
 - Both off: the job makes no AI call. "Use AI features" off: nothing runs; open rule
   suggestions are deleted as today.
 
@@ -104,7 +108,9 @@ Inside the job's post-AI write transaction, for each valid row (same validation 
 match text placeable, category of the right type), under the owner's job lock:
 
 1. Lock the transaction row (`LockTransactionRow`), re-read it, skip it if it is gone, changed
-   type, or no longer empty in the fields to fill.
+   type, or **has a category** (whatever its payee). A row whose transaction has a category is
+   never assigned, so a rule-set category with an empty payee stays as the rule left it; such a
+   row can still feed a rule suggestion as before.
 2. Create the new payee if the row needs one (through a new imports port
    `PayeeCreator.CreatePayee(ctx, ownerID, name) (model.ImportNamed, error)`, wired in
    `internal/server` to the payee service like `TransactionImportPayees.CreatePayee`). One
