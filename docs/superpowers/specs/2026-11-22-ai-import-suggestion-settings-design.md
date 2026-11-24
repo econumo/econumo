@@ -123,7 +123,12 @@ match text placeable, category of the right type), under the owner's job lock:
    status `filled`).
 
 Rows the pre-AI reuse step attached to an open rule suggestion get that suggestion's
-category/payee assigned the same way (no AI call), limited to the fields the row lacks.
+category/payee assigned the same way (no AI call), limited to the fields the row lacks. With
+"assign" on, the reuse step takes a row only when the suggestion fills EVERY field the row lacks
+(its category, and its payee when empty); a row it would leave half done (a payee-only
+suggestion, or a category-only one for a row with no payee) goes to the AI instead and may still
+join that suggestion afterwards, like any other row. With "assign" off, a suggestion filling any
+missing field takes the row, as before.
 
 A failure on one row (a payee name the payee service rejects, a write error) skips that row
 and logs a WARN with ids and `err_type` only; the rest of the run proceeds. The opt-out

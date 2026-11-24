@@ -184,7 +184,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	covered := map[vo.Id][]vo.Id{}
 	var rest []suggestRow
 	for _, r := range rows {
-		if id, ok := openFor(r, open, vocab.income); ok {
+		if id, ok := openFor(r, open, vocab.income, facts.SuggestFill); ok {
 			covered[id] = append(covered[id], r.Link.ID)
 			continue
 		}
@@ -260,7 +260,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			for id, links := range live {
 				o, open := byID[id]
 				for _, l := range links {
-					if open && byLink[l].Missing.filledBy(o) {
+					if open && byLink[l].Missing.coveredBy(o, facts.SuggestFill) {
 						joins[id] = append(joins[id], l)
 					} else {
 						back[l] = true

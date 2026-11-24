@@ -1071,6 +1071,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       are filled AND listed under Suggested rules ("<n> transactions"); saving the rule fills
       nothing more on them and closes with no "Updated 0 transactions" toast. Changing one tap's
       category by hand removes it from that suggestion.
+- [ ] With both switches on and a Suggested rules row that sets only a payee (no category) for a
+      merchant, a new tap there still gets a category within about a minute and is listed under
+      that row; with "Auto-categorize" off it is only listed, with no AI call. 📱
 - [ ] Two taps at the same new merchant a second apart give ONE Suggested rules row with
       "2 transactions". 📱
 - [ ] A payee-only expense suggestion never takes an income row from the same merchant (a refund

@@ -353,10 +353,10 @@ func TestOpenForRequiresAFieldTheRowLacks(t *testing.T) {
 	row := sRow(sLink("BLUE BOTTLE", "", time.Time{}))
 	row.Missing.Payee = false
 	o := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p}
-	_, ok := openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok := openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.False(t, ok)
 	row.Missing.Payee = true
-	_, ok = openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok = openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.True(t, ok)
 }
 
@@ -365,10 +365,10 @@ func TestOpenForRequiresSameType(t *testing.T) {
 	row := sRow(sLink("BLUE BOTTLE", "", time.Time{}))
 	row.Type = model.TransactionTypeIncome
 	o := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p, Type: model.TransactionTypeExpense}
-	_, ok := openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok := openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.False(t, ok)
 	o.Type = model.TransactionTypeIncome
-	_, ok = openFor(row, []model.ImportSuggestion{o}, nil)
+	_, ok = openFor(row, []model.ImportSuggestion{o}, nil, false)
 	require.True(t, ok)
 }
 
@@ -377,12 +377,28 @@ func TestOpenForChecksCategoryType(t *testing.T) {
 	income := map[vo.Id]bool{salary: true}
 	row := sRow(sLink("SQ *BLUE BOTTLE #1", "", time.Time{}))
 	o := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", CategoryID: &salary}
-	_, ok := openFor(row, []model.ImportSuggestion{o}, income)
+	_, ok := openFor(row, []model.ImportSuggestion{o}, income, false)
 	require.False(t, ok)
 	o.CategoryID = &coffee
-	id, ok := openFor(row, []model.ImportSuggestion{o}, income)
+	id, ok := openFor(row, []model.ImportSuggestion{o}, income, false)
 	require.True(t, ok)
 	require.Equal(t, o.ID, id)
+}
+
+// With whole, a partial suggestion covers nothing, and an older partial one
+// does not hide a newer one that fills every missing field.
+func TestOpenForWholeNeedsEveryMissingField(t *testing.T) {
+	p, c := vo.NewId(), vo.NewId()
+	row := sRow(sLink("BLUE BOTTLE", "", time.Time{}))
+	partial := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p, CreatedAt: time.Unix(1, 0)}
+	_, ok := openFor(row, []model.ImportSuggestion{partial}, nil, true)
+	require.False(t, ok)
+	_, ok = openFor(row, []model.ImportSuggestion{partial}, nil, false)
+	require.True(t, ok)
+	full := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p, CategoryID: &c, CreatedAt: time.Unix(2, 0)}
+	id, ok := openFor(row, []model.ImportSuggestion{partial, full}, nil, true)
+	require.True(t, ok)
+	require.Equal(t, full.ID, id)
 }
 
 // guardRow is an imported row whose amount, date, description and owner name

@@ -716,3 +716,81 @@ func TestAssignLocksAllRowsInIdOrderBeforeWriting(t *testing.T) {
 		t.Fatalf("events = %v, want the locks %v before the first write", rec.events, want)
 	}
 }
+
+func seedOpenSuggestion(t *testing.T, h *harness, categoryID, payeeID string) *model.ImportSuggestion {
+	t.Helper()
+	s := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+		Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if categoryID != "" {
+		id := vo.MustParseId(categoryID)
+		s.CategoryID = &id
+	}
+	if payeeID != "" {
+		id := vo.MustParseId(payeeID)
+		s.PayeeID = &id
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), s); err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+// With assignment on, an open suggestion that sets only the payee does not
+// cover a row with no category either: the row goes to the AI for its
+// category, and still joins that suggestion afterwards.
+func TestAssignPayeeOnlyOpenSuggestionSendsUncategorisedRowToAI(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	open := seedOpenSuggestion(t, h, "", h.payee(t, userA, "Some Cafe"))
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if tx := txOf(t, h, links[0].ID); !idIs(tx.CategoryID, cat) {
+		t.Fatalf("transaction = %+v, want the AI's category", tx)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].ID != open.ID || !slices.Contains(got[0].LinkIDs, links[0].ID) {
+		t.Fatalf("rule suggestions = %+v, want the row joined to the open one", got)
+	}
+}
+
+// The symmetric case: a category-only open suggestion leaves a well-known
+// merchant's row without the payee the AI would create for it.
+func TestAssignCategoryOnlyOpenSuggestionSendsPayeelessRowToAI(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	seedOpenSuggestion(t, h, cat, "")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"wellKnown":true,"categoryId":"` + cat + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d, want the row sent to the AI", len(c.calls))
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	tx := txOf(t, h, links[0].ID)
+	if !idIs(tx.CategoryID, cat) || tx.PayeeID == nil || len(h.payees.created) != 1 || h.payees.created[0] != "Blue Bottle" {
+		t.Fatalf("transaction = %+v, payees created = %v", tx, h.payees.created)
+	}
+}
+
+// With assignment off, a suggestion that fills one missing field still
+// covers the row, as before.
+func TestSuggestPartialOpenSuggestionCoversWithAssignmentOff(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	facts[userA] = ownerFact{language: "en", fillOff: true}
+	h.mapCard(t, "Apple Card")
+	open := seedOpenSuggestion(t, h, "", h.payee(t, userA, "Some Cafe"))
+	h.category(t, userA, "Coffee")
+	ingest(t, h, tap)
+	if len(c.calls) != 0 {
+		t.Fatalf("calls = %d, want the row covered", len(c.calls))
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].ID != open.ID || len(got[0].LinkIDs) != 1 {
+		t.Fatalf("rule suggestions = %+v", got)
+	}
+}

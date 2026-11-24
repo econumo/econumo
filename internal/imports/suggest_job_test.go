@@ -326,10 +326,11 @@ func TestSuggestReusesOpenSuggestionWithoutAI(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	catID := vo.MustParseId(cat)
+	catID, pyID := vo.MustParseId(cat), vo.MustParseId(h.payee(t, userA, "Blue Bottle Coffee"))
+	// it fills both fields the row lacks, as assignment (on) needs
 	open := &model.ImportSuggestion{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
-		CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		CategoryID: &catID, PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
 		t.Fatal(err)
@@ -715,7 +716,9 @@ func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
 	h, _, facts := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
-	c := &gatedCompleter{reply: `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"payeeId":"` + py + `"}]}`, started: make(chan struct{}, 2)}
+	cat := h.category(t, userA, "Coffee")
+	// category and payee: the suggestion fills all the second row lacks
+	c := &gatedCompleter{reply: `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + cat + `","payeeId":"` + py + `"}]}`, started: make(chan struct{}, 2)}
 	h.svc.SetSuggester(c, facts)
 	var queued []func()
 	h.svc.SetJobRunner(func(run func()) { queued = append(queued, run) })
@@ -1165,7 +1168,7 @@ func TestSuggestPreAIJoinRespectsOptOut(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			h, c, _ := suggestSetup(t)
 			cat := h.category(t, userA, "Coffee")
-			s, _ := seedSuggestion(t, h, c, cat, "")
+			s, _ := seedSuggestion(t, h, c, cat, h.payee(t, userA, "Blue Bottle Coffee"))
 			h.wireSuggest(c, &optOutAfter{n: n})
 			calls := len(c.calls)
 			if res := ingest(t, h, pushWithPayee("Blue Bottle", "evt-join")); res.Status != model.ImportIngestStatusCreated {
@@ -1696,10 +1699,10 @@ func TestSuggestOptOutUndoKeepsReusedAssignments(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	catID := vo.MustParseId(cat)
+	catID, pyID := vo.MustParseId(cat), vo.MustParseId(h.payee(t, userA, "Blue Bottle Coffee"))
 	open := &model.ImportSuggestion{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
-		CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+		CategoryID: &catID, PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := h.repo.InsertSuggestion(context.Background(), open); err != nil {
 		t.Fatal(err)

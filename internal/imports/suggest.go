@@ -36,6 +36,16 @@ func (m missingFields) filledBy(o model.ImportSuggestion) bool {
 	return (m.Category && o.CategoryID != nil) || (m.Payee && (o.PayeeID != nil || o.PayeeName != nil))
 }
 
+// coveredBy is whether an open suggestion takes the row before the AI call.
+// With whole (assignment on) it must fill every field the row lacks: a row it
+// would leave half done goes to the AI, which may find the rest.
+func (m missingFields) coveredBy(o model.ImportSuggestion, whole bool) bool {
+	if !whole {
+		return m.filledBy(o)
+	}
+	return m.filledBy(o) && (!m.Category || o.CategoryID != nil) && (!m.Payee || o.PayeeID != nil || o.PayeeName != nil)
+}
+
 type suggestVocabulary struct {
 	Categories []model.ImportNamed
 	Payees     []model.ImportNamed
@@ -791,7 +801,7 @@ func mergeIntoOpen(groups []model.ImportSuggestion, groupMissing [][]missingFiel
 	return rest, joins
 }
 
-func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]bool) (vo.Id, bool) {
+func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]bool, whole bool) (vo.Id, bool) {
 	ev := model.IngestEvent{Payee: row.Link.ExternalPayee, Description: row.Link.ExternalDescription}
 	for _, o := range sortedOldestFirst(open) {
 		r := model.ImportRule{MatchField: o.MatchField, MatchValue: o.MatchText, MatchType: model.ImportRuleMatchTypeContains}
@@ -801,7 +811,7 @@ func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]boo
 		if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, row.Type) {
 			continue
 		}
-		if !row.Missing.filledBy(o) {
+		if !row.Missing.coveredBy(o, whole) {
 			continue
 		}
 		return o.ID, true
