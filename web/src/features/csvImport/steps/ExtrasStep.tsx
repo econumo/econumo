@@ -154,7 +154,7 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices }
                   <span className="text-muted-foreground">{t(`transactions.import_wizard.extras.role.${role}`)}: </span>
                   {examples.values.length > 0 ? examples.values.join(' · ') : t('transactions.import_wizard.column_empty')}
                   {examples.more ? ' …' : ''}
-                  {from ? <span className="whitespace-nowrap text-muted-foreground"> ({from})</span> : null}
+                  {from ? <span className="whitespace-nowrap text-muted-foreground/60"> ({from})</span> : null}
                 </li>
               )
             })}

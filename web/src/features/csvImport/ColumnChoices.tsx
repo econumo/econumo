@@ -77,7 +77,7 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
                 {from || tags[index] ? (
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                     {from ? (
-                      <span id={`${id}-from`} className="truncate text-xs text-muted-foreground">
+                      <span id={`${id}-from`} className="truncate text-xs text-muted-foreground/60">
                         {from}
                       </span>
                     ) : null}

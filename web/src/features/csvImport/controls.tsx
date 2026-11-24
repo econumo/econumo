@@ -67,7 +67,7 @@ export function AnswerRow({ id, from, onChange, children }: { id?: string; from?
     <div className="flex items-start gap-3 rounded-xl border border-border px-4 py-3">
       <div id={id} className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="text-base break-words">{children}</div>
-        {from ? <div className="text-xs text-muted-foreground">{from}</div> : null}
+        {from ? <div className="text-xs text-muted-foreground/60">{from}</div> : null}
       </div>
       <QuietButton onClick={onChange}>{t('transactions.import_wizard.change')}</QuietButton>
     </div>
