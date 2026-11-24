@@ -46,6 +46,9 @@ type validSuggestion struct {
 	MatchText  string
 	CategoryID *vo.Id
 	PayeeID    *vo.Id
+	// WellKnown is the AI's word that MerchantName is a major chain or brand.
+	WellKnown    bool
+	MerchantName string
 }
 
 // suggestReplyRow is step 1's answer for a row. CategoryID is the id
@@ -56,6 +59,7 @@ type suggestReplyRow struct {
 	MatchText   string   `json:"matchText"`
 	Merchants   []string `json:"merchants"`
 	CategoryKey string   `json:"categoryKey"`
+	WellKnown   bool     `json:"wellKnown"`
 	CategoryID  string   `json:"-"`
 	PayeeID     string   `json:"-"`
 }
@@ -529,7 +533,10 @@ func validateReply(rows []suggestRow, reply map[string]suggestReplyRow, v sugges
 		if !ok {
 			continue
 		}
-		s := validSuggestion{Row: row, MatchField: field, MatchText: text}
+		s := validSuggestion{Row: row, MatchField: field, MatchText: text, WellKnown: r.WellKnown}
+		if len(r.Merchants) > 0 {
+			s.MerchantName = r.Merchants[0]
+		}
 		if row.Missing.Category && r.CategoryID != "" {
 			if id, ok := v.hasCategory(r.CategoryID); ok && categoryFits(id, v.income, row.Type) {
 				s.CategoryID = &id

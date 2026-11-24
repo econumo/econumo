@@ -12,8 +12,8 @@ import (
 // object closed with all its properties required, optional values nullable.
 var (
 	suggestSchema = &ai.Schema{Name: "import_suggestions", JSON: json.RawMessage(`{"type":"object","properties":{"rows":{"type":"array","items":{"type":"object","properties":{` +
-		`"key":{"type":"string"},"matchText":{"type":"string"},"merchants":{"type":"array","items":{"type":"string"}},"categoryKey":{"type":["string","null"]}},` +
-		`"required":["key","matchText","merchants","categoryKey"],"additionalProperties":false}}},"required":["rows"],"additionalProperties":false}`)}
+		`"key":{"type":"string"},"matchText":{"type":"string"},"merchants":{"type":"array","items":{"type":"string"}},"categoryKey":{"type":["string","null"]},"wellKnown":{"type":"boolean"}},` +
+		`"required":["key","matchText","merchants","categoryKey","wellKnown"],"additionalProperties":false}}},"required":["rows"],"additionalProperties":false}`)}
 
 	payeeSchema = &ai.Schema{Name: "import_payees", JSON: json.RawMessage(`{"type":"object","properties":{"rows":{"type":"array","items":{"type":"object","properties":{` +
 		`"key":{"type":"string"},"payeeKey":{"type":["string","null"]}},` +

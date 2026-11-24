@@ -553,6 +553,34 @@ func TestParseSuggestReplyCleansMerchants(t *testing.T) {
 	require.Empty(t, m["2"].Merchants)
 }
 
+func TestParseSuggestReplyWellKnown(t *testing.T) {
+	v, coffee, _, _, _ := sVocab()
+	m, err := parseSuggestReply(`{"rows":[` +
+		`{"key":"0","matchText":"WHOLEFDS","merchants":[" Whole Foods ","Whole Foods Market"],"wellKnown":true},` +
+		`{"key":"1","matchText":"LUNAS","merchants":["Luna's Cafe"]},` +
+		`{"key":"2","matchText":"CORNER SHOP","merchants":[],"wellKnown":true}]}`)
+	require.NoError(t, err)
+	require.True(t, m["0"].WellKnown)
+	require.False(t, m["1"].WellKnown)
+	rows := []suggestRow{
+		sRow(sLink("WHOLEFDS MKT 10234", "", time.Time{})),
+		sRow(sLink("LUNAS CORNER CAFE", "", time.Time{})),
+		sRow(sLink("CORNER SHOP 12", "", time.Time{})),
+	}
+	for k, r := range m {
+		r.CategoryID = coffee.ID
+		m[k] = r
+	}
+	got := validateReply(rows, m, v)
+	require.Len(t, got, 3)
+	require.True(t, got[0].WellKnown)
+	require.Equal(t, "Whole Foods", got[0].MerchantName)
+	require.False(t, got[1].WellKnown)
+	require.Equal(t, "Luna's Cafe", got[1].MerchantName)
+	require.True(t, got[2].WellKnown)
+	require.Equal(t, "", got[2].MerchantName)
+}
+
 func TestExactPayeeAcrossMerchantNames(t *testing.T) {
 	payees := namedList("Яндекс Такси", "Яндекс Плюс", "Перекрёсток")
 	id, ok := exactPayee([]string{"Яндекс Такси", "Yandex Taxi"}, "YANDEX*TAXI", payees)
