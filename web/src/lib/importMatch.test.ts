@@ -1,6 +1,6 @@
 import type { CreateTransactionDto } from '@/api/dto/transaction'
 import type { TransactionImportLinkDto } from '@/api/dto/imports'
-import { latestImportLink, normalizeMatchText, ruleDiff, suggestMatchValue } from './importMatch'
+import { latestImportLink, normalizeMatchText, ruleDiff, similarityText, suggestMatchValue } from './importMatch'
 
 const link = (over: Partial<TransactionImportLinkDto> = {}): TransactionImportLinkDto => ({
   id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -18,6 +18,16 @@ describe('normalizeMatchText', () => {
   it('trims and collapses whitespace runs exactly like the Go NormalizeText', () => {
     expect(normalizeMatchText('  BLUE   BOTTLE\t COFFEE \n')).toBe('BLUE BOTTLE COFFEE')
     expect(normalizeMatchText('')).toBe('')
+  })
+})
+
+describe('similarityText', () => {
+  it('lowercases, drops apostrophes and turns other punctuation into single spaces', () => {
+    expect(similarityText('  McDonald\u2019s ')).toBe('mcdonalds')
+    expect(similarityText("Trader Joe's")).toBe('trader joes')
+    expect(similarityText('Whole-Foods  Market!')).toBe('whole foods market')
+    expect(similarityText('7-Eleven')).toBe('7 eleven')
+    expect(similarityText('Яндекс.Такси')).toBe('яндекс такси')
   })
 })
 

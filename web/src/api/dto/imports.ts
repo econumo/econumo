@@ -244,6 +244,8 @@ export interface ImportSuggestionDto {
   type: 'income' | 'expense'
   categoryId: Id | ''
   payeeId: Id | ''
+  /** a payee to create on save, for a well-known merchant the owner has no payee for; '' when none (payeeId is then '') */
+  payeeName: string
   /** newest first */
   transactions: ImportSuggestionTransactionDto[]
 }

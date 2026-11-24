@@ -2,6 +2,8 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import * as importsApi from '@/api/imports'
+import * as payeeApi from '@/api/payee'
+import type { PayeeDto } from '@/api/dto/payee'
 import type { Id } from '@/api/types'
 import type {
   ImportProvider,
@@ -19,6 +21,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
 import { retryPolicy, type OwnErrorHandling } from '@/lib/appQueryClient'
 import { afterFailedPullSync, afterPullSync } from './sidebarSync'
+import { findSuggestedPayee } from './suggestionRule'
 
 // The queries reached from surfaces that exist with transaction import off
 // (the Inbox, the transaction dialogs) never fetch then: the server does not
@@ -55,6 +58,69 @@ export interface SuggestionChanges {
   changedMatch: boolean
   changedCategory: boolean
   changedPayee: boolean
+  /** the rule carries the payee the suggestion proposed, created by this save */
+  newPayee?: true
+}
+
+// Per suggestion: the create-payee operation id, minted once so a Save retried after a lost answer
+// is refused as a replay instead of making a second payee; whether a request went out with it
+// whose outcome is unknown; and whether the payee is one this suggestion's Save created. Module
+// level, so Cancel and a reopen of the prompt keep it; dropped once the suggestion is accepted.
+const suggestedPayees = new Map<Id, { opId: Id; unsettled: boolean; created: boolean }>()
+
+// The payee a suggestion proposes by name, created unless the owner already has one of that name.
+// create-payee answers a replayed operation id, and a name already taken, with a refusal and no
+// payee: after an answered refusal the fresh list is searched by name, and the refusal stands
+// only when the payee is not there.
+export function useCreateSuggestedPayee() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: async ({ suggestionId, name, ownerUserId }: { suggestionId: Id; name: string; ownerUserId: Id | undefined }): Promise<{ payee: PayeeDto; created: boolean }> => {
+      let op = suggestedPayees.get(suggestionId)
+      if (!op) {
+        op = { opId: uuidv7(), unsettled: false, created: false }
+        suggestedPayees.set(suggestionId, op)
+      }
+      // a Save before the list has loaded must still find a payee of that name: the server refuses
+      // only an exact one, so posting would make a second payee for the same merchant
+      const known = await queryClient.ensureQueryData({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList })
+      const cached = findSuggestedPayee(known, name, ownerUserId)
+      if (cached) {
+        return { payee: cached, created: op.created }
+      }
+      const retry = op.unsettled
+      op.unsettled = true
+      try {
+        const payee = await payeeApi.createPayee({ id: op.opId, name })
+        op.unsettled = false
+        op.created = true
+        trackEvent(METRICS.PAYEE_CREATE)
+        return { payee, created: true }
+      } catch (err) {
+        if (!isAxiosError(err) || err.response === undefined || err.response.status >= 500) {
+          throw err
+        }
+        op.unsettled = false
+        const fresh = await queryClient.fetchQuery({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList, staleTime: 0 }).catch(() => undefined)
+        const found = findSuggestedPayee(fresh, name, ownerUserId)
+        if (!found) {
+          throw err
+        }
+        // refused as a replay: the earlier request whose answer was lost made it
+        if (retry) {
+          op.created = true
+        }
+        return { payee: found, created: op.created }
+      }
+    },
+    onSuccess: ({ payee }) => {
+      queryClient.setQueryData<PayeeDto[]>(queryKeys.payees, (prev) => {
+        const items = prev ?? []
+        return items.some((p) => p.id === payee.id) ? items : [...items, payee]
+      })
+    },
+  })
 }
 
 // The AI's match text for an edited import. An empty answer (no AI) and a
@@ -105,6 +171,7 @@ export function useAcceptImportSuggestion() {
     },
     onSuccess: (_result, { id, changes }) => {
       acceptsSent.delete(id)
+      suggestedPayees.delete(id)
       for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
         void queryClient.invalidateQueries({ queryKey })
       }

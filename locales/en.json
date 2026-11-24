@@ -1030,6 +1030,7 @@
     "suggestions": {
       "dismiss": "Dismiss",
       "hint": "AI-suggested rules for automatically imported transactions. Tap one to review and save it.",
+      "new_payee": "{name} (new)",
       "prompt_summary": "Suggested for {count} transaction | Suggested for {count} transactions",
       "transactions": "{count} transaction | {count} transactions"
     }
@@ -1283,7 +1284,7 @@
             "promise": "Your financial and personal data stays private and is never sent to AI.",
             "imports_heading": "Imported transactions",
             "suggest_rules_label": "Suggest rules",
-            "suggest_fill_label": "Suggest category and payee"
+            "suggest_fill_label": "Assign category and payee automatically"
           }
         }
       }

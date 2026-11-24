@@ -1030,6 +1030,7 @@
     "suggestions": {
       "dismiss": "Verwerfen",
       "hint": "KI-vorgeschlagene Regeln für automatisch importierte Transaktionen. Tippen Sie auf eine, um sie zu prüfen und zu speichern.",
+      "new_payee": "{name} (neu)",
       "prompt_summary": "Vorgeschlagen für {count} Transaktion | Vorgeschlagen für {count} Transaktionen",
       "transactions": "{count} Transaktion | {count} Transaktionen"
     }
@@ -1283,7 +1284,7 @@
             "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und werden nicht an die KI übermittelt.",
             "imports_heading": "Importierte Transaktionen",
             "suggest_rules_label": "Regeln vorschlagen",
-            "suggest_fill_label": "Kategorie und Zahlungsempfänger vorschlagen"
+            "suggest_fill_label": "Kategorie und Zahlungsempfänger automatisch zuweisen"
           }
         }
       }

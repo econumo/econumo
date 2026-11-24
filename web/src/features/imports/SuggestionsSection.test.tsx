@@ -17,7 +17,7 @@ const category = fixtureCategories.find((c) => c.type === 'expense')!
 const payee = fixturePayees[0]
 
 const suggestion = (over: Partial<ImportSuggestionDto> = {}): ImportSuggestionDto => ({
-  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', type: 'expense', categoryId: category.id, payeeId: payee.id,
+  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', type: 'expense', categoryId: category.id, payeeId: payee.id, payeeName: '',
   transactions: [
     { transactionId: 't1', accountId: 'a1', amount: '4.75', currency: 'USD', date: '2026-09-03 10:00:00', externalPayee: 'BLUE BOTTLE #1' },
     { transactionId: 't2', accountId: 'a1', amount: '5.25', currency: 'USD', date: '2026-09-01 10:00:00', externalPayee: 'BLUE BOTTLE #2' },
@@ -81,6 +81,29 @@ it('dismiss removes the row and fires the metric', async () => {
   expect(screen.getByText('WHOLE FOODS')).toBeInTheDocument()
   expect(dismissed).toEqual([{ id: 'sg1' }])
   expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_DISMISS)
+})
+
+it('a payee the suggestion would create reads as new, and dismissing it creates nothing', async () => {
+  const created: unknown[] = []
+  server.use(http.post('*/api/v1/payee/create-payee', async ({ request }) => {
+    created.push(await request.json())
+    return HttpResponse.json({ success: false, message: 'unexpected', code: 0, errors: {} }, { status: 400 })
+  }))
+  const proposing = suggestion({ payeeId: '', payeeName: 'Blue Bottle' })
+  renderSection([proposing])
+  let dismissed = false
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', () => {
+      dismissed = true
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: dismissed ? [] : [proposing] } })),
+  )
+  expect(await screen.findByText(`→ ${category.name} · Blue Bottle (new)`)).toBeInTheDocument()
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Dismiss BLUE BOTTLE' }))
+  await waitFor(() => expect(screen.queryByText('BLUE BOTTLE')).not.toBeInTheDocument())
+  expect(created).toEqual([])
 })
 
 it('dismiss is disabled offline', async () => {

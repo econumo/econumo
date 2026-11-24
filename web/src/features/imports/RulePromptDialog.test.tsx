@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureCategories, fixturePayees, fixtureUser } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
 import { toast } from 'sonner'
@@ -361,7 +361,7 @@ it('a failed live count shows no count instead of loading forever', async () => 
 })
 
 const suggestion: ImportSuggestionDto = {
-  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', type: 'expense', categoryId: 'cat-food', payeeId: 'p1',
+  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', type: 'expense', categoryId: 'cat-food', payeeId: 'p1', payeeName: '',
   transactions: [
     { transactionId: 't1', accountId: 'a1', amount: '4.75', currency: 'USD', date: '2026-09-03 10:00:00', externalPayee: 'BLUE BOTTLE #1' },
     { transactionId: 't2', accountId: 'a1', amount: '5.25', currency: 'USD', date: '2026-09-01 10:00:00', externalPayee: 'BLUE BOTTLE #2' },
@@ -704,6 +704,206 @@ describe('suggestion mode', () => {
     await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Import suggestion not found'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(posted.accept).toHaveLength(1)
+  })
+
+  describe('a suggested new payee', () => {
+    let seq = 0
+    // each test its own suggestion: the operation id a Save mints is kept per suggestion
+    const proposing = (over: Partial<ImportSuggestionDto> = {}): ImportSuggestionDto =>
+      ({ ...suggestion, id: `sg-new-${++seq}`, payeeId: '', payeeName: 'Blue Bottle', ...over })
+    const refused = (message: string) => HttpResponse.json({ success: false, message, code: 0, errors: {} }, { status: 400 })
+
+    // like the server: the request id is the operation id and the payee gets its own; a repeated
+    // operation id and a name already taken are refused
+    function payeeServer(initial: Record<string, unknown>[] = fixturePayees, { loseFirst = false } = {}) {
+      const payees = [...initial]
+      const ops = new Set<string>()
+      let lose = loseFirst
+      server.use(
+        http.get('*/api/v1/payee/get-payee-list', () => HttpResponse.json({ success: true, message: '', data: { items: payees } })),
+        http.post('*/api/v1/payee/create-payee', async ({ request }) => {
+          const body = await request.json() as { id: string; name: string }
+          ;(posted.createPayee ??= []).push(body)
+          if (ops.has(body.id)) return refused('Operation is locked')
+          if (payees.some((p) => p.name === body.name)) return refused('Payee already exists.')
+          ops.add(body.id)
+          const item = { id: `payee-${payees.length + 1}`, ownerUserId: 'u1', name: body.name, position: payees.length, isArchived: 0, createdAt: '', updatedAt: '' }
+          payees.push(item)
+          if (lose) {
+            lose = false
+            return HttpResponse.error()
+          }
+          return HttpResponse.json({ success: true, message: '', data: { item } })
+        }),
+      )
+      return payees
+    }
+
+    const open = async (s: ImportSuggestionDto) => {
+      useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion: s })
+      await screen.findByRole('button', { name: 'Save' })
+      return userEvent.setup()
+    }
+
+    it('shows as new, and Save creates it, then the rule with its id, then accepts', async () => {
+      const queryClient = renderPrompt()
+      const payees = payeeServer()
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const s = proposing()
+      const user = await open(s)
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
+      expect(posted.createPayee).toBeUndefined()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toEqual([{ id: expect.any(String), name: 'Blue Bottle' }])
+      expect(payees).toHaveLength(2)
+      expect(posted.create).toHaveLength(1)
+      expect(posted.create![0]).toMatchObject({ categoryId: 'cat-food', payeeId: 'payee-2' })
+      expect(posted.accept).toEqual([{ id: s.id, ruleId: 'rule-new' }])
+      expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.payees)?.map((p) => p.id)).toContain('payee-2')
+      expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT,
+        { changedMatch: false, changedCategory: false, changedPayee: false, newPayee: true })
+    })
+
+    it('a Save retried after a lost create-payee answer sends the same id and makes no second payee', async () => {
+      renderPrompt()
+      const payees = payeeServer(fixturePayees, { loseFirst: true })
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(posted.createPayee).toHaveLength(1))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+      expect(posted.create).toBeUndefined()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const ids = (posted.createPayee as { id: string }[]).map((b) => b.id)
+      expect(ids).toHaveLength(2)
+      expect(ids[1]).toBe(ids[0])
+      expect(payees).toHaveLength(2)
+      expect(posted.create![0]).toMatchObject({ payeeId: 'payee-2' })
+      expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT, expect.objectContaining({ newPayee: true }))
+    })
+
+    it('a Save retried after a failed accept, Cancel and a reopen uses the payee it created', async () => {
+      renderPrompt()
+      const payees = payeeServer()
+      previewCounts(0, 0)
+      let fail = true
+      server.use(http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+        ;(posted.accept ??= []).push(await request.json())
+        if (fail) return refused('boom')
+        return HttpResponse.json({ success: true, message: '', data: { updated: 2 } })
+      }))
+      const s = proposing()
+      let user = await open(s)
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(posted.accept).toHaveLength(1))
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(useUiStore.getState().rulePrompt).toBeNull())
+      fail = false
+      user = await open(s)
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toHaveLength(1)
+      expect(payees).toHaveLength(2)
+      expect((posted.create as Record<string, unknown>[]).map((c) => c.payeeId)).toEqual(['payee-2', 'payee-2'])
+      expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT, expect.objectContaining({ newPayee: true }))
+    })
+
+    it('a payee of the same name already there is used instead of creating one', async () => {
+      renderPrompt()
+      payeeServer([...fixturePayees, { id: 'p-bb', ownerUserId: 'u1', name: 'blue-bottle', position: 1, isArchived: 0, createdAt: '', updatedAt: '' }])
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('blue-bottle'))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toBeUndefined()
+      expect(posted.create![0]).toMatchObject({ payeeId: 'p-bb' })
+      expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT,
+        { changedMatch: false, changedCategory: false, changedPayee: false })
+    })
+
+    it('a Save before the payee list has loaded still reuses a payee of that name', async () => {
+      renderPrompt()
+      payeeServer([...fixturePayees, { id: 'p-bb', ownerUserId: 'u1', name: 'blue-bottle', position: 1, isArchived: 0, createdAt: '', updatedAt: '' }])
+      const listed = [...fixturePayees, { id: 'p-bb', ownerUserId: 'u1', name: 'blue-bottle', position: 1, isArchived: 0, createdAt: '', updatedAt: '' }]
+      server.use(http.get('*/api/v1/payee/get-payee-list', async () => {
+        await new Promise((r) => setTimeout(r, 300))
+        return HttpResponse.json({ success: true, message: '', data: { items: listed } })
+      }))
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toBeUndefined()
+      expect(posted.create![0]).toMatchObject({ payeeId: 'p-bb' })
+    })
+
+    it('a payee of that name made elsewhere after the dialog opened is used when create-payee refuses it', async () => {
+      renderPrompt()
+      const payees = payeeServer()
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
+      payees.push({ id: 'p-other', ownerUserId: 'u1', name: 'Blue Bottle', position: 1, isArchived: 0, createdAt: '', updatedAt: '' })
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toHaveLength(1)
+      expect(payees).toHaveLength(2)
+      expect(posted.create![0]).toMatchObject({ payeeId: 'p-other' })
+      expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT,
+        { changedMatch: false, changedCategory: false, changedPayee: false })
+    })
+
+    it('picking another payee drops the new one', async () => {
+      renderPrompt()
+      const payees = payeeServer()
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing())
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
+      await user.click(screen.getByRole('combobox', { name: 'Payee' }))
+      await user.click(await screen.findByRole('option', { name: 'Grocer' }))
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Grocer'))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.createPayee).toBeUndefined()
+      expect(payees).toHaveLength(1)
+      expect(posted.create![0]).toMatchObject({ payeeId: 'p1' })
+      expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT,
+        { changedMatch: false, changedCategory: false, changedPayee: true })
+    })
+
+    it('with no category, Save is offered without a live count and saves a payee-only rule', async () => {
+      renderPrompt()
+      payeeServer()
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing({ categoryId: '' }))
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
+      await new Promise((r) => setTimeout(r, 400))
+      expect(posted.preview).toBeUndefined()
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.create![0]).toMatchObject({ categoryId: '', payeeId: 'payee-2' })
+    })
+
+    it('Cancel creates no payee', async () => {
+      renderPrompt()
+      payeeServer()
+      const user = await open(proposing())
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(useUiStore.getState().rulePrompt).toBeNull())
+      expect(posted.createPayee).toBeUndefined()
+      expect(posted.create).toBeUndefined()
+    })
   })
 
   it('cancel leaves the suggestion', async () => {

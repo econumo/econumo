@@ -1,4 +1,6 @@
 import type { ImportRuleDto, ImportRuleSpecDto } from '@/api/dto/imports'
+import type { Id } from '@/api/types'
+import { similarityText } from '@/lib/importMatch'
 
 // What the suggestion's dialog edits. A rule stored under the suggestion's id may have been edited
 // on the rules page since; its other fields (tag, labels, priority, source, case) are kept. The
@@ -22,4 +24,18 @@ export function ruleSpec(rule: ImportRuleDto): ImportRuleSpecDto {
     isCaseSensitive: rule.isCaseSensitive, categoryId: rule.categoryId, payeeId: rule.payeeId, tagId: rule.tagId,
     labelIds: rule.labelIds, priority: rule.priority,
   }
+}
+
+// The owner's payee a suggestion's new payee name already names, compared as the server compares
+// names. An active payee wins; an archived one is still the same payee, and creating it again
+// under that exact name would be refused.
+export function findSuggestedPayee<T extends { name: string; ownerUserId: Id; isArchived: 0 | 1 }>(
+  payees: T[] | undefined, name: string, ownerUserId: Id | undefined,
+): T | undefined {
+  const key = similarityText(name)
+  if (key === '') {
+    return undefined
+  }
+  const same = (payees ?? []).filter((p) => (!ownerUserId || p.ownerUserId === ownerUserId) && similarityText(p.name) === key)
+  return same.find((p) => !p.isArchived) ?? same[0]
 }

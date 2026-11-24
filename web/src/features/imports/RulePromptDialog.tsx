@@ -29,6 +29,7 @@ import {
   useAcceptImportSuggestion,
   useApplyImportRule,
   useCreateImportRule,
+  useCreateSuggestedPayee,
   useImportRules,
   useSuggestMatchText,
   usePreviewImportRule,
@@ -36,13 +37,15 @@ import {
 } from './queries'
 import { RuleCondition } from './RuleCondition'
 import { describeMatch } from './ruleSummary'
-import { ruleSpec, suggestionSpec } from './suggestionRule'
+import { findSuggestedPayee, ruleSpec, suggestionSpec } from './suggestionRule'
 
 const PREVIEW_DEBOUNCE_MS = 300
 // mirrors model.MaxImportRuleLabels — the server rejects a longer set
 const MAX_RULE_LABELS = 10
 
 const ALL_SCOPE: ImportRuleScopeDto = { scope: 'all', runId: '', scopeSourceId: '' }
+// the payee picker's entry for a suggested payee that does not exist yet; never sent
+const NEW_PAYEE = 'new-payee'
 
 type Step = 'define' | 'apply' | 'all'
 
@@ -365,44 +368,66 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const [matchValue, setMatchValue] = useState(suggestion.matchText)
   const [categoryId, setCategoryId] = useState(suggestion.categoryId)
   const [payeeId, setPayeeId] = useState(suggestion.payeeId)
+  // the suggested payee to create on Save; picking any payee drops it
+  const [newPayeeName, setNewPayeeName] = useState(suggestion.payeeName || '')
   const [step, setStep] = useState<'define' | 'all'>('define')
   const [ruleId, setRuleId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  const ownerId = user?.id
+  // a payee of that name made since the suggestion was written (or on another device) is used as is
+  const namedPayee = newPayeeName ? findSuggestedPayee(payees, newPayeeName, ownerId) : undefined
+  const knownPayeeId = newPayeeName ? namedPayee?.id ?? '' : payeeId
+
   const spec: ImportRuleSpecDto = useMemo(() => ({
     sourceId: '', action: 'classify', matchField, matchType, matchValue, isCaseSensitive: false,
-    categoryId, payeeId, tagId: '', labelIds: [], priority: 0,
-  }), [matchField, matchType, matchValue, categoryId, payeeId])
-  // the server refuses (and will not preview) a classify rule that sets nothing
-  const complete = spec.matchValue.trim() !== '' && (categoryId !== '' || payeeId !== '')
+    categoryId, payeeId: knownPayeeId, tagId: '', labelIds: [], priority: 0,
+  }), [matchField, matchType, matchValue, categoryId, knownPayeeId])
+  // the server refuses (and will not preview) a classify rule that sets nothing; a payee still to
+  // be created is set only once Save makes it, so it allows Save but no preview
+  const previewable = spec.matchValue.trim() !== '' && (categoryId !== '' || knownPayeeId !== '')
+  const complete = previewable || (spec.matchValue.trim() !== '' && newPayeeName !== '')
 
   const preview = usePreviewImportRule()
   const allPreview = usePreviewImportRule()
   const create = useCreateImportRule()
   const update = useUpdateImportRule()
   const accept = useAcceptImportSuggestion()
+  const createPayee = useCreateSuggestedPayee()
   const { mutate: runPreview } = preview
 
   useEffect(() => {
-    if (step !== 'define' || !complete) {
+    if (step !== 'define' || !previewable) {
       return
     }
     const handle = setTimeout(() => runPreview({ spec, scope: ALL_SCOPE }), PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(handle)
-  }, [spec, step, complete, runPreview])
+  }, [spec, step, previewable, runPreview])
 
-  const ownerId = user?.id
   const own = <T extends { ownerUserId: string }>(rows: T[]) => rows.filter((r) => !ownerId || r.ownerUserId === ownerId)
   const fieldLabel = matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')
   const typeLabel = t(`imports.rules.type.${matchType}`)
+  const payeeValue = newPayeeName && !namedPayee ? NEW_PAYEE : knownPayeeId
+  const payeeOptions = [
+    ...own(payees).filter((p) => !p.isArchived || p.id === knownPayeeId).map((p) => ({ value: p.id, label: p.name })),
+    ...(payeeValue === NEW_PAYEE ? [{ value: NEW_PAYEE, label: t('imports.suggestions.new_payee', { name: newPayeeName }) }] : []),
+  ]
 
   // The rule takes the suggestion's own id: a Save after a failed accept, a reload or a Cancel
   // replays the rule already stored (create-rule answers it as stored) and brings what this dialog
   // edits up to date, keeping what the rules page may have changed on it since, so one suggestion
   // never leaves two rules behind. A rule deleted meanwhile is simply created again under that id.
+  // A suggested new payee is created first, so the rule can name it.
   const saveAndAccept = async () => {
-    let rule = await create.mutateAsync({ spec, id: suggestion.id })
-    const changed = suggestionSpec(rule, spec)
+    let saving = spec
+    let newPayee = false
+    if (newPayeeName) {
+      const made = await createPayee.mutateAsync({ suggestionId: suggestion.id, name: newPayeeName, ownerUserId: ownerId })
+      saving = { ...spec, payeeId: made.payee.id }
+      newPayee = made.created
+    }
+    let rule = await create.mutateAsync({ spec: saving, id: suggestion.id })
+    const changed = suggestionSpec(rule, saving)
     if (changed) {
       rule = await update.mutateAsync({ id: rule.id, spec: changed })
     }
@@ -413,7 +438,8 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
       changes: {
         changedMatch: matchField !== suggestion.matchField || matchType !== 'contains' || matchValue !== suggestion.matchText,
         changedCategory: categoryId !== suggestion.categoryId,
-        changedPayee: payeeId !== suggestion.payeeId,
+        changedPayee: suggestion.payeeName ? newPayeeName === '' : payeeId !== suggestion.payeeId,
+        ...(newPayee ? { newPayee: true as const } : {}),
       },
     })
     return { accepted, stored: ruleSpec(rule) }
@@ -476,12 +502,18 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
             options={own(categories).filter((c) => (!c.isArchived || c.id === categoryId) && (!suggestion.type || c.type === suggestion.type)).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))} />
         </SelectCard>
         <SelectCard label={t('imports.rules.editor.payee')}>
-          <EntitySelect aria-label={t('imports.rules.editor.payee')} value={payeeId || null} clearable placeholder={t('imports.rules.editor.not_set')}
-            onChange={(id) => setPayeeId(id ?? '')}
-            options={own(payees).filter((p) => !p.isArchived || p.id === payeeId).map((p) => ({ value: p.id, label: p.name }))} />
+          <EntitySelect aria-label={t('imports.rules.editor.payee')} value={payeeValue || null} clearable placeholder={t('imports.rules.editor.not_set')}
+            onChange={(id) => {
+              if (id === NEW_PAYEE) {
+                return
+              }
+              setPayeeId(id ?? '')
+              setNewPayeeName('')
+            }}
+            options={payeeOptions} />
         </SelectCard>
         <p className="min-h-4 px-1 text-xs text-muted-foreground" aria-live="polite">
-          {!complete || preview.isError
+          {!previewable || preview.isError
             ? ''
             : preview.data === undefined || preview.isPending
               ? t('common.app.modal.loading.data_loading')
@@ -489,7 +521,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
         </p>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>{t('common.button.cancel.label')}</Button>
-          <Button type="button" disabled={busy || !online || !complete} onClick={() => void save()}>{t('common.button.save.label')}</Button>
+          <Button type="button" disabled={busy || !online || !complete || (newPayeeName !== '' && ownerId === undefined)} onClick={() => void save()}>{t('common.button.save.label')}</Button>
         </div>
       </div>
     </ResponsiveDialog>

@@ -1030,6 +1030,7 @@
     "suggestions": {
       "dismiss": "Descartar",
       "hint": "Reglas sugeridas por la IA para las transacciones importadas automáticamente. Toca una para revisarla y guardarla.",
+      "new_payee": "{name} (nuevo)",
       "prompt_summary": "Sugerida para {count} transacción | Sugerida para {count} transacciones",
       "transactions": "{count} transacción | {count} transacciones"
     }
@@ -1283,7 +1284,7 @@
             "promise": "Tus datos financieros y personales siguen siendo privados y no se envían a la IA.",
             "imports_heading": "Transacciones importadas",
             "suggest_rules_label": "Sugerir reglas",
-            "suggest_fill_label": "Sugerir categoría y beneficiario"
+            "suggest_fill_label": "Asignar categoría y beneficiario automáticamente"
           }
         }
       }

@@ -9,6 +9,19 @@ export function normalizeMatchText(s: string): string {
   return s.split(/\s+/).filter(Boolean).join(' ')
 }
 
+// Mirror of internal/imports.similarityText: how the server decides two payee names are the same.
+export function similarityText(s: string): string {
+  let out = ''
+  for (const ch of normalizeMatchText(s).toLowerCase()) {
+    if (/[\p{L}\p{Nd}]/u.test(ch)) {
+      out += ch
+    } else if (ch !== "'" && ch !== '\u2019') {
+      out += ' '
+    }
+  }
+  return normalizeMatchText(out)
+}
+
 const REGION_CODE = /^[A-Z]{2}$/
 const hasLetter = (token: string) => /\p{L}/u.test(token)
 

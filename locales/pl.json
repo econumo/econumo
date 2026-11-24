@@ -1030,6 +1030,7 @@
     "suggestions": {
       "dismiss": "Odrzuć",
       "hint": "Reguły zasugerowane przez AI dla automatycznie zaimportowanych transakcji. Dotknij reguły, aby ją przejrzeć i zapisać.",
+      "new_payee": "{name} (nowy)",
       "prompt_summary": "Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji",
       "transactions": "{count} transakcja | {count} transakcje | {count} transakcji"
     }
@@ -1283,7 +1284,7 @@
             "promise": "Twoje dane finansowe i osobowe pozostają prywatne i nie są przekazywane AI.",
             "imports_heading": "Zaimportowane transakcje",
             "suggest_rules_label": "Sugeruj reguły",
-            "suggest_fill_label": "Sugeruj kategorię i odbiorcę"
+            "suggest_fill_label": "Automatycznie przypisuj kategorię i odbiorcę"
           }
         }
       }

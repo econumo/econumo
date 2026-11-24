@@ -5,9 +5,11 @@ import { useUiStore } from '@/app/uiStore'
 import { Button } from '@/components/ui/button'
 import { useOnline } from '@/hooks/useOnline'
 import { useCategories, usePayees } from '@/features/classifications/queries'
+import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { pluralPick } from '@/lib/plural'
 import { useDismissImportSuggestion } from './queries'
+import { findSuggestedPayee } from './suggestionRule'
 
 export function SuggestionsSection({ suggestions }: { suggestions: ImportSuggestionDto[] }) {
   const { t, i18n } = useTranslation()
@@ -15,10 +17,15 @@ export function SuggestionsSection({ suggestions }: { suggestions: ImportSuggest
   const setRulePrompt = useUiStore((s) => s.setRulePrompt)
   const { data: categories = [] } = useCategories()
   const { data: payees = [] } = usePayees()
+  const { data: user } = useUserData()
   const dismiss = useDismissImportSuggestion()
 
+  const payeeName = (s: ImportSuggestionDto) =>
+    s.payeeName
+      ? findSuggestedPayee(payees, s.payeeName, user?.id)?.name ?? t('imports.suggestions.new_payee', { name: s.payeeName })
+      : payees.find((p) => p.id === s.payeeId)?.name
   const target = (s: ImportSuggestionDto) =>
-    [categories.find((c) => c.id === s.categoryId)?.name, payees.find((p) => p.id === s.payeeId)?.name].filter(Boolean).join(' · ')
+    [categories.find((c) => c.id === s.categoryId)?.name, payeeName(s)].filter(Boolean).join(' · ')
 
   return (
     <div className="flex flex-col gap-2">
