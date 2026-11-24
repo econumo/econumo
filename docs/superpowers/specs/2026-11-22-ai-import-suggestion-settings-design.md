@@ -1,6 +1,6 @@
 # AI import settings: automatic assignment and rule suggestions with new payees
 
-Date: 2026-11-22, revised 2026-11-23. Status: approved (revision 2), PR #501.
+Date: 2026-11-22, revised 2026-11-23. Status: approved (revision 2), implemented in PR #501.
 
 Builds on `2026-11-11-ai-import-rule-suggestions-design.md` (the AI rule-suggestion job, #473).
 Everything that spec says still holds unless this one changes it.

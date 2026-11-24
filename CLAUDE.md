@@ -518,7 +518,7 @@ Specs: `2026-11-13-debts-on-elements-design.md` (the current model),
 
 ### Transaction import (`internal/imports`)
 
-Spec `2026-08-15-transaction-import-design.md`. 36 routes under `/api/v1/import/`; no MCP
+Spec `2026-08-15-transaction-import-design.md`. 33 routes under `/api/v1/import/`; no MCP
 surface.
 
 - One `import_sources` row per user per provider. Apple Wallet is a push provider (scope
@@ -535,17 +535,18 @@ surface.
 - **AI rule suggestions** (spec `2026-11-11-ai-import-rule-suggestions-design.md`): after a
   live import leaves rows unclassified, a background job proposes a rule, landing in the
   owner's Inbox. One open suggestion per (owner, merchant, type); one owner's jobs run one at
-  a time. The same AI pass also proposes a category and payee per transaction
-  (`import_transaction_suggestions`, Inbox "Imported transactions", Fill in writes only empty
-  fields and reads as a hand edit to apply-rule; spec
-  `2026-11-22-ai-import-suggestion-settings-design.md`). The user options `ai_suggest_rules`
-  and `ai_suggest_fill` (`update-ai-suggestions`, absent = on) switch each kind; both off = no
-  AI call.
+  a time. The same AI pass also ASSIGNS the category and payee to those transactions (empty
+  fields only, under a transaction row lock, like a rule's write; recorded as `filled` rows of
+  `import_transaction_suggestions`, which keep an agreeing rule suggestion listed). A missing
+  payee is created only for a merchant the AI flags `wellKnown`; a rule suggestion may carry
+  such a name (`payee_name`), created when the user saves the rule. Spec
+  `2026-11-22-ai-import-suggestion-settings-design.md`. User options `ai_suggest_rules` and
+  `ai_suggest_fill` (assign; `update-ai-suggestions`, absent = on); both off = no AI call.
 
 ### AI integration (`internal/infra/ai`)
 
 Consumers: onboarding (savings detection, icons for imported or newly named categories and
-accounts) and imports (rule suggestions, `suggest-match-text`). System prompts are Markdown
+accounts) and imports (rule suggestions, automatic category/payee assignment, `suggest-match-text`). System prompts are Markdown
 files in the top-level `prompts/`; reply schemas live in `internal/{imports,onboarding}/prompts.go`.
 
 - **Data allowlist, every prompt**: category names and types; payee, tag, label and account
