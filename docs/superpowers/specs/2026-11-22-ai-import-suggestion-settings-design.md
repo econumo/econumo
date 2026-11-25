@@ -63,8 +63,8 @@ should still get one when it is a well-known brand.
 ## Approaches considered
 
 - **A. Write assignments inside the existing job (chosen).** The job already validates a
-  per-row category and payee; it writes them through the transaction update path, records them
-  in `import_transaction_suggestions` (status `filled`), and keeps rule suggestions alive
+  per-row category and payee; it writes them through the transaction update path, marks the
+  link `assigned_by = 'ai'`, and keeps rule suggestions alive
   through the existing agreement check. Small change on top of revision 1.
 - **B. A second job just for assignment.** Doubles AI calls. Rejected.
 - **C. Assign through auto-created rules.** Rejected earlier by the owner (suggestions for rules,
@@ -127,8 +127,7 @@ match text placeable, category of the right type), under the owner's job lock:
    and move the ledger's `applied_category_id` / `applied_payee_id` snapshot for the fields
    written (like a rule's write: a later apply-rule may replace them; `applied_rule_id` stays
    unset).
-4. Record `import_transaction_suggestions` (link, owner, the category and payee written, type,
-   status `filled`).
+4. Set the link's `assigned_by` to `'ai'` (same write as the applied snapshot).
 
 Rows the pre-AI reuse step attached to an open rule suggestion get that suggestion's
 category/payee assigned the same way (no AI call), limited to the fields the row lacks. With
@@ -157,11 +156,20 @@ suggestion then simply carries that `payee_id`.
 
 ## Storage
 
-- `import_transaction_suggestions` (migration `20261122000000`, unreleased): unchanged schema;
-  only `filled` rows are written now. `open` stays a valid status for rows written by earlier
-  builds of this branch (none in production).
-- `import_suggestions` gains `payee_name TEXT DEFAULT NULL`, in the same unreleased migration
-  `20261122000000` on both engines (*my call*: nothing outside this branch ran it).
+All in the unreleased migration `20261122000000` (both engines; *my call*: nothing outside this
+branch ran it):
+
+- `import_transaction_links` gains `assigned_by TEXT DEFAULT NULL` (decided by the owner,
+  2026-11-24): who wrote the transaction's current classification through the import system.
+  `'rule'`: an import rule at import time, apply-rule, or accepting a rule suggestion.
+  `'ai'`: automatic assignment. NULL: the import's own data, an adopted transaction, a queued
+  event the user filled in, a skip, or anything else. Every path that writes the applied
+  snapshot sets it in the same write (`setApplied` and its siblings). Backfill: `'rule'` where
+  `applied_rule_id IS NOT NULL AND transaction_id IS NOT NULL` (skip rows have no transaction).
+  Internal for now (no API field); it is what a future "AI"/"by rule" marker would read.
+- `import_suggestions` gains `payee_name TEXT DEFAULT NULL`.
+- Revision 1's `import_transaction_suggestions` table is dropped from the migration (it ended
+  up recording only which links the AI filled, which `assigned_by` now says).
 
 ## Removed from revision 1
 
@@ -176,7 +184,7 @@ The list's read-time cleanup is not needed: nothing is open any more.
 ## Interaction with Suggested rules
 
 `pendingSuggestionRows` keeps a row whose transaction has no empty field the rule suggestion
-sets when its link has a `filled` record and every field the suggestion sets equals the
+sets when its link is `assigned_by = 'ai'` and every field the suggestion sets equals the
 transaction's current value (revision 1's agreement check, unchanged). A suggestion's
 `payee_name` counts as "sets the payee"; it agrees when the transaction's payee has that name
 (normalised). Accepting such a suggestion has nothing to fill on those rows and releases them.
