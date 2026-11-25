@@ -257,3 +257,24 @@ func TestMCPHandEditsClearAssignedBy(t *testing.T) {
 		}
 	}
 }
+
+// A row that disagrees with the suggestion is never listed under it, even
+// once a hand edit has cleared the AI's marker and left a field empty.
+func TestHandEditDisagreeingRowLeavesTheSuggestion(t *testing.T) {
+	h := newHandEditHarness(t)
+	tx := h.tap("Blue Bottle")
+	if tx["categoryId"] != h.coffee || tx["payeeId"] == nil {
+		t.Fatalf("after the AI: %v", tx)
+	}
+	if got := h.suggestedTransactions(); len(got) != 1 {
+		t.Fatalf("suggested before the edit = %v", got)
+	}
+	tea := fixture.New(t, h.db).Category(fixture.Category{UserID: h.user, Name: "Tea"})
+	h.update(tx, map[string]any{"categoryId": tea, "payeeId": nil})
+	if got := h.assignedBy(tx["id"]); got != "NULL" {
+		t.Fatalf("assigned by = %s, want NULL", got)
+	}
+	if got := h.suggestedTransactions(); len(got) != 0 {
+		t.Fatalf("suggested after setting Tea and clearing the payee = %v, want none", got)
+	}
+}

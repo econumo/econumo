@@ -1076,7 +1076,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       category by hand removes it from that suggestion.
 - [ ] A hand edit after an AI fill 📱: change an auto-filled tap's category (or payee) by hand,
       then set it back to the value the AI chose: the tap is no longer listed under that Suggested
-      rules row. Editing only its description, amount, date or tag keeps it listed. The same holds
+      rules row. Giving it another category and clearing its payee also removes it (it never
+      comes back under a suggestion it disagrees with). Editing only its description, amount,
+      date or tag keeps it listed. The same holds
       for a category changed through the MCP `update_transaction` or `bulk_update_transactions`
       tools.
 - [ ] With both switches on and a Suggested rules row that sets only a payee (no category) for a

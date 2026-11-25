@@ -134,12 +134,13 @@ func TestSuggestionListDropsFilledTransactions(t *testing.T) {
 		t.Fatalf("list = %+v", items)
 	}
 
-	// one field still empty keeps the row pending
-	h.setTx(t, links[1].TransactionID, "category_id", other)
+	// one field still empty keeps an agreeing row pending
+	h.setTx(t, links[1].TransactionID, "category_id", cat)
 	if items = suggestionList(t, h, userA); len(items) != 1 || len(items[0].Transactions) != 1 {
 		t.Fatalf("list = %+v", items)
 	}
-	h.setTx(t, links[1].TransactionID, "payee_id", py)
+	// a disagreeing value drops it, though the payee is still empty
+	h.setTx(t, links[1].TransactionID, "category_id", other)
 	if items = suggestionList(t, h, userA); len(items) != 0 {
 		t.Fatalf("list = %+v", items)
 	}

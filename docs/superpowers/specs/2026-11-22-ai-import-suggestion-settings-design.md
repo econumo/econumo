@@ -197,6 +197,10 @@ sets when its link is `assigned_by = 'ai'` and every field the suggestion sets e
 transaction's current value (revision 1's agreement check, unchanged). A suggestion's
 `payee_name` counts as "sets the payee"; it agrees when the transaction's payee has that name
 (normalised). Accepting such a suggestion has nothing to fill on those rows and releases them.
+A row that still has an empty field the suggestion sets but carries a value that disagrees
+with it is never listed, whoever classified it (decided 2026-11-24: once a hand edit clears
+`assigned_by`, such a row would otherwise reappear, and accepting would write the
+suggestion's other field onto it).
 
 ## Suggested rules: saving a new payee
 

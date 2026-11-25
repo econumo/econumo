@@ -177,17 +177,16 @@ type suggestionLookup struct {
 // the caller owns, still of the suggestion's type (an edit can change it) and
 // still empty in a field the suggestion would set. A row the AI job filled in
 // (assigned_by 'ai') also stays while it carries every value the suggestion sets: the rule is
-// still worth offering for it. A filled row that carries a different value
-// than the suggestion sets counts against it and goes, even with another
-// field still empty. A new-payee name sets the payee and is carried by any
+// still worth offering for it. A row that carries a different value than the
+// suggestion sets counts against it and goes, even with another field still
+// empty and whoever classified it. A new-payee name sets the payee and is carried by any
 // payee of that name (normalized).
 func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, payee suggestionPayee, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
 	type pending struct {
 		live *model.Transaction
 		link *model.ImportTransactionLink
 	}
-	// agreeing rows stay only when the AI filled them; disputed ones only when it did not
-	var kept, agreeing, disputed []pending
+	var kept []pending
 	for _, linkID := range sg.LinkIDs {
 		l, live, err := s.suggestionTargetCached(ctx, userID, linkID, look.owned)
 		if err != nil {
@@ -196,26 +195,16 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		if live == nil || live.Type != sg.Type {
 			continue
 		}
-		p := pending{live: live, link: l}
 		wantsCategory := sg.CategoryID != nil && live.CategoryID == nil && categoryFits(*sg.CategoryID, income, live.Type)
 		wantsPayee := (sg.PayeeID != nil || sg.PayeeName != nil) && live.PayeeID == nil
-		switch {
-		case (wantsCategory || wantsPayee) && carriedAgrees(sg.CategoryID, live.CategoryID) && (live.PayeeID == nil || payee.agrees(live.PayeeID)):
-			kept = append(kept, p)
-		case wantsCategory || wantsPayee:
-			disputed = append(disputed, p)
-		case agrees(sg.CategoryID, live.CategoryID) && payee.agrees(live.PayeeID):
-			agreeing = append(agreeing, p)
+		var keep bool
+		if wantsCategory || wantsPayee {
+			keep = carriedAgrees(sg.CategoryID, live.CategoryID) && (live.PayeeID == nil || payee.agrees(live.PayeeID))
+		} else {
+			keep = l.AssignedBy == model.ImportAssignedByAI && agrees(sg.CategoryID, live.CategoryID) && payee.agrees(live.PayeeID)
 		}
-	}
-	for _, p := range agreeing {
-		if p.link.AssignedBy == model.ImportAssignedByAI {
-			kept = append(kept, p)
-		}
-	}
-	for _, p := range disputed {
-		if p.link.AssignedBy != model.ImportAssignedByAI {
-			kept = append(kept, p)
+		if keep {
+			kept = append(kept, pending{live: live, link: l})
 		}
 	}
 	if len(kept) == 0 {
