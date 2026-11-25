@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+const clearImportTransactionLinksAssignedBy = `-- name: ClearImportTransactionLinksAssignedBy :exec
+UPDATE import_transaction_links SET assigned_by = NULL
+WHERE transaction_id = $1 AND assigned_by IS NOT NULL
+`
+
+// A hand edit of the transaction's category or payee: nobody but the user
+// classified it any more.
+func (q *Queries) ClearImportTransactionLinksAssignedBy(ctx context.Context, transactionID *string) error {
+	_, err := q.db.ExecContext(ctx, clearImportTransactionLinksAssignedBy, transactionID)
+	return err
+}
+
 const deleteImportAccountLink = `-- name: DeleteImportAccountLink :exec
 DELETE FROM import_account_links WHERE id = $1
 `

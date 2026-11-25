@@ -248,14 +248,16 @@ var _ imports.TransactionLister = (*ImportsTransactionLister)(nil)
 
 type importsTransactionWriterSource interface {
 	CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error)
-	UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
-	UpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
+	AutomatedUpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
+	AutomatedUpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
 }
 
 // importsTransactionAdapter is the transaction feature's create/update
-// use cases, narrowed to what an import touches. Update goes through the
-// labels-preserving variant: a tip amount correction changes only the
-// amount, never the reporting labels the user attached by hand.
+// use cases, narrowed to what an import touches. Updates are the automated
+// variants: the importer's writes are not hand edits, so they leave
+// assigned_by to the importer. Update goes through the labels-preserving
+// variant: a tip amount correction changes only the amount, never the
+// reporting labels the user attached by hand.
 type importsTransactionAdapter struct {
 	svc importsTransactionWriterSource
 }
@@ -269,14 +271,14 @@ func (a importsTransactionAdapter) CreateTransaction(ctx context.Context, userID
 }
 
 func (a importsTransactionAdapter) UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
-	return a.svc.UpdateTransactionPreservingLabels(ctx, userID, req)
+	return a.svc.AutomatedUpdateTransactionPreservingLabels(ctx, userID, req)
 }
 
 // UpdateTransactionReplacingLabels is the apply-rule path: the rule's label
 // set is the user's intent, so it replaces whatever the transaction carries
 // instead of preserving it the way a tip amount fix does.
 func (a importsTransactionAdapter) UpdateTransactionReplacingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
-	return a.svc.UpdateTransaction(ctx, userID, req)
+	return a.svc.AutomatedUpdateTransaction(ctx, userID, req)
 }
 
 var _ imports.TransactionWriter = importsTransactionAdapter{}

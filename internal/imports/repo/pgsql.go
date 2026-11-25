@@ -55,6 +55,10 @@ func (pgsqlQuerier) GetImportTransactionLinkByExternalKey(ctx context.Context, d
 	return linkRow(l), err
 }
 
+func (pgsqlQuerier) ClearImportTransactionLinksAssignedBy(ctx context.Context, db backend.DBTX, transactionID *string) error {
+	return pgsqlgen.New(db).ClearImportTransactionLinksAssignedBy(ctx, transactionID)
+}
+
 func (pgsqlQuerier) ListImportTransactionLinksByTransaction(ctx context.Context, db backend.DBTX, transactionID *string) ([]linkRow, error) {
 	rows, err := pgsqlgen.New(db).ListImportTransactionLinksByTransaction(ctx, transactionID)
 	if err != nil {

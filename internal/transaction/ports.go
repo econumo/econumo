@@ -26,6 +26,14 @@ type ImportIconReviewer interface {
 	ReviewImportedIcons(ctx context.Context, userID vo.Id, categoryIDs, accountIDs []vo.Id)
 }
 
+// ReclassificationListener is told, inside the edit's DB transaction, about
+// every transaction whose category or payee the user changed by hand. An
+// error rolls the edit back. Writes made on the user's behalf by automation
+// (the importer's rules and AI) are never reported.
+type ReclassificationListener interface {
+	ReclassifiedByHand(ctx context.Context, transactionID vo.Id) error
+}
+
 // UserLookup resolves the author (id, name, avatar).
 type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)

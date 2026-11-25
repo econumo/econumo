@@ -40,6 +40,7 @@ type Service struct {
 	ops      port.OperationGuard
 	clock    port.Clock
 	icons    ImportIconReviewer
+	reclass  ReclassificationListener
 }
 
 // NewService wires the transaction service.
@@ -63,6 +64,26 @@ func NewService(
 // SetImportIconReviewer starts the AI icon review after each CSV import; nil
 // (the default) starts none.
 func (s *Service) SetImportIconReviewer(r ImportIconReviewer) { s.icons = r }
+
+// SetReclassificationListener reports hand edits of a category or payee; nil
+// (the default) reports none.
+func (s *Service) SetReclassificationListener(l ReclassificationListener) { s.reclass = l }
+
+// reportHandReclassification tells the listener when a hand edit moved the
+// transaction's category or payee.
+func (s *Service) reportHandReclassification(ctx context.Context, t *model.Transaction, oldCategory, oldPayee *vo.Id) error {
+	if s.reclass == nil || (sameID(oldCategory, t.CategoryID) && sameID(oldPayee, t.PayeeID)) {
+		return nil
+	}
+	return s.reclass.ReclassifiedByHand(ctx, t.ID)
+}
+
+func sameID(a, b *vo.Id) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(*b)
+}
 
 // party is one side of a transaction: the account and the request field that
 // names it, so a rejection points at the field the caller sent.

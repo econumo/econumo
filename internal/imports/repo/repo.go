@@ -71,6 +71,7 @@ type querier interface {
 	InsertImportTransactionLink(ctx context.Context, db backend.DBTX, p insertLinkParams) error
 	GetImportTransactionLinkByExternalKey(ctx context.Context, db backend.DBTX, p linkByExternalKeyPs) (linkRow, error)
 	ListImportTransactionLinksByTransaction(ctx context.Context, db backend.DBTX, transactionID *string) ([]linkRow, error)
+	ClearImportTransactionLinksAssignedBy(ctx context.Context, db backend.DBTX, transactionID *string) error
 
 	GetImportSourceByUserProvider(ctx context.Context, db backend.DBTX, p sourceByUserProviderPs) (sourceRow, error)
 	ListImportSourcesByUser(ctx context.Context, db backend.DBTX, userID string) ([]sourceRow, error)
@@ -369,6 +370,13 @@ func (r *Repo) GetLinkByExternalKey(ctx context.Context, sourceID vo.Id, externa
 		return nil, err
 	}
 	return linkFromRow(row)
+}
+
+// ClearAssignedByTransaction forgets who classified every link of the
+// transaction: the user has just reclassified it by hand.
+func (r *Repo) ClearAssignedByTransaction(ctx context.Context, transactionID vo.Id) error {
+	id := transactionID.String()
+	return r.q.ClearImportTransactionLinksAssignedBy(ctx, r.db(ctx), &id)
 }
 
 func (r *Repo) ListLinksByTransaction(ctx context.Context, transactionID vo.Id) ([]model.ImportTransactionLink, error) {

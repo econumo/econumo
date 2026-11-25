@@ -949,3 +949,34 @@ func TestLinkAssignedByRoundTrip(t *testing.T) {
 		t.Fatalf("cleared = %v, %v, want NULL", raw, err)
 	}
 }
+
+// Every link of the hand-edited transaction loses its marker; another
+// transaction's link keeps its own.
+func TestClearAssignedByTransaction(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	srcID := f.ImportSource(fixture.ImportSource{UserID: userA, Name: "iPhone"})
+	edited := vo.MustParseId(f.Transaction(fixture.Transaction{UserID: userA, AccountID: acct1, Type: 0, Amount: "4.50000000", Description: "coffee"}))
+	other := vo.MustParseId(f.Transaction(fixture.Transaction{UserID: userA, AccountID: acct1, Type: 0, Amount: "3.00000000", Description: "tea"}))
+	byAI := newLink(srcID, "tap", &edited, model.ImportLinkStatusLinked)
+	byAI.AssignedBy = model.ImportAssignedByAI
+	byRule := newLink(srcID, "bank", &edited, model.ImportLinkStatusLinked)
+	byRule.AssignedBy = model.ImportAssignedByRule
+	untouched := newLink(srcID, "elsewhere", &other, model.ImportLinkStatusLinked)
+	untouched.AssignedBy = model.ImportAssignedByAI
+	for _, l := range []*model.ImportTransactionLink{byAI, byRule, untouched} {
+		if err := repo.InsertLink(ctx, l); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repo.ClearAssignedByTransaction(ctx, edited); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[vo.Id]model.ImportAssignedBy{byAI.ID: model.ImportAssignedByNone, byRule.ID: model.ImportAssignedByNone, untouched.ID: model.ImportAssignedByAI} {
+		l, err := repo.GetLink(ctx, id)
+		if err != nil || l.AssignedBy != want {
+			t.Fatalf("link %s assigned by = %v, %v; want %q", id, l, err, want)
+		}
+	}
+}

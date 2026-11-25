@@ -117,9 +117,13 @@ func (s *Service) BulkUpdateTransactions(ctx context.Context, userID vo.Id, req 
 			if rerr := s.checkReferences(ctx, userID, &st, nil, t); rerr != nil {
 				return rerr
 			}
+			oldCategory, oldPayee := t.CategoryID, t.PayeeID
 			t.Update(st, now)
 			if serr := s.repo.Save(ctx, t); serr != nil {
 				return serr
+			}
+			if herr := s.reportHandReclassification(ctx, t, oldCategory, oldPayee); herr != nil {
+				return herr
 			}
 		}
 		return nil

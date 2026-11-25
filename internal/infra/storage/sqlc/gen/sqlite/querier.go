@@ -16,6 +16,9 @@ type Querier interface {
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error)
+	// A hand edit of the transaction's category or payee: nobody but the user
+	// classified it any more.
+	ClearImportTransactionLinksAssignedBy(ctx context.Context, transactionID *string) error
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)

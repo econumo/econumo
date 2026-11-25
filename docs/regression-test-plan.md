@@ -1074,6 +1074,11 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       are filled AND listed under Suggested rules ("<n> transactions"); saving the rule fills
       nothing more on them and closes with no "Updated 0 transactions" toast. Changing one tap's
       category by hand removes it from that suggestion.
+- [ ] A hand edit after an AI fill 📱: change an auto-filled tap's category (or payee) by hand,
+      then set it back to the value the AI chose: the tap is no longer listed under that Suggested
+      rules row. Editing only its description, amount, date or tag keeps it listed. The same holds
+      for a category changed through the MCP `update_transaction` or `bulk_update_transactions`
+      tools.
 - [ ] With both switches on and a Suggested rules row that sets only a payee (no category) for a
       merchant, a new tap there still gets a category within about a minute and is listed under
       that row; with "Auto-categorize" off it is only listed, with no AI call. 📱

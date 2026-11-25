@@ -24,9 +24,10 @@ func parseSpentAt(v string) (time.Time, error) {
 // UpdateTransaction applies a full update to the transaction (access required on
 // the target account) and returns it plus the refreshed account list. This is
 // the REST contract: req.LabelIds fully replaces the label set, same as
-// categoryId/payeeId/tagId (omitting it clears).
+// categoryId/payeeId/tagId (omitting it clears). It is a hand edit: a changed
+// category or payee is reported to the ReclassificationListener.
 func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
-	return s.updateTransaction(ctx, userID, req, false)
+	return s.updateTransaction(ctx, userID, req, updateMode{handEdit: true})
 }
 
 // UpdateTransactionPreservingLabels is UpdateTransaction except the
@@ -38,10 +39,27 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 // label_ids (including an explicit empty list), MCP calls plain
 // UpdateTransaction instead.
 func (s *Service) UpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
-	return s.updateTransaction(ctx, userID, req, true)
+	return s.updateTransaction(ctx, userID, req, updateMode{preserveLabels: true, handEdit: true})
 }
 
-func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest, preserveLabels bool) (*model.UpdateTransactionResult, error) {
+// AutomatedUpdateTransaction and AutomatedUpdateTransactionPreservingLabels
+// are the same writes made by automation on the user's behalf (the importer's
+// rules, accepted suggestions and AI): they are not hand edits, so nothing is
+// reported to the ReclassificationListener.
+func (s *Service) AutomatedUpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	return s.updateTransaction(ctx, userID, req, updateMode{})
+}
+
+func (s *Service) AutomatedUpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	return s.updateTransaction(ctx, userID, req, updateMode{preserveLabels: true})
+}
+
+type updateMode struct {
+	preserveLabels bool
+	handEdit       bool
+}
+
+func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest, mode updateMode) (*model.UpdateTransactionResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -79,7 +97,7 @@ func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model
 			return aerr
 		}
 		labelIDs := req.LabelIds
-		if preserveLabels {
+		if mode.preserveLabels {
 			// Seed with what's ACTUALLY persisted (not req.LabelIds, which the
 			// preserving caller never populates), so checkReferences's full
 			// replace below ends up replacing the label set with itself — a
@@ -111,6 +129,7 @@ func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model
 		// As in create, this runs after every write-access check.
 		oldParties := partySet(t)
 		oldSpentAt := t.SpentAt
+		oldCategory, oldPayee := t.CategoryID, t.PayeeID
 		for _, p := range stateParties(&st) {
 			if containsID(oldParties, p.id) {
 				continue
@@ -125,6 +144,11 @@ func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model
 		}
 		if lerr := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); lerr != nil {
 			return lerr
+		}
+		if mode.handEdit {
+			if herr := s.reportHandReclassification(ctx, t, oldCategory, oldPayee); herr != nil {
+				return herr
+			}
 		}
 		// Re-zero every deleted account the edit could have moved. An account
 		// that is still a party takes the NEW spent_at; one the edit swapped out

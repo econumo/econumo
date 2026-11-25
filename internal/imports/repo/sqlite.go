@@ -51,6 +51,10 @@ func (sqliteQuerier) GetImportTransactionLinkByExternalKey(ctx context.Context, 
 	return sqlitegen.New(db).GetImportTransactionLinkByExternalKey(ctx, p)
 }
 
+func (sqliteQuerier) ClearImportTransactionLinksAssignedBy(ctx context.Context, db backend.DBTX, transactionID *string) error {
+	return sqlitegen.New(db).ClearImportTransactionLinksAssignedBy(ctx, transactionID)
+}
+
 func (sqliteQuerier) ListImportTransactionLinksByTransaction(ctx context.Context, db backend.DBTX, transactionID *string) ([]linkRow, error) {
 	return sqlitegen.New(db).ListImportTransactionLinksByTransaction(ctx, transactionID)
 }

@@ -52,6 +52,12 @@ SELECT id, source_id, run_id, event_id, external_account_id, external_transactio
 FROM import_transaction_links
 WHERE source_id = sqlc.arg(source_id) AND lower(external_account_id) = lower(sqlc.arg(external_account_id)) AND external_transaction_id = sqlc.arg(external_transaction_id);
 
+-- name: ClearImportTransactionLinksAssignedBy :exec
+-- A hand edit of the transaction's category or payee: nobody but the user
+-- classified it any more.
+UPDATE import_transaction_links SET assigned_by = NULL
+WHERE transaction_id = ? AND assigned_by IS NOT NULL;
+
 -- name: ListImportTransactionLinksByTransaction :many
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links

@@ -291,18 +291,19 @@ func (s *stubTxWriter) CreateTransaction(context.Context, vo.Id, model.CreateTra
 	return &model.CreateTransactionResult{}, nil
 }
 
-func (s *stubTxWriter) UpdateTransaction(context.Context, vo.Id, model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+func (s *stubTxWriter) AutomatedUpdateTransaction(context.Context, vo.Id, model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	s.calls = append(s.calls, "update")
 	return &model.UpdateTransactionResult{}, nil
 }
 
-func (s *stubTxWriter) UpdateTransactionPreservingLabels(context.Context, vo.Id, model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+func (s *stubTxWriter) AutomatedUpdateTransactionPreservingLabels(context.Context, vo.Id, model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	s.calls = append(s.calls, "preserving")
 	return &model.UpdateTransactionResult{}, nil
 }
 
 // The two update paths must not collapse into one: an amount fix keeps the
-// user's labels, while applying a rule replaces them.
+// user's labels, while applying a rule replaces them. Both are the automated
+// variants, never a hand edit that would clear assigned_by.
 func TestImportsTransactionWriter_UpdateVariants(t *testing.T) {
 	ctx, svc := context.Background(), &stubTxWriter{}
 	w := NewImportsTransactionWriter(svc)

@@ -497,6 +497,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
 	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)
+	transactionSvc.SetReclassificationListener(NewTransactionReclassifiedImports(importsRepo))
 	importsSvc := appimports.NewService(
 		importsRepo,
 		NewImportsAccountReader(accountSvc, accountAccessResolver, currencyLookup),
