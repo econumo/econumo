@@ -215,7 +215,7 @@ it('shows when a subscription renews instead of when its access ends', async () 
   )
   mockViewport(false)
   renderPage()
-  expect(await screen.findByText('Renews 24th December 2099')).toBeInTheDocument()
+  expect(await screen.findByText('Renews December 24, 2099')).toBeInTheDocument()
   expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
 })
 
@@ -262,7 +262,7 @@ it('holds the subscription hint until billing access has answered', async () => 
   await new Promise((r) => setTimeout(r, 50))
   expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
   release()
-  expect(await screen.findByText('Renews 24th December 2099')).toBeInTheDocument()
+  expect(await screen.findByText('Renews December 24, 2099')).toBeInTheDocument()
 })
 
 it('shows the scheduled end of a cancelled subscription', async () => {
@@ -279,7 +279,7 @@ it('shows the scheduled end of a cancelled subscription', async () => {
   )
   mockViewport(false)
   renderPage()
-  expect(await screen.findByText('Subscription ends 24th December 2099')).toBeInTheDocument()
+  expect(await screen.findByText('Subscription ends December 24, 2099')).toBeInTheDocument()
   expect(screen.queryByText(/Renews/)).not.toBeInTheDocument()
 })
 
@@ -288,7 +288,7 @@ it('keeps the trial hint while billing access is unavailable', async () => {
   server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' } }))
   mockViewport(false)
   renderPage()
-  expect(await screen.findByText('Subscription ends 31st December 2099')).toBeInTheDocument()
+  expect(await screen.findByText('Subscription ends December 31, 2099')).toBeInTheDocument()
 })
 
 it('shows the read-only status hint', async () => {
