@@ -495,6 +495,9 @@ type Querier interface {
 	// row first has committed by the time the guard's EXISTS runs, and one that
 	// comes later waits and then finds the row gone.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
+	// A hand edit reads the transaction and writes it back whole: the row lock
+	// keeps a concurrent write (the import AI job) from landing in between.
+	LockTransactionRow(ctx context.Context, id string) error
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
 	// no-op UPDATE took (it touched no key column), without writing a tuple

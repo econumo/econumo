@@ -165,6 +165,17 @@ func (q *Queries) ListTransactionsByAccount(ctx context.Context, accountID strin
 	return items, nil
 }
 
+const lockTransactionRow = `-- name: LockTransactionRow :exec
+SELECT id FROM transactions WHERE id = $1 FOR UPDATE
+`
+
+// A hand edit reads the transaction and writes it back whole: the row lock
+// keeps a concurrent write (the import AI job) from landing in between.
+func (q *Queries) LockTransactionRow(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, lockTransactionRow, id)
+	return err
+}
+
 const upsertTransaction = `-- name: UpsertTransaction :exec
 INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)

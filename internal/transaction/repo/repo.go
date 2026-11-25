@@ -34,6 +34,7 @@ type (
 
 type querier interface {
 	GetTransactionByID(ctx context.Context, db backend.DBTX, id string) (txRow, error)
+	LockTransactionRow(ctx context.Context, db backend.DBTX, id string) error
 	UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error
 	LinkTransactionToRecurring(ctx context.Context, db backend.DBTX, p linkParams) error
 	DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error
@@ -91,6 +92,10 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error
 		return nil, err
 	}
 	return hydrate(row)
+}
+
+func (r *Repo) LockRow(ctx context.Context, id vo.Id) error {
+	return r.q.LockTransactionRow(ctx, r.db(ctx), id.String())
 }
 
 // Save upserts a transaction. A re-save may move the row to other accounts, so
@@ -646,6 +651,9 @@ type sqliteQuerier struct{}
 func (sqliteQuerier) GetTransactionByID(ctx context.Context, db backend.DBTX, id string) (txRow, error) {
 	return sqlitegen.New(db).GetTransactionByID(ctx, id)
 }
+func (sqliteQuerier) LockTransactionRow(context.Context, backend.DBTX, string) error {
+	return nil
+}
 func (sqliteQuerier) UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error {
 	return sqlitegen.New(db).UpsertTransaction(ctx, p)
 }
@@ -673,6 +681,9 @@ type pgsqlQuerier struct{}
 func (pgsqlQuerier) GetTransactionByID(ctx context.Context, db backend.DBTX, id string) (txRow, error) {
 	t, err := pgsqlgen.New(db).GetTransactionByID(ctx, id)
 	return txRow(t), err
+}
+func (pgsqlQuerier) LockTransactionRow(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).LockTransactionRow(ctx, id)
 }
 func (pgsqlQuerier) UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error {
 	return pgsqlgen.New(db).UpsertTransaction(ctx, pgsqlgen.UpsertTransactionParams(p))

@@ -86,6 +86,14 @@ func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model
 		if aerr := s.checkWriteAccess(ctx, userID, accountID, "account.account.not_available"); aerr != nil {
 			return aerr
 		}
+		// A hand edit compares the stored category and payee with its own: the
+		// row lock makes it read what a concurrent writer (the import AI job,
+		// which holds the same lock) committed instead of a stale row.
+		if mode.handEdit {
+			if lerr := s.repo.LockRow(ctx, id); lerr != nil {
+				return lerr
+			}
+		}
 		t, gerr := s.repo.GetByID(ctx, id)
 		if gerr != nil {
 			return gerr

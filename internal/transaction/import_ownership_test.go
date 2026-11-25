@@ -104,7 +104,8 @@ type stubImportRepo struct {
 	replaceLabelsCalls []vo.Id
 }
 
-func (r *stubImportRepo) NextIdentity() vo.Id { return vo.NewId() }
+func (r *stubImportRepo) NextIdentity() vo.Id                  { return vo.NewId() }
+func (r *stubImportRepo) LockRow(context.Context, vo.Id) error { return nil }
 func (r *stubImportRepo) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
 	return nil, nil
 }

@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"context"
+	"slices"
+	"strings"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -72,7 +74,16 @@ func (s *Service) BulkUpdateTransactions(ctx context.Context, userID vo.Id, req 
 		newTagID = &id
 	}
 
+	locks := slices.Clone(ids)
+	slices.SortFunc(locks, func(a, b vo.Id) int { return strings.Compare(a.String(), b.String()) })
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// Locked in id order before any read, as a single update does, so two
+		// overlapping bulk edits cannot deadlock.
+		for _, id := range locks {
+			if lerr := s.repo.LockRow(ctx, id); lerr != nil {
+				return lerr
+			}
+		}
 		now := s.clock.Now()
 		for _, id := range ids {
 			t, gerr := s.repo.GetByID(ctx, id)

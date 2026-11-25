@@ -17,6 +17,11 @@ type Repository interface {
 
 	GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error)
 
+	// LockRow holds the transaction's row until the caller's DB transaction
+	// ends (FOR UPDATE on PostgreSQL; SQLite serializes writers). A missing
+	// row locks nothing.
+	LockRow(ctx context.Context, id vo.Id) error
+
 	Save(ctx context.Context, t *model.Transaction) error
 
 	// LinkRecurring stamps recurring_id on an existing transaction. A dedicated

@@ -36,6 +36,13 @@ import (
 // including cross-feature owned-entity checks.
 func newWriteService(t *testing.T, db *dbtest.DB) *apptransaction.Service {
 	t.Helper()
+	return newWriteServiceWithRepo(t, db, nil)
+}
+
+// newWriteServiceWithRepo is newWriteService with the service's repository
+// wrapped by wrap (nil keeps the real one).
+func newWriteServiceWithRepo(t *testing.T, db *dbtest.DB, wrap func(apptransaction.Repository) apptransaction.Repository) *apptransaction.Service {
+	t.Helper()
 	txm := db.TX
 	curLookup := currencyrepo.New(db.Engine, txm)
 	accessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm))
@@ -60,8 +67,12 @@ func newWriteService(t *testing.T, db *dbtest.DB) *apptransaction.Service {
 	txImportPayees := server.NewTransactionImportPayees(pySvc, pyRepo)
 	txImportLabels := server.NewTransactionImportLabels(labelSvc, labelRepo)
 	txImport := transactionrepo.NewImportLookup(txImportAccounts, accessResolver, txImportCategories, txImportPayees, txImportTags, txImportLabels, txRepo)
+	var repo apptransaction.Repository = txRepo
+	if wrap != nil {
+		repo = wrap(txRepo)
+	}
 	return apptransaction.NewService(
-		txRepo, accSvc, accessResolver, accSvc,
+		repo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
 		txExport, txImport, nil, server.NewTransactionAccountZeroer(accSvc), txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)

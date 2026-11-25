@@ -182,3 +182,83 @@ func TestBulkUpdateTransactionsReportsHandReclassifications(t *testing.T) {
 		})
 	}
 }
+
+// orderRepo records the calls that matter for the hand-edit row lock.
+type orderRepo struct {
+	apptransaction.Repository
+	calls []string
+}
+
+func (r *orderRepo) LockRow(ctx context.Context, id vo.Id) error {
+	r.calls = append(r.calls, "LockRow "+id.String())
+	return r.Repository.LockRow(ctx, id)
+}
+
+func (r *orderRepo) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
+	r.calls = append(r.calls, "GetByID "+id.String())
+	return r.Repository.GetByID(ctx, id)
+}
+
+// A hand edit locks the transaction row before it reads it, so the category
+// and payee it compares are the ones a concurrent writer (the import AI job)
+// committed. The race itself needs two connections (handedit_pgsql_test.go);
+// this is the engine-independent guard on the order.
+func TestHandEditsLockTheRowBeforeReadingIt(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	account := f.Account(fixture.Account{UserID: userID})
+	category := f.Category(fixture.Category{UserID: userID, Type: 0})
+	rec := &orderRepo{}
+	svc := newWriteServiceWithRepo(t, db, func(r apptransaction.Repository) apptransaction.Repository {
+		rec.Repository = r
+		return rec
+	})
+	uid := mustID(t, userID)
+	a := createExpense(t, svc, uid, account, category, "2024-04-01")
+	b := createExpense(t, svc, uid, account, category, "2024-04-02")
+	req := model.UpdateTransactionRequest{Id: a, Type: "expense", Amount: vo.NewFlexString("10.00"), AccountId: account, Date: "2024-04-01 00:00:00"}
+
+	for _, tc := range []struct {
+		name string
+		run  func() error
+		want []string
+	}{
+		{"update", func() error { _, err := svc.UpdateTransaction(context.Background(), uid, req); return err },
+			[]string{"LockRow " + a, "GetByID " + a}},
+		{"update keeping labels", func() error {
+			_, err := svc.UpdateTransactionPreservingLabels(context.Background(), uid, req)
+			return err
+		}, []string{"LockRow " + a, "GetByID " + a}},
+		{"bulk", func() error {
+			_, err := svc.BulkUpdateTransactions(context.Background(), uid, model.BulkUpdateTransactionsRequest{Ids: []string{b, a}, ClearCategory: true})
+			return err
+		}, sortedLocksThenReads(a, b)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec.calls = nil
+			if err := tc.run(); err != nil {
+				t.Fatal(err)
+			}
+			if len(rec.calls) < len(tc.want) {
+				t.Fatalf("calls = %v, want %v first", rec.calls, tc.want)
+			}
+			for i, w := range tc.want {
+				if rec.calls[i] != w {
+					t.Fatalf("calls = %v, want %v first", rec.calls, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// sortedLocksThenReads is bulk's order for ids sent as [b, a]: every row is
+// locked in id order before any is read, so two overlapping bulk edits cannot
+// deadlock.
+func sortedLocksThenReads(a, b string) []string {
+	lo, hi := a, b
+	if hi < lo {
+		lo, hi = hi, lo
+	}
+	return []string{"LockRow " + lo, "LockRow " + hi, "GetByID " + b, "GetByID " + a}
+}
