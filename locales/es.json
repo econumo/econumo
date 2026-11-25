@@ -2338,6 +2338,8 @@
       "portal": "Gestionar la suscripción",
       "status": {
         "trial": "Suscripción hasta el {date}",
+        "renews": "Se renueva el {date}",
+        "active": "Suscripción activa",
         "readonly": "Expirada"
       }
     },

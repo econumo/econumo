@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/datetime'
 import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { worstConnectionAttention } from '@/lib/access'
-import { useAccessState } from '@/features/user/queries'
+import { useAccessState, useRenewingConnectionIds } from '@/features/user/queries'
 import { useConnections } from '@/features/connections/queries'
 import { useOpenBillingPortal } from './useOpenBillingPortal'
 import { useSaleBanner } from './useSaleBanner'
@@ -20,10 +20,11 @@ const saleDismissedKey = (id: string) => `saleBannerDismissedDay:${id}`
 export type SubscriptionBannerState = ReturnType<typeof useSubscriptionBanner>
 
 export function useSubscriptionBanner() {
-  const { state, daysLeft, billingEnabled } = useAccessState()
+  const { state, daysLeft, billingEnabled, billingSettled } = useAccessState()
   // Partner warnings only exist where the billing portal can act on them,
   // so self-hosted instances (no BILLING_URL) never fetch connections here.
   const { data: connections = [] } = useConnections({ enabled: billingEnabled })
+  const renewingIds = useRenewingConnectionIds()
   const sale = useSaleBanner()
   // Only forces the re-render after a close; whether a banner is dismissed is
   // always read from storage against today, so a tab left open overnight
@@ -33,7 +34,7 @@ export function useSubscriptionBanner() {
   const dismissed = localStorage.getItem(DISMISSED_KEY) === today
   const saleDismissed = sale !== null && localStorage.getItem(saleDismissedKey(sale.id)) === today
 
-  const partner = billingEnabled && !dismissed ? worstConnectionAttention(connections) : null
+  const partner = billingEnabled && billingSettled && !dismissed ? worstConnectionAttention(connections, new Date(), renewingIds) : null
 
   // One banner; a running sale outranks everything, then own state outranks
   // any partner's.
@@ -42,7 +43,7 @@ export function useSubscriptionBanner() {
       ? ('sale' as const)
       : state === 'readonly'
         ? ('readonly' as const)
-        : state === 'trial' && billingEnabled && daysLeft !== null && daysLeft <= 3 && !dismissed
+        : state === 'trial' && billingEnabled && billingSettled && daysLeft !== null && daysLeft <= 3 && !dismissed
           ? ('trial' as const)
           : partner
             ? partner.state === 'readonly'

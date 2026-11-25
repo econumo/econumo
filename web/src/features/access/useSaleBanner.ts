@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { getSaleBanner } from '@/lib/billingBanner'
 import type { SaleBanner, SaleBannerInput } from '@/lib/billingBanner'
 import { getBillingUrl } from '@/lib/config'
-import { useUserData } from '@/features/user/queries'
+import { useBillingAccess, useUserData } from '@/features/user/queries'
 import { useConnections } from '@/features/connections/queries'
 
 // setTimeout overflows past ~24.8 days; long waits re-arm daily instead.
@@ -22,6 +22,9 @@ export function useSaleBanner(): SaleBanner | null {
   const billingEnabled = getBillingUrl() !== ''
   const { data: user } = useUserData()
   const { data: connections } = useConnections({ enabled: billingEnabled })
+  // Waited for, so a paying user is never asked about with paid false first;
+  // a failed or unavailable answer is paid false.
+  const { data: billingAccess, isPending: billingAccessPending } = useBillingAccess()
   const [banner, setBanner] = useState<SaleBanner | null>(null)
   // Ticks re-render at boundaries and on wake; visibility itself reads the clock.
   const [now, setNow] = useState(() => Date.now())
@@ -32,15 +35,22 @@ export function useSaleBanner(): SaleBanner | null {
 
   // Serialized so refetched query data with unchanged content does not
   // re-ask billing; only access fields and locale matter.
+  const paid = billingAccess?.available ? billingAccess : null
   const input: SaleBannerInput | null =
-    billingEnabled && user && connections
+    billingEnabled && user && connections && !billingAccessPending
       ? {
           locale: i18n.language,
-          user: { accessLevel: user.accessLevel, accessUntil: user.accessUntil, registeredAt: user.createdAt },
+          user: {
+            accessLevel: user.accessLevel,
+            accessUntil: user.accessUntil,
+            registeredAt: user.createdAt,
+            paid: paid?.user?.paid === true,
+          },
           connections: connections.map((c) => ({
             accessLevel: c.accessLevel,
             accessUntil: c.accessUntil,
             registeredAt: c.createdAt,
+            paid: paid?.connections.some((p) => p.id === c.user.id && p.paid) === true,
           })),
         }
       : null

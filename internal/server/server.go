@@ -125,6 +125,10 @@ type Seams struct {
 	// calls when providers are built from cfg (nil = the default 10s client);
 	// the apiparity harness maps a fixed literal issuer onto its fake.
 	OAuthHTTPClient *http.Client
+	// BillingHTTPClient is the client for billing's get-access when
+	// ECONUMO_BILLING_URL is set (nil = a client with billing.Timeout); tests
+	// answer through a stub transport.
+	BillingHTTPClient *http.Client
 	// OnboardingCompleter, when non-nil, is the AI provider the onboarding
 	// savings classification asks instead of the configured one, and
 	// OnboardingRunner replaces how its background job starts; tests use them
@@ -290,7 +294,11 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
-	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
+	billingAccessSvc, err := newBillingAccessService(cfg, userRepo, connectionrepo.NewRepo(cfg.DatabaseDriver, txm), clk, seams.BillingHTTPClient)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc, billingAccessSvc)
 
 	oauthProviders := seams.OAuthProviders
 	if oauthProviders == nil {

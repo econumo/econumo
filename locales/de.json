@@ -2338,6 +2338,8 @@
       "portal": "Abonnement verwalten",
       "status": {
         "trial": "Abonnement endet am {date}",
+        "renews": "Verlängert sich am {date}",
+        "active": "Abonnement aktiv",
         "readonly": "Abgelaufen"
       }
     },

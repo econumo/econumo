@@ -2338,6 +2338,8 @@
       "portal": "Manage subscription",
       "status": {
         "trial": "Subscription ends {date}",
+        "renews": "Renews {date}",
+        "active": "Active subscription",
         "readonly": "Expired"
       }
     },

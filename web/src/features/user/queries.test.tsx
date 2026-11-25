@@ -116,6 +116,63 @@ describe('useAccessState', () => {
     expect(result.current.billingEnabled).toBe(false)
   })
 
+  it('reads billing access: a renewing subscription counts down to nothing', async () => {
+    window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+    const renewsAt = utcIn(10)
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessUntil: utcIn(17) },
+        billingAccess: {
+          available: true,
+          user: { paid: true, renewing: true, renewsAt, endsAt: '', paymentFailed: false, discountUntil: '' },
+          connections: [],
+        },
+      }),
+    )
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAccessState(), { wrapper })
+    await waitFor(() => expect(result.current.renewing).toBe(true))
+    expect(result.current.state).toBe('trial')
+    expect(result.current.daysLeft).toBeNull()
+    expect(result.current.renewsAt).toBe(renewsAt)
+  })
+
+  it('keeps renewing but drops a renewal date already behind us', async () => {
+    window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessUntil: utcIn(6) },
+        billingAccess: {
+          available: true,
+          user: { paid: true, renewing: true, renewsAt: utcIn(-1), endsAt: '', paymentFailed: false, discountUntil: '' },
+          connections: [],
+        },
+      }),
+    )
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAccessState(), { wrapper })
+    await waitFor(() => expect(result.current.renewing).toBe(true))
+    expect(result.current.renewsAt).toBe('')
+    expect(result.current.daysLeft).toBeNull()
+  })
+
+  it('ignores billing access without BILLING_URL', async () => {
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessUntil: utcIn(2) },
+        billingAccess: {
+          available: true,
+          user: { paid: true, renewing: true, renewsAt: utcIn(10), endsAt: '', paymentFailed: false, discountUntil: '' },
+          connections: [],
+        },
+      }),
+    )
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAccessState(), { wrapper })
+    await waitFor(() => expect(result.current.daysLeft).toBe(2))
+    expect(result.current.renewing).toBe(false)
+  })
+
   it('derives readonly', async () => {
     server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
     const { wrapper } = makeWrapper()

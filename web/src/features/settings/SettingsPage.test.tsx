@@ -201,6 +201,96 @@ it('shows the trial status hint from day one', async () => {
   expect(await screen.findByText(/Subscription ends/)).toBeInTheDocument()
 })
 
+it('shows when a subscription renews instead of when its access ends', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' },
+      billingAccess: {
+        available: true,
+        user: { paid: true, renewing: true, renewsAt: '2099-12-24 10:00:00', endsAt: '', paymentFailed: false, discountUntil: '' },
+        connections: [],
+      },
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Renews 24th December 2099')).toBeInTheDocument()
+  expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
+})
+
+it('says the subscription is active while its renewal payment is landing', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' },
+      billingAccess: {
+        available: true,
+        user: { paid: true, renewing: true, renewsAt: '2026-01-01 10:00:00', endsAt: '', paymentFailed: false, discountUntil: '' },
+        connections: [],
+      },
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Active subscription')).toBeInTheDocument()
+  expect(screen.queryByText(/Renews|Subscription ends/)).not.toBeInTheDocument()
+})
+
+it('holds the subscription hint until billing access has answered', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  let release = () => {}
+  const answered = new Promise<void>((resolve) => (release = resolve))
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' } }))
+  server.use(
+    http.get('*/api/v1/user/get-billing-access', async () => {
+      await answered
+      return HttpResponse.json({
+        success: true,
+        message: '',
+        data: {
+          available: true,
+          user: { paid: true, renewing: true, renewsAt: '2099-12-24 10:00:00', endsAt: '', paymentFailed: false, discountUntil: '' },
+          connections: [],
+        },
+      })
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Billing')).toBeInTheDocument()
+  await new Promise((r) => setTimeout(r, 50))
+  expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
+  release()
+  expect(await screen.findByText('Renews 24th December 2099')).toBeInTheDocument()
+})
+
+it('shows the scheduled end of a cancelled subscription', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' },
+      billingAccess: {
+        available: true,
+        user: { paid: true, renewing: false, renewsAt: '', endsAt: '2099-12-24 10:00:00', paymentFailed: false, discountUntil: '' },
+        connections: [],
+      },
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Subscription ends 24th December 2099')).toBeInTheDocument()
+  expect(screen.queryByText(/Renews/)).not.toBeInTheDocument()
+})
+
+it('keeps the trial hint while billing access is unavailable', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' } }))
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Subscription ends 31st December 2099')).toBeInTheDocument()
+})
+
 it('shows the read-only status hint', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))

@@ -165,6 +165,8 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		// Every discovery/token/JWKS/userinfo call for the fixed issuer above is
 		// rewritten onto the fake's real loopback address.
 		OAuthHTTPClient: &http.Client{Transport: fakeIDP.Transport(), Timeout: 10 * time.Second},
+		// get-billing-access reaches the stub portal, never the network.
+		BillingHTTPClient: &http.Client{Transport: billingAccessStub{key: cfg.AdminToken}},
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)

@@ -382,8 +382,11 @@ func init() {
 		)
 	}})
 
-	// debt_forecast lists a debt's payments still to come. The weekly debt has
-	// one due left, so the golden does not depend on the day the suite runs;
+	// debt_forecast lists a debt's payments still to come. The weekly debt,
+	// started a week ago, has one due left, today, so the golden does not
+	// depend on the day the suite runs: the due always falls in the budget's
+	// current month (a due a week ahead lands in the next month during a
+	// month's last week);
 	// its element plans nothing, so the regular payments stay and no budget is
 	// named. Planned extras are pinned by the debt service's tests, whose
 	// clock is fixed. A pending invite to the budget reads nothing.
@@ -394,7 +397,7 @@ func init() {
 			return Call{Label: label, Method: "GET", Auth: auth, Path: "/api/v1/debt/get-debt-forecast?id=", PathID: id}
 		}
 		return calls(
-			setUp("create-debt", "owner", &debtID, nil, nil),
+			setUp("create-debt", "owner", &debtID, nil, map[string]any{"startDate": day(-7), "lastPaymentDate": day(0)}),
 			[]Call{
 				forecast("forecast", "owner", &debtID),
 				{Label: "get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},

@@ -12,7 +12,7 @@ import { RouterPage } from '@/app/router-pages'
 import { apiErrorMessage } from '@/lib/apiError'
 import { accessDaysLeft, deriveAccessState } from '@/lib/access'
 import { pluralPick } from '@/lib/plural'
-import { useAccessState } from '@/features/user/queries'
+import { useAccessState, useRenewingConnectionIds } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { GenerateInviteDialog } from './GenerateInviteDialog'
@@ -27,7 +27,8 @@ export function ConnectionsPage() {
   const generateInvite = useGenerateInvite()
   const acceptInvite = useAcceptInvite()
   const deleteConnection = useDeleteConnection()
-  const { billingEnabled } = useAccessState()
+  const { billingEnabled, billingSettled } = useAccessState()
+  const renewingIds = useRenewingConnectionIds()
   const portal = useOpenBillingPortal()
 
   const [invite, setInvite] = useState<InviteDto | null>(null)
@@ -70,7 +71,10 @@ export function ConnectionsPage() {
       ) : (
         <ul className="flex max-w-md flex-col gap-2">
           {connections.map((connection) => {
-            const connState = deriveAccessState(connection.accessLevel, connection.accessUntil)
+            // billing's renewing subscriber reads as full access: nothing is
+            // ending; until billing answers, no ending is shown at all
+            const derived = deriveAccessState(connection.accessLevel, connection.accessUntil)
+            const connState = derived === 'trial' && (!billingSettled || renewingIds.has(connection.user.id)) ? 'full_access' : derived
             const connDays = connState === 'trial' ? accessDaysLeft(connection.accessUntil) : null
             const needsAttention = connState === 'readonly' || (connDays !== null && connDays <= 3)
             return (

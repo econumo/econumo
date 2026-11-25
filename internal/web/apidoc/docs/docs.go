@@ -13286,6 +13286,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/get-billing-access": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the payment portal's view of the caller's subscription and of their connections' (paid, renewing). available is false, with user null and connections empty, when billing is not configured or did not answer.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get billing access",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetBillingAccessResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/get-option-list": {
             "get": {
                 "security": [
@@ -15512,6 +15561,43 @@ const docTemplate = `{
                 }
             }
         },
+        "model.BillingAccessConnection": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "paid": {
+                    "type": "boolean"
+                },
+                "renewing": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.BillingAccessUser": {
+            "type": "object",
+            "properties": {
+                "discountUntil": {
+                    "type": "string"
+                },
+                "endsAt": {
+                    "type": "string"
+                },
+                "paid": {
+                    "type": "boolean"
+                },
+                "paymentFailed": {
+                    "type": "boolean"
+                },
+                "renewing": {
+                    "type": "boolean"
+                },
+                "renewsAt": {
+                    "type": "string"
+                }
+            }
+        },
         "model.BudgetAccountFilter": {
             "type": "object",
             "properties": {
@@ -17433,6 +17519,23 @@ const docTemplate = `{
                         "type": "integer",
                         "format": "int64"
                     }
+                }
+            }
+        },
+        "model.GetBillingAccessResult": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "connections": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.BillingAccessConnection"
+                    }
+                },
+                "user": {
+                    "$ref": "#/definitions/model.BillingAccessUser"
                 }
             }
         },

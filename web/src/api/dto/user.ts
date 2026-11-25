@@ -89,3 +89,32 @@ export interface LogoutResultDto {
   /** OAuth provider id the session was opened through; '' for password sessions */
   provider: string
 }
+
+/** billing's view of the caller; dates "YYYY-MM-DD HH:mm:ss" UTC, '' = none */
+export interface BillingAccessUserDto {
+  /** paid access in effect now */
+  paid: boolean
+  /** a subscription that is still billing */
+  renewing: boolean
+  /** its next renewal; can be just behind us until the payment lands */
+  renewsAt: string
+  /** when paid access ends without renewing (a scheduled cancellation) */
+  endsAt: string
+  /** a renewal charge failed and is being retried */
+  paymentFailed: boolean
+  /** last discounted period of the subscription */
+  discountUntil: string
+}
+
+export interface BillingAccessConnectionDto {
+  id: Id
+  paid: boolean
+  renewing: boolean
+}
+
+/** available false (billing off or not answering): user null, connections empty */
+export interface BillingAccessDto {
+  available: boolean
+  user: BillingAccessUserDto | null
+  connections: BillingAccessConnectionDto[]
+}

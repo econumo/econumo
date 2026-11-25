@@ -10,10 +10,13 @@ export interface SaleBanner {
   endsAt: string
 }
 
+// No user ids: the endpoint is unauthenticated. paid (from get-billing-access,
+// false when unknown) tells billing the person already pays: no sale for them.
 interface SaleBannerEntry {
   accessLevel: 'full' | 'readonly'
   accessUntil: string
   registeredAt: string
+  paid: boolean
 }
 
 export interface SaleBannerInput {

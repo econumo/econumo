@@ -282,8 +282,9 @@ the quick-start subset. Non-obvious points:
   it they are `readonly` (HTTP 402 on writes).
 - `ECONUMO_ADMIN_PORT` + `ECONUMO_ADMIN_TOKEN`: a second, private listener for the payment
   portal (`/admin/set-access`, `/admin/user-context`, `/admin/affiliate-users`), never on the public mux. The token
-  (random, at least 32 chars) is also the HMAC key for billing links (`ECONUMO_BILLING_URL`)
-  and `econumo://` AI gateway tokens.
+  (random, at least 32 chars) is also the HMAC key for billing links (`ECONUMO_BILLING_URL`),
+  `econumo://` AI gateway tokens and the `econumo-access:v1` bearer of the server's
+  `get-access` call to billing (`GET /api/v1/user/get-billing-access`, cached per user).
 - `ECONUMO_AFFILIATES`: comma-separated `program:cookie` pairs; on new accounts the first
   program whose cookie holds a valid code is copied into the write-once, server-only user
   options `affiliate` (program) and `affiliate_code`, only when `ECONUMO_BILLING_URL` is also

@@ -234,10 +234,15 @@ it('drops the stored banner when its input goes away', async () => {
   expect(result.current).toBeNull()
 })
 
-it('passes the user and connection register dates as registeredAt, and the UI locale', async () => {
+it('passes the register dates as registeredAt, who already pays, and the UI locale', async () => {
   vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
   server.use(
     ...coreHandlers({
+      billingAccess: {
+        available: true,
+        user: { paid: true, renewing: true, renewsAt: '2026-12-24 10:00:00', endsAt: '', paymentFailed: false, discountUntil: '' },
+        connections: [{ id: 'u2', paid: false, renewing: false }],
+      },
       user: {
         ...fixtureUser,
         accessUntil: '2026-12-01 00:00:00',
@@ -263,17 +268,60 @@ it('passes the user and connection register dates as registeredAt, and the UI lo
       accessLevel: 'full',
       accessUntil: '2026-12-01 00:00:00',
       registeredAt: '2025-03-04 05:06:07',
+      paid: true,
     },
     connections: [
       {
         accessLevel: 'readonly',
         accessUntil: '',
         registeredAt: '2025-08-09 10:11:12',
+        paid: false,
       },
     ],
   })
   await act(() => vi.advanceTimersByTimeAsync(0))
   expect(getSaleBanner).toHaveBeenCalledTimes(1)
+})
+
+it('marks everyone unpaid when billing access is unavailable', async () => {
+  vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
+  server.use(
+    ...coreHandlers({
+      connections: [
+        { user: { id: 'u2', avatar: 'pets:sky', name: 'Megan' }, accessLevel: 'full', accessUntil: '', createdAt: '', sharedAccounts: [] },
+      ],
+    }),
+  )
+  vi.mocked(getSaleBanner).mockResolvedValue(null)
+  renderSaleBanner()
+  await waitFor(() => expect(getSaleBanner).toHaveBeenCalled())
+  const input = vi.mocked(getSaleBanner).mock.calls[0][0]
+  expect(input.user.paid).toBe(false)
+  expect(input.connections.map((c) => c.paid)).toEqual([false])
+})
+
+it('waits for billing access before asking, so a payer is never asked about as unpaid', async () => {
+  vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
+  let release = () => {}
+  const answered = new Promise<void>((resolve) => (release = resolve))
+  server.use(...coreHandlers())
+  server.use(
+    http.get('*/api/v1/user/get-billing-access', async () => {
+      await answered
+      return HttpResponse.json({
+        success: true,
+        message: '',
+        data: { available: true, user: { paid: true, renewing: false, renewsAt: '', endsAt: '', paymentFailed: false, discountUntil: '' }, connections: [] },
+      })
+    }),
+  )
+  vi.mocked(getSaleBanner).mockResolvedValue(null)
+  renderSaleBanner()
+  await act(() => vi.advanceTimersByTimeAsync(50))
+  expect(getSaleBanner).not.toHaveBeenCalled()
+  release()
+  await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(1))
+  expect(vi.mocked(getSaleBanner).mock.calls[0][0].user.paid).toBe(true)
 })
 
 it('asks again only when access data changes, not on a same-content refetch', async () => {

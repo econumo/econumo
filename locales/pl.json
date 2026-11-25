@@ -2338,6 +2338,8 @@
       "portal": "Zarządzaj subskrypcją",
       "status": {
         "trial": "Subskrypcja do {date}",
+        "renews": "Odnawia się {date}",
+        "active": "Subskrypcja aktywna",
         "readonly": "Wygasła"
       }
     },

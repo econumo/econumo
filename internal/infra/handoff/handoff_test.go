@@ -121,3 +121,40 @@ func TestAITokensAreDomainSeparated(t *testing.T) {
 		t.Fatal("an AI token must expire after AITTL")
 	}
 }
+
+// A fixed vector shared with billing, which verifies these tokens in its own
+// codebase.
+func TestSignAccessMatchesTheFixedVector(t *testing.T) {
+	const want = "eyJ1aWQiOiJ1MSIsImV4cCI6MTc2NzIyNTYwMH0.MlSu2BS8qqoY0MzDnFzppKvYxasRSMn17aNu1CDoNbE"
+	got, err := NewSigner("test-key").SignAccess("u1", time.Unix(1767225600, 0).Add(-AccessTTL))
+	if err != nil || got != want {
+		t.Fatalf("SignAccess = %q, %v; want %q", got, err, want)
+	}
+}
+
+func TestAccessTokensAreDomainSeparated(t *testing.T) {
+	const key = "test-admin-token-0123456789abcdef"
+	now := time.Unix(1_900_000_000, 0)
+	s := NewSigner(key)
+	access, _ := s.SignAccess("u1", now)
+	ai, _ := s.SignAI("u1", now)
+	ho, _ := s.Sign("u1", now)
+	if uid, err := VerifyAccess(access, key, now); err != nil || uid != "u1" {
+		t.Fatalf("VerifyAccess(access) = %q, %v", uid, err)
+	}
+	if _, err := Verify(access, key, now); err == nil {
+		t.Fatal("an econumo-access token verified as a handoff token")
+	}
+	if _, err := VerifyAI(access, key, now); err == nil {
+		t.Fatal("an econumo-access token verified as an econumo-ai token")
+	}
+	if _, err := VerifyAccess(ai, key, now); err == nil {
+		t.Fatal("an econumo-ai token verified as an econumo-access token")
+	}
+	if _, err := VerifyAccess(ho, key, now); err == nil {
+		t.Fatal("a handoff token verified as an econumo-access token")
+	}
+	if _, err := VerifyAccess(access, key, now.Add(AccessTTL)); err == nil {
+		t.Fatal("an access token must expire after AccessTTL")
+	}
+}

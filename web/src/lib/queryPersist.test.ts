@@ -351,3 +351,8 @@ it('never persists an AI match-text answer', () => {
   const should = createPersistOptions().dehydrateOptions.shouldDehydrateQuery
   expect(should({ queryKey: ['importMatchText', 'l1'], state: { status: 'success' } })).toBe(false)
 })
+
+it("never persists billing's subscription view", () => {
+  const should = createPersistOptions().dehydrateOptions.shouldDehydrateQuery
+  expect(should({ queryKey: ['billingAccess'], state: { status: 'success' } })).toBe(false)
+})

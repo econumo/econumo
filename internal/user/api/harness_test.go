@@ -106,7 +106,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 		handoff.NewSigner("0123456789abcdef0123456789abcdef"),
 		clk,
 	)
-	handlers := handleruser.NewHandlers(svc, readSvc, clk, billing)
+	handlers := handleruser.NewHandlers(svc, readSvc, clk, billing, appuser.NewBillingAccessService(nil, nil, nil, clk))
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
