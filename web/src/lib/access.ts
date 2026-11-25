@@ -29,6 +29,16 @@ export function isRenewing(billing: Pick<BillingAccessUserDto, 'renewing' | 'pay
   return billing?.renewing === true && !billing.paymentFailed
 }
 
+// An access date (accessUntil, or billing's renewsAt/endsAt) as the viewer's
+// local calendar day, written the way the payment portal writes it
+// ("November 25, 2026", ru "25 ноября 2026 г."), so both name the same day:
+// the wire value is UTC, and its date part can be the next day locally.
+// timeZone defaults to the viewer's; tests pass one to stay deterministic.
+export function formatAccessDate(s: string, locale: string, timeZone?: string): string {
+  if (!s) return ''
+  return new Date(parseUtc(s)).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone })
+}
+
 // Whether a frozen-layout UTC date is still ahead.
 export function isFutureUtc(s: string, now: Date = new Date()): boolean {
   return s !== '' && parseUtc(s) > now.getTime()

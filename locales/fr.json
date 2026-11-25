@@ -2338,6 +2338,7 @@
       "portal": "Gérer l’abonnement",
       "status": {
         "trial": "L’abonnement se termine le {date}",
+        "trial_ends": "L’essai se termine le {date}",
         "renews": "Se renouvelle le {date}",
         "active": "Abonnement actif",
         "readonly": "Expiré"

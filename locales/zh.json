@@ -2338,6 +2338,7 @@
       "portal": "管理订阅",
       "status": {
         "trial": "订阅有效期至 {date}",
+        "trial_ends": "试用期至 {date}",
         "renews": "将于 {date} 续订",
         "active": "订阅有效",
         "readonly": "已到期"

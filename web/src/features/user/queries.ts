@@ -37,6 +37,9 @@ export interface AccessStateView {
   renewing: boolean
   renewsAt: string
   endsAt: string
+  // billing answered and the user doesn't pay: their access-until date is a
+  // trial's end, not a subscription's (unknown when billing hasn't answered)
+  onTrial: boolean
   // false while billing's view is still loading: ending warnings wait for it,
   // or a renewing subscriber would see one flash
   billingSettled: boolean
@@ -50,7 +53,7 @@ export function useAccessState(): AccessStateView {
   // offline the query pauses: nothing is coming, so behave as unavailable
   const billingSettled = !billingEnabled || !billingPending || billingFetch === 'paused'
   if (!user) {
-    return { state: undefined, accessUntil: '', daysLeft: null, renewing: false, renewsAt: '', endsAt: '', billingSettled, billingEnabled }
+    return { state: undefined, accessUntil: '', daysLeft: null, renewing: false, renewsAt: '', endsAt: '', onTrial: false, billingSettled, billingEnabled }
   }
   const state = deriveAccessState(user.accessLevel, user.accessUntil)
   const billingUser = billingEnabled && billing?.available ? billing.user : null
@@ -62,6 +65,8 @@ export function useAccessState(): AccessStateView {
     renewing,
     renewsAt: renewing && isFutureUtc(billingUser!.renewsAt) ? billingUser!.renewsAt : '',
     endsAt: state !== 'readonly' && !renewing && billingUser?.endsAt ? billingUser.endsAt : '',
+    // a failed charge or a scheduled end means a subscription, whatever paid says
+    onTrial: state === 'trial' && billingUser !== null && !billingUser.paid && !billingUser.paymentFailed && !billingUser.endsAt,
     billingSettled,
     billingEnabled,
   }

@@ -2338,6 +2338,7 @@
       "portal": "Gestisci l'abbonamento",
       "status": {
         "trial": "L'abbonamento scade il {date}",
+        "trial_ends": "La prova scade il {date}",
         "renews": "Si rinnova il {date}",
         "active": "Abbonamento attivo",
         "readonly": "Scaduto"

@@ -2338,6 +2338,7 @@
       "portal": "Gerir subscrição",
       "status": {
         "trial": "A subscrição termina a {date}",
+        "trial_ends": "O período de teste termina a {date}",
         "renews": "Renova a {date}",
         "active": "Subscrição ativa",
         "readonly": "Expirada"

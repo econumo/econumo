@@ -1,3 +1,4 @@
+import { formatAccessDate } from '@/lib/access'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
@@ -215,7 +216,7 @@ it('shows when a subscription renews instead of when its access ends', async () 
   )
   mockViewport(false)
   renderPage()
-  expect(await screen.findByText('Renews 24th December 2099')).toBeInTheDocument()
+  expect(await screen.findByText(`Renews ${formatAccessDate('2099-12-24 10:00:00', 'en')}`)).toBeInTheDocument()
   expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
 })
 
@@ -262,7 +263,7 @@ it('holds the subscription hint until billing access has answered', async () => 
   await new Promise((r) => setTimeout(r, 50))
   expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
   release()
-  expect(await screen.findByText('Renews 24th December 2099')).toBeInTheDocument()
+  expect(await screen.findByText(`Renews ${formatAccessDate('2099-12-24 10:00:00', 'en')}`)).toBeInTheDocument()
 })
 
 it('shows the scheduled end of a cancelled subscription', async () => {
@@ -279,16 +280,54 @@ it('shows the scheduled end of a cancelled subscription', async () => {
   )
   mockViewport(false)
   renderPage()
-  expect(await screen.findByText('Subscription ends 24th December 2099')).toBeInTheDocument()
+  expect(await screen.findByText(`Subscription ends ${formatAccessDate('2099-12-24 10:00:00', 'en')}`)).toBeInTheDocument()
   expect(screen.queryByText(/Renews/)).not.toBeInTheDocument()
 })
 
+it('says the trial ends for someone billing reports as not paying', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' },
+      billingAccess: {
+        available: true,
+        user: { paid: false, renewing: false, renewsAt: '', endsAt: '', paymentFailed: false, discountUntil: '' },
+        connections: [],
+      },
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText(`Trial ends ${formatAccessDate('2099-12-31 10:00:00', 'en')}`)).toBeInTheDocument()
+  expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
+})
+
+it('never calls a failing subscription a trial', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' },
+      billingAccess: {
+        available: true,
+        user: { paid: false, renewing: false, renewsAt: '', endsAt: '', paymentFailed: true, discountUntil: '' },
+        connections: [],
+      },
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText(`Subscription ends ${formatAccessDate('2099-12-31 10:00:00', 'en')}`)).toBeInTheDocument()
+  expect(screen.queryByText(/Trial ends/)).not.toBeInTheDocument()
+})
+
+// Without billing's answer a dated access may be a subscription: the neutral
+// wording stays.
 it('keeps the trial hint while billing access is unavailable', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' } }))
   mockViewport(false)
   renderPage()
-  expect(await screen.findByText('Subscription ends 31st December 2099')).toBeInTheDocument()
+  expect(await screen.findByText(`Subscription ends ${formatAccessDate('2099-12-31 10:00:00', 'en')}`)).toBeInTheDocument()
 })
 
 it('shows the read-only status hint', async () => {

@@ -12,7 +12,7 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
 import { SEMVER } from '@/lib/version'
-import { dayKey, formatDayHeading } from '@/lib/datetime'
+import { formatAccessDate } from '@/lib/access'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
@@ -147,16 +147,18 @@ export function SettingsPage() {
                   access.renewing ? (
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {access.renewsAt
-                        ? t('subscription.settings.status.renews', { date: formatDayHeading(dayKey(access.renewsAt), i18n.language) })
+                        ? t('subscription.settings.status.renews', { date: formatAccessDate(access.renewsAt, i18n.language) })
                         : t('subscription.settings.status.active')}
                     </span>
                   ) : access.endsAt ? (
                     <span className="shrink-0 text-xs text-econumo-link/80">
-                      {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.endsAt), i18n.language) })}
+                      {t('subscription.settings.status.trial', { date: formatAccessDate(access.endsAt, i18n.language) })}
                     </span>
                   ) : access.state === 'trial' && access.billingSettled ? (
                     <span className="shrink-0 text-xs text-econumo-link/80">
-                      {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
+                      {t(access.onTrial ? 'subscription.settings.status.trial_ends' : 'subscription.settings.status.trial', {
+                        date: formatAccessDate(access.accessUntil, i18n.language),
+                      })}
                     </span>
                   ) : access.state === 'readonly' ? (
                     <span className="shrink-0 text-xs text-destructive">{t('subscription.settings.status.readonly')}</span>

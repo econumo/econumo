@@ -1,4 +1,4 @@
-import { accessDaysLeft, deriveAccessState, isFutureUtc, isRenewing, worstConnectionAttention } from './access'
+import { accessDaysLeft, deriveAccessState, formatAccessDate, isFutureUtc, isRenewing, worstConnectionAttention } from './access'
 
 describe('deriveAccessState', () => {
   // Frozen wire contract: accessUntil === '' means no expiry (never null).
@@ -126,4 +126,19 @@ describe('isFutureUtc', () => {
     expect(isFutureUtc('2026-12-01 00:00:00', now)).toBe(false)
     expect(isFutureUtc('', now)).toBe(false)
   })
+})
+
+describe('formatAccessDate', () => {
+  // The portal's form, for the viewer's local day of the UTC instant: an
+  // early-UTC renewal is the evening before west of Greenwich.
+  it('writes the local day of the UTC instant', () => {
+    expect(formatAccessDate('2026-11-26 01:30:00', 'en', 'America/Denver')).toBe('November 25, 2026')
+    expect(formatAccessDate('2026-11-26 01:30:00', 'en', 'UTC')).toBe('November 26, 2026')
+    expect(formatAccessDate('2026-11-25 12:00:00', 'en', 'Pacific/Auckland')).toBe('November 26, 2026')
+  })
+  it('reads as "Month day, year" in English and localizes elsewhere', () => {
+    expect(formatAccessDate('2026-11-25 12:00:00', 'en', 'UTC')).toBe('November 25, 2026')
+    expect(formatAccessDate('2026-11-25 12:00:00', 'ru', 'UTC')).toBe('25 ноября 2026 г.')
+  })
+  it('is empty for no date', () => expect(formatAccessDate('', 'en')).toBe(''))
 })
