@@ -169,6 +169,13 @@ branch ran it):
   snapshot sets it in the same write (`setApplied` and its siblings). Backfill: `'rule'` where
   `applied_rule_id IS NOT NULL AND transaction_id IS NOT NULL` (skip rows have no transaction).
   Internal for now (no API field); it is what a future "AI"/"by rule" marker would read.
+  A **hand edit** that changes the transaction's category or payee clears it to NULL, whether it
+  was `'ai'` or `'rule'` (decided by the owner, 2026-11-24: the user classified it now). Hand
+  edits are the user-facing writes: `update-transaction` (incl. queued offline writes) and the
+  MCP update/bulk-update tools. Editing only amount, date, description or tags leaves it.
+  Writes made by the importer itself (rules, apply-rule, accept, AI) set it as listed above and
+  never count as hand edits. The transaction feature signals the edit through a port wired in
+  `internal/server` (features never import features).
 - `import_suggestions` gains `payee_name TEXT DEFAULT NULL`.
 - Revision 1's `import_transaction_suggestions` table is dropped from the migration (it ended
   up recording only which links the AI filled, which `assigned_by` now says).
