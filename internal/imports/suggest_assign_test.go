@@ -1076,3 +1076,33 @@ func TestAssignReuseHalfFilledRowGoesToAI(t *testing.T) {
 		t.Fatalf("transaction = %+v, want the AI's category and the suggestion's payee", tx)
 	}
 }
+
+// The reverse half: the suggestion's payee is archived while the job waits
+// for the row lock, so the reuse writes only its category and the row goes to
+// the AI, whose payee then fills the payee the reuse left empty.
+func TestAssignReuseCategoryOnlyRowGetsTheAIsPayee(t *testing.T) {
+	owner := vo.MustParseId(userA)
+	h, c, facts := suggestSetup(t)
+	rec := &onLockRepo{Repository: h.repo}
+	h.withRepo(rec)
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	coffee := h.category(t, userA, "Coffee")
+	cafes := h.category(t, userA, "Cafes")
+	archived := h.payee(t, userA, "Blue Bottle Coffee")
+	aiPayee := h.payee(t, userA, "Blue Bottle")
+	seedOpenSuggestion(t, h, coffee, archived)
+	rec.onLock = func() { archiveNamed(h.entities.payees[owner], archived) }
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cafes + `","merchants":["Blue Bottle"],"payeeId":"` + aiPayee + `"}]}`
+	ingest(t, h, tap)
+	if len(c.calls) == 0 {
+		t.Fatal("want the half-filled row sent to the AI")
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if tx := txOf(t, h, links[0].ID); !idIs(tx.CategoryID, coffee) || !idIs(tx.PayeeID, aiPayee) {
+		t.Fatalf("transaction = %+v, want the suggestion's category and the AI's payee", tx)
+	}
+	if got := assignedBy(t, h, links[0].ID); got != model.ImportAssignedByAI {
+		t.Fatalf("assigned by = %q, want ai", got)
+	}
+}

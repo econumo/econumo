@@ -198,6 +198,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	var inserted []vo.Id
 	joined := map[vo.Id][]vo.Id{}
 	preJoined := map[vo.Id][]vo.Id{}
+	ownCategory := map[vo.Id]vo.Id{}
 	defer func() {
 		all := make(map[vo.Id][]vo.Id, len(preJoined)+len(joined))
 		for id, links := range preJoined {
@@ -214,6 +215,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		off := false
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 			joinedNow, back, off = nil, map[vo.Id]bool{}, false
+			clear(ownCategory)
 			sendBack := func(links []vo.Id) {
 				for _, l := range links {
 					back[l] = true
@@ -281,7 +283,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				// (edited, moved, failed, a value archived meanwhile) is left
 				// to the AI, not joined; a categorised one is never assigned
 				// and joins as it is
-				_, written, err := s.assign(ctx, owner, openAssignments(joins, freshOpen, rows))
+				_, written, categories, err := s.assign(ctx, owner, openAssignments(joins, freshOpen, rows))
 				if err != nil {
 					return err
 				}
@@ -292,6 +294,9 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 							kept = append(kept, l)
 						} else {
 							back[l] = true
+							if c, ok := categories[l]; ok {
+								ownCategory[l] = c
+							}
 						}
 					}
 					if len(kept) == 0 {
@@ -386,10 +391,14 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				if !v.Row.Missing.Category {
 					continue
 				}
-				list = append(list, assignment{row: v.Row, categoryID: v.CategoryID, payeeID: v.PayeeID, payeeName: v.PayeeName})
+				a := assignment{row: v.Row, categoryID: v.CategoryID, payeeID: v.PayeeID, payeeName: v.PayeeName}
+				if c, ok := ownCategory[v.Row.Link.ID]; ok {
+					a.ownCategory = &c
+				}
+				list = append(list, a)
 			}
 			// the rule suggestion carries the payee its rows were given
-			created, _, err := s.assign(ctx, owner, list)
+			created, _, _, err := s.assign(ctx, owner, list)
 			if err != nil {
 				return err
 			}

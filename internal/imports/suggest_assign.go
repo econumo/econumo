@@ -19,23 +19,28 @@ type assignment struct {
 	// payeeName is a payee to create, or to reuse when this run already
 	// created it, when payeeID is nil.
 	payeeName string
+	// ownCategory is the category this run's reuse step wrote on a row it
+	// could not fill in full: while the row still carries it, the AI may fill
+	// the payee the reuse left empty.
+	ownCategory *vo.Id
 }
 
 // assign writes each row's values into the fields its transaction still has
 // empty, one savepoint per row: a row that fails is skipped with a WARN and
 // the others proceed. Rows of one merchant share the payee created for it.
 // It returns the payee each new-payee name got (created, or found when the
-// create lost a race), by similarityText of the name, and, by link, which
-// fields of the rows it wrote are set by now.
-func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]missingFields, error) {
+// create lost a race), by similarityText of the name, by link, which fields
+// of the rows it wrote are set by now, and the category it wrote.
+func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]missingFields, map[vo.Id]vo.Id, error) {
 	created := map[string]vo.Id{}
 	written := map[vo.Id]missingFields{}
+	categories := map[vo.Id]vo.Id{}
 	s.lockAssignRows(ctx, owner, list)
 	// The locks can take a while: a category or payee archived meanwhile is
 	// not written, and neither is a new payee whose name an archived one took.
 	vocab, err := s.suggestVocabulary(ctx, owner)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	for _, a := range list {
 		a = vocab.current(a)
@@ -59,9 +64,12 @@ func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (m
 		}
 		if wrote {
 			written[a.row.Link.ID] = set
+			if a.categoryID != nil && a.ownCategory == nil {
+				categories[a.row.Link.ID] = *a.categoryID
+			}
 		}
 	}
-	return created, written, nil
+	return created, written, categories, nil
 }
 
 // current keeps only the values still active, and turns a new-payee name into
@@ -112,9 +120,10 @@ func (s *Service) lockAssignRows(ctx context.Context, owner vo.Id, list []assign
 // edit since the scan is never overwritten: only fields still empty are
 // written, and a row gone, moved off the owner's account, of another type or
 // with a category by now is left alone: a transaction a rule or the user
-// categorised keeps its empty payee (the owner's call). The applied snapshot
-// moves for the fields written, as a rule's write does, so a later apply-rule
-// may replace them. It reports which of the two fields the row has once
+// categorised keeps its empty payee (the owner's call), except for the row's
+// ownCategory still in place: then only its payee is written. The applied
+// snapshot moves for the fields written, as a rule's write does, so a later
+// apply-rule may replace them. It reports which of the two fields the row has once
 // written; a value archived meanwhile leaves its field empty.
 func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id) (*vo.Id, missingFields, bool, error) {
 	if a.row.Link.TransactionID == nil {
@@ -125,10 +134,13 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		return nil, missingFields{}, false, err
 	}
 	l, live, err := s.suggestionTarget(ctx, owner, a.row.Link.ID)
-	if err != nil || live == nil || live.ID != txID || live.Type != a.row.Type || live.CategoryID != nil {
+	if err != nil || live == nil || live.ID != txID || live.Type != a.row.Type {
 		return nil, missingFields{}, false, err
 	}
-	fillCategory := a.categoryID != nil
+	if live.CategoryID != nil && (a.ownCategory == nil || !live.CategoryID.Equal(*a.ownCategory)) {
+		return nil, missingFields{}, false, nil
+	}
+	fillCategory := a.categoryID != nil && live.CategoryID == nil
 	payeeID := a.payeeID
 	if live.PayeeID != nil {
 		payeeID = nil
