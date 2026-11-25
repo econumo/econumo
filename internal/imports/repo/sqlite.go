@@ -259,16 +259,8 @@ func (sqliteQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX
 	return sqlitegen.New(db).DeleteImportSuggestion(ctx, id)
 }
 
-func (sqliteQuerier) InsertImportTransactionSuggestion(ctx context.Context, db backend.DBTX, p insertTxSuggestionParams) error {
-	return sqlitegen.New(db).InsertImportTransactionSuggestion(ctx, p)
-}
-
 // SQLite has no row locks: the pool's one connection already serializes
 // every transaction.
 func (sqliteQuerier) LockImportTransactionRow(context.Context, backend.DBTX, string) error {
 	return nil
-}
-
-func (sqliteQuerier) DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error {
-	return sqlitegen.New(db).DeleteOpenImportTransactionSuggestionsByUser(ctx, userID)
 }

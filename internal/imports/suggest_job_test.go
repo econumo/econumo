@@ -1480,33 +1480,46 @@ func TestSuggestVanishedLinkKeepsTheOtherSuggestions(t *testing.T) {
 	}
 }
 
-// assignRecords reads the owner's import_transaction_suggestions rows: the
-// record of what the job assigned.
-func assignRecords(t *testing.T, h *harness, owner string) []model.ImportTransactionSuggestion {
+// assignRecords lists the links into the owner's accounts that the job
+// assigned (assigned_by 'ai'), in link id order.
+func assignRecords(t *testing.T, h *harness, owner string) []vo.Id {
 	t.Helper()
 	rows, err := h.db.Raw.QueryContext(context.Background(), h.db.Rebind(
-		`SELECT link_id, user_id, category_id, payee_id, transaction_type, status FROM import_transaction_suggestions WHERE user_id = ? ORDER BY link_id`), owner)
+		`SELECT l.id FROM import_transaction_links l JOIN transactions t ON t.id = l.transaction_id JOIN accounts a ON a.id = t.account_id
+		WHERE a.user_id = ? AND l.assigned_by = 'ai' ORDER BY l.id`), owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer rows.Close()
-	var out []model.ImportTransactionSuggestion
+	var out []vo.Id
 	for rows.Next() {
-		var link, user, typ, status string
-		var cat, payee *string
-		if err := rows.Scan(&link, &user, &cat, &payee, &typ, &status); err != nil {
+		var link string
+		if err := rows.Scan(&link); err != nil {
 			t.Fatal(err)
 		}
-		r := model.ImportTransactionSuggestion{LinkID: vo.MustParseId(link), UserID: vo.MustParseId(user), CategoryID: parseOptID(cat), PayeeID: parseOptID(payee), Status: status}
-		if typ == "income" {
-			r.Type = model.TransactionTypeIncome
-		}
-		out = append(out, r)
+		out = append(out, vo.MustParseId(link))
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)
 	}
 	return out
+}
+
+func assignedBy(t *testing.T, h *harness, linkID vo.Id) model.ImportAssignedBy {
+	t.Helper()
+	l, err := h.repo.GetLink(context.Background(), linkID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return l.AssignedBy
+}
+
+// markAssigned stands in for an earlier job's write.
+func markAssigned(t *testing.T, h *harness, linkID vo.Id) {
+	t.Helper()
+	if _, err := h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE import_transaction_links SET assigned_by = 'ai' WHERE id = ?`), linkID.String()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // fakePayees creates payees as the payee feature would: a real row
@@ -1627,13 +1640,12 @@ func TestSuggestAssignsEachRowItsOwnValues(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("records = %+v", got)
 	}
-	for _, s := range got {
-		cat, ok := want[s.LinkID]
-		if !ok || !idIs(s.CategoryID, cat) || s.PayeeID != nil || s.UserID.String() != userA ||
-			s.Type != model.TransactionTypeExpense || s.Status != model.ImportTransactionSuggestionStatusFilled {
-			t.Fatalf("record = %+v, want category %s", s, cat)
+	for _, link := range got {
+		cat, ok := want[link]
+		if !ok {
+			t.Fatalf("record = %s, want one of %v", link, want)
 		}
-		if tx := txOf(t, h, s.LinkID); !idIs(tx.CategoryID, cat) || tx.PayeeID != nil {
+		if tx := txOf(t, h, link); !idIs(tx.CategoryID, cat) || tx.PayeeID != nil {
 			t.Fatalf("transaction = %+v, want category %s", tx, cat)
 		}
 	}
@@ -1661,9 +1673,9 @@ func TestSuggestRulesOffWritesNoRuleSuggestion(t *testing.T) {
 	if len(rules) != 1 || rules[0].ID != open.ID || len(rules[0].LinkIDs) != 0 {
 		t.Fatalf("rule suggestions = %+v, want only the untouched seeded one", rules)
 	}
-	got := assignRecords(t, h, userA)
-	if len(got) != 1 || !idIs(got[0].CategoryID, cat) {
-		t.Fatalf("transaction suggestions = %+v", got)
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if got := assignRecords(t, h, userA); len(got) != 1 || got[0] != links[0].ID || !idIs(txOf(t, h, got[0]).CategoryID, cat) {
+		t.Fatalf("assigned = %+v", got)
 	}
 }
 
@@ -1796,8 +1808,8 @@ func TestSuggestRulesTurnedOffBeforeTheJoinSendsRowsToAI(t *testing.T) {
 	if len(rules) != 1 || rules[0].ID != open.ID || len(rules[0].LinkIDs) != 0 {
 		t.Fatalf("rule suggestions = %+v, want only the untouched seeded one", rules)
 	}
-	if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(got[0].CategoryID, cat) {
-		t.Fatalf("transaction suggestions = %+v", got)
+	if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(txOf(t, h, got[0]).CategoryID, cat) {
+		t.Fatalf("assigned = %+v", got)
 	}
 }
 

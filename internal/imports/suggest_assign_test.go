@@ -82,8 +82,8 @@ func TestAssignSkipsRowARuleCategorised(t *testing.T) {
 		t.Fatalf("transaction = %+v, want the rule's category and no payee", tx)
 	}
 	l, _ := h.repo.GetLink(context.Background(), links[0].ID)
-	if !idIs(l.AppliedCategoryID, ruled) || l.AppliedPayeeID != nil || l.AppliedRuleID == nil {
-		t.Fatalf("applied = category %v payee %v rule %v", l.AppliedCategoryID, l.AppliedPayeeID, l.AppliedRuleID)
+	if !idIs(l.AppliedCategoryID, ruled) || l.AppliedPayeeID != nil || l.AppliedRuleID == nil || l.AssignedBy != model.ImportAssignedByRule {
+		t.Fatalf("applied = category %v payee %v rule %v by %q", l.AppliedCategoryID, l.AppliedPayeeID, l.AppliedRuleID, l.AssignedBy)
 	}
 	if got := assignRecords(t, h, userA); len(got) != 0 {
 		t.Fatalf("records = %+v, want none", got)
@@ -113,13 +113,11 @@ func TestAssignWritesEmptyFieldsOnly(t *testing.T) {
 		t.Fatalf("transaction = %+v, want the AI's category and the rule's payee", tx)
 	}
 	l, _ := h.repo.GetLink(context.Background(), links[0].ID)
-	if !idIs(l.AppliedCategoryID, cat) || !idIs(l.AppliedPayeeID, ruled) || l.AppliedRuleID == nil {
-		t.Fatalf("applied = category %v payee %v rule %v", l.AppliedCategoryID, l.AppliedPayeeID, l.AppliedRuleID)
+	if !idIs(l.AppliedCategoryID, cat) || !idIs(l.AppliedPayeeID, ruled) || l.AppliedRuleID == nil || l.AssignedBy != model.ImportAssignedByAI {
+		t.Fatalf("applied = category %v payee %v rule %v by %q", l.AppliedCategoryID, l.AppliedPayeeID, l.AppliedRuleID, l.AssignedBy)
 	}
-	got := assignRecords(t, h, userA)
-	if len(got) != 1 || got[0].LinkID != links[0].ID || !idIs(got[0].CategoryID, cat) || got[0].PayeeID != nil ||
-		got[0].Status != model.ImportTransactionSuggestionStatusFilled || got[0].Type != model.TransactionTypeExpense {
-		t.Fatalf("records = %+v, want the category only", got)
+	if got := assignRecords(t, h, userA); len(got) != 1 || got[0] != links[0].ID {
+		t.Fatalf("records = %+v, want the row", got)
 	}
 }
 
@@ -135,7 +133,7 @@ func TestAssignPayeeOnlyForUncategorisedRow(t *testing.T) {
 	if tx := txOf(t, h, links[0].ID); tx.CategoryID != nil || !idIs(tx.PayeeID, py) {
 		t.Fatalf("transaction = %+v, want the AI's payee", tx)
 	}
-	if got := assignRecords(t, h, userA); len(got) != 1 || got[0].CategoryID != nil || !idIs(got[0].PayeeID, py) {
+	if got := assignRecords(t, h, userA); len(got) != 1 || got[0] != links[0].ID {
 		t.Fatalf("records = %+v", got)
 	}
 }
@@ -351,7 +349,7 @@ func TestAssignSharedAccountGoesToOwner(t *testing.T) {
 	if len(h.txns.updatedBy) != 1 || h.txns.updatedBy[0].String() != userB {
 		t.Fatalf("updated by = %v, want the account owner", h.txns.updatedBy)
 	}
-	if got := assignRecords(t, h, userB); len(got) != 1 || !idIs(got[0].CategoryID, lebensmittel) || !idIs(got[0].PayeeID, tx.PayeeID.String()) {
+	if got := assignRecords(t, h, userB); len(got) != 1 || got[0] != links[0].ID {
 		t.Fatalf("owner records = %+v", got)
 	}
 	if got := assignRecords(t, h, userA); len(got) != 0 {
@@ -459,7 +457,7 @@ func TestAssignFailedRowRollsBackItsPayee(t *testing.T) {
 	if !idIs(b.CategoryID, groceries) || b.PayeeID == nil {
 		t.Fatalf("second row = %+v", b)
 	}
-	if got := assignRecords(t, h, userA); len(got) != 1 || got[0].LinkID != bankLinkID(t, h, "b") {
+	if got := assignRecords(t, h, userA); len(got) != 1 || got[0] != bankLinkID(t, h, "b") {
 		t.Fatalf("records = %+v, want only the second row", got)
 	}
 	if got := openSuggestions(t, h, userA); len(got) != 1 || !idIs(got[0].PayeeID, b.PayeeID.String()) {
@@ -493,35 +491,25 @@ func TestAssignFromOpenSuggestionOnReuse(t *testing.T) {
 	if tx := txOf(t, h, links[0].ID); !idIs(tx.CategoryID, cat) || !idIs(tx.PayeeID, ruled) {
 		t.Fatalf("transaction = %+v, want the suggestion's category and the rule's payee", tx)
 	}
-	got := assignRecords(t, h, userA)
-	if len(got) != 1 || got[0].LinkID != links[0].ID || !idIs(got[0].CategoryID, cat) || got[0].PayeeID != nil || got[0].Status != model.ImportTransactionSuggestionStatusFilled {
-		t.Fatalf("records = %+v, want the category only", got)
+	if got := assignRecords(t, h, userA); len(got) != 1 || got[0] != links[0].ID {
+		t.Fatalf("records = %+v, want the row", got)
 	}
 }
 
-// ClearSuggestions (AI turned off) deletes rule suggestions and open records
-// left by earlier builds, never the record of what was assigned.
-func TestClearSuggestionsKeepsAssignedRecords(t *testing.T) {
+// ClearSuggestions (AI turned off) deletes rule suggestions, never the
+// record of what was assigned.
+func TestClearSuggestionsKeepsAssignedLinks(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")
 	_, links := seedAssigned(t, h, c, cat, "")
-	other := h.f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: source, ExternalAccountID: "Apple Card", ExternalTransactionID: "leftover", Status: model.ImportLinkStatusSkipped, ExternalPostedAt: now})
-	catID := vo.MustParseId(cat)
-	if err := h.repo.InsertTransactionSuggestions(context.Background(), []model.ImportTransactionSuggestion{{
-		LinkID: vo.MustParseId(other), UserID: vo.MustParseId(userA), CategoryID: &catID, Type: model.TransactionTypeExpense,
-		Status: model.ImportTransactionSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
-	}}); err != nil {
-		t.Fatal(err)
-	}
 	if err := h.svc.ClearSuggestions(context.Background(), vo.MustParseId(userA)); err != nil {
 		t.Fatal(err)
 	}
 	if got := openSuggestions(t, h, userA); len(got) != 0 {
 		t.Fatalf("rule suggestions = %+v", got)
 	}
-	got := assignRecords(t, h, userA)
-	if len(got) != 1 || got[0].LinkID != links[0].ID || got[0].Status != model.ImportTransactionSuggestionStatusFilled {
-		t.Fatalf("records = %+v, want only the filled one", got)
+	if got := assignRecords(t, h, userA); len(got) != 1 || got[0] != links[0].ID {
+		t.Fatalf("records = %+v, want the assigned row", got)
 	}
 }
 
@@ -627,13 +615,7 @@ func TestRuleSuggestionAgreesOnPayeeName(t *testing.T) {
 	wf := h.payee(t, userA, "whole foods")
 	h.setTx(t, &tx.ID, "category_id", groceries)
 	h.setTx(t, &tx.ID, "payee_id", wf)
-	catID, wfID := vo.MustParseId(groceries), vo.MustParseId(wf)
-	if err := h.repo.InsertTransactionSuggestions(context.Background(), []model.ImportTransactionSuggestion{{
-		LinkID: link, UserID: vo.MustParseId(userA), CategoryID: &catID, PayeeID: &wfID, Type: model.TransactionTypeExpense,
-		Status: model.ImportTransactionSuggestionStatusFilled, CreatedAt: now, UpdatedAt: now,
-	}}); err != nil {
-		t.Fatal(err)
-	}
+	markAssigned(t, h, link)
 	if items := suggestionList(t, h, userA); len(items) != 1 || len(items[0].Transactions) != 1 {
 		t.Fatalf("list = %+v, want the agreeing row kept", items)
 	}
@@ -930,7 +912,7 @@ func TestAssignPayeeNameTakenMeanwhile(t *testing.T) {
 			if !idIs(tx.CategoryID, cat) || !idIs(tx.PayeeID, want) {
 				t.Fatalf("transaction = %+v, want category %s and payee %q", tx, cat, want)
 			}
-			if got := assignRecords(t, h, userA); len(got) != 1 || !idIs(got[0].PayeeID, want) {
+			if got := assignRecords(t, h, userA); len(got) != 1 || got[0] != links[0].ID {
 				t.Fatalf("records = %+v", got)
 			}
 		})
@@ -1063,13 +1045,7 @@ func TestRuleSuggestionAgreesOnPayeeNameWithTwoSuchPayees(t *testing.T) {
 	second := h.payee(t, userA, "WHOLE FOODS")
 	h.setTx(t, &tx.ID, "category_id", groceries)
 	h.setTx(t, &tx.ID, "payee_id", second)
-	catID, secondID := vo.MustParseId(groceries), vo.MustParseId(second)
-	if err := h.repo.InsertTransactionSuggestions(context.Background(), []model.ImportTransactionSuggestion{{
-		LinkID: link, UserID: vo.MustParseId(userA), CategoryID: &catID, PayeeID: &secondID, Type: model.TransactionTypeExpense,
-		Status: model.ImportTransactionSuggestionStatusFilled, CreatedAt: now, UpdatedAt: now,
-	}}); err != nil {
-		t.Fatal(err)
-	}
+	markAssigned(t, h, link)
 	if items := suggestionList(t, h, userA); len(items) != 1 || items[0].PayeeId != first || len(items[0].Transactions) != 1 {
 		t.Fatalf("list = %+v, want the agreeing row kept", items)
 	}

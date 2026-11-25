@@ -97,26 +97,23 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 // dropSuggestions deletes the open suggestions of a user who opted out of AI,
 // both kinds, best effort: they are hidden either way and the next read retries.
 func (s *Service) dropSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) {
-	if err := s.deleteSuggestions(ctx, userID, open); err != nil {
+	if err := s.deleteSuggestions(ctx, open); err != nil {
 		slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 	}
 }
 
-// ClearSuggestions deletes the user's open suggestions of both kinds: they
-// turned AI off.
+// ClearSuggestions deletes the user's open rule suggestions: they turned AI
+// off.
 func (s *Service) ClearSuggestions(ctx context.Context, userID vo.Id) error {
 	open, err := s.repo.ListOpenSuggestionsByUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-	return s.deleteSuggestions(ctx, userID, open)
+	return s.deleteSuggestions(ctx, open)
 }
 
-// deleteSuggestions keeps the filled records: they are what the rule-suggestion
-// list reads to tell the AI job's assignment from a hand edit. Open ones are
-// leftovers of earlier builds. Deleted in id order, the order a job locks
-// them in.
-func (s *Service) deleteSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) error {
+// deleteSuggestions deletes in id order, the order a job locks them in.
+func (s *Service) deleteSuggestions(ctx context.Context, open []model.ImportSuggestion) error {
 	ids := make([]vo.Id, 0, len(open))
 	for _, sg := range open {
 		ids = append(ids, sg.ID)
@@ -128,7 +125,7 @@ func (s *Service) deleteSuggestions(ctx context.Context, userID vo.Id, open []mo
 				return err
 			}
 		}
-		return s.repo.DeleteOpenTransactionSuggestionsByUser(ctx, userID)
+		return nil
 	})
 }
 
@@ -179,7 +176,7 @@ type suggestionLookup struct {
 // pendingSuggestionRows keeps a transaction while it is live, on an account
 // the caller owns, still of the suggestion's type (an edit can change it) and
 // still empty in a field the suggestion would set. A row the AI job filled in
-// also stays while it carries every value the suggestion sets: the rule is
+// (assigned_by 'ai') also stays while it carries every value the suggestion sets: the rule is
 // still worth offering for it. A filled row that carries a different value
 // than the suggestion sets counts against it and goes, even with another
 // field still empty. A new-payee name sets the payee and is carried by any
@@ -189,7 +186,7 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		live *model.Transaction
 		link *model.ImportTransactionLink
 	}
-	// agreeing rows stay only when filled; disputed ones only when not filled
+	// agreeing rows stay only when the AI filled them; disputed ones only when it did not
 	var kept, agreeing, disputed []pending
 	for _, linkID := range sg.LinkIDs {
 		l, live, err := s.suggestionTargetCached(ctx, userID, linkID, look.owned)
@@ -211,24 +208,14 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 			agreeing = append(agreeing, p)
 		}
 	}
-	if len(agreeing)+len(disputed) > 0 {
-		ids := make([]vo.Id, 0, len(agreeing)+len(disputed))
-		for _, p := range append(append([]pending{}, agreeing...), disputed...) {
-			ids = append(ids, p.link.ID)
+	for _, p := range agreeing {
+		if p.link.AssignedBy == model.ImportAssignedByAI {
+			kept = append(kept, p)
 		}
-		filled, err := s.repo.FilledTransactionSuggestionLinks(ctx, ids)
-		if err != nil {
-			return nil, err
-		}
-		for _, p := range agreeing {
-			if filled[p.link.ID] {
-				kept = append(kept, p)
-			}
-		}
-		for _, p := range disputed {
-			if !filled[p.link.ID] {
-				kept = append(kept, p)
-			}
+	}
+	for _, p := range disputed {
+		if p.link.AssignedBy != model.ImportAssignedByAI {
+			kept = append(kept, p)
 		}
 	}
 	if len(kept) == 0 {
@@ -433,7 +420,7 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 			if fillPayee {
 				l.AppliedPayeeID = next.PayeeID
 			}
-			l.AppliedRuleID = next.RuleID
+			l.AppliedRuleID, l.AssignedBy = next.RuleID, model.ImportAssignedByRule
 			if err := s.repo.UpdateLink(ctx, l); err != nil {
 				return err
 			}

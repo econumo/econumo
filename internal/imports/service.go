@@ -193,12 +193,16 @@ func (s *Service) snapshotOf(ctx context.Context, txID vo.Id) (model.ImportClass
 	return model.ImportClassification{CategoryID: t.CategoryID, PayeeID: t.PayeeID, TagID: t.TagID, LabelIDs: t.LabelIDs}, nil
 }
 
-// setApplied overwrites the row's applied snapshot wholesale, rule id
-// included: a nil RuleID means "no rule classified this row", and anything
-// already on the column (e.g. the skip rule of a row the user later unskipped)
-// must not survive as a false attribution.
+// setApplied overwrites the row's applied snapshot wholesale, rule id and
+// assigned_by included: a nil RuleID means "no rule classified this row", and
+// anything already on the columns (e.g. the skip rule of a row the user later
+// unskipped, an earlier job's 'ai') must not survive as a false attribution.
 func setApplied(link *model.ImportTransactionLink, c model.ImportClassification) {
 	link.AppliedCategoryID, link.AppliedPayeeID, link.AppliedTagID, link.AppliedRuleID = c.CategoryID, c.PayeeID, c.TagID, c.RuleID
+	link.AssignedBy = model.ImportAssignedByNone
+	if c.RuleID != nil {
+		link.AssignedBy = model.ImportAssignedByRule
+	}
 }
 
 // writeApplied stores the classification the row's transaction carries as

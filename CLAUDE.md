@@ -537,9 +537,10 @@ surface.
   owner's Inbox. One open suggestion per (owner, merchant, type); one owner's jobs run one at
   a time. The same AI pass also ASSIGNS the category and payee to those transactions that
   still have NO category (a rule- or hand-set category means nothing is assigned, even an
-  empty payee; empty fields only, under a transaction row lock, like a rule's write; recorded
-  as `filled` rows of `import_transaction_suggestions`, which keep an agreeing rule suggestion
-  listed). A missing payee is created only for a merchant the AI flags `wellKnown`; a rule
+  empty payee; empty fields only, under a transaction row lock, like a rule's write; the link
+  then reads `assigned_by = 'ai'`, which keeps an agreeing rule suggestion listed). The link's
+  `assigned_by` (`rule`/`ai`/NULL) is rewritten by every write of its applied snapshot; a path
+  that leaves the transaction's classification alone keeps it. A missing payee is created only for a merchant the AI flags `wellKnown`; a rule
   suggestion may carry such a name (`payee_name`), created when the user saves the rule. Spec
   `2026-11-22-ai-import-suggestion-settings-design.md`. User options `ai_suggest_rules` and
   `ai_suggest_fill` (assign; `update-ai-suggestions`, absent = on); both off = no AI call.

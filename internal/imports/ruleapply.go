@@ -158,7 +158,8 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 
 // restampEdited makes the rule the applied baseline of a hand-edited row that
 // already carries its targets: nothing on the transaction changes, but the
-// snapshot no longer reads as an edit. Not counted as updated.
+// snapshot no longer reads as an edit. Not counted as updated, and who
+// classified the transaction stays as it was.
 func (s *Service) restampEdited(ctx context.Context, l *model.ImportTransactionLink, live *model.Transaction, rule *model.ImportRule, income map[vo.Id]bool) error {
 	applied, err := s.appliedOf(ctx, l)
 	if err != nil {
@@ -170,7 +171,13 @@ func (s *Service) restampEdited(ctx context.Context, l *model.ImportTransactionL
 	next := applyTargets(rule, live, income)
 	next.RuleID = &rule.ID
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// read again: an AI assignment may have landed since the scan
+		stored, err := s.repo.GetLink(ctx, l.ID)
+		if err != nil {
+			return err
+		}
 		setApplied(l, next)
+		l.AssignedBy = stored.AssignedBy
 		if err := s.repo.UpdateLink(ctx, l); err != nil {
 			return err
 		}

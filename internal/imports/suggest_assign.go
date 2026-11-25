@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
-	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -31,7 +30,6 @@ type assignment struct {
 func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (map[string]vo.Id, map[vo.Id]missingFields, error) {
 	created := map[string]vo.Id{}
 	written := map[vo.Id]missingFields{}
-	now := s.clk.Now().UTC()
 	s.lockAssignRows(ctx, owner, list)
 	// The locks can take a while: a category or payee archived meanwhile is
 	// not written, and neither is a new payee whose name an archived one took.
@@ -46,7 +44,7 @@ func (s *Service) assign(ctx context.Context, owner vo.Id, list []assignment) (m
 		var wrote bool
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 			var err error
-			newPayee, set, wrote, err = s.assignRow(ctx, owner, a, created, now)
+			newPayee, set, wrote, err = s.assignRow(ctx, owner, a, created)
 			return err
 		})
 		if err != nil {
@@ -118,7 +116,7 @@ func (s *Service) lockAssignRows(ctx context.Context, owner vo.Id, list []assign
 // moves for the fields written, as a rule's write does, so a later apply-rule
 // may replace them. It reports which of the two fields the row has once
 // written; a value archived meanwhile leaves its field empty.
-func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id, now time.Time) (*vo.Id, missingFields, bool, error) {
+func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, created map[string]vo.Id) (*vo.Id, missingFields, bool, error) {
 	if a.row.Link.TransactionID == nil {
 		return nil, missingFields{}, false, nil
 	}
@@ -151,23 +149,17 @@ func (s *Service) assignRow(ctx context.Context, owner vo.Id, a assignment, crea
 		return nil, missingFields{}, false, nil
 	}
 	next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: live.LabelIDs}
-	record := model.ImportTransactionSuggestion{
-		LinkID: l.ID, UserID: owner, Type: live.Type,
-		Status: model.ImportTransactionSuggestionStatusFilled, CreatedAt: now, UpdatedAt: now,
-	}
 	if fillCategory {
-		next.CategoryID, record.CategoryID, l.AppliedCategoryID = a.categoryID, a.categoryID, a.categoryID
+		next.CategoryID, l.AppliedCategoryID = a.categoryID, a.categoryID
 	}
 	if payeeID != nil {
-		next.PayeeID, record.PayeeID, l.AppliedPayeeID = payeeID, payeeID, payeeID
+		next.PayeeID, l.AppliedPayeeID = payeeID, payeeID
 	}
+	l.AssignedBy = model.ImportAssignedByAI
 	if _, err := s.txns.UpdateTransaction(ctx, owner, updateRequest(live, next)); err != nil {
 		return nil, missingFields{}, false, err
 	}
 	if err := s.repo.UpdateLink(ctx, l); err != nil {
-		return nil, missingFields{}, false, err
-	}
-	if err := s.repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{record}); err != nil {
 		return nil, missingFields{}, false, err
 	}
 	return newPayee, missingFields{Category: next.CategoryID != nil, Payee: next.PayeeID != nil}, true, nil

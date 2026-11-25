@@ -901,52 +901,51 @@ func TestExistingLinkIDs(t *testing.T) {
 	}
 }
 
-func TestTransactionSuggestionRepo(t *testing.T) {
+func TestLinkAssignedByRoundTrip(t *testing.T) {
 	repo, db := setup(t)
 	ctx := context.Background()
-	_, links := seedSuggestionWithLinks(t, repo, db, 3)
-	catA, catB := vo.NewId(), vo.NewId()
-	mk := func(l *model.ImportTransactionLink, cat vo.Id, status string) model.ImportTransactionSuggestion {
-		return model.ImportTransactionSuggestion{
-			LinkID: l.ID, UserID: vo.MustParseId(userA), CategoryID: &cat, Type: model.TransactionTypeExpense,
-			Status: status, CreatedAt: fixedTime, UpdatedAt: fixedTime,
-		}
-	}
-	filledStatus, openStatus := model.ImportTransactionSuggestionStatusFilled, model.ImportTransactionSuggestionStatusOpen
-	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[0], catA, filledStatus), mk(links[1], catA, openStatus)}); err != nil {
-		t.Fatal(err)
-	}
-	// a repeated insert keeps the first row
-	if err := repo.InsertTransactionSuggestions(ctx, []model.ImportTransactionSuggestion{mk(links[1], catB, filledStatus)}); err != nil {
-		t.Fatal(err)
-	}
-	filled, err := repo.FilledTransactionSuggestionLinks(ctx, []vo.Id{links[0].ID, links[1].ID, links[2].ID})
-	if err != nil || len(filled) != 1 || !filled[links[0].ID] {
-		t.Fatalf("filled = %v, %v", filled, err)
-	}
-	if got, err := repo.FilledTransactionSuggestionLinks(ctx, nil); err != nil || len(got) != 0 {
-		t.Fatalf("empty input = %v, %v", got, err)
-	}
-	count := func() int {
-		var n int
-		if err := db.Raw.QueryRow(`SELECT COUNT(*) FROM import_transaction_suggestions`).Scan(&n); err != nil {
+	_, links := seedSuggestionWithLinks(t, repo, db, 2)
+	read := func(id vo.Id) model.ImportAssignedBy {
+		t.Helper()
+		l, err := repo.GetLink(ctx, id)
+		if err != nil {
 			t.Fatal(err)
 		}
-		return n
+		return l.AssignedBy
 	}
-
-	if err := repo.DeleteOpenTransactionSuggestionsByUser(ctx, vo.NewId()); err != nil || count() != 2 {
-		t.Fatalf("another user's delete: %v, rows = %d", err, count())
+	if got := read(links[0].ID); got != model.ImportAssignedByNone {
+		t.Fatalf("new link = %q, want none", got)
 	}
-	if err := repo.DeleteOpenTransactionSuggestionsByUser(ctx, vo.MustParseId(userA)); err != nil {
+	ruled := newLink(links[0].SourceID.String(), "ruled", nil, model.ImportLinkStatusQueued)
+	ruled.AssignedBy = model.ImportAssignedByRule
+	if err := repo.InsertLink(ctx, ruled); err != nil {
 		t.Fatal(err)
 	}
-	if filled, _ = repo.FilledTransactionSuggestionLinks(ctx, []vo.Id{links[0].ID}); !filled[links[0].ID] || count() != 1 {
-		t.Fatalf("deleting a user's open rows keeps the filled one: rows = %d", count())
+	if got := read(ruled.ID); got != model.ImportAssignedByRule {
+		t.Fatalf("inserted = %q, want rule", got)
 	}
-
-	db.Exec(t, db.Rebind(`DELETE FROM import_transaction_links WHERE id = ?`), links[0].ID.String())
-	if n := count(); n != 0 {
-		t.Fatalf("deleting the ledger link cascades: rows = %d", n)
+	links[1].AssignedBy = model.ImportAssignedByAI
+	if err := repo.UpdateLink(ctx, links[1]); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(links[1].ID); got != model.ImportAssignedByAI {
+		t.Fatalf("updated = %q, want ai", got)
+	}
+	listed, err := repo.ListLinksBySource(ctx, links[1].SourceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range listed {
+		if l.ID == links[1].ID && l.AssignedBy != model.ImportAssignedByAI {
+			t.Fatalf("listed = %q, want ai", l.AssignedBy)
+		}
+	}
+	links[1].AssignedBy = model.ImportAssignedByNone
+	if err := repo.UpdateLink(ctx, links[1]); err != nil {
+		t.Fatal(err)
+	}
+	var raw *string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT assigned_by FROM import_transaction_links WHERE id = ?`), links[1].ID.String()).Scan(&raw); err != nil || raw != nil {
+		t.Fatalf("cleared = %v, %v, want NULL", raw, err)
 	}
 }

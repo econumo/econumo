@@ -141,7 +141,20 @@ type ImportTransactionLink struct {
 	AppliedTagID          *vo.Id
 	AppliedRuleID         *vo.Id
 	ImportedAt            time.Time
+	AssignedBy            ImportAssignedBy
 }
+
+// ImportAssignedBy says who wrote the transaction's current classification
+// through the import system. None covers the import's own data, an adopted
+// transaction, a queued row the user filled in and a skip: a skip rule's id
+// sits on AppliedRuleID without classifying anything.
+type ImportAssignedBy string
+
+const (
+	ImportAssignedByNone ImportAssignedBy = ""
+	ImportAssignedByRule ImportAssignedBy = "rule"
+	ImportAssignedByAI   ImportAssignedBy = "ai"
+)
 
 // A queued row is not "seen": the user has not decided yet, so the same
 // external id may be re-offered by a later sync.
@@ -277,22 +290,4 @@ type ImportSuggestion struct {
 	LinkIDs   []vo.Id // filled by the read methods
 	CreatedAt time.Time
 	UpdatedAt time.Time
-}
-
-const (
-	ImportTransactionSuggestionStatusOpen   = "open"
-	ImportTransactionSuggestionStatusFilled = "filled"
-)
-
-// ImportTransactionSuggestion is a category/payee proposal for one imported
-// transaction, keyed by its ledger link.
-type ImportTransactionSuggestion struct {
-	LinkID     vo.Id
-	UserID     vo.Id // the account owner
-	CategoryID *vo.Id
-	PayeeID    *vo.Id
-	Type       TransactionType
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
 }

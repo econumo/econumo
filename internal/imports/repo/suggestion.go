@@ -218,3 +218,7 @@ func suggestionFromRow(row suggestionRow) (*model.ImportSuggestion, error) {
 	}
 	return s, nil
 }
+
+func (r *Repo) LockTransactionRow(ctx context.Context, transactionID vo.Id) error {
+	return r.q.LockImportTransactionRow(ctx, r.db(ctx), transactionID.String())
+}

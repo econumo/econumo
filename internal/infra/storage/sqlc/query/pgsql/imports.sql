@@ -49,21 +49,21 @@ WHERE id = $10
 ;
 
 -- name: InsertImportTransactionLink :exec
-INSERT INTO import_transaction_links (id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+INSERT INTO import_transaction_links (id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 ;
 
 -- name: GetImportTransactionLinkByExternalKey :one
 -- Card identity is case-insensitive (Apple Wallet may report the same card
 -- with different casing between taps), so the account-id half of the key
 -- folds case; external_transaction_id stays exact.
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE source_id = sqlc.arg(source_id) AND lower(external_account_id) = lower(sqlc.arg(external_account_id)) AND external_transaction_id = sqlc.arg(external_transaction_id)
 ;
 
 -- name: ListImportTransactionLinksByTransaction :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE transaction_id = $1
 ORDER BY imported_at, id
@@ -130,26 +130,26 @@ ORDER BY received_at DESC, id
 ;
 
 -- name: GetImportTransactionLinkByID :one
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE id = $1
 ;
 
 -- name: UpdateImportTransactionLink :exec
 UPDATE import_transaction_links
-SET run_id = $1, transaction_id = $2, status = $3, external_amount = $4, external_currency = $5, applied_category_id = $6, applied_payee_id = $7, applied_tag_id = $8, applied_rule_id = $9
-WHERE id = $10
+SET run_id = $1, transaction_id = $2, status = $3, external_amount = $4, external_currency = $5, applied_category_id = $6, applied_payee_id = $7, applied_tag_id = $8, applied_rule_id = $9, assigned_by = $10
+WHERE id = $11
 ;
 
 -- name: ListImportTransactionLinksBySource :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE source_id = $1
 ORDER BY external_posted_at DESC, id
 ;
 
 -- name: ListImportTransactionLinksBySourcePage :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE source_id = $1
 ORDER BY external_posted_at DESC, id DESC
@@ -197,7 +197,7 @@ LIMIT $3
 ;
 
 -- name: ListImportTransactionLinksByRun :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE run_id = $1
 ORDER BY imported_at, id
@@ -252,7 +252,7 @@ INSERT INTO import_link_applied_labels (link_id, label_id) VALUES ($1, $2);
 SELECT link_id, label_id FROM import_link_applied_labels WHERE link_id = $1 ORDER BY label_id;
 
 -- name: ListImportTransactionLinksByUser :many
-SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at, l.assigned_by
 FROM import_transaction_links l
 JOIN import_sources s ON s.id = l.source_id
 WHERE s.user_id = $1
@@ -262,7 +262,7 @@ ORDER BY l.imported_at, l.id;
 -- a shared account): the owner's rules classify them, so applying one of
 -- those rules reaches them too.
 -- name: ListImportTransactionLinksIntoUserAccounts :many
-SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at, l.assigned_by
 FROM import_transaction_links l
 JOIN import_sources s ON s.id = l.source_id
 JOIN transactions t ON t.id = l.transaction_id
@@ -310,15 +310,7 @@ DELETE FROM import_suggestion_links WHERE suggestion_id = $1 AND link_id = $2;
 -- name: DeleteImportSuggestion :exec
 DELETE FROM import_suggestions WHERE id = $1;
 
--- name: InsertImportTransactionSuggestion :exec
-INSERT INTO import_transaction_suggestions (link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-ON CONFLICT (link_id) DO NOTHING;
-
 -- name: LockImportTransactionRow :exec
 -- The AI assignment reads the transaction and writes it back whole: the row
 -- lock keeps a concurrent edit from landing between the read and the write.
 SELECT id FROM transactions WHERE id = $1 FOR UPDATE;
-
--- name: DeleteOpenImportTransactionSuggestionsByUser :exec
-DELETE FROM import_transaction_suggestions WHERE user_id = $1 AND status = 'open';

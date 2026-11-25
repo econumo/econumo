@@ -84,7 +84,6 @@ type Querier interface {
 	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
-	DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) error
 	DeletePayee(ctx context.Context, id string) error
 	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, arg DeleteQueuedImportTransactionLinksByExternalAccountParams) error
 	// Link rows between a recurring template and its reporting labels. See the
@@ -321,7 +320,6 @@ type Querier interface {
 	InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error
 	InsertImportSuggestionLink(ctx context.Context, arg InsertImportSuggestionLinkParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
-	InsertImportTransactionSuggestion(ctx context.Context, arg InsertImportTransactionSuggestionParams) error
 	// See the sqlite sibling.
 	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)
 	// OAuth authorization server (MCP clients): clients, codes, grants.

@@ -105,15 +105,6 @@ func (q *Queries) DeleteImportTransactionLink(ctx context.Context, id string) er
 	return err
 }
 
-const deleteOpenImportTransactionSuggestionsByUser = `-- name: DeleteOpenImportTransactionSuggestionsByUser :exec
-DELETE FROM import_transaction_suggestions WHERE user_id = $1 AND status = 'open'
-`
-
-func (q *Queries) DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, userID string) error {
-	_, err := q.db.ExecContext(ctx, deleteOpenImportTransactionSuggestionsByUser, userID)
-	return err
-}
-
 const deleteQueuedImportTransactionLinksByExternalAccount = `-- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
 DELETE FROM import_transaction_links WHERE source_id = $1 AND lower(external_account_id) = lower($2) AND status = 'queued'
 `
@@ -348,7 +339,7 @@ func (q *Queries) GetImportSuggestionByID(ctx context.Context, id string) (Impor
 }
 
 const getImportTransactionLinkByExternalKey = `-- name: GetImportTransactionLinkByExternalKey :one
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE source_id = $1 AND lower(external_account_id) = lower($2) AND external_transaction_id = $3
 `
@@ -384,12 +375,13 @@ func (q *Queries) GetImportTransactionLinkByExternalKey(ctx context.Context, arg
 		&i.AppliedTagID,
 		&i.AppliedRuleID,
 		&i.ImportedAt,
+		&i.AssignedBy,
 	)
 	return i, err
 }
 
 const getImportTransactionLinkByID = `-- name: GetImportTransactionLinkByID :one
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE id = $1
 `
@@ -416,6 +408,7 @@ func (q *Queries) GetImportTransactionLinkByID(ctx context.Context, id string) (
 		&i.AppliedTagID,
 		&i.AppliedRuleID,
 		&i.ImportedAt,
+		&i.AssignedBy,
 	)
 	return i, err
 }
@@ -690,8 +683,8 @@ func (q *Queries) InsertImportSuggestionLink(ctx context.Context, arg InsertImpo
 }
 
 const insertImportTransactionLink = `-- name: InsertImportTransactionLink :exec
-INSERT INTO import_transaction_links (id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+INSERT INTO import_transaction_links (id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 `
 
 type InsertImportTransactionLinkParams struct {
@@ -713,6 +706,7 @@ type InsertImportTransactionLinkParams struct {
 	AppliedTagID          *string
 	AppliedRuleID         *string
 	ImportedAt            time.Time
+	AssignedBy            *string
 }
 
 func (q *Queries) InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error {
@@ -735,37 +729,7 @@ func (q *Queries) InsertImportTransactionLink(ctx context.Context, arg InsertImp
 		arg.AppliedTagID,
 		arg.AppliedRuleID,
 		arg.ImportedAt,
-	)
-	return err
-}
-
-const insertImportTransactionSuggestion = `-- name: InsertImportTransactionSuggestion :exec
-INSERT INTO import_transaction_suggestions (link_id, user_id, category_id, payee_id, transaction_type, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-ON CONFLICT (link_id) DO NOTHING
-`
-
-type InsertImportTransactionSuggestionParams struct {
-	LinkID          string
-	UserID          string
-	CategoryID      *string
-	PayeeID         *string
-	TransactionType string
-	Status          string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-}
-
-func (q *Queries) InsertImportTransactionSuggestion(ctx context.Context, arg InsertImportTransactionSuggestionParams) error {
-	_, err := q.db.ExecContext(ctx, insertImportTransactionSuggestion,
-		arg.LinkID,
-		arg.UserID,
-		arg.CategoryID,
-		arg.PayeeID,
-		arg.TransactionType,
-		arg.Status,
-		arg.CreatedAt,
-		arg.UpdatedAt,
+		arg.AssignedBy,
 	)
 	return err
 }
@@ -1197,7 +1161,7 @@ func (q *Queries) ListImportSuggestionLinks(ctx context.Context, suggestionID st
 }
 
 const listImportTransactionLinksByRun = `-- name: ListImportTransactionLinksByRun :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE run_id = $1
 ORDER BY imported_at, id
@@ -1231,6 +1195,7 @@ func (q *Queries) ListImportTransactionLinksByRun(ctx context.Context, runID *st
 			&i.AppliedTagID,
 			&i.AppliedRuleID,
 			&i.ImportedAt,
+			&i.AssignedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -1246,7 +1211,7 @@ func (q *Queries) ListImportTransactionLinksByRun(ctx context.Context, runID *st
 }
 
 const listImportTransactionLinksBySource = `-- name: ListImportTransactionLinksBySource :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE source_id = $1
 ORDER BY external_posted_at DESC, id
@@ -1280,6 +1245,7 @@ func (q *Queries) ListImportTransactionLinksBySource(ctx context.Context, source
 			&i.AppliedTagID,
 			&i.AppliedRuleID,
 			&i.ImportedAt,
+			&i.AssignedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -1295,7 +1261,7 @@ func (q *Queries) ListImportTransactionLinksBySource(ctx context.Context, source
 }
 
 const listImportTransactionLinksBySourcePage = `-- name: ListImportTransactionLinksBySourcePage :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE source_id = $1
 ORDER BY external_posted_at DESC, id DESC
@@ -1336,6 +1302,7 @@ func (q *Queries) ListImportTransactionLinksBySourcePage(ctx context.Context, ar
 			&i.AppliedTagID,
 			&i.AppliedRuleID,
 			&i.ImportedAt,
+			&i.AssignedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -1351,7 +1318,7 @@ func (q *Queries) ListImportTransactionLinksBySourcePage(ctx context.Context, ar
 }
 
 const listImportTransactionLinksByTransaction = `-- name: ListImportTransactionLinksByTransaction :many
-SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at, assigned_by
 FROM import_transaction_links
 WHERE transaction_id = $1
 ORDER BY imported_at, id
@@ -1385,6 +1352,7 @@ func (q *Queries) ListImportTransactionLinksByTransaction(ctx context.Context, t
 			&i.AppliedTagID,
 			&i.AppliedRuleID,
 			&i.ImportedAt,
+			&i.AssignedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -1400,7 +1368,7 @@ func (q *Queries) ListImportTransactionLinksByTransaction(ctx context.Context, t
 }
 
 const listImportTransactionLinksByUser = `-- name: ListImportTransactionLinksByUser :many
-SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at, l.assigned_by
 FROM import_transaction_links l
 JOIN import_sources s ON s.id = l.source_id
 WHERE s.user_id = $1
@@ -1435,6 +1403,7 @@ func (q *Queries) ListImportTransactionLinksByUser(ctx context.Context, userID s
 			&i.AppliedTagID,
 			&i.AppliedRuleID,
 			&i.ImportedAt,
+			&i.AssignedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -1450,7 +1419,7 @@ func (q *Queries) ListImportTransactionLinksByUser(ctx context.Context, userID s
 }
 
 const listImportTransactionLinksIntoUserAccounts = `-- name: ListImportTransactionLinksIntoUserAccounts :many
-SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at, l.assigned_by
 FROM import_transaction_links l
 JOIN import_sources s ON s.id = l.source_id
 JOIN transactions t ON t.id = l.transaction_id
@@ -1490,6 +1459,7 @@ func (q *Queries) ListImportTransactionLinksIntoUserAccounts(ctx context.Context
 			&i.AppliedTagID,
 			&i.AppliedRuleID,
 			&i.ImportedAt,
+			&i.AssignedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -1763,8 +1733,8 @@ func (q *Queries) UpdateImportSource(ctx context.Context, arg UpdateImportSource
 
 const updateImportTransactionLink = `-- name: UpdateImportTransactionLink :exec
 UPDATE import_transaction_links
-SET run_id = $1, transaction_id = $2, status = $3, external_amount = $4, external_currency = $5, applied_category_id = $6, applied_payee_id = $7, applied_tag_id = $8, applied_rule_id = $9
-WHERE id = $10
+SET run_id = $1, transaction_id = $2, status = $3, external_amount = $4, external_currency = $5, applied_category_id = $6, applied_payee_id = $7, applied_tag_id = $8, applied_rule_id = $9, assigned_by = $10
+WHERE id = $11
 `
 
 type UpdateImportTransactionLinkParams struct {
@@ -1777,6 +1747,7 @@ type UpdateImportTransactionLinkParams struct {
 	AppliedPayeeID    *string
 	AppliedTagID      *string
 	AppliedRuleID     *string
+	AssignedBy        *string
 	ID                string
 }
 
@@ -1791,6 +1762,7 @@ func (q *Queries) UpdateImportTransactionLink(ctx context.Context, arg UpdateImp
 		arg.AppliedPayeeID,
 		arg.AppliedTagID,
 		arg.AppliedRuleID,
+		arg.AssignedBy,
 		arg.ID,
 	)
 	return err

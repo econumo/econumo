@@ -53,7 +53,6 @@ type (
 	insertSuggestionLinkPs    = sqlitegen.InsertImportSuggestionLinkParams
 	touchSuggestionParams     = sqlitegen.TouchOpenImportSuggestionParams
 	deleteSuggestionLinkPs    = sqlitegen.DeleteImportSuggestionLinkParams
-	insertTxSuggestionParams  = sqlitegen.InsertImportTransactionSuggestionParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -120,9 +119,7 @@ type querier interface {
 	ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error)
 	ListOpenImportSuggestionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionLinkRow, error)
 	DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error
-	InsertImportTransactionSuggestion(ctx context.Context, db backend.DBTX, p insertTxSuggestionParams) error
 	LockImportTransactionRow(ctx context.Context, db backend.DBTX, transactionID string) error
-	DeleteOpenImportTransactionSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) error
 	ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 }
@@ -357,7 +354,7 @@ func (r *Repo) InsertLink(ctx context.Context, l *model.ImportTransactionLink) e
 		ExternalAmount: l.ExternalAmount, ExternalCurrency: l.ExternalCurrency, ExternalPostedAt: l.ExternalPostedAt,
 		AppliedCategoryID: optionalID(l.AppliedCategoryID), AppliedPayeeID: optionalID(l.AppliedPayeeID),
 		AppliedTagID: optionalID(l.AppliedTagID), AppliedRuleID: optionalID(l.AppliedRuleID),
-		ImportedAt: l.ImportedAt,
+		ImportedAt: l.ImportedAt, AssignedBy: assignedByColumn(l.AssignedBy),
 	})
 }
 
@@ -406,6 +403,9 @@ func linkFromRow(row linkRow) (*model.ImportTransactionLink, error) {
 		ExternalPayee: row.ExternalPayee, ExternalDescription: row.ExternalDescription,
 		ExternalAmount: vo.NewDecimal(row.ExternalAmount).String(), ExternalCurrency: row.ExternalCurrency,
 		ExternalPostedAt: row.ExternalPostedAt, ImportedAt: row.ImportedAt,
+	}
+	if row.AssignedBy != nil {
+		l.AssignedBy = model.ImportAssignedBy(*row.AssignedBy)
 	}
 	for _, f := range []struct {
 		src *string
@@ -577,8 +577,17 @@ func (r *Repo) UpdateLink(ctx context.Context, l *model.ImportTransactionLink) e
 		RunID: optionalID(l.RunID), TransactionID: optionalID(l.TransactionID), Status: l.Status,
 		ExternalAmount: l.ExternalAmount, ExternalCurrency: l.ExternalCurrency,
 		AppliedCategoryID: optionalID(l.AppliedCategoryID), AppliedPayeeID: optionalID(l.AppliedPayeeID),
-		AppliedTagID: optionalID(l.AppliedTagID), AppliedRuleID: optionalID(l.AppliedRuleID), ID: l.ID.String(),
+		AppliedTagID: optionalID(l.AppliedTagID), AppliedRuleID: optionalID(l.AppliedRuleID), AssignedBy: assignedByColumn(l.AssignedBy),
+		ID: l.ID.String(),
 	})
+}
+
+func assignedByColumn(a model.ImportAssignedBy) *string {
+	if a == model.ImportAssignedByNone {
+		return nil
+	}
+	s := string(a)
+	return &s
 }
 
 func (r *Repo) ListLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.ImportTransactionLink, error) {

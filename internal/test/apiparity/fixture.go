@@ -253,10 +253,6 @@ func Seed(t testing.TB, db *dbtest.DB) {
 		ExternalPayee: "Employer", ExternalAmount: "1000.00000000", ExternalPostedAt: ClockTime})
 	f.ImportSuggestion(fixture.ImportSuggestion{ID: ImportSuggestionEmployer, UserID: OwnerID, MatchText: "EMPLOYER", Type: "income",
 		PayeeID: PayeeShop, LinkIDs: []string{ImportLinkTxn2}})
-	// The same tap's own suggestion: Txn2 already carries CatSalary, so only
-	// the payee is offered.
-	f.ImportTransactionSuggestion(fixture.ImportTransactionSuggestion{LinkID: ImportLinkTxn2, UserID: OwnerID, Type: "income",
-		CategoryID: CatSalary, PayeeID: PayeeShop})
 
 	// A queued tap on the same "wallet" card: 12.50 at "Shop" received at
 	// ClockTime. Txn1 has the same amount but is seeded at the fixture
