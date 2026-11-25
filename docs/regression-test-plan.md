@@ -1040,7 +1040,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       without a payee. On a payee-only suggestion (no category) whose payee is archived, the
       editor says "The suggested payee is archived. Choose a payee, or close." and Save stays off
       until a payee or category is picked; when the payee is archived after the editor opened,
-      Save posts no rule (no error toast) and shows the same message. Picking another payee in the editor saves the rule with that payee and
+      Save posts no rule (no error toast) and shows the same message. On a suggestion naming an
+      existing payee that is archived (in Settings → Payees) while the editor is open, Save posts
+      no rule, the payee field empties and the same message shows until a payee is picked or the
+      field is cleared. Picking another payee in the editor saves the rule with that payee and
       creates none. With the network dropped right after tapping Save and Save tapped again,
       Settings → Payees shows ONE "Starbucks".
 - [ ] Suggested rule retry 📱: when Save created the rule but the accept failed (an error

@@ -720,6 +720,30 @@ describe('suggestion mode', () => {
     expect(posted.accept).toHaveLength(1)
   })
 
+  it('a suggested payee archived after the list loaded is not posted: Save asks for a payee', async () => {
+    renderPrompt()
+    const payees: Record<string, unknown>[] = [...fixturePayees, { id: 'p2', ownerUserId: 'u1', name: 'Corner', position: 1, isArchived: 0, createdAt: '', updatedAt: '' }]
+    server.use(http.get('*/api/v1/payee/get-payee-list', () => HttpResponse.json({ success: true, message: '', data: { items: payees } })))
+    previewCounts(0, 0)
+    acceptHandler(2)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion: { ...suggestion, id: 'sg-archived-payee' } })
+    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Grocer'))
+    payees[0] = { ...payees[0], isArchived: 1 }
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('The suggested payee is archived. Choose a payee, or close.')
+    expect(posted.create).toBeUndefined()
+    expect(posted.accept).toBeUndefined()
+    expect(screen.getByRole('combobox', { name: 'Payee' })).not.toHaveValue('Grocer')
+
+    await user.click(screen.getByRole('combobox', { name: 'Payee' }))
+    await user.click(await screen.findByRole('option', { name: 'Corner' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.create![0]).toMatchObject({ categoryId: 'cat-food', payeeId: 'p2' })
+  })
+
   describe('a suggested new payee', () => {
     let seq = 0
     // each test its own suggestion: the operation id a Save mints is kept per suggestion

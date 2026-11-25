@@ -30,6 +30,7 @@ import {
   useApplyImportRule,
   useCreateImportRule,
   useCreateSuggestedPayee,
+  useFreshPayees,
   useImportRules,
   useSuggestMatchText,
   usePreviewImportRule,
@@ -375,6 +376,8 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const [busy, setBusy] = useState(false)
   // Save found the suggested payee archived and the rule would set nothing: nothing was posted
   const [payeeArchived, setPayeeArchived] = useState(false)
+  // Save found the chosen existing payee archived since the list loaded: nothing was posted
+  const [chosenPayeeArchived, setChosenPayeeArchived] = useState(false)
 
   const ownerId = user?.id
   // a payee of that name made since the suggestion was written (or on another device) is used as is;
@@ -398,6 +401,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const update = useUpdateImportRule()
   const accept = useAcceptImportSuggestion()
   const createPayee = useCreateSuggestedPayee()
+  const freshPayees = useFreshPayees()
   const { mutate: runPreview } = preview
 
   useEffect(() => {
@@ -425,6 +429,12 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const saveAndAccept = async () => {
     let saving = spec
     let newPayee = false
+    if (!newPayeeName && payeeId !== '') {
+      const known = await freshPayees()
+      if (known.find((p) => p.id === payeeId)?.isArchived) {
+        return 'chosen-payee-archived' as const
+      }
+    }
     if (proposedName) {
       const made = await createPayee.mutateAsync({ suggestionId: suggestion.id, name: proposedName, ownerUserId: ownerId })
       saving = { ...spec, payeeId: made.payee?.id ?? '' }
@@ -460,6 +470,11 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
       if (saved === undefined) {
         setNewPayeeName('')
         setPayeeArchived(true)
+        return
+      }
+      if (saved === 'chosen-payee-archived') {
+        setPayeeId('')
+        setChosenPayeeArchived(true)
         return
       }
       const { accepted, stored } = saved
@@ -525,10 +540,11 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
               setPayeeId(id ?? '')
               setNewPayeeName('')
               setPayeeArchived(false)
+              setChosenPayeeArchived(false)
             }}
             options={payeeOptions} />
         </SelectCard>
-        {(payeeArchived || named?.kind === 'archived') && categoryId === '' && knownPayeeId === '' && (
+        {(chosenPayeeArchived || ((payeeArchived || named?.kind === 'archived') && categoryId === '')) && knownPayeeId === '' && (
           <p className="px-1 text-sm text-destructive" role="alert">{t('imports.suggestions.payee_archived')}</p>
         )}
         <p className="min-h-4 px-1 text-xs text-muted-foreground" aria-live="polite">

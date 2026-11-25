@@ -88,6 +88,13 @@ export interface SuggestionChanges {
 // dismissed or no longer listed.
 const suggestedPayees = new Map<Id, { opId: Id; unsettled: boolean; created: boolean }>()
 
+// The payee list read fresh, not from the cache: Save checks that a payee chosen when the list
+// loaded is still active.
+export function useFreshPayees() {
+  const queryClient = useQueryClient()
+  return () => queryClient.fetchQuery({ queryKey: queryKeys.payees, queryFn: payeeApi.getPayeeList, staleTime: 0 })
+}
+
 // The payee a suggestion proposes by name, created unless the owner already has one of that name;
 // an archived one of that name means none (payee null). create-payee answers a replayed operation
 // id, and a name already taken, with a refusal and no payee: after an answered refusal the fresh
