@@ -1031,6 +1031,7 @@
       "dismiss": "Descartar",
       "hint": "Reglas sugeridas por la IA para las transacciones importadas automáticamente. Toca una para revisarla y guardarla.",
       "new_payee": "{name} (nuevo)",
+      "payee_archived": "El beneficiario sugerido está archivado. Elige un beneficiario o cierra.",
       "prompt_summary": "Sugerida para {count} transacción | Sugerida para {count} transacciones",
       "transactions": "{count} transacción | {count} transacciones"
     }

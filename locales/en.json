@@ -1031,6 +1031,7 @@
       "dismiss": "Dismiss",
       "hint": "AI-suggested rules for automatically imported transactions. Tap one to review and save it.",
       "new_payee": "{name} (new)",
+      "payee_archived": "The suggested payee is archived. Choose a payee, or close.",
       "prompt_summary": "Suggested for {count} transaction | Suggested for {count} transactions",
       "transactions": "{count} transaction | {count} transactions"
     }

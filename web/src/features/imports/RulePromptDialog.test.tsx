@@ -922,6 +922,38 @@ describe('suggestion mode', () => {
       expect(posted.create![0]).toMatchObject({ categoryId: 'cat-food', payeeId: '' })
     })
 
+    it('a payee-only suggestion whose payee was archived meanwhile posts nothing on Save and asks for a payee', async () => {
+      renderPrompt()
+      const payees = payeeServer()
+      previewCounts(0, 0)
+      acceptHandler(2)
+      const user = await open(proposing({ categoryId: '' }))
+      await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Blue Bottle (new)'))
+      payees.push({ id: 'p-arch', ownerUserId: 'u1', name: 'Blue Bottle', position: 1, isArchived: 1, createdAt: '', updatedAt: '' })
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('The suggested payee is archived. Choose a payee, or close.')
+      expect(posted.createPayee).toBeUndefined()
+      expect(posted.create).toBeUndefined()
+      expect(posted.accept).toBeUndefined()
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+
+      await user.click(screen.getByRole('combobox', { name: 'Payee' }))
+      await user.click(await screen.findByRole('option', { name: 'Grocer' }))
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(posted.create![0]).toMatchObject({ categoryId: '', payeeId: 'p1' })
+    })
+
+    it('a payee-only suggestion whose payee is already known archived says so and keeps Save off', async () => {
+      renderPrompt()
+      payeeServer([...fixturePayees, { id: 'p-arch', ownerUserId: 'u1', name: 'Blue Bottle', position: 1, isArchived: 1, createdAt: '', updatedAt: '' }])
+      previewCounts(0, 0)
+      await open(proposing({ categoryId: '' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('The suggested payee is archived. Choose a payee, or close.')
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    })
+
     it('picking another payee drops the new one', async () => {
       renderPrompt()
       const payees = payeeServer()

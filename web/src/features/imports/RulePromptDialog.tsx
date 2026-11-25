@@ -373,6 +373,8 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const [step, setStep] = useState<'define' | 'all'>('define')
   const [ruleId, setRuleId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Save found the suggested payee archived and the rule would set nothing: nothing was posted
+  const [payeeArchived, setPayeeArchived] = useState(false)
 
   const ownerId = user?.id
   // a payee of that name made since the suggestion was written (or on another device) is used as is;
@@ -428,6 +430,10 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
       saving = { ...spec, payeeId: made.payee?.id ?? '' }
       newPayee = made.created
     }
+    // the server refuses a classify rule that sets nothing
+    if (saving.categoryId === '' && saving.payeeId === '') {
+      return undefined
+    }
     let rule = await create.mutateAsync({ spec: saving, id: suggestion.id })
     const changed = suggestionSpec(rule, saving)
     if (changed) {
@@ -450,7 +456,13 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const save = async () => {
     setBusy(true)
     try {
-      const { accepted, stored } = await saveAndAccept()
+      const saved = await saveAndAccept()
+      if (saved === undefined) {
+        setNewPayeeName('')
+        setPayeeArchived(true)
+        return
+      }
+      const { accepted, stored } = saved
       // the stored rule may carry more than the dialog edits, so the preview uses the rule itself
       // the accept filled the suggestion's own rows, so this counts the others; a row the user
       // edited by hand (one of the suggestion's own included) is left for them, never offered
@@ -512,9 +524,13 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
               }
               setPayeeId(id ?? '')
               setNewPayeeName('')
+              setPayeeArchived(false)
             }}
             options={payeeOptions} />
         </SelectCard>
+        {(payeeArchived || named?.kind === 'archived') && categoryId === '' && knownPayeeId === '' && (
+          <p className="px-1 text-sm text-destructive" role="alert">{t('imports.suggestions.payee_archived')}</p>
+        )}
         <p className="min-h-4 px-1 text-xs text-muted-foreground" aria-live="polite">
           {!previewable || preview.isError
             ? ''

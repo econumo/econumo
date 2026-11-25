@@ -1031,6 +1031,7 @@
       "dismiss": "Verwerfen",
       "hint": "KI-vorgeschlagene Regeln für automatisch importierte Transaktionen. Tippen Sie auf eine, um sie zu prüfen und zu speichern.",
       "new_payee": "{name} (neu)",
+      "payee_archived": "Der vorgeschlagene Zahlungsempfänger ist archiviert. Wählen Sie einen Zahlungsempfänger aus oder schließen Sie das Fenster.",
       "prompt_summary": "Vorgeschlagen für {count} Transaktion | Vorgeschlagen für {count} Transaktionen",
       "transactions": "{count} Transaktion | {count} Transaktionen"
     }

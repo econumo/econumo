@@ -1031,6 +1031,7 @@
       "dismiss": "忽略",
       "hint": "AI 为自动导入的交易建议的规则。点按某条规则即可查看并保存。",
       "new_payee": "{name}（新）",
+      "payee_archived": "建议的收款人已归档。请选择收款人或关闭。",
       "prompt_summary": "建议用于 {count} 笔交易 | 建议用于 {count} 笔交易",
       "transactions": "{count} 笔交易 | {count} 笔交易"
     }
