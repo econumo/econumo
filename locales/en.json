@@ -2338,6 +2338,7 @@
       "portal": "Manage subscription",
       "status": {
         "trial": "Subscription ends {date}",
+        "trial_ends": "Trial ends {date}",
         "renews": "Renews {date}",
         "active": "Active subscription",
         "readonly": "Expired"

@@ -156,7 +156,9 @@ export function SettingsPage() {
                     </span>
                   ) : access.state === 'trial' && access.billingSettled ? (
                     <span className="shrink-0 text-xs text-econumo-link/80">
-                      {t('subscription.settings.status.trial', { date: formatAccessDate(access.accessUntil, i18n.language) })}
+                      {t(access.onTrial ? 'subscription.settings.status.trial_ends' : 'subscription.settings.status.trial', {
+                        date: formatAccessDate(access.accessUntil, i18n.language),
+                      })}
                     </span>
                   ) : access.state === 'readonly' ? (
                     <span className="shrink-0 text-xs text-destructive">{t('subscription.settings.status.readonly')}</span>

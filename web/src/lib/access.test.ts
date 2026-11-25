@@ -131,14 +131,14 @@ describe('isFutureUtc', () => {
 describe('formatAccessDate', () => {
   // The portal's form, for the viewer's local day of the UTC instant: an
   // early-UTC renewal is the evening before west of Greenwich.
-  it('writes the local day of the UTC instant the way the portal does', () => {
-    const instant = new Date(Date.UTC(2026, 10, 26, 1, 30, 0))
-    const want = instant.toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })
-    expect(formatAccessDate('2026-11-26 01:30:00', 'en')).toBe(want)
+  it('writes the local day of the UTC instant', () => {
+    expect(formatAccessDate('2026-11-26 01:30:00', 'en', 'America/Denver')).toBe('November 25, 2026')
+    expect(formatAccessDate('2026-11-26 01:30:00', 'en', 'UTC')).toBe('November 26, 2026')
+    expect(formatAccessDate('2026-11-25 12:00:00', 'en', 'Pacific/Auckland')).toBe('November 26, 2026')
   })
   it('reads as "Month day, year" in English and localizes elsewhere', () => {
-    expect(formatAccessDate('2026-11-25 12:00:00', 'en')).toBe('November 25, 2026')
-    expect(formatAccessDate('2026-11-25 12:00:00', 'ru')).toBe('25 ноября 2026 г.')
+    expect(formatAccessDate('2026-11-25 12:00:00', 'en', 'UTC')).toBe('November 25, 2026')
+    expect(formatAccessDate('2026-11-25 12:00:00', 'ru', 'UTC')).toBe('25 ноября 2026 г.')
   })
   it('is empty for no date', () => expect(formatAccessDate('', 'en')).toBe(''))
 })

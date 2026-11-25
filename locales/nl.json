@@ -2338,6 +2338,7 @@
       "portal": "Abonnement beheren",
       "status": {
         "trial": "Abonnement loopt tot {date}",
+        "trial_ends": "Proefperiode loopt tot {date}",
         "renews": "Wordt verlengd op {date}",
         "active": "Abonnement actief",
         "readonly": "Verlopen"
