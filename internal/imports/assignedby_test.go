@@ -66,9 +66,9 @@ func TestAssignedByApplyRuleAfterTheAI(t *testing.T) {
 	}
 }
 
-// Re-stamping a hand-edited row changes nothing on the transaction, so who
-// classified it does not move either.
-func TestAssignedByKeptWhenApplyRuleOnlyRestamps(t *testing.T) {
+// Re-stamping a hand-edited row changes nothing on the transaction, but the
+// snapshot now names the rule, and so does assigned_by.
+func TestAssignedByRuleWhenApplyRuleRestamps(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
@@ -83,8 +83,8 @@ func TestAssignedByKeptWhenApplyRuleOnlyRestamps(t *testing.T) {
 	if l.AppliedRuleID == nil || l.AppliedRuleID.String() != rule || !idIs(l.AppliedPayeeID, py) {
 		t.Fatalf("applied = payee %v rule %v, want the rule's baseline", l.AppliedPayeeID, l.AppliedRuleID)
 	}
-	if l.AssignedBy != model.ImportAssignedByAI {
-		t.Fatalf("assigned by = %q, want ai", l.AssignedBy)
+	if l.AssignedBy != model.ImportAssignedByRule {
+		t.Fatalf("assigned by = %q, want rule", l.AssignedBy)
 	}
 }
 
