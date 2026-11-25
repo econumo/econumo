@@ -302,6 +302,24 @@ it('says the trial ends for someone billing reports as not paying', async () => 
   expect(screen.queryByText(/Subscription ends/)).not.toBeInTheDocument()
 })
 
+it('never calls a failing subscription a trial', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      user: { ...fixtureUser, accessUntil: '2099-12-31 10:00:00' },
+      billingAccess: {
+        available: true,
+        user: { paid: false, renewing: false, renewsAt: '', endsAt: '', paymentFailed: true, discountUntil: '' },
+        connections: [],
+      },
+    }),
+  )
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText(`Subscription ends ${formatAccessDate('2099-12-31 10:00:00', 'en')}`)).toBeInTheDocument()
+  expect(screen.queryByText(/Trial ends/)).not.toBeInTheDocument()
+})
+
 // Without billing's answer a dated access may be a subscription: the neutral
 // wording stays.
 it('keeps the trial hint while billing access is unavailable', async () => {

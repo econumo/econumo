@@ -65,7 +65,8 @@ export function useAccessState(): AccessStateView {
     renewing,
     renewsAt: renewing && isFutureUtc(billingUser!.renewsAt) ? billingUser!.renewsAt : '',
     endsAt: state !== 'readonly' && !renewing && billingUser?.endsAt ? billingUser.endsAt : '',
-    onTrial: state === 'trial' && billingUser !== null && !billingUser.paid,
+    // a failed charge or a scheduled end means a subscription, whatever paid says
+    onTrial: state === 'trial' && billingUser !== null && !billingUser.paid && !billingUser.paymentFailed && !billingUser.endsAt,
     billingSettled,
     billingEnabled,
   }
