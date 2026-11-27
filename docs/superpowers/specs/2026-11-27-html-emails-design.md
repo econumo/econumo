@@ -42,7 +42,9 @@ cream page #faf6ec
     note (small, #7a6a45)   <- per email ("If you didn't request ...")
     divider
     footer: Econumo · Manage money. Together.   <- template
-            [Open Econumo] button               <- only when ECONUMO_URL is set
+            [Open Econumo] button               <- only when ECONUMO_URL is set;
+                                                   low contrast: #f6f2e8 fill,
+                                                   #ebe5d6 border, #1f1b13 text
 ```
 
 Mobile: one `@media (max-width: 660px)` block like the reference (full-width card,
@@ -69,10 +71,22 @@ greeting, body, code, note, app URL); the mailer renders both the HTML and the
 plain-text part from it. The plain text keeps today's shape: greeting, body, code on
 its own line, note, `--` signature, URL.
 
-**Logo**: a small PNG of the badge logo, embedded with `go:embed` and attached inline
-(`Content-ID`) to every HTML email. The badge has its own background, so a client that
-inverts colours in dark mode (Gmail's app) never shows it as a hard white rectangle,
-the lesson from the campaign email. The layout declares `color-scheme: light`.
+**Dark theme.** The layout declares `color-scheme: light dark` and carries a
+`@media (prefers-color-scheme: dark)` block (honoured by Apple Mail / iOS Mail, Outlook
+for Mac, and others): page #16130d, card #211d16, heading and code #f3ede0, body
+#cfc6b3, muted #a89b7e, gold label #e0b43a, code box #2b2416 with #4a3d1c border,
+divider #38322a, button #2e2a21 with #45403a border and #f3ede0 text.
+
+**Logo**: two inline PNGs (`Content-ID`), both embedded with `go:embed`:
+- light: the campaign's badge (dark wordmark, yellow loops, on its own white rounded
+  badge; 552x121, 8 KB), shown at 150x33;
+- dark: the same wordmark recoloured #f3ede0 with the badge removed (transparent),
+  shown only inside the dark media block (`display:none` by default, hidden from
+  Outlook desktop with `<!--[if !mso]>`).
+Clients that ignore the media query and invert colours themselves (Gmail's app) never
+touch images, so they show the light logo as a deliberate white badge on the dark card:
+the look accepted for the campaign email. On phones the logo cell gets 9px left padding
+so the wordmark lines up with the 20px text column.
 
 **Transports**:
 - Resend: `Html` + `Text` + one inline attachment with a content id.
@@ -85,14 +99,11 @@ the lesson from the campaign email. The layout declares `color-scheme: light`.
 footer button and the last plain-text line, so the behaviour without `ECONUMO_URL`
 (no link) is unchanged.
 
-**Logo asset**: the campaign's badge (`econumo` wordmark, yellow loops, 552x121 PNG,
-8 KB), committed as `internal/infra/mailer/templates/logo.png`, shown at 150x33.
-
 **Who reads today's text**: only people (console output in the regression plan) and the
 mailer's own tests; no e2e helper scrapes the code. The plain text still carries the
 code on its own line, so the console flow in the regression plan is unchanged.
 
-Mock reviewed with the user: reset-code email, desktop and phone
+Mock reviewed with the user: reset-code email, desktop and phone, light and dark
 (`/tmp/bfmail/mock/reset.html` during design).
 
 ## Testing
@@ -102,6 +113,8 @@ Mock reviewed with the user: reset-code email, desktop and phone
 - SMTP: the message parses as MIME with the expected parts; the CID in the HTML matches
   the attachment.
 - Resend: the request carries html, text and the inline attachment.
+- Screenshots of the rendered goldens in light and dark (Chrome headless,
+  `--force-dark-mode`) are checked by eye before the PR.
 - i18n guard over the new keys; plain text never loses the code.
 - `docs/regression-test-plan.md`: the forgot-password item checks the HTML email too.
 
