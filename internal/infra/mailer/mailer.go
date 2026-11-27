@@ -1,5 +1,6 @@
-// Package mailer sends transactional email through one of three transports,
-// selected by the MAILER_DSN scheme (parsed in internal/config):
+// Package mailer sends transactional email (HTML with a plain-text
+// alternative) through one of three transports, selected by the MAILER_DSN
+// scheme (parsed in internal/config):
 //
 //	(empty)                           -> console: render the message to stdout
 //	console:// | log://               -> console: render the message to stdout
@@ -59,9 +60,10 @@ type Mailer interface {
 // ccAddresses normalizes a CC candidate list for a message addressed to `to`:
 // it trims, drops empties, drops `to` itself, and dedupes case-insensitively
 // while preserving order. It lives beside the senders rather than in a
-// transport so the notice senders share one policy. Only the NOTICES pass a list: a reset, verification or
-// change-email code exists to prove control of one specific mailbox, so
-// copying one elsewhere would defeat the check it exists for.
+// transport so the notice senders share one policy. Only the NOTICES pass a
+// list: a reset, verification or change-email code exists to prove control of
+// one specific mailbox, so copying one elsewhere would defeat the check it
+// exists for.
 func ccAddresses(to string, candidates []string) []string {
 	seen := map[string]struct{}{strings.ToLower(strings.TrimSpace(to)): {}}
 	var out []string

@@ -274,7 +274,7 @@ the quick-start subset. Non-obvious points:
 - Config parsing is strict: a malformed value fails at boot. Boolean fields whose default is
   on are stored inverted (`PasswordLoginDisabled`, `SimpleFINDisabled`, `FeedbackDisabled`)
   so a zero `config.Config` in tests keeps them on.
-- `ECONUMO_URL`: the public URL. Appended to transactional emails, required by every sign-in
+- `ECONUMO_URL`: the public URL. Shown as the emails' Open Econumo button and last plain-text line, required by every sign-in
   provider slot (callbacks derive from it), and the issuer of the MCP OAuth server.
 - `ECONUMO_PASSWORD_LOGIN=false` refuses every password flow with
   `user.password_login_disabled` and requires at least one provider slot.
