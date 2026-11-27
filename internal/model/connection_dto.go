@@ -30,6 +30,9 @@ type ConnectionResult struct {
 	AccessUntil    string                `json:"accessUntil"`
 	// CreatedAt is the connected user's register date ("" when unknown).
 	CreatedAt string `json:"createdAt"`
+	// DeletionMarkedAt is when the connected user was marked for deletion
+	// ("" when not marked), so partners can be warned before shared data goes.
+	DeletionMarkedAt string `json:"deletionMarkedAt"`
 }
 
 // GetConnectionListResult is the response: {items: [...]}.

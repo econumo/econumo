@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Choisissez un dossier pour ce compte",
       "general_folder_hint": "General (sera créé)",
-      "decline_question": "Refuser l’accès à « {name} » ?"
+      "decline_question": "Refuser l’accès à « {name} » ?",
+      "scheduled_for_deletion": "La suppression des données de {name} est programmée. Les comptes et budgets que cette personne partage avec vous disparaîtront, et les virements avec ses comptes deviendront des corrections."
     },
     "sync": {
       "failed": "Échec de la synchronisation de {source}",

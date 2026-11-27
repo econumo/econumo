@@ -711,7 +711,8 @@
       "budget": "Orçamento",
       "choose_folder": "Escolha uma pasta para esta conta",
       "general_folder_hint": "General (será criada)",
-      "decline_question": "Recusar o acesso a “{name}”?"
+      "decline_question": "Recusar o acesso a “{name}”?",
+      "scheduled_for_deletion": "A eliminação dos dados de {name} está agendada. As contas e os orçamentos que essa pessoa partilha consigo vão desaparecer, e as transferências com as contas dela passarão a ser correções."
     },
     "sync": {
       "failed": "Falha ao sincronizar {source}",

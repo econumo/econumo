@@ -373,3 +373,31 @@ func TestConnectionAccountAccessRevoker_RevokeAccessBetween(t *testing.T) {
 		t.Errorf("accepted grant (B's account -> A) not removed: err=%v", err)
 	}
 }
+
+func TestConnectionUserLookup_DeletionMarkedAt(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	f.User(fixture.User{ID: revokerUserA, Name: "A", Email: "marked-a@example.test"})
+	f.User(fixture.User{ID: revokerUserB, Name: "B", Email: "unmarked-b@example.test"})
+	deletions := userrepo.NewDeletionRepo(db.Engine, db.TX)
+	if _, err := deletions.Mark(ctx, vo.MustParseId(revokerUserA), model.DeletionReasonCLI, revokerFixedTime); err != nil {
+		t.Fatalf("Mark: %v", err)
+	}
+	lookup := server.NewConnectionUserLookup(userrepo.NewRepo(db.Engine, db.TX), deletions)
+
+	got, err := lookup.DeletionMarkedAt(ctx, revokerUserA)
+	if err != nil {
+		t.Fatalf("DeletionMarkedAt(marked): %v", err)
+	}
+	if got == nil || !got.Equal(revokerFixedTime) {
+		t.Errorf("marked user: got %v, want %v", got, revokerFixedTime)
+	}
+	got, err = lookup.DeletionMarkedAt(ctx, revokerUserB)
+	if err != nil {
+		t.Fatalf("DeletionMarkedAt(unmarked): %v", err)
+	}
+	if got != nil {
+		t.Errorf("unmarked user: got %v, want nil", got)
+	}
+}

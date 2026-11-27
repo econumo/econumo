@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Choose a folder for this account",
       "general_folder_hint": "General (will be created)",
-      "decline_question": "Decline access to \"{name}\"?"
+      "decline_question": "Decline access to \"{name}\"?",
+      "scheduled_for_deletion": "{name}'s data is scheduled for deletion. The accounts and budgets they share with you will disappear, and transfers with their accounts will become corrections."
     },
     "sync": {
       "failed": "{source} sync failed",

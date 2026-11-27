@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Kies een map voor deze rekening",
       "general_folder_hint": "General (wordt aangemaakt)",
-      "decline_question": "Toegang tot “{name}” weigeren?"
+      "decline_question": "Toegang tot “{name}” weigeren?",
+      "scheduled_for_deletion": "De verwijdering van de gegevens van {name} is gepland. De rekeningen en budgetten die deze persoon met u deelt, verdwijnen, en overboekingen met diens rekeningen worden correcties."
     },
     "sync": {
       "failed": "Synchronisatie van {source} mislukt",

@@ -422,7 +422,8 @@ func BuildWithServices(cfg config.Config, db *sql.DB, seams Seams) (*Built, erro
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
 	connectionBudgetRevoker := NewConnectionBudgetRevoker(budgetRepo, budgetSvc)
 	connectionSvc := appconnection.NewService(
-		connectionRepo, connectionInviteRepo, userOwnerLookup,
+		connectionRepo, connectionInviteRepo,
+		NewConnectionUserLookup(userRepo, userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm)),
 		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, authLimiter, txm, clk,
 	)
 

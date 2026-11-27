@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Scegli una cartella per questo conto",
       "general_folder_hint": "General (verrà creata)",
-      "decline_question": "Rifiutare l'accesso a «{name}»?"
+      "decline_question": "Rifiutare l'accesso a «{name}»?",
+      "scheduled_for_deletion": "L'eliminazione dei dati di {name} è programmata. I conti e i budget che condivide con te scompariranno e i trasferimenti con i suoi conti diventeranno correzioni."
     },
     "sync": {
       "failed": "Sincronizzazione di {source} non riuscita",

@@ -1,13 +1,15 @@
 // UserOwnerLookup resolves a user's public header (id, name, avatar) for the
 // account, connection, and transaction features — after the shared model
-// unified their view types, all three declare the identical consumer-side
-// UserLookup port, so one adapter serves them. It lives here, not in a
+// unified their view types, all three declare the same consumer-side
+// UserLookup port (connection's adds the deletion mark, ConnectionUserLookup),
+// so one adapter serves them. It lives here, not in a
 // feature, because features must not import each other (see archtest); only
 // the composition root may bridge them.
 package server
 
 import (
 	"context"
+	"time"
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	appconnection "github.com/econumo/econumo/internal/connection"
@@ -21,15 +23,15 @@ type userHeaderByID interface {
 	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
 }
 
-// UserOwnerLookup adapts the user repository to the three UserLookup ports.
+// UserOwnerLookup adapts the user repository to the UserLookup ports.
 type UserOwnerLookup struct {
 	users userHeaderByID
 }
 
 var (
 	_ appaccount.UserLookup     = (*UserOwnerLookup)(nil)
-	_ appconnection.UserLookup  = (*UserOwnerLookup)(nil)
 	_ apptransaction.UserLookup = (*UserOwnerLookup)(nil)
+	_ appconnection.UserLookup  = (*ConnectionUserLookup)(nil)
 )
 
 // NewUserOwnerLookup wraps a user repository (anything exposing GetHeaderByID).
@@ -53,4 +55,31 @@ func (l *UserOwnerLookup) GetOwner(ctx context.Context, userID string) (model.Ow
 		ID: h.ID, Name: h.Name, Avatar: h.Avatar,
 		AccessLevel: h.AccessLevel, AccessUntil: h.AccessUntil, CreatedAt: h.CreatedAt,
 	}, nil
+}
+
+type userDeletionState interface {
+	GetState(ctx context.Context, userID vo.Id) (model.DeletionState, error)
+}
+
+// ConnectionUserLookup is UserOwnerLookup plus the deletion mark, which only
+// the connection list shows.
+type ConnectionUserLookup struct {
+	*UserOwnerLookup
+	deletions userDeletionState
+}
+
+func NewConnectionUserLookup(users userHeaderByID, deletions userDeletionState) *ConnectionUserLookup {
+	return &ConnectionUserLookup{UserOwnerLookup: NewUserOwnerLookup(users), deletions: deletions}
+}
+
+func (l *ConnectionUserLookup) DeletionMarkedAt(ctx context.Context, userID string) (*time.Time, error) {
+	id, err := vo.ParseId(userID)
+	if err != nil {
+		return nil, err
+	}
+	st, err := l.deletions.GetState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return st.MarkedAt, nil
 }

@@ -26,7 +26,7 @@ func newConnectionService(t *testing.T, db *dbtest.DB) *appconnection.Service {
 	return appconnection.NewService(
 		connectionrepo.NewRepo(db.Engine, txm),
 		connectionrepo.NewInviteRepo(db.Engine, txm),
-		server.NewUserOwnerLookup(userRepo),
+		server.NewConnectionUserLookup(userRepo, userrepo.NewDeletionRepo(db.Engine, txm)),
 		nil, nil, nil,
 		txm, clock.New(),
 	)

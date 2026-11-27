@@ -369,3 +369,15 @@ it('offline, a readonly user\'s never-loaded suggestion list does not raise the 
     act(() => onlineManager.setOnline(true))
   }
 })
+
+it('lists connections marked for deletion without counting them', async () => {
+  const wrapper = makeWrapper()
+  const conn = (id: string, deletionMarkedAt: string) => ({
+    user: { id, avatar: 'pets:sky', name: id }, accessLevel: 'full', accessUntil: '', createdAt: '', sharedAccounts: [], deletionMarkedAt,
+  })
+  server.use(...coreHandlers({ connections: [conn('u2', '2026-11-20 09:30:15'), conn('u3', '')] }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.markedConnections.map((c) => c.user.id)).toEqual(['u2']))
+  expect(result.current.count).toBe(0)
+})

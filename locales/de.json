@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Wählen Sie einen Ordner für dieses Konto",
       "general_folder_hint": "General (wird erstellt)",
-      "decline_question": "Zugriff auf „{name}“ ablehnen?"
+      "decline_question": "Zugriff auf „{name}“ ablehnen?",
+      "scheduled_for_deletion": "Die Löschung der Daten von {name} ist geplant. Die Konten und Budgets, die diese Person mit Ihnen teilt, verschwinden, und Überweisungen mit ihren Konten werden zu Korrekturen."
     },
     "sync": {
       "failed": "{source}-Synchronisierung fehlgeschlagen",

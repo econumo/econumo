@@ -711,7 +711,8 @@
       "budget": "预算",
       "choose_folder": "为此账户选择文件夹",
       "general_folder_hint": "General（将自动创建）",
-      "decline_question": "拒绝“{name}”的访问权限吗？"
+      "decline_question": "拒绝“{name}”的访问权限吗？",
+      "scheduled_for_deletion": "{name} 的数据已计划删除。其与您共享的账户和预算将会消失，与其账户之间的转账将变为调整记录。"
     },
     "sync": {
       "failed": "{source} 同步失败",

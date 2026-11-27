@@ -55,12 +55,17 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 		if oerr != nil {
 			return nil, oerr
 		}
+		markedAt, merr := s.users.DeletionMarkedAt(ctx, cu.String())
+		if merr != nil {
+			return nil, merr
+		}
 		conn := model.ConnectionResult{
-			User:           model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
-			SharedAccounts: []model.AccountAccessResult{},
-			AccessLevel:    string(model.EffectiveAccessLevel(owner.AccessLevel, owner.AccessUntil, s.clock.Now())),
-			AccessUntil:    datetime.FormatOrEmpty(owner.AccessUntil),
-			CreatedAt:      createdAtOrEmpty(owner.CreatedAt),
+			User:             model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
+			SharedAccounts:   []model.AccountAccessResult{},
+			AccessLevel:      string(model.EffectiveAccessLevel(owner.AccessLevel, owner.AccessUntil, s.clock.Now())),
+			AccessUntil:      datetime.FormatOrEmpty(owner.AccessUntil),
+			CreatedAt:        createdAtOrEmpty(owner.CreatedAt),
+			DeletionMarkedAt: datetime.FormatOrEmpty(markedAt),
 		}
 
 		// Dedup by account id, preserving discovery order (received first, then

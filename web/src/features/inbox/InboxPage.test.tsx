@@ -386,3 +386,16 @@ it('offline with the import queue never loaded, the inbox says so instead of an 
   expect(screen.queryByText('Something went wrong. Please try again.')).toBeNull()
   expect(screen.queryByText('All caught up')).toBeNull()
 })
+
+it('shows a connected user marked for deletion under Sharing instead of All caught up', async () => {
+  server.use(...coreHandlers({
+    connections: [{
+      user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, accessLevel: 'full', accessUntil: '', createdAt: '',
+      sharedAccounts: [], deletionMarkedAt: '2026-11-20 09:30:15',
+    }],
+  }))
+  renderInbox()
+  expect(await screen.findByText(/^Partner's data is scheduled for deletion\./)).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Sharing' })).toBeInTheDocument()
+  expect(screen.queryByText('All caught up')).toBeNull()
+})

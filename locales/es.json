@@ -711,7 +711,8 @@
       "budget": "Presupuesto",
       "choose_folder": "Elige una carpeta para esta cuenta",
       "general_folder_hint": "General (se creará)",
-      "decline_question": "¿Rechazar el acceso a «{name}»?"
+      "decline_question": "¿Rechazar el acceso a «{name}»?",
+      "scheduled_for_deletion": "La eliminación de los datos de {name} está programada. Las cuentas y los presupuestos que comparte contigo desaparecerán, y las transferencias con sus cuentas se convertirán en correcciones."
     },
     "sync": {
       "failed": "Fallo al sincronizar {source}",

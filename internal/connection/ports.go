@@ -5,6 +5,7 @@ package connection
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -29,9 +30,11 @@ type BudgetAccessRevoker interface {
 	RevokeBetween(ctx context.Context, a, b vo.Id) error
 }
 
-// UserLookup resolves the connected-user embed (id, name, avatar).
+// UserLookup resolves the connected-user embed (id, name, avatar) and when
+// that user was marked for deletion (nil when not marked).
 type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
+	DeletionMarkedAt(ctx context.Context, userID string) (*time.Time, error)
 }
 
 // AttemptLimiter is the brute-force-protection seam for accept-invite: the

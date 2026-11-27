@@ -16263,6 +16263,10 @@ const docTemplate = `{
                     "description": "CreatedAt is the connected user's register date (\"\" when unknown).",
                     "type": "string"
                 },
+                "deletionMarkedAt": {
+                    "description": "DeletionMarkedAt is when the connected user was marked for deletion\n(\"\" when not marked), so partners can be warned before shared data goes.",
+                    "type": "string"
+                },
                 "sharedAccounts": {
                     "type": "array",
                     "items": {

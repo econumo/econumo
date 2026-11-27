@@ -22,6 +22,7 @@ function makeInbox(over: Partial<Inbox> = {}): Inbox {
     failedWrites: [],
     dueRecurring: [],
     invites: [],
+    markedConnections: [],
     syncProblems: [],
     failed: [],
     queued: [],

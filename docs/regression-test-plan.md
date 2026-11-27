@@ -3130,6 +3130,10 @@ User C sees none of it.
 - [ ] Delete the connection (confirm) → shared grants are revoked on both
       sides.
 - [ ] Three users: A and B are both members of C's budget. A removes the connection with B: B stays a member of C's budget with their categories and plans.
+- [ ] 📱 A connected user is marked for deletion (user:mark-deleted): the
+      partner's Inbox shows "<name>'s data is scheduled for deletion..." under
+      Sharing without changing the Inbox badge count; it disappears when that
+      user signs in.
 
 **Account sharing**
 - [ ] A shares an account with B (`guest`, then upgrade to `user`, `admin`):

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from '@/features/imports/QueueSections'
 import { SuggestionsSection } from '@/features/imports/SuggestionsSection'
+import { DeletionNoticeSection } from './DeletionNoticeSection'
 import { DueRecurringSection } from './DueRecurringSection'
 import { FailedWritesSection } from './FailedWritesSection'
 import { InboxSection } from './InboxSection'
@@ -35,7 +36,7 @@ export function InboxPage() {
   const inbox = useInbox()
   // React Query v5 keeps stale data on a failed background refetch, so an
   // empty cached queue + a failed refetch must not still read "All caught up".
-  const empty = inbox.isLoaded && !inbox.importsError && inbox.count === 0 && inbox.skipped.length === 0
+  const empty = inbox.isLoaded && !inbox.importsError && inbox.count === 0 && inbox.skipped.length === 0 && inbox.markedConnections.length === 0
 
   return (
     <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME} crumbs={[]} editableOffline>
@@ -67,8 +68,11 @@ export function InboxPage() {
           <InboxSection title={t('inbox.sections.failed')}><FailedImportsSection failed={inbox.failed} /></InboxSection>
         ) : null}
         {inbox.skipped.length > 0 ? <SkippedInboxSection skipped={inbox.skipped} /> : null}
-        {inbox.invites.length > 0 ? (
-          <InboxSection title={t('inbox.sections.sharing')}><SharingSection invites={inbox.invites} /></InboxSection>
+        {inbox.invites.length > 0 || inbox.markedConnections.length > 0 ? (
+          <InboxSection title={t('inbox.sections.sharing')}>
+            <DeletionNoticeSection connections={inbox.markedConnections} />
+            {inbox.invites.length > 0 ? <SharingSection invites={inbox.invites} /> : null}
+          </InboxSection>
         ) : null}
       </div>
     </SettingsShell>
