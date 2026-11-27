@@ -72,18 +72,18 @@ Inputs the spec implies but no step exercises by default; each has its test in t
 **Interfaces:**
 - Produces: nothing new. `ConnectionBudgetRevoker.RevokeBetween(ctx, a, b vo.Id) error` keeps its signature.
 
-- [ ] **Step 1: Write the failing test** `TestConnectionBudgetRevoker_LeavesThirdPartyBudgets` next to `TestConnectionBudgetRevoker_RevokeBetween`, reusing its service wiring. Fixture: users U, P1, P2; one budget OWNED BY P2; accepted `BudgetRoleUser` access rows for U and P1; one category of P1 with an element in that budget. Call `revoker.RevokeBetween(ctx, U, P1)` and then `RevokeBetween(ctx, P1, U)` on a fresh fixture (both argument orders, as subtests).
+- [x] **Step 1: Write the failing test** `TestConnectionBudgetRevoker_LeavesThirdPartyBudgets` next to `TestConnectionBudgetRevoker_RevokeBetween`, reusing its service wiring. Fixture: users U, P1, P2; one budget OWNED BY P2; accepted `BudgetRoleUser` access rows for U and P1; one category of P1 with an element in that budget. Call `revoker.RevokeBetween(ctx, U, P1)` and then `RevokeBetween(ctx, P1, U)` on a fresh fixture (both argument orders, as subtests).
 
 ```go
 if got := len(list); got != 2 { t.Errorf("access rows on P2's budget = %d, want 2", got) }
 if got := len(els); got != 1 { t.Errorf("P1's elements on P2's budget = %d, want 1", got) }
 ```
 
-- [ ] **Step 2: Run it.** `go test ./internal/server/ -run TestConnectionBudgetRevoker_LeavesThirdPartyBudgets -count=1`. Expected: FAIL, 1 access row and 0 elements.
-- [ ] **Step 3: Fix `revokeDirection`:** skip every budget whose `bud.UserID` is not `owner` (`ListForUser` returns owned AND shared budgets; only owned ones belong to this pair). Then make the order global: `RevokeBetween` first COLLECTS the removals of both directions (budget id, member to remove), sorts them by budget id, and only then calls `RemoveMember` for each. Task 8 makes `RemoveMember` take the budget lock, budget locks are taken in id order everywhere, and two passes (A's budgets, then B's) are not one order. Correct the doc comments. Add to the test: A owns the budget with the HIGHER id (B is a member), B owns the one with the lower id (A is a member); `RemoveMember` is called for the lower id first (recording remover).
-- [ ] **Step 4: Run both revoker tests.** Expected: PASS.
-- [ ] **Step 5: Regression plan.** In section 11 add: `- [ ] Three users: A and B are both members of C's budget. A removes the connection with B: B stays a member of C's budget with their categories and plans.`
-- [ ] **Step 6: Commit** `fix: Disconnecting two users no longer removes one of them from a third user's budget`.
+- [x] **Step 2: Run it.** `go test ./internal/server/ -run TestConnectionBudgetRevoker_LeavesThirdPartyBudgets -count=1`. Expected: FAIL, 1 access row and 0 elements.
+- [x] **Step 3: Fix `revokeDirection`:** skip every budget whose `bud.UserID` is not `owner` (`ListForUser` returns owned AND shared budgets; only owned ones belong to this pair). Then make the order global: `RevokeBetween` first COLLECTS the removals of both directions (budget id, member to remove), sorts them by budget id, and only then calls `RemoveMember` for each. Task 8 makes `RemoveMember` take the budget lock, budget locks are taken in id order everywhere, and two passes (A's budgets, then B's) are not one order. Correct the doc comments. Add to the test: A owns the budget with the HIGHER id (B is a member), B owns the one with the lower id (A is a member); `RemoveMember` is called for the lower id first (recording remover).
+- [x] **Step 4: Run both revoker tests.** Expected: PASS.
+- [x] **Step 5: Regression plan.** In section 11 add: `- [ ] Three users: A and B are both members of C's budget. A removes the connection with B: B stays a member of C's budget with their categories and plans.`
+- [x] **Step 6: Commit** `fix: Disconnecting two users no longer removes one of them from a third user's budget`.
 
 ### Task 2: `ClearActiveBudget` writes only the option
 
