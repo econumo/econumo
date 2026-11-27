@@ -1,8 +1,10 @@
 package user_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -642,20 +644,37 @@ func (panickingWiper) Erase(context.Context, vo.Id) error {
 	panic("wipe exploded for user_secret@example.test")
 }
 
-// A panic inside a pass must not take serve down: RunOnce returns and the
-// next tick runs.
+// captureLog sends the default logger to a buffer for the rest of the test.
+func captureLog(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+// A wipe that panics is that user's failure: the pass goes on, the log names
+// the user and the panic's type, never its value.
 func TestDeletionJob_RunOnceRecoversAPanic(t *testing.T) {
 	e := newPassEnv(t, inactive30)
 	u := e.user(t, "doomed@pass.test", 40*day)
 	e.mark(t, u, model.DeletionReasonCLI, e.clk.now.Add(-31*day))
 	e.svc.SetDataWiper(panickingWiper{})
+	logs := captureLog(t)
 
 	res := appuser.NewDeletionJob(e.svc, e.clk).RunOnce(context.Background())
-	if res.Err == nil {
-		t.Error("a pass that panicked must report an error")
+	if res.Err != nil || len(res.Failed) != 1 || !res.Failed[0].UserID.Equal(u) || res.Failed[0].ErrType != "panic:string" {
+		t.Fatalf("RunOnce = %+v, want one failure for the user, reason panic:string", res)
 	}
 	if !e.exists(t, u) {
 		t.Error("the user is gone after a panicking wipe")
+	}
+	if strings.Contains(logs.String(), "user_secret@example.test") {
+		t.Errorf("the log carries the panic value: %s", logs.String())
+	}
+	if !strings.Contains(logs.String(), u.String()) {
+		t.Errorf("the log does not name the user: %s", logs.String())
 	}
 
 	// the next tick runs and can write: the panicking wipe left no transaction open
@@ -665,5 +684,50 @@ func TestDeletionJob_RunOnceRecoversAPanic(t *testing.T) {
 	}
 	if e.exists(t, u) {
 		t.Error("the user survived the next tick")
+	}
+}
+
+type panickingFirstWiper struct{ fail vo.Id }
+
+func (panickingFirstWiper) LockBudgets(context.Context, vo.Id) error { return nil }
+func (w panickingFirstWiper) Erase(_ context.Context, id vo.Id) error {
+	if id.Equal(w.fail) {
+		panic("wipe exploded for user_secret@example.test")
+	}
+	return nil
+}
+
+func TestWipeExpired_ContinuesPastAPanic(t *testing.T) {
+	e := newPassEnv(t, inactive30)
+	first := e.user(t, "first@pass.test", 40*day)
+	second := e.user(t, "second@pass.test", 40*day)
+	e.mark(t, first, model.DeletionReasonCLI, e.clk.now.Add(-32*day))
+	e.mark(t, second, model.DeletionReasonCLI, e.clk.now.Add(-31*day))
+	e.svc.SetDataWiper(panickingFirstWiper{fail: first})
+
+	wiped, failed, err := e.svc.WipeExpired(context.Background())
+	if err != nil || wiped != 1 {
+		t.Fatalf("WipeExpired = %d, %v; want 1 wiped", wiped, err)
+	}
+	if len(failed) != 1 || !failed[0].UserID.Equal(first) || failed[0].ErrType != "panic:string" {
+		t.Fatalf("failed = %+v, want the first user with reason panic:string", failed)
+	}
+	if !e.exists(t, first) || e.exists(t, second) {
+		t.Error("want the first user kept and the second wiped")
+	}
+}
+
+// The outer recover stays as the last line of defence for a panic outside a wipe.
+func TestDeletionJob_RunOnceRecoversAPanicOutsideAWipe(t *testing.T) {
+	e := newPassEnv(t, inactive30)
+	e.store.afterListMarked = func() { panic("listing exploded for user_secret@example.test") }
+	logs := captureLog(t)
+
+	res := appuser.NewDeletionJob(e.svc, e.clk).RunOnce(context.Background())
+	if res.Err == nil {
+		t.Error("a pass that panicked must report an error")
+	}
+	if strings.Contains(logs.String(), "user_secret@example.test") {
+		t.Errorf("the log carries the panic value: %s", logs.String())
 	}
 }

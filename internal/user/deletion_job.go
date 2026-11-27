@@ -54,9 +54,10 @@ func (j *DeletionJob) StartPolling(ctx context.Context) {
 }
 
 // RunOnce releases first, so a partner who came back saves the other before
-// any wipe is tried; marking comes last. A panic is logged and swallowed: it
-// runs on serve's own goroutine and would otherwise take the server down,
-// again on every restart.
+// any wipe is tried; marking comes last. A panic in one user's wipe is that
+// user's failure (see wipeRecovering); any other panic is logged and swallowed
+// here: it runs on serve's own goroutine and would otherwise take the server
+// down, again on every restart.
 func (j *DeletionJob) RunOnce(ctx context.Context) (res DeletionPassResult) {
 	defer func() {
 		if p := recover(); p != nil {

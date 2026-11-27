@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -134,7 +135,12 @@ func (s *Service) WipeExpired(ctx context.Context) (wiped int, failed []PassFail
 			continue
 		}
 		markedAt := m.MarkedAt
-		outcome, werr := s.Wipe(ctx, m.ID, &markedAt)
+		outcome, werr := s.wipeRecovering(ctx, m.ID, &markedAt)
+		var panicked *wipePanicError
+		if errors.As(werr, &panicked) {
+			failed = append(failed, PassFailure{UserID: m.ID, ErrType: "panic:" + panicked.valueType, Err: werr})
+			continue
+		}
 		if werr != nil {
 			reason := failureReason(werr)
 			slog.Error("deletion: wipe failed", "user_id", m.ID.String(), "err_type", reason)
@@ -146,6 +152,25 @@ func (s *Service) WipeExpired(ctx context.Context) (wiped int, failed []PassFail
 		}
 	}
 	return wiped, failed, nil
+}
+
+// wipePanicError stands for a wipe that panicked. It carries the panic value's
+// Go type only: the value can hold data.
+type wipePanicError struct{ valueType string }
+
+func (e *wipePanicError) Error() string { return "the wipe panicked (" + e.valueType + ")" }
+
+// wipeRecovering turns a panic in one user's wipe into that user's failure, so
+// one broken account does not stop the other wipes or the marking pass.
+func (s *Service) wipeRecovering(ctx context.Context, userID vo.Id, markedAt *time.Time) (outcome WipeOutcome, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			valueType := fmt.Sprintf("%T", p)
+			slog.Error("deletion: wipe panicked", "user_id", userID.String(), "panic_type", valueType, "stack", string(debug.Stack()))
+			outcome, err = "", &wipePanicError{valueType: valueType}
+		}
+	}()
+	return s.Wipe(ctx, userID, markedAt)
 }
 
 // MarkInactive emails and marks; nobody when InactiveDays is 0.
