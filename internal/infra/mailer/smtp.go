@@ -5,14 +5,18 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"mime"
+	"mime/multipart"
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
+	"net/textproto"
 	"strings"
 	"time"
 )
@@ -281,17 +285,92 @@ func (m *smtpMailer) render(from, to *mail.Address, cc []*mail.Address, replyTo 
 	}
 	header("Message-ID", id)
 	header("MIME-Version", "1.0")
-	header("Content-Type", "text/plain; charset=UTF-8")
-	header("Content-Transfer-Encoding", "quoted-printable")
+	if msg.HTML == "" {
+		header("Content-Type", "text/plain; charset=UTF-8")
+		header("Content-Transfer-Encoding", "quoted-printable")
+		b.WriteString("\r\n")
+		if err := writeQP(&b, msg.Text); err != nil {
+			return nil, err
+		}
+		return b.Bytes(), nil
+	}
+	alt := multipart.NewWriter(&b)
+	header("Content-Type", "multipart/alternative; boundary="+alt.Boundary())
 	b.WriteString("\r\n")
-	qp := quotedprintable.NewWriter(&b)
-	if _, err := qp.Write([]byte(msg.Text)); err != nil {
+	if err := writeQPPart(alt, "text/plain; charset=UTF-8", msg.Text); err != nil {
 		return nil, err
 	}
-	if err := qp.Close(); err != nil {
+	var relBuf bytes.Buffer
+	rel := multipart.NewWriter(&relBuf)
+	if err := writeQPPart(rel, "text/html; charset=UTF-8", msg.HTML); err != nil {
+		return nil, err
+	}
+	for _, f := range msg.Inline {
+		if err := writeInlinePart(rel, f); err != nil {
+			return nil, err
+		}
+	}
+	if err := rel.Close(); err != nil {
+		return nil, err
+	}
+	pw, err := alt.CreatePart(textproto.MIMEHeader{
+		"Content-Type": {`multipart/related; boundary="` + rel.Boundary() + `"; type="text/html"`},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if _, err := pw.Write(relBuf.Bytes()); err != nil {
+		return nil, err
+	}
+	if err := alt.Close(); err != nil {
 		return nil, err
 	}
 	return b.Bytes(), nil
+}
+
+func writeQP(w io.Writer, s string) error {
+	qp := quotedprintable.NewWriter(w)
+	if _, err := qp.Write([]byte(s)); err != nil {
+		return err
+	}
+	return qp.Close()
+}
+
+func writeQPPart(mw *multipart.Writer, contentType, body string) error {
+	pw, err := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              {contentType},
+		"Content-Transfer-Encoding": {"quoted-printable"},
+	})
+	if err != nil {
+		return err
+	}
+	return writeQP(pw, body)
+}
+
+func writeInlinePart(mw *multipart.Writer, f InlineFile) error {
+	ctype := mime.FormatMediaType(f.ContentType, nil)
+	disposition := mime.FormatMediaType("inline", map[string]string{"filename": f.Filename})
+	if ctype == "" || disposition == "" || !safeContentID(f.ContentID) {
+		return errors.New("mailer: invalid inline attachment header")
+	}
+	pw, err := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              {ctype},
+		"Content-Transfer-Encoding": {"base64"},
+		"Content-Id":                {"<" + f.ContentID + ">"},
+		"Content-Disposition":       {disposition},
+	})
+	if err != nil {
+		return err
+	}
+	enc := base64.StdEncoding.EncodeToString(f.Data)
+	for len(enc) > 0 {
+		n := min(76, len(enc))
+		if _, err := io.WriteString(pw, enc[:n]+"\r\n"); err != nil {
+			return err
+		}
+		enc = enc[n:]
+	}
+	return nil
 }
 
 func messageID(from string) (string, error) {
@@ -304,4 +383,16 @@ func messageID(from string) (string, error) {
 		return "", err
 	}
 	return "<" + hex.EncodeToString(r[:]) + "@" + domain + ">", nil
+}
+
+func safeContentID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, r := range id {
+		if r <= ' ' || r >= 0x7f || r == '<' || r == '>' {
+			return false
+		}
+	}
+	return true
 }

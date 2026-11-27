@@ -2667,29 +2667,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "您好，{name}：",
+      "greeting_anonymous": "您好：",
+      "code_label": "验证码",
+      "code_text": "您的验证码是：{code}。",
+      "tagline": "一起管理财务。",
+      "open_app": "打开 Econumo"
+    },
     "reset": {
       "subject": "密码重置验证码",
-      "body": "您好，{name}：\n您的验证码是：{code}。\n\n如果您没有请求此验证码，请忽略这封邮件。\n\n--\nEconumo — 一起管理财务。\n"
+      "heading": "重置密码",
+      "body": "请在 Econumo 中输入此验证码，以设置新密码。",
+      "note": "如果您没有请求此验证码，请忽略这封邮件。您的密码不会改变。"
     },
     "verify": {
       "subject": "邮箱验证码",
-      "body": "您好，{name}：\n您的验证码是：{code}。\n\n请在登录页面输入此验证码，以验证您的邮箱地址。\n\n如果您没有注册 Econumo 账户，请忽略这封邮件。\n\n--\nEconumo — 一起管理财务。\n"
+      "heading": "验证邮箱",
+      "body": "请在登录页面输入此验证码，以验证您的邮箱地址。",
+      "note": "如果您没有注册 Econumo 账户，请忽略这封邮件。"
     },
     "change_email": {
       "subject": "确认您的新邮箱",
-      "body": "您好，{name}：\n\n请使用此验证码确认您的新邮箱地址：{code}\n\n验证码将在 10 分钟后失效。如果这不是您本人的操作，可以忽略这封邮件。"
+      "heading": "确认您的新邮箱",
+      "body": "请使用此验证码确认您的新邮箱地址。验证码将在 10 分钟后失效。",
+      "note": "如果这不是您本人的操作，可以忽略这封邮件。"
     },
     "change_email_notice": {
       "subject": "收到更改邮箱的请求",
-      "body": "您好，{name}：\n\n有人请求将您账户的邮箱更改为 {email}。如果这不是您本人的操作，请立即更改密码。"
+      "heading": "收到更改邮箱的请求",
+      "body": "有人请求将您账户的邮箱更改为 {email}。",
+      "note": "如果这不是您本人的操作，请立即更改密码。"
     },
     "identity_linked": {
       "subject": "已添加新的登录方式",
-      "body": "您好，{name}：\n\n您的 {provider} 账户刚刚已关联到您的 Econumo 账户，现在可以用于登录。\n\n如果这不是您本人的操作，请在设置中解除关联并修改密码。\n\n--\nEconumo — 一起管理财务。\n"
+      "heading": "已添加新的登录方式",
+      "body": "您的 {provider} 账户刚刚已关联到您的 Econumo 账户，现在可以用于登录。",
+      "note": "如果这不是您本人的操作，请在设置中解除关联并修改密码。"
     },
     "identity_unlinked": {
       "subject": "已移除登录方式",
-      "body": "您好，{name}：\n\n您的 {provider} 账户刚刚已与您的 Econumo 账户解除关联，现在无法再用于登录。\n\n如果这不是您本人的操作，请修改密码并在设置中检查已关联的账户。\n\n--\nEconumo — 一起管理财务。\n"
+      "heading": "已移除登录方式",
+      "body": "您的 {provider} 账户刚刚已与您的 Econumo 账户解除关联，现在无法再用于登录。",
+      "note": "如果这不是您本人的操作，请修改密码并在设置中检查已关联的账户。"
     }
   }
 }

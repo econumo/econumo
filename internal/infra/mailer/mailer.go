@@ -1,5 +1,6 @@
-// Package mailer sends transactional email through one of three transports,
-// selected by the MAILER_DSN scheme (parsed in internal/config):
+// Package mailer sends transactional email (HTML with a plain-text
+// alternative) through one of three transports, selected by the MAILER_DSN
+// scheme (parsed in internal/config):
 //
 //	(empty)                           -> console: render the message to stdout
 //	console:// | log://               -> console: render the message to stdout
@@ -29,6 +30,27 @@ type Message struct {
 	ReplyTo string
 	Subject string
 	Text    string
+	HTML    string
+	Inline  []InlineFile
+}
+
+// InlineFile is an image embedded in the HTML part and referenced as cid:ContentID.
+type InlineFile struct {
+	ContentID, Filename, ContentType string
+	Data                             []byte
+}
+
+// newMessage builds the message for c with its text part, HTML part and the
+// inline logo. A render failure is returned so a message is never sent
+// text-only by accident.
+func newMessage(from, to, replyTo, subject string, cc []string, c Content) (Message, error) {
+	html, err := RenderHTML(c)
+	if err != nil {
+		return Message{}, fmt.Errorf("mailer: render html: %w", err)
+	}
+	return Message{From: from, To: to, Cc: cc, ReplyTo: replyTo, Subject: subject,
+		Text: RenderText(c), HTML: html,
+		Inline: []InlineFile{{ContentID: LogoContentID, Filename: "econumo.png", ContentType: "image/png", Data: Logo}}}, nil
 }
 
 type Mailer interface {
@@ -38,10 +60,10 @@ type Mailer interface {
 // ccAddresses normalizes a CC candidate list for a message addressed to `to`:
 // it trims, drops empties, drops `to` itself, and dedupes case-insensitively
 // while preserving order. It lives beside the senders rather than in a
-// transport so the notice senders share one policy and WithAppLink cannot
-// bypass it. Only the NOTICES pass a list: a reset, verification or
-// change-email code exists to prove control of one specific mailbox, so
-// copying one elsewhere would defeat the check it exists for.
+// transport so the notice senders share one policy. Only the NOTICES pass a
+// list: a reset, verification or change-email code exists to prove control of
+// one specific mailbox, so copying one elsewhere would defeat the check it
+// exists for.
 func ccAddresses(to string, candidates []string) []string {
 	seen := map[string]struct{}{strings.ToLower(strings.TrimSpace(to)): {}}
 	var out []string
@@ -81,24 +103,6 @@ func New(t Transport) Mailer {
 	}
 }
 
-// WithAppLink wraps a Mailer so every message body ends with the instance's
-// public URL (ECONUMO_URL) on the line directly below the body. Applied once at composition time,
-// it covers every current and future email without per-sender plumbing; when
-// the URL is unset the wrapper is not installed, so bodies are unchanged.
-func WithAppLink(inner Mailer, appURL string) Mailer {
-	return linkMailer{inner: inner, appURL: appURL}
-}
-
-type linkMailer struct {
-	inner  Mailer
-	appURL string
-}
-
-func (m linkMailer) Send(ctx context.Context, msg Message) error {
-	msg.Text = strings.TrimRight(msg.Text, "\n") + "\n" + m.appURL
-	return m.inner.Send(ctx, msg)
-}
-
 // console renders each message to out (stdout in production) instead of sending
 // it — the default transport, and a readable dev aid. It writes plaintext (To,
 // Subject, body and friends) directly rather than through the structured logger,
@@ -125,18 +129,26 @@ type resendMailer struct {
 }
 
 func (m *resendMailer) Send(ctx context.Context, msg Message) error {
+	if _, err := m.client.Emails.SendWithContext(ctx, resendParams(msg)); err != nil {
+		return fmt.Errorf("mailer: resend send: %w", err)
+	}
+	return nil
+}
+
+func resendParams(msg Message) *resend.SendEmailRequest {
 	params := &resend.SendEmailRequest{
 		From:    msg.From,
 		To:      []string{msg.To},
 		Cc:      msg.Cc,
 		Subject: msg.Subject,
 		Text:    msg.Text,
+		Html:    msg.HTML,
+		ReplyTo: msg.ReplyTo,
 	}
-	if msg.ReplyTo != "" {
-		params.ReplyTo = msg.ReplyTo
+	for _, f := range msg.Inline {
+		params.Attachments = append(params.Attachments, &resend.Attachment{
+			Content: f.Data, Filename: f.Filename, ContentType: f.ContentType, ContentId: f.ContentID,
+		})
 	}
-	if _, err := m.client.Emails.SendWithContext(ctx, params); err != nil {
-		return fmt.Errorf("mailer: resend send: %w", err)
-	}
-	return nil
+	return params
 }

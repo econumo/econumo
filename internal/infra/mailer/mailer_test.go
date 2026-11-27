@@ -52,7 +52,7 @@ func (c *captureMailer) Send(_ context.Context, m Message) error {
 
 func TestResetSender(t *testing.T) {
 	c := &captureMailer{}
-	s := NewResetSender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewResetSender(c, "from@econumo.test", "reply@econumo.test", "")
 	if err := s.SendResetPasswordCode(context.Background(), "user@x.test", "Alice", "abc123def456"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestResetSender(t *testing.T) {
 	// With no From configured it still hands the message to the transport: the
 	// console default must render it, so the From gate is gone.
 	c2 := &captureMailer{}
-	if err := NewResetSender(c2, "", "").SendResetPasswordCode(context.Background(), "u@x", "A", "code"); err != nil {
+	if err := NewResetSender(c2, "", "", "").SendResetPasswordCode(context.Background(), "u@x", "A", "code"); err != nil {
 		t.Fatalf("no-from send: %v", err)
 	}
 	if !c2.called {
@@ -82,7 +82,7 @@ func TestResetSender(t *testing.T) {
 func sendResetCapture(t *testing.T, ctx context.Context, to, name, code string) Message {
 	t.Helper()
 	c := &captureMailer{}
-	s := NewResetSender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewResetSender(c, "from@econumo.test", "reply@econumo.test", "")
 	if err := s.SendResetPasswordCode(ctx, to, name, code); err != nil {
 		t.Fatalf("send: %v", err)
 	}
@@ -92,43 +92,20 @@ func sendResetCapture(t *testing.T, ctx context.Context, to, name, code string) 
 	return c.msg
 }
 
-func TestResetEmailEnglishUnchanged(t *testing.T) {
+func TestResetEmailEnglish(t *testing.T) {
 	msg := sendResetCapture(t, context.Background(), "u@example.test", "Alice", "123456")
 	if msg.Subject != "Reset password confirmation code" {
 		t.Fatalf("subject = %q", msg.Subject)
 	}
-	want := "Hi Alice,\nYour confirmation code is: 123456.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+	want := "Hi Alice,\n\nEnter this code in Econumo to choose a new password.\n\nYour confirmation code is: 123456.\n\nIf you didn't request this code, you can ignore this email. Your password stays the same.\n\n--\nEconumo — Manage money. Together.\n"
 	if msg.Text != want {
 		t.Fatalf("en body drifted:\n%q\nwant:\n%q", msg.Text, want)
 	}
 }
 
-func TestWithAppLink(t *testing.T) {
-	c := &captureMailer{}
-	m := WithAppLink(c, "https://money.example.com")
-
-	// A body with a trailing newline (reset/verify shape) puts the bare URL on
-	// the line directly below the body, no blank line between.
-	if err := m.Send(context.Background(), Message{Text: "line one\nfooter\n"}); err != nil {
-		t.Fatalf("send: %v", err)
-	}
-	if want := "line one\nfooter\nhttps://money.example.com"; c.msg.Text != want {
-		t.Fatalf("trailing-newline body:\n%q\nwant:\n%q", c.msg.Text, want)
-	}
-
-	// A body with no trailing newline (change-email shape) gets the same
-	// single-newline separator.
-	if err := m.Send(context.Background(), Message{Text: "no footer here"}); err != nil {
-		t.Fatalf("send: %v", err)
-	}
-	if want := "no footer here\nhttps://money.example.com"; c.msg.Text != want {
-		t.Fatalf("no-newline body:\n%q\nwant:\n%q", c.msg.Text, want)
-	}
-}
-
 func TestIdentityLinkedSender(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	if err := s.SendIdentityLinked(context.Background(), "user@x.test", "Alice", "Google", "en", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
@@ -146,7 +123,7 @@ func TestIdentityLinkedSender(t *testing.T) {
 
 func TestIdentityLinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	ctx := reqctx.WithLanguage(context.Background(), "ru")
 	if err := s.SendIdentityLinked(ctx, "user@x.test", "Алиса", "Google", "", nil); err != nil {
 		t.Fatalf("send: %v", err)
@@ -159,13 +136,13 @@ func TestIdentityLinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 	}
 }
 
-func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
+func TestIdentityLinkedEmailEnglish(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	if err := s.SendIdentityLinked(context.Background(), "u@example.test", "Alice", "Apple", "en", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	want := "Hi Alice,\n\nYour Apple account was just linked to your Econumo account and can now be used to sign in.\n\nIf this wasn't you, unlink the account from Settings and change your password.\n\n--\nEconumo \u2014 Manage money. Together.\n"
+	want := "Hi Alice,\n\nYour Apple account was just linked to your Econumo account and can now be used to sign in.\n\nIf this wasn't you, unlink it in Settings and change your password.\n\n--\nEconumo \u2014 Manage money. Together.\n"
 	if c.msg.Text != want {
 		t.Fatalf("en body drifted:\n%q\nwant:\n%q", c.msg.Text, want)
 	}
@@ -173,7 +150,7 @@ func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
 
 func TestIdentityUnlinkedSender(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	if err := s.SendIdentityUnlinked(context.Background(), "user@x.test", "Alice", "Google", "en", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
@@ -189,7 +166,7 @@ func TestIdentityUnlinkedSender(t *testing.T) {
 
 func TestIdentityUnlinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	ctx := reqctx.WithLanguage(context.Background(), "ru")
 	if err := s.SendIdentityUnlinked(ctx, "user@x.test", "Алиса", "Google", "", nil); err != nil {
 		t.Fatalf("send: %v", err)
@@ -269,7 +246,7 @@ func TestConsole_RendersCc(t *testing.T) {
 
 func TestIdentitySender_CarriesNormalizedCc(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	// The primary address is among the candidates (it is, whenever the account
 	// was created through a provider) and must not be duplicated.
 	cc := []string{"user@x.test", "google@x.test", "apple@x.test"}
@@ -291,7 +268,7 @@ func TestIdentitySender_CarriesNormalizedCc(t *testing.T) {
 
 func TestChangeEmailSender_NoticeCcsLinkedAddressesButTheCodeDoesNot(t *testing.T) {
 	c := &captureMailer{}
-	s := NewChangeEmailSender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewChangeEmailSender(c, "from@econumo.test", "reply@econumo.test", "")
 
 	if err := s.SendEmailChangeNotice(context.Background(), "old@x.test", "Alice", "new@x.test",
 		[]string{"google@x.test"}); err != nil {
@@ -310,5 +287,33 @@ func TestChangeEmailSender_NoticeCcsLinkedAddressesButTheCodeDoesNot(t *testing.
 	}
 	if c.msg.To != "new@x.test" || len(c.msg.Cc) != 0 {
 		t.Errorf("code message = To %q Cc %v, want the new address only", c.msg.To, c.msg.Cc)
+	}
+}
+
+func TestResendRequest_CarriesHTMLTextAndInlineLogo(t *testing.T) {
+	c := &captureMailer{}
+	s := NewResetSender(c, "from@econumo.test", "reply@econumo.test", "")
+	if err := s.SendResetPasswordCode(context.Background(), "user@x.test", "Alice", "482913"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	p := resendParams(c.msg)
+	if p.Html == "" || p.Text == "" {
+		t.Fatalf("html/text empty: %q / %q", p.Html, p.Text)
+	}
+	if len(p.Attachments) != 1 || p.Attachments[0].ContentId != "econumo-logo" || p.Attachments[0].ContentType != "image/png" || len(p.Attachments[0].Content) == 0 {
+		t.Fatalf("attachments = %+v", p.Attachments)
+	}
+	if p.ReplyTo != "reply@econumo.test" {
+		t.Errorf("reply-to = %q", p.ReplyTo)
+	}
+}
+
+func TestResetSender_SendsHTML(t *testing.T) {
+	msg := sendResetCapture(t, context.Background(), "user@x.test", "Alice", "482913")
+	if !strings.Contains(msg.HTML, "482913") {
+		t.Errorf("html missing code: %q", msg.HTML)
+	}
+	if len(msg.Inline) != 1 {
+		t.Errorf("inline = %d, want 1", len(msg.Inline))
 	}
 }

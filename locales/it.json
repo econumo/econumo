@@ -2667,29 +2667,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "Ciao {name},",
+      "greeting_anonymous": "Ciao,",
+      "code_label": "Codice di conferma",
+      "code_text": "Il tuo codice di conferma è: {code}.",
+      "tagline": "Gestisci il denaro. Insieme.",
+      "open_app": "Apri Econumo"
+    },
     "reset": {
       "subject": "Codice di conferma per la reimpostazione della password",
-      "body": "Ciao {name},\nIl tuo codice di conferma è: {code}.\n\nSe non hai richiesto questo codice, ignora questa email.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+      "heading": "Reimposta la tua password",
+      "body": "Inserisci questo codice in Econumo per scegliere una nuova password.",
+      "note": "Se non hai richiesto questo codice, puoi ignorare questa email. La tua password resta invariata."
     },
     "verify": {
       "subject": "Codice di verifica dell'email",
-      "body": "Ciao {name},\nIl tuo codice di conferma è: {code}.\n\nInserisci questo codice nella schermata di accesso per verificare il tuo indirizzo email.\n\nSe non hai creato un account Econumo, ignora questa email.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+      "heading": "Verifica la tua email",
+      "body": "Inserisci questo codice nella schermata di accesso per verificare il tuo indirizzo email.",
+      "note": "Se non hai creato un account Econumo, puoi ignorare questa email."
     },
     "change_email": {
       "subject": "Conferma la tua nuova email",
-      "body": "Ciao {name},\n\nUsa questo codice per confermare il tuo nuovo indirizzo email: {code}\n\nIl codice scade tra 10 minuti. Se non hai richiesto questa operazione, puoi ignorare questa email."
+      "heading": "Conferma la tua nuova email",
+      "body": "Usa questo codice per confermare il tuo nuovo indirizzo email. Scade tra 10 minuti.",
+      "note": "Se non hai richiesto questa operazione, puoi ignorare questa email."
     },
     "change_email_notice": {
       "subject": "Richiesta di modifica dell'email",
-      "body": "Ciao {name},\n\nQualcuno ha richiesto di modificare l'email del tuo account in {email}. Se non sei stato tu, cambia immediatamente la tua password."
+      "heading": "Richiesta di modifica dell'email",
+      "body": "Qualcuno ha richiesto di modificare l'email del tuo account in {email}.",
+      "note": "Se non sei stato tu, cambia subito la tua password."
     },
     "identity_linked": {
       "subject": "Nuovo metodo di accesso aggiunto",
-      "body": "Ciao {name},\n\nIl tuo account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere.\n\nSe non sei stato tu, scollega l'account dalle Impostazioni e cambia la tua password.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+      "heading": "Nuovo metodo di accesso aggiunto",
+      "body": "Il tuo account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere.",
+      "note": "Se non sei stato tu, scollegalo dalle Impostazioni e cambia la tua password."
     },
     "identity_unlinked": {
       "subject": "Metodo di accesso rimosso",
-      "body": "Ciao {name},\n\nIl tuo account {provider} è stato appena scollegato dal tuo account Econumo e non può più essere usato per accedere.\n\nSe non sei stato tu, cambia la tua password e controlla gli account collegati nelle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+      "heading": "Metodo di accesso rimosso",
+      "body": "Il tuo account {provider} è stato appena scollegato dal tuo account Econumo e non può più essere usato per accedere.",
+      "note": "Se non sei stato tu, cambia la tua password e controlla gli account collegati nelle Impostazioni."
     }
   }
 }

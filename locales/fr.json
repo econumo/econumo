@@ -2667,29 +2667,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "Bonjour {name},",
+      "greeting_anonymous": "Bonjour,",
+      "code_label": "Code de confirmation",
+      "code_text": "Votre code de confirmation est : {code}.",
+      "tagline": "Gérez votre argent. Ensemble.",
+      "open_app": "Ouvrir Econumo"
+    },
     "reset": {
       "subject": "Code de confirmation pour réinitialiser le mot de passe",
-      "body": "Bonjour {name},\nVotre code de confirmation est : {code}.\n\nSi vous n’avez pas demandé ce code, veuillez ignorer cet e-mail.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+      "heading": "Réinitialisez votre mot de passe",
+      "body": "Saisissez ce code dans Econumo pour choisir un nouveau mot de passe.",
+      "note": "Si vous n’avez pas demandé ce code, vous pouvez ignorer cet e-mail. Votre mot de passe reste inchangé."
     },
     "verify": {
       "subject": "Code de confirmation de l’adresse e-mail",
-      "body": "Bonjour {name},\nVotre code de confirmation est : {code}.\n\nSaisissez ce code sur l’écran de connexion pour confirmer votre adresse e-mail.\n\nSi vous n’avez pas créé de compte Econumo, veuillez ignorer cet e-mail.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+      "heading": "Confirmez votre adresse e-mail",
+      "body": "Saisissez ce code sur l’écran de connexion pour confirmer votre adresse e-mail.",
+      "note": "Si vous n’avez pas créé de compte Econumo, vous pouvez ignorer cet e-mail."
     },
     "change_email": {
       "subject": "Confirmez votre nouvel e-mail",
-      "body": "Bonjour {name},\n\nUtilisez ce code pour confirmer votre nouvelle adresse e-mail : {code}\n\nLe code expire dans 10 minutes. Si vous n’êtes pas à l’origine de cette demande, vous pouvez ignorer cet e-mail."
+      "heading": "Confirmez votre nouvel e-mail",
+      "body": "Utilisez ce code pour confirmer votre nouvelle adresse e-mail. Il expire dans 10 minutes.",
+      "note": "Si vous n’êtes pas à l’origine de cette demande, vous pouvez ignorer cet e-mail."
     },
     "change_email_notice": {
       "subject": "Demande de changement d’e-mail",
-      "body": "Bonjour {name},\n\nQuelqu’un a demandé à changer l’e-mail de votre compte en {email}. Si ce n’était pas vous, changez immédiatement votre mot de passe."
+      "heading": "Demande de changement d’e-mail",
+      "body": "Quelqu’un a demandé à changer l’e-mail de votre compte en {email}.",
+      "note": "Si ce n’était pas vous, changez immédiatement votre mot de passe."
     },
     "identity_linked": {
       "subject": "Nouvelle méthode de connexion ajoutée",
-      "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être associé à votre compte Econumo et peut désormais servir à vous connecter.\n\nSi ce n’était pas vous, dissociez le compte depuis les Paramètres et changez votre mot de passe.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+      "heading": "Nouvelle méthode de connexion ajoutée",
+      "body": "Votre compte {provider} vient d’être associé à votre compte Econumo et peut désormais servir à vous connecter.",
+      "note": "Si ce n’était pas vous, dissociez-le depuis les Paramètres et changez votre mot de passe."
     },
     "identity_unlinked": {
       "subject": "Méthode de connexion supprimée",
-      "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être dissocié de votre compte Econumo et ne peut plus servir à vous connecter.\n\nSi ce n’était pas vous, changez votre mot de passe et vérifiez les comptes associés dans les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+      "heading": "Méthode de connexion supprimée",
+      "body": "Votre compte {provider} vient d’être dissocié de votre compte Econumo et ne peut plus servir à vous connecter.",
+      "note": "Si ce n’était pas vous, changez votre mot de passe et vérifiez les comptes associés dans les Paramètres."
     }
   }
 }

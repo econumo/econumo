@@ -75,9 +75,11 @@ navigation (single-pane vs sidebar).
 - [ ] Login with correct credentials → lands on `/` (onboarding for a fresh
       user, Day 0 step 1); wrong password → error dialog, no session created.
 - [ ] "Remember email" checkbox pre-fills the email on next visit.
-- [ ] Forgot password: send code → email arrives (console transport prints to
-      server stdout in dev) → enter code + new password → old password rejected,
-      new one works; all other sessions of the user are revoked.
+- [ ] Forgot password: send code → email arrives (console transport prints its
+      plain-text part, code included, to server stdout in dev; through Resend or
+      SMTP it arrives as HTML with the logo, heading, code box and Open Econumo
+      button) → enter code + new password → old password rejected, new one
+      works; all other sessions of the user are revoked.
 - [ ] Recovery with a wrong/expired code → clear error, password unchanged.
 - [ ] Registering `JÖRG@…` stores and shows `jörg@…`. Signing in and Forgot password work from any
       case, the code goes to the stored `jörg@…` and the reset succeeds, and registering `JÖRG@…`

@@ -2667,29 +2667,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "Hallo {name},",
+      "greeting_anonymous": "Hallo,",
+      "code_label": "Bevestigingscode",
+      "code_text": "Uw bevestigingscode is: {code}.",
+      "tagline": "Beheer geld. Samen.",
+      "open_app": "Econumo openen"
+    },
     "reset": {
       "subject": "Bevestigingscode voor het resetten van uw wachtwoord",
-      "body": "Hallo {name},\nUw bevestigingscode is: {code}.\n\nAls u deze code niet hebt aangevraagd, kunt u dit bericht negeren.\n\n--\nEconumo — Beheer geld. Samen.\n"
+      "heading": "Stel uw wachtwoord opnieuw in",
+      "body": "Voer deze code in Econumo in om een nieuw wachtwoord te kiezen.",
+      "note": "Als u deze code niet hebt aangevraagd, kunt u dit bericht negeren. Uw wachtwoord blijft ongewijzigd."
     },
     "verify": {
       "subject": "Verificatiecode voor uw e-mailadres",
-      "body": "Hallo {name},\nUw bevestigingscode is: {code}.\n\nVoer deze code in op het inlogscherm om uw e-mailadres te bevestigen.\n\nAls u geen Econumo-account hebt aangemaakt, kunt u dit bericht negeren.\n\n--\nEconumo — Beheer geld. Samen.\n"
+      "heading": "Bevestig uw e-mailadres",
+      "body": "Voer deze code in op het inlogscherm om uw e-mailadres te bevestigen.",
+      "note": "Als u geen Econumo-account hebt aangemaakt, kunt u dit bericht negeren."
     },
     "change_email": {
       "subject": "Bevestig uw nieuwe e-mailadres",
-      "body": "Hallo {name},\n\nGebruik deze code om uw nieuwe e-mailadres te bevestigen: {code}\n\nDe code verloopt over 10 minuten. Als u dit niet hebt aangevraagd, kunt u dit bericht negeren."
+      "heading": "Bevestig uw nieuwe e-mailadres",
+      "body": "Gebruik deze code om uw nieuwe e-mailadres te bevestigen. De code verloopt over 10 minuten.",
+      "note": "Als u dit niet hebt aangevraagd, kunt u dit bericht negeren."
     },
     "change_email_notice": {
       "subject": "Wijziging van e-mailadres aangevraagd",
-      "body": "Hallo {name},\n\nIemand heeft aangevraagd om het e-mailadres van uw account te wijzigen in {email}. Als u dit niet was, wijzig dan onmiddellijk uw wachtwoord."
+      "heading": "Wijziging van e-mailadres aangevraagd",
+      "body": "Iemand heeft aangevraagd om het e-mailadres van uw account te wijzigen in {email}.",
+      "note": "Als u dit niet was, wijzig dan onmiddellijk uw wachtwoord."
     },
     "identity_linked": {
       "subject": "Nieuwe aanmeldmethode toegevoegd",
-      "body": "Hallo {name},\n\nUw {provider}-account is zojuist aan uw Econumo-account gekoppeld en kan nu worden gebruikt om in te loggen.\n\nAls u dit niet was, ontkoppel het account dan in Instellingen en wijzig uw wachtwoord.\n\n--\nEconumo — Geld beheren. Samen.\n"
+      "heading": "Nieuwe aanmeldmethode toegevoegd",
+      "body": "Uw {provider}-account is zojuist aan uw Econumo-account gekoppeld en kan nu worden gebruikt om in te loggen.",
+      "note": "Als u dit niet was, ontkoppel het account dan in Instellingen en wijzig uw wachtwoord."
     },
     "identity_unlinked": {
       "subject": "Aanmeldmethode verwijderd",
-      "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
+      "heading": "Aanmeldmethode verwijderd",
+      "body": "Uw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.",
+      "note": "Als u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen."
     }
   }
 }

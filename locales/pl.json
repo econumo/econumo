@@ -2667,29 +2667,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "Witaj, {name}!",
+      "greeting_anonymous": "Witaj!",
+      "code_label": "Kod potwierdzający",
+      "code_text": "Twój kod potwierdzający: {code}.",
+      "tagline": "Zarządzaj pieniędzmi. Razem.",
+      "open_app": "Otwórz Econumo"
+    },
     "reset": {
       "subject": "Kod potwierdzający resetowanie hasła",
-      "body": "Witaj, {name}!\nTwój kod potwierdzający: {code}.\n\nJeśli ta prośba nie pochodzi od Ciebie, zignoruj tę wiadomość.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+      "heading": "Zresetuj hasło",
+      "body": "Wpisz ten kod w Econumo, aby ustawić nowe hasło.",
+      "note": "Jeśli ta prośba nie pochodzi od Ciebie, zignoruj tę wiadomość. Twoje hasło pozostanie bez zmian."
     },
     "verify": {
       "subject": "Kod weryfikacyjny adresu e-mail",
-      "body": "Witaj, {name}!\nTwój kod potwierdzający: {code}.\n\nWpisz ten kod na ekranie logowania, aby potwierdzić swój adres e-mail.\n\nJeśli konto w Econumo nie zostało założone przez Ciebie, zignoruj tę wiadomość.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+      "heading": "Potwierdź adres e-mail",
+      "body": "Wpisz ten kod na ekranie logowania, aby potwierdzić swój adres e-mail.",
+      "note": "Jeśli konto w Econumo nie zostało założone przez Ciebie, zignoruj tę wiadomość."
     },
     "change_email": {
       "subject": "Potwierdź nowy adres e-mail",
-      "body": "Witaj, {name}!\n\nUżyj tego kodu, aby potwierdzić swój nowy adres e-mail: {code}\n\nKod jest ważny przez 10 minut. Jeśli ta prośba nie pochodzi od Ciebie, zignoruj tę wiadomość."
+      "heading": "Potwierdź nowy adres e-mail",
+      "body": "Użyj tego kodu, aby potwierdzić swój nowy adres e-mail. Kod jest ważny przez 10 minut.",
+      "note": "Jeśli ta prośba nie pochodzi od Ciebie, zignoruj tę wiadomość."
     },
     "change_email_notice": {
       "subject": "Prośba o zmianę adresu e-mail",
-      "body": "Witaj, {name}!\n\nKtoś poprosił o zmianę adresu e-mail na Twoim koncie na {email}. Jeśli to nie Ty, natychmiast zmień hasło."
+      "heading": "Prośba o zmianę adresu e-mail",
+      "body": "Ktoś poprosił o zmianę adresu e-mail na Twoim koncie na {email}.",
+      "note": "Jeśli to nie Ty, natychmiast zmień hasło."
     },
     "identity_linked": {
       "subject": "Dodano nową metodę logowania",
-      "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie powiązane z kontem Econumo i może już służyć do logowania.\n\nJeśli to nie Ty, odłącz to konto w Ustawieniach i zmień hasło.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+      "heading": "Dodano nową metodę logowania",
+      "body": "Twoje konto {provider} zostało właśnie powiązane z kontem Econumo i może już służyć do logowania.",
+      "note": "Jeśli to nie Ty, odłącz je w Ustawieniach i zmień hasło."
     },
     "identity_unlinked": {
       "subject": "Usunięto metodę logowania",
-      "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+      "heading": "Usunięto metodę logowania",
+      "body": "Twoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.",
+      "note": "Jeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach."
     }
   }
 }

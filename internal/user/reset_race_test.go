@@ -47,7 +47,7 @@ func newResetRaceSvc(t *testing.T, db *dbtest.DB, reqs appuser.PasswordRequests,
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
-		reqs, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
+		reqs, mailer.NewResetSender(cap, "noreply@econumo.test", "", ""),
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)

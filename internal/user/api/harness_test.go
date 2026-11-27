@@ -92,7 +92,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	// Recording mailer — reset codes are hashed at rest, so the plaintext is only
 	// available from the email. The reset test reads it from here.
 	rec := &recordingMailer{}
-	resetMailer := mailer.NewResetSender(rec, "", "")
+	resetMailer := mailer.NewResetSender(rec, "", "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
