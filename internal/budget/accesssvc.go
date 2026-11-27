@@ -256,9 +256,23 @@ func (s *Service) removeMemberSavingsElements(ctx context.Context, budgetID, mem
 }
 
 // RemoveMember drops a user's access to a budget together with their seeded
-// records, without a permission check — for the composition root (the
-// delete-connection unwind), which has already established authority.
+// records, without a permission check — for the composition root, which has
+// already established authority.
 func (s *Service) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error {
+	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.RemoveMemberKeepPointer(txCtx, budgetID, memberID); err != nil {
+			return err
+		}
+		return s.users.ClearActiveBudget(txCtx, memberID, budgetID)
+	})
+}
+
+// RemoveMemberKeepPointer is RemoveMember without clearing the member's
+// active-budget pointer. A caller removing several members in one transaction
+// does every budget-side removal first and then clears the pointers with
+// ClearActiveBudget in ascending user id order: each clear takes a user row
+// lock, and those must come after the budget locks and in one global order.
+func (s *Service) RemoveMemberKeepPointer(ctx context.Context, budgetID, memberID vo.Id) error {
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
 		return err
@@ -267,11 +281,14 @@ func (s *Service) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) er
 		if err := s.access.DeleteAccess(txCtx, budgetID, memberID); err != nil {
 			return err
 		}
-		if err := s.removeMemberRecords(txCtx, b, memberID); err != nil {
-			return err
-		}
-		return s.users.ClearActiveBudget(txCtx, memberID, budgetID)
+		return s.removeMemberRecords(txCtx, b, memberID)
 	})
+}
+
+// ClearActiveBudget clears the user's active-budget pointer when it names the
+// budget, in the caller's transaction (see RemoveMemberKeepPointer).
+func (s *Service) ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error {
+	return s.users.ClearActiveBudget(ctx, userID, budgetID)
 }
 
 // RevokeAccess removes a user's access (canShare).

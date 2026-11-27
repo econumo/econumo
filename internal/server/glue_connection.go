@@ -46,9 +46,11 @@ type connectionBudgetRepoPort interface {
 }
 
 // budgetMemberRemover is the budget-service slice the revoker needs: drop a
-// member's access AND their seeded records (elements, limits, envelope links).
+// member's access AND their seeded records (elements, limits, envelope links),
+// and separately clear their active-budget pointer.
 type budgetMemberRemover interface {
-	RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error
+	RemoveMemberKeepPointer(ctx context.Context, budgetID, memberID vo.Id) error
+	ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 }
 
 // ConnectionBudgetRevoker drops budget-sharing between two users in both
@@ -72,7 +74,10 @@ func NewConnectionBudgetRevoker(budgets connectionBudgetRepoPort, remover budget
 // B from every budget A owns, and A from every budget B owns. Budgets owned by
 // anyone else are left alone even when both are members. The removals of both
 // directions run in one pass ordered by budget id, the order in which budget
-// locks are taken everywhere.
+// locks are taken everywhere. The members' active-budget pointers are cleared
+// only afterwards, in ascending user id order: each clear takes a user row
+// lock, and user locks come after budget locks and in one global order, as in
+// DeleteBudget.
 func (r *ConnectionBudgetRevoker) RevokeBetween(ctx context.Context, a, b vo.Id) error {
 	removals, err := r.collectRemovals(ctx, a, b)
 	if err != nil {
@@ -87,7 +92,18 @@ func (r *ConnectionBudgetRevoker) RevokeBetween(ctx context.Context, a, b vo.Id)
 		return strings.Compare(x.budgetID.String(), y.budgetID.String())
 	})
 	for _, rm := range removals {
-		if err := r.remover.RemoveMember(ctx, rm.budgetID, rm.memberID); err != nil {
+		if err := r.remover.RemoveMemberKeepPointer(ctx, rm.budgetID, rm.memberID); err != nil {
+			return err
+		}
+	}
+	slices.SortFunc(removals, func(x, y budgetRemoval) int {
+		if c := strings.Compare(x.memberID.String(), y.memberID.String()); c != 0 {
+			return c
+		}
+		return strings.Compare(x.budgetID.String(), y.budgetID.String())
+	})
+	for _, rm := range removals {
+		if err := r.remover.ClearActiveBudget(ctx, rm.memberID, rm.budgetID); err != nil {
 			return err
 		}
 	}

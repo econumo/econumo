@@ -187,14 +187,81 @@ func TestConnectionBudgetRevoker_LeavesThirdPartyBudgets(t *testing.T) {
 
 type recordingRemover struct {
 	inner interface {
-		RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error
+		RemoveMemberKeepPointer(ctx context.Context, budgetID, memberID vo.Id) error
+		ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 	}
 	budgetIDs []string
+	calls     []string
 }
 
-func (r *recordingRemover) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error {
+func (r *recordingRemover) RemoveMemberKeepPointer(ctx context.Context, budgetID, memberID vo.Id) error {
 	r.budgetIDs = append(r.budgetIDs, budgetID.String())
-	return r.inner.RemoveMember(ctx, budgetID, memberID)
+	r.calls = append(r.calls, "remove "+budgetID.String())
+	return r.inner.RemoveMemberKeepPointer(ctx, budgetID, memberID)
+}
+
+func (r *recordingRemover) ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error {
+	r.calls = append(r.calls, "clear "+userID.String())
+	return r.inner.ClearActiveBudget(ctx, userID, budgetID)
+}
+
+// TestConnectionBudgetRevoker_ClearsPointersAfterRemovalsInUserIDOrder: the
+// pointer clears take user row locks, so they follow every budget-side removal
+// and go in ascending user id order, whatever order the budget ids put the
+// users in. Here A < B but A's budget has the lower id, so B's removal comes
+// first.
+func TestConnectionBudgetRevoker_ClearsPointersAfterRemovalsInUserIDOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		a, b string
+	}{
+		{"A then B", revokerUserA, revokerUserB},
+		{"B then A", revokerUserB, revokerUserA},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := dbtest.NewSQLite(t)
+			ctx := context.Background()
+			f := fixture.New(t, db)
+			seedRevokerUser(t, f, revokerUserA)
+			seedRevokerUser(t, f, revokerUserB)
+			f.Budget(fixture.Budget{ID: revokerBudgetLow, UserID: revokerUserA, CurrencyID: revokerUSDID, Name: "A's"})
+			f.BudgetAccess(revokerBudgetLow, revokerUserB, int(model.BudgetRoleUser), true)
+			f.Budget(fixture.Budget{ID: revokerBudgetHigh, UserID: revokerUserB, CurrencyID: revokerUSDID, Name: "B's"})
+			f.BudgetAccess(revokerBudgetHigh, revokerUserA, int(model.BudgetRoleUser), true)
+			low, high := revokerBudgetLow, revokerBudgetHigh
+			f.Option(revokerUserA, model.OptionBudget, &high)
+			f.Option(revokerUserB, model.OptionBudget, &low)
+
+			budgets, budgetSvc := newRevokerBudgetSvc(db)
+			rec := &recordingRemover{inner: budgetSvc}
+			revoker := server.NewConnectionBudgetRevoker(budgets, rec)
+
+			if err := db.TX.WithTx(ctx, func(ctx context.Context) error {
+				return revoker.RevokeBetween(ctx, vo.MustParseId(tc.a), vo.MustParseId(tc.b))
+			}); err != nil {
+				t.Fatalf("RevokeBetween: %v", err)
+			}
+
+			want := []string{
+				"remove " + revokerBudgetLow,
+				"remove " + revokerBudgetHigh,
+				"clear " + revokerUserA,
+				"clear " + revokerUserB,
+			}
+			if !slices.Equal(rec.calls, want) {
+				t.Errorf("calls = %v, want %v", rec.calls, want)
+			}
+			for _, uid := range []string{revokerUserA, revokerUserB} {
+				var v *string
+				if err := db.Raw.QueryRow(`SELECT value FROM users_options WHERE user_id = ? AND name = 'budget'`, uid).Scan(&v); err != nil {
+					t.Fatalf("read budget option: %v", err)
+				}
+				if v != nil {
+					t.Errorf("user %s: active budget = %q, want NULL", uid, *v)
+				}
+			}
+		})
+	}
 }
 
 // TestConnectionBudgetRevoker_RemovesInBudgetIDOrder: removals of both
@@ -230,7 +297,7 @@ func TestConnectionBudgetRevoker_RemovesInBudgetIDOrder(t *testing.T) {
 
 			want := []string{revokerBudgetLow, revokerBudgetHigh}
 			if !slices.Equal(rec.budgetIDs, want) {
-				t.Errorf("RemoveMember budget order = %v, want %v", rec.budgetIDs, want)
+				t.Errorf("RemoveMemberKeepPointer budget order = %v, want %v", rec.budgetIDs, want)
 			}
 			for _, id := range want {
 				list, err := budgets.ListAccess(ctx, vo.MustParseId(id))
