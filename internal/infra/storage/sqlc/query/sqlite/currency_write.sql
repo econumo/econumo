@@ -144,3 +144,27 @@ WHERE users_hidden_currencies.user_id = ?
 
 -- Profile defaults holding this currency id, for the archive guard (a
 -- default must stay pickable).
+
+-- User deletion: a custom currency another owner's account, budget, budget
+-- element or debt uses moves to that owner instead of cascading away.
+-- name: ListLiveAndDeletedCustomCurrencyIDsByOwner :many
+SELECT id, code, is_deleted FROM currencies WHERE user_id = ? ORDER BY id;
+
+-- Soft-deleted accounts count too: they would cascade away with the currency.
+-- No row means nobody else uses the currency.
+-- name: FirstForeignOwnerOfCurrency :one
+SELECT o.owner FROM (
+    SELECT a.user_id AS owner FROM accounts a WHERE a.currency_id = sqlc.arg(currency_id)
+    UNION
+    SELECT b.user_id AS owner FROM budgets b WHERE b.currency_id = sqlc.arg(currency_id)
+    UNION
+    SELECT b.user_id AS owner FROM budgets_elements e JOIN budgets b ON b.id = e.budget_id WHERE e.currency_id = sqlc.arg(currency_id)
+    UNION
+    SELECT b.user_id AS owner FROM debts d JOIN budgets b ON b.id = d.budget_id WHERE d.currency_id = sqlc.arg(currency_id)
+) o
+WHERE o.owner <> CAST(sqlc.arg(user_id) AS TEXT)
+ORDER BY o.owner
+LIMIT 1;
+
+-- name: MoveCurrency :exec
+UPDATE currencies SET user_id = sqlc.arg(user_id), is_deleted = sqlc.arg(is_deleted) WHERE id = sqlc.arg(id);

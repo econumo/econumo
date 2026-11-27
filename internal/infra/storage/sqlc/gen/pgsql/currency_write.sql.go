@@ -42,6 +42,33 @@ func (q *Queries) DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurr
 	return err
 }
 
+const firstForeignOwnerOfCurrency = `-- name: FirstForeignOwnerOfCurrency :one
+SELECT o.owner FROM (
+    SELECT a.user_id AS owner FROM accounts a WHERE a.currency_id = $1::uuid
+    UNION
+    SELECT b.user_id AS owner FROM budgets b WHERE b.currency_id = $1::uuid
+    UNION
+    SELECT b.user_id AS owner FROM budgets_elements e JOIN budgets b ON b.id = e.budget_id WHERE e.currency_id = $1::uuid
+    UNION
+    SELECT b.user_id AS owner FROM debts d JOIN budgets b ON b.id = d.budget_id WHERE d.currency_id = $1::uuid
+) o
+WHERE o.owner <> $2::uuid
+ORDER BY o.owner
+LIMIT 1
+`
+
+type FirstForeignOwnerOfCurrencyParams struct {
+	CurrencyID string
+	UserID     string
+}
+
+func (q *Queries) FirstForeignOwnerOfCurrency(ctx context.Context, arg FirstForeignOwnerOfCurrencyParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, firstForeignOwnerOfCurrency, arg.CurrencyID, arg.UserID)
+	var owner string
+	err := row.Scan(&owner)
+	return owner, err
+}
+
 const getCurrencyByCode = `-- name: GetCurrencyByCode :one
 SELECT id, code, symbol, name, fraction_digits, created_at
 FROM currencies
@@ -338,6 +365,43 @@ func (q *Queries) ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow
 	return items, nil
 }
 
+const listLiveAndDeletedCustomCurrencyIDsByOwner = `-- name: ListLiveAndDeletedCustomCurrencyIDsByOwner :many
+
+SELECT id, code, is_deleted FROM currencies WHERE user_id = $1 ORDER BY id
+`
+
+type ListLiveAndDeletedCustomCurrencyIDsByOwnerRow struct {
+	ID        string
+	Code      string
+	IsDeleted bool
+}
+
+// Profile defaults holding this currency id, for the archive guard (a
+// default must stay pickable).
+// User deletion: see the sqlite variant.
+func (q *Queries) ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLiveAndDeletedCustomCurrencyIDsByOwner, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLiveAndDeletedCustomCurrencyIDsByOwnerRow{}
+	for rows.Next() {
+		var i ListLiveAndDeletedCustomCurrencyIDsByOwnerRow
+		if err := rows.Scan(&i.ID, &i.Code, &i.IsDeleted); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRatedPeriods = `-- name: ListRatedPeriods :many
 SELECT DISTINCT to_char(r.published_at, $1::text)::text AS period, c.code
 FROM currencies_rates r
@@ -425,6 +489,21 @@ func (q *Queries) ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, er
 		return nil, err
 	}
 	return items, nil
+}
+
+const moveCurrency = `-- name: MoveCurrency :exec
+UPDATE currencies SET user_id = $1, is_deleted = $2 WHERE id = $3
+`
+
+type MoveCurrencyParams struct {
+	UserID    *string
+	IsDeleted bool
+	ID        string
+}
+
+func (q *Queries) MoveCurrency(ctx context.Context, arg MoveCurrencyParams) error {
+	_, err := q.db.ExecContext(ctx, moveCurrency, arg.UserID, arg.IsDeleted, arg.ID)
+	return err
 }
 
 const ownerCurrencyCodeExists = `-- name: OwnerCurrencyCodeExists :one

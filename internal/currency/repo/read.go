@@ -63,8 +63,9 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 // UserCurrencyListView returns every currency visible to userID: all globals,
-// the user's own customs, and foreign customs reachable via a shared
-// account/budget/budget-element, ordered by code ASC then id ASC.
+// the user's own customs, foreign customs reachable via a shared
+// account/budget/budget-element, and foreign customs the user's own account,
+// budget, element or debt references, ordered by code ASC then id ASC.
 func (r *ReadRepo) UserCurrencyListView(ctx context.Context, userID string) ([]model.CurrencyViewRow, error) {
 	rows, err := r.q.GetUserCurrencyListView(ctx, r.db(ctx), userID)
 	if err != nil {
@@ -134,13 +135,17 @@ type sqliteReadQuerier struct{}
 
 func (sqliteReadQuerier) GetUserCurrencyListView(ctx context.Context, db backend.DBTX, userID string) ([]currencyRow, error) {
 	// c.user_id is nullable, so the first occurrence (c.user_id = ?) binds a
-	// *string; the other three occurrences (accounts_access.user_id etc.) are
+	// *string; the other occurrences (accounts_access.user_id etc.) are
 	// NOT NULL columns and bind plain strings.
 	return sqlitegen.New(db).GetUserCurrencyListView(ctx, sqlitegen.GetUserCurrencyListViewParams{
 		UserID:   &userID,
 		UserID_2: userID,
 		UserID_3: userID,
 		UserID_4: userID,
+		UserID_5: userID,
+		UserID_6: userID,
+		UserID_7: userID,
+		UserID_8: userID,
 	})
 }
 

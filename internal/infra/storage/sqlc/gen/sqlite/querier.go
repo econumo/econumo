@@ -129,6 +129,9 @@ type Querier interface {
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (int64, error)
+	// Soft-deleted accounts count too: they would cascade away with the currency.
+	// No row means nobody else uses the currency.
+	FirstForeignOwnerOfCurrency(ctx context.Context, arg FirstForeignOwnerOfCurrencyParams) (string, error)
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
 	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
@@ -353,7 +356,9 @@ type Querier interface {
 	// Per-user visible currencies: all globals, the user's own customs (archived
 	// included, the settings page needs them), and foreign customs reachable via
 	// accounts or budgets shared to the user (budget currency and element
-	// currencies). Codes can repeat across owners, so id breaks ties.
+	// currencies), and foreign customs the user's own account, budget, element or
+	// debt references (a currency moved away by a user deletion). Codes can repeat
+	// across owners, so id breaks ties.
 	GetUserCurrencyListView(ctx context.Context, arg GetUserCurrencyListViewParams) ([]GetUserCurrencyListViewRow, error)
 	GetUserDeletionRequestByUser(ctx context.Context, userID string) (UsersDeletionRequest, error)
 	// User deletion: the deletion state on users, the users_audit log and the
@@ -606,6 +611,11 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	// Profile defaults holding this currency id, for the archive guard (a
+	// default must stay pickable).
+	// User deletion: a custom currency another owner's account, budget, budget
+	// element or debt uses moves to that owner instead of cascading away.
+	ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error)
 	ListMarkedUsers(ctx context.Context) ([]ListMarkedUsersRow, error)
 	ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error)
 	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
@@ -673,6 +683,7 @@ type Querier interface {
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	MarkUserForDeletion(ctx context.Context, arg MarkUserForDeletionParams) (int64, error)
+	MoveCurrency(ctx context.Context, arg MoveCurrencyParams) error
 	MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)

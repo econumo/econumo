@@ -32,6 +32,14 @@ type ManageModel interface {
 	// on every global (customs keep their per-row preference).
 	HideGlobalCurrencies(ctx context.Context, userID string, excludeIDs []string, now time.Time) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
+	// ListCustomCurrenciesByOwner returns every custom of userID, soft-deleted
+	// ones included, with ID, Code and IsDeleted set.
+	ListCustomCurrenciesByOwner(ctx context.Context, userID string) ([]model.CurrencyRecord, error)
+	// FirstForeignOwner returns the lowest user id other than userID whose
+	// account, budget, budget element or debt uses the currency; ok is false
+	// when nobody else uses it.
+	FirstForeignOwner(ctx context.Context, currencyID, userID string) (owner string, ok bool, err error)
+	MoveCurrency(ctx context.Context, id, userID string, deleted bool) error
 }
 
 // ProfileCurrency is the consumer-side port onto the user feature's profile
