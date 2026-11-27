@@ -12,6 +12,7 @@ import (
 	"io"
 	"math/big"
 	"mime"
+	"mime/multipart"
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
@@ -372,4 +373,111 @@ func TestSMTP_RejectsBadAddresses(t *testing.T) {
 	if err := m.Send(context.Background(), msg); err == nil {
 		t.Fatal("want an address error")
 	}
+}
+
+func TestSMTPRender_MultipartParses(t *testing.T) {
+	m := newSMTPMailer(SMTPConfig{Host: "localhost"})
+	m.now = func() time.Time { return time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC) }
+	from := &mail.Address{Address: "noreply@econumo.test"}
+	to := &mail.Address{Address: "u@example.test"}
+	msg := Message{
+		Subject: "Привет",
+		Text:    "Plain тело with a very long line " + strings.Repeat("x", 2000) + "\nsecond",
+		HTML:    "<p>HTML тело " + strings.Repeat("y", 2000) + "</p>\n<img src=\"cid:" + LogoContentID + "\">",
+		Inline:  []InlineFile{{ContentID: LogoContentID, Filename: "econumo.png", ContentType: "image/png", Data: Logo}},
+	}
+	raw, err := m.render(from, to, nil, nil, msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.SplitAfter(string(raw), "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.HasSuffix(line, "\r\n") || len(line) > 998 {
+			t.Fatalf("bad line (len %d): %.60q", len(line), line)
+		}
+	}
+	parsed, err := mail.ReadMessage(strings.NewReader(string(raw)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	top, params, err := mime.ParseMediaType(parsed.Header.Get("Content-Type"))
+	if err != nil || top != "multipart/alternative" {
+		t.Fatalf("top type %q err %v", top, err)
+	}
+	alt := multipartReader(t, parsed.Body, params["boundary"])
+	textPart, err := alt.NextPart()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := readQP(t, textPart); got != msg.Text {
+		t.Fatalf("text part = %q", got)
+	}
+	relPart, err := alt.NextPart()
+	if err != nil {
+		t.Fatal(err)
+	}
+	relType, relParams, err := mime.ParseMediaType(relPart.Header.Get("Content-Type"))
+	if err != nil || relType != "multipart/related" || relParams["type"] != "text/html" {
+		t.Fatalf("related type %q %v err %v", relType, relParams, err)
+	}
+	rel := multipartReader(t, relPart, relParams["boundary"])
+	htmlPart, err := rel.NextPart()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := readQP(t, htmlPart); got != msg.HTML {
+		t.Fatalf("html part = %q", got)
+	}
+	img, err := rel.NextPart()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := img.Header.Get("Content-Id"); got != "<"+LogoContentID+">" {
+		t.Fatalf("content-id %q", got)
+	}
+	if got := img.Header.Get("Content-Disposition"); got != `inline; filename="econumo.png"` {
+		t.Fatalf("disposition %q", got)
+	}
+	if got := img.Header.Get("Content-Type"); got != "image/png" {
+		t.Fatalf("image type %q", got)
+	}
+	enc, err := io.ReadAll(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range strings.Split(strings.TrimRight(string(enc), "\r\n"), "\r\n") {
+		if len(l) > 76 {
+			t.Fatalf("base64 line of %d", len(l))
+		}
+	}
+	dec, err := base64.StdEncoding.DecodeString(strings.NewReplacer("\r", "", "\n", "").Replace(string(enc)))
+	if err != nil || string(dec) != string(Logo) {
+		t.Fatalf("image bytes differ (err %v)", err)
+	}
+	if _, err := rel.NextPart(); err != io.EOF {
+		t.Fatalf("extra related part: %v", err)
+	}
+	if _, err := alt.NextPart(); err != io.EOF {
+		t.Fatalf("extra alternative part: %v", err)
+	}
+}
+
+func multipartReader(t *testing.T, r io.Reader, boundary string) *multipart.Reader {
+	t.Helper()
+	if boundary == "" {
+		t.Fatal("no boundary")
+	}
+	return multipart.NewReader(r, boundary)
+}
+
+// multipart.Reader decodes quoted-printable parts itself and hides the header.
+func readQP(t *testing.T, p *multipart.Part) string {
+	t.Helper()
+	b, err := io.ReadAll(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.ReplaceAll(string(b), "\r\n", "\n")
 }
