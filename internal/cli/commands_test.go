@@ -1,11 +1,20 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/econumo/econumo/internal/shared/datetime"
+	appuser "github.com/econumo/econumo/internal/user"
 
 	_ "modernc.org/sqlite" // register the pure-Go sqlite driver for tests
 
@@ -752,5 +761,192 @@ func TestMigrationCopyAccessTokens_CommandAndRunner(t *testing.T) {
 
 	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:copy-access-tokens"); err != nil {
 		t.Fatalf("runner: %v", err)
+	}
+}
+
+func deletionTestDB(t *testing.T, dbPath string) *sql.DB {
+	t.Helper()
+	raw, err := sqlite.New().Open(context.Background(), "sqlite://"+dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = raw.Close() })
+	return raw
+}
+
+func userIDByEmail(t *testing.T, raw *sql.DB, email string) string {
+	t.Helper()
+	var id string
+	if err := raw.QueryRow(`SELECT id FROM users WHERE email = ?`, email).Scan(&id); err != nil {
+		t.Fatalf("user id of %s: %v", email, err)
+	}
+	return id
+}
+
+func userExists(t *testing.T, raw *sql.DB, id string) bool {
+	t.Helper()
+	var n int
+	if err := raw.QueryRow(`SELECT COUNT(*) FROM users WHERE id = ?`, id).Scan(&n); err != nil {
+		t.Fatalf("count users: %v", err)
+	}
+	return n == 1
+}
+
+func markUser(t *testing.T, raw *sql.DB, id, reason string, at time.Time) {
+	t.Helper()
+	if _, err := raw.Exec(`UPDATE users SET deletion_marked_at = ?, deletion_reason = ? WHERE id = ?`,
+		at.UTC().Format(datetime.Layout), reason, id); err != nil {
+		t.Fatalf("mark user: %v", err)
+	}
+}
+
+func TestUserDeletionCommands(t *testing.T) {
+	dbPath := cliEnvDB(t)
+	t.Setenv("ECONUMO_USER_DELETION_DAYS", "")
+	const email, unmarked = "del-a@example.test", "del-unmarked@example.test"
+	for _, e := range []string{email, unmarked} {
+		if code, _, stderr := runApp(t, "user:create", "Del User", e, "secret-pw"); code != 0 {
+			t.Fatalf("user:create %s = %d: %s", e, code, stderr)
+		}
+	}
+	raw := deletionTestDB(t, dbPath)
+	id := userIDByEmail(t, raw, email)
+
+	code, stdout, stderr := runApp(t, "user:mark-deleted", email)
+	if code != 0 || !strings.Contains(stdout, "User "+email+" marked for deletion") {
+		t.Fatalf("user:mark-deleted = %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if code, _, _ := runApp(t, "user:mark-deleted", email); code != 1 {
+		t.Fatalf("second user:mark-deleted = %d, want 1", code)
+	}
+
+	code, stdout, stderr = runApp(t, "user:list-pending-deletion")
+	if code != 0 {
+		t.Fatalf("user:list-pending-deletion = %d: %s", code, stderr)
+	}
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("list output = %q, want a header and one row", stdout)
+	}
+	if got := strings.Fields(lines[0]); !slices.Equal(got, []string{"ID", "EMAIL", "REASON", "MARKED", "AUTO-WIPE"}) {
+		t.Errorf("header = %q", lines[0])
+	}
+	row := strings.Fields(lines[1])
+	if len(row) != 6 || row[0] != id || row[1] != email || row[2] != "cli" || row[5] != "manual" {
+		t.Errorf("row = %q, want id, email, cli, the mark time and manual", lines[1])
+	}
+
+	t.Setenv("ECONUMO_USER_DELETION_DAYS", "30")
+	_, stdout, _ = runApp(t, "user:list-pending-deletion")
+	lines = strings.Split(strings.TrimSpace(stdout), "\n")
+	row = strings.Fields(lines[len(lines)-1])
+	if len(row) != 7 {
+		t.Fatalf("row with a deletion period = %q", lines[len(lines)-1])
+	}
+	marked, err := time.Parse(datetime.Layout, row[3]+" "+row[4])
+	if err != nil {
+		t.Fatalf("marked column: %v", err)
+	}
+	if want := marked.AddDate(0, 0, 30).Format(datetime.Layout); row[5]+" "+row[6] != want {
+		t.Errorf("auto-wipe = %s %s, want %s", row[5], row[6], want)
+	}
+
+	code, stdout, stderr = runApp(t, "user:delete", email)
+	if code != 0 || !strings.Contains(stdout, "User "+email+" deleted") {
+		t.Fatalf("user:delete = %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if userExists(t, raw, id) {
+		t.Error("the deleted user's row is still there")
+	}
+
+	code, _, stderr = runApp(t, "user:delete", unmarked)
+	if code != 1 || !strings.Contains(stderr, "not marked") {
+		t.Fatalf("user:delete on an unmarked user = %d, stderr %q", code, stderr)
+	}
+	if code, _, _ := runApp(t, "user:delete", "nobody@example.test"); code != 1 {
+		t.Fatalf("user:delete on an unknown user = %d, want 1", code)
+	}
+}
+
+func TestUserDelete_InactiveMarkWithActiveConnectionIsReleased(t *testing.T) {
+	dbPath := cliEnvDB(t)
+	t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "30")
+	raw := deletionTestDB(t, dbPath)
+	f := fixture.New(t, &dbtest.DB{Raw: raw, Engine: "sqlite"})
+	const email = "del-inactive@example.test"
+	id := f.User(fixture.User{Email: email})
+	partner := f.User(fixture.User{Email: "del-partner@example.test"})
+	f.Connect(id, partner)
+	if _, err := raw.Exec(`UPDATE users SET last_active_at = ? WHERE id = ?`, time.Now().UTC().Format(datetime.Layout), partner); err != nil {
+		t.Fatalf("stamp the partner active: %v", err)
+	}
+	markUser(t, raw, id, "inactive", time.Now().AddDate(0, 0, -1))
+
+	code, _, stderr := runApp(t, "user:delete", email)
+	if code != 1 || !strings.Contains(stderr, "not deleted: a connected user is active; the mark was removed") {
+		t.Fatalf("user:delete = %d, stderr %q", code, stderr)
+	}
+	if !userExists(t, raw, id) {
+		t.Fatal("a released user was deleted")
+	}
+	var markedAt sql.NullString
+	if err := raw.QueryRow(`SELECT deletion_marked_at FROM users WHERE id = ?`, id).Scan(&markedAt); err != nil {
+		t.Fatal(err)
+	}
+	if markedAt.Valid {
+		t.Errorf("deletion_marked_at = %q, want the mark removed", markedAt.String)
+	}
+	var details string
+	if err := raw.QueryRow(`SELECT details FROM users_audit WHERE user_id = ? AND event = 'deletion_cancelled'`, id).Scan(&details); err != nil {
+		t.Fatalf("cancel audit row: %v", err)
+	}
+	if !strings.Contains(details, `"active_connection"`) {
+		t.Errorf("cancel audit details = %s, want the active_connection cause", details)
+	}
+}
+
+func TestUserPurgeDeleted(t *testing.T) {
+	dbPath := cliEnvDB(t)
+	t.Setenv("ECONUMO_USER_DELETION_DAYS", "30")
+	raw := deletionTestDB(t, dbPath)
+	f := fixture.New(t, &dbtest.DB{Raw: raw, Engine: "sqlite"})
+	due := f.User(fixture.User{Email: "purge-due@example.test"})
+	recent := f.User(fixture.User{Email: "purge-recent@example.test"})
+	markUser(t, raw, due, "cli", time.Now().AddDate(0, 0, -40))
+	markUser(t, raw, recent, "cli", time.Now().AddDate(0, 0, -1))
+
+	code, stdout, stderr := runApp(t, "user:purge-deleted")
+	if code != 0 || !strings.Contains(stdout, "released 0, deleted 1") {
+		t.Fatalf("user:purge-deleted = %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if userExists(t, raw, due) || !userExists(t, raw, recent) {
+		t.Fatal("want the due user deleted and the recent one kept")
+	}
+
+	failing := f.User(fixture.User{Email: "purge-failing@example.test"})
+	markUser(t, raw, failing, "cli", time.Now().AddDate(0, 0, -40))
+	if _, err := raw.Exec(`CREATE TRIGGER refuse_user_delete BEFORE DELETE ON users BEGIN SELECT RAISE(ABORT, 'refused'); END`); err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+	code, stdout, stderr = runApp(t, "user:purge-deleted")
+	if code != 1 {
+		t.Fatalf("user:purge-deleted with a failing wipe = %d, want 1", code)
+	}
+	if !strings.Contains(stdout, "released 0, deleted 0") {
+		t.Errorf("stdout = %q, want the summary", stdout)
+	}
+	if !regexp.MustCompile(`(?m)^failed ` + failing + `: \S+$`).MatchString(stderr) {
+		t.Errorf("stderr = %q, want one failure line with the user id and the error type", stderr)
+	}
+	if strings.Contains(stderr, "refused") || strings.Contains(stderr, "@") {
+		t.Errorf("stderr = %q carries the error text or an email", stderr)
+	}
+}
+
+func TestReportPurge_PassError(t *testing.T) {
+	var out, errOut bytes.Buffer
+	err := reportPurge(&out, &errOut, appuser.DeletionPassResult{Err: errors.New("listing failed")})
+	if err == nil {
+		t.Fatal("a pass that errored must fail the command")
 	}
 }

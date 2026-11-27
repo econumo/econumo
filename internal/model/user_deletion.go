@@ -55,6 +55,16 @@ type MarkedUser struct {
 	MarkedAt time.Time
 }
 
+// PendingDeletion is a marked user as user:list-pending-deletion shows it.
+// Email is decoded; WipeAt is nil when automatic wiping is off.
+type PendingDeletion struct {
+	ID       string
+	Email    string
+	Reason   string
+	MarkedAt time.Time
+	WipeAt   *time.Time
+}
+
 type InactiveCandidate struct {
 	ID       vo.Id
 	Email    string

@@ -109,6 +109,51 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 	return outcome, nil
 }
 
+// AdminDelete is user:delete: wipes a marked user now, whatever the mark's age.
+// WipeReleased is returned as an outcome, not an error: the caller reports it.
+func (s *Service) AdminDelete(ctx context.Context, email string) (WipeOutcome, error) {
+	if err := s.requireDeletionStores(); err != nil {
+		return "", err
+	}
+	u, err := s.userByEmail(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	outcome, err := s.Wipe(ctx, u.ID, nil)
+	if err != nil {
+		return "", err
+	}
+	if outcome == WipeNotMarked {
+		return "", &errs.ValidationError{Msg: "This user is not marked for deletion.", MsgCode: errs.CodeUserDeletionNotMarked}
+	}
+	return outcome, nil
+}
+
+// ListPendingDeletion is user:list-pending-deletion, in ListMarked's order.
+func (s *Service) ListPendingDeletion(ctx context.Context) ([]model.PendingDeletion, error) {
+	if err := s.requireDeletionStores(); err != nil {
+		return nil, err
+	}
+	marks, err := s.deletion.ListMarked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.PendingDeletion, 0, len(marks))
+	for _, m := range marks {
+		email, err := s.encode.Decode(m.Email)
+		if err != nil {
+			return nil, err
+		}
+		p := model.PendingDeletion{ID: m.ID.String(), Email: email, Reason: string(m.Reason), MarkedAt: m.MarkedAt}
+		if s.deletionCfg.DeletionDays > 0 {
+			at := m.MarkedAt.Add(time.Duration(s.deletionCfg.DeletionDays) * 24 * time.Hour)
+			p.WipeAt = &at
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
 // releaseInactiveMark applies the household rule under the lock. The
 // connected users' rows are locked first, in id order: their sign-in and
 // activity stamp write those rows, so they land before the check or wait for

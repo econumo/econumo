@@ -358,7 +358,7 @@ DEBUG transport line. Enrich the operation line with `reqctx.AddLogAttr(ctx, key
 `internal/cli` (in the image: `docker exec <container> /app/econumo user:create …`):
 
 ```
-user:create|change-email|change-password|activate|deactivate|verify-email|set-access|show
+user:create|change-email|change-password|activate|deactivate|verify-email|set-access|show|mark-deleted|list-pending-deletion|delete|purge-deleted
 currency:update-rates|show-rate-gaps|backfill-rates|add
 token:purge [days]
 data:remove-salt            # decrypt legacy salted emails; run with the old salt still set
