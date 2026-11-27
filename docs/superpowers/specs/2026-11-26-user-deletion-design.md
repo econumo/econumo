@@ -161,11 +161,14 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
    - a transfer from one of the user's accounts into a partner account: an income on the
      partner account for `amount_recipient`.
    Each correction keeps the original's `spent_at` (date and time as stored) and its position
-   in the day on that side (`sort_key`, or `recipient_sort_key` for the recipient side), has no
-   category, payee, tag or labels, is authored by the account's owner, and its description
-   says the original transaction was deleted: "Balance adjustment (original transaction
-   deleted)", English like the existing account-deleted correction
-   (`internal/account/zero.go`). Then delete the originals that the cascade would not remove
+   in the day on that side (`sort_key`, or `recipient_sort_key` for the recipient side), is
+   authored by the account's owner, and its description is
+   "Original transaction deleted: <original description>" (just "Original transaction deleted"
+   when the original had none; truncated to the column's 255 characters), English like the
+   existing account-deleted correction (`internal/account/zero.go`). Transfers carry no
+   category, payee or tag; for an expense/income the user wrote, a category, payee, tag or
+   label is kept only when it belongs to the account's owner (normally they are the user's own
+   and are deleted, so the correction has none). Then delete the originals that the cascade would not remove
    (transfers from a partner account into the user's account; the cascade would only NULL
    their recipient).
 6. Debts on a partner's budget whose currency is one of the user's custom currencies switch to
@@ -186,7 +189,8 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
 
 What the partner gives up: the user's entries in their accounts become uncategorized
 corrections on the same dates (balances on every day, net worth, and account order unchanged;
-the category, payee, tag and description are gone). A partner's budget recalculates without the user's accounts and
+the original description is kept in the correction's description; the user's own category,
+payee and tag are gone). A partner's budget recalculates without the user's accounts and
 categories; intended - the same end state as the user disconnecting everyone and deleting
 everything by hand.
 
