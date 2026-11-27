@@ -289,8 +289,7 @@ user stays marked for the next pass or the next `user:delete`.
    has a new mark whose period has just started. `user:delete` has no such condition.
    For reason `inactive`, check the household rule here, under the lock: with an active
    connection the mark is cancelled, the transaction commits that and nothing else.
-2. Read `lifetimeAccess` = `ECONUMO_TRIAL > 0 AND access_level = full AND access_until IS NULL`,
-   and the email.
+2. Read `lifetimeAccess` = `access_level = full AND access_until IS NULL`, and the email.
 3. Unwind sharing, selected by ACCESS ROWS, not by `users_connections` (an access row without a
    connection must not survive as an orphan):
    - every budget the user is a member of: the existing `RemoveMember`, whose
@@ -434,14 +433,12 @@ partner and the third user still share their budget; no row anywhere names the w
   onboarding, and the normal trial rules.
 - Lifetime means `access_level = full` with `access_until = NULL`, as defined in
   `2026-07-19-cloud-monetization-trial-access-design.md` ("paid (one-off / lifetime core)").
-  The pair alone is not a purchase: with `ECONUMO_TRIAL=0` it is every user's default. So
-  `lifetimeAccess` is recorded as true only on a server that has trials on. On a server
-  without trials it is always false, no email hash is kept for anyone, and nothing is lost:
-  a new registration there has full access anyway. On a server with trials, a CLI-created
-  user or a `user:set-access full` without a date is a deliberate permanent grant by the
-  operator and counts as lifetime. Assumption to confirm with billing before building: a
-  SUBSCRIPTION
-  always carries an `access_until`; if billing ever writes `full` + NULL for a subscriber, that
+  That pair is the whole definition (agreed 2026-11-26): no other condition. It follows that
+  a CLI-created user and a `user:set-access full` without a date count as lifetime, and that
+  on a server without trials, where the pair is everyone's default, every deleted user is
+  recorded as lifetime and leaves an email hash; the re-grant changes nothing there.
+  Assumption to confirm with billing before building: a SUBSCRIPTION always carries an
+  `access_until`; if billing ever writes `full` + NULL for a subscriber, that
   subscriber would be remembered as lifetime.
 - The re-grant: when the address's hash has a `deleted` row with `lifetimeAccess: true` that
   no `lifetime_regranted` row names in `deletedEventId`, the new user gets
@@ -586,8 +583,8 @@ comment rules.
 - NEW (second review): the deletion dialog says the CSV leaves out accounts deleted earlier.
   Alternative: an export that includes them.
 - NEW (second review): `ClearActiveBudget` is fixed to write only the option.
-- NEW (second review): lifetime is recorded only on a server with trials on; without trials
-  nobody leaves an email hash.
+- AGREED 2026-11-26: lifetime is `full` with no end date and nothing else. A reviewer asked to
+  exclude servers without trials; declined.
 - NEW (second review): the single inactivity email is best effort (a crash between send and
   mark can repeat it). Alternative: a stored delivery state.
 - NEW: a failed wipe is an ERROR in the log and a non-zero CLI exit; there is no stored
