@@ -42,18 +42,23 @@ export function writableAccounts(accounts: AccountDto[], meId: string | undefine
   })
 }
 
-/** columns every step before Extra details reads */
-export function usedColumns(answers: WizardAnswers): Set<number> {
-  const { account, date, amount, description, extras } = answers
+/** columns the Account, Date, Amount and Description steps read */
+function mainColumns(answers: WizardAnswers): Set<number> {
+  const { account, date, amount, description } = answers
   const used = [
     account?.kind === 'column' ? account.column : null,
     date.column,
     ...(amount.mode === 'single' ? [amount.column] : [amount.inColumn, amount.outColumn]),
-    extras.category,
     description,
-    extras.payee,
   ]
   return new Set(used.filter((c) => c !== null))
+}
+
+/** columns every step before Extra details reads */
+export function usedColumns(answers: WizardAnswers): Set<number> {
+  const used = mainColumns(answers)
+  for (const column of [answers.extras.category, answers.extras.payee]) if (column !== null) used.add(column)
+  return used
 }
 
 /** columns the steps before Extra details left free, the ones Extra details offers */
@@ -62,13 +67,26 @@ export function unusedColumns(answers: WizardAnswers, profiles: ColumnProfile[])
   return profiles.filter((p) => !used.has(p.index) && p.type !== 'empty')
 }
 
-/** Category and Payee are optional: a pick takes its column from Description and from the
-    other details, the last pick wins */
+/** One column, one role: a Category or Payee pick takes its column from whichever step read
+    it, the last pick wins. A required step that loses it asks again. */
 export function pickDetail(answers: WizardAnswers, role: 'category' | 'payee', column: number | null): Partial<WizardAnswers> {
   const extras = { ...answers.extras }
-  if (column !== null) for (const r of ['payee', 'category', 'tag', 'labels'] as const) if (extras[r] === column) extras[r] = null
+  if (column === null) return { extras: { ...extras, [role]: null } }
+  for (const r of ['payee', 'category', 'tag', 'labels'] as const) if (extras[r] === column) extras[r] = null
   extras[role] = column
-  return column !== null && answers.description === column ? { description: null, extras } : { extras }
+  const { account, date, amount, description } = answers
+  return {
+    extras,
+    account: account?.kind === 'column' && account.column === column ? null : account,
+    date: date.column === column ? { ...date, column: null } : date,
+    amount: {
+      ...amount,
+      column: amount.column === column ? null : amount.column,
+      inColumn: amount.inColumn === column ? null : amount.inColumn,
+      outColumn: amount.outColumn === column ? null : amount.outColumn,
+    },
+    description: description === column ? null : description,
+  }
 }
 
 export function missingAnswer(step: StepId, answers: WizardAnswers): boolean {
@@ -125,17 +143,17 @@ export function hasGuess(step: StepId, state: Pick<LoadedWizardState, 'answers' 
   }
 }
 
-/** A column Description reads is never also a category or payee, and one any earlier step
-    reads is never also a tag. Category and Payee may share a column with Account, Date or
-    Amount, as Description may share one with Date. */
+/** a column Account, Date, Amount or Description reads is never also a category or payee, and
+    one any earlier step reads is never also a tag */
 export function releaseTakenExtras(answers: WizardAnswers): WizardAnswers {
+  const main = mainColumns(answers)
   const used = usedColumns(answers)
   const extras = { ...answers.extras }
   let changed = false
   for (const role of ['payee', 'category', 'tag', 'labels'] as const) {
     const column = extras[role]
     if (column === null) continue
-    if (role === 'tag' || role === 'labels' ? used.has(column) : column === answers.description) {
+    if (role === 'tag' || role === 'labels' ? used.has(column) : main.has(column)) {
       extras[role] = null
       changed = true
     }

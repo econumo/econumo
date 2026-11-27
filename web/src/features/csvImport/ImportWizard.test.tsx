@@ -100,6 +100,20 @@ it('a file with no category or payee answers both calmly with Looks right; they 
   expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
 })
 
+it('picking the amount as the category moves it: Amount loses it and needs an answer, Import waits', async () => {
+  renderWizard({ initialFile: csv(EXPORT, 'econumo.csv') })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Here is what will be added' })
+  await user.click(screen.getByRole('button', { name: 'Category' }))
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  await user.click(screen.getByRole('radio', { name: /from “amount”/ }))
+  expect(screen.getByRole('button', { name: /^Amount.*needs your attention/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^Category/ })).toHaveAccessibleDescription('-4.5 · 1000')
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  expect(screen.getByRole('button', { name: /^Import/ })).toBeDisabled()
+})
+
 it('Category and Payee left as None never block Import', async () => {
   renderWizard({ initialFile: csv(EXPORT, 'econumo.csv') })
   const user = userEvent.setup()

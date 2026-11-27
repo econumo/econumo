@@ -1,7 +1,7 @@
 import type { PreparedRow, WizardAnswers } from './prepare'
 import type { AccountDto } from '@/api/dto/account'
 import type { ColumnProfile } from './columns'
-import { firstDistinct, hasGuess, newAccountFolderId, pickDetail, releaseTakenExtras, unusedColumns, visibleSteps, writableAccounts } from './wizard'
+import { firstDistinct, hasGuess, missingAnswer, newAccountFolderId, pickDetail, releaseTakenExtras, unusedColumns, visibleSteps, writableAccounts } from './wizard'
 
 const answers = (patch: Partial<WizardAnswers>): WizardAnswers => ({
   account: { kind: 'existing', accountId: 'a1' },
@@ -95,16 +95,33 @@ it('Category and Payee answer "none" when nothing in the file fits or None was p
 
 it('a Category or Payee pick takes its column from Description and the other details: the last pick wins', () => {
   const before = answers({ extras: { payee: 3, category: null, tag: 4, labels: null, labelsSeparator: ';' } })
-  expect(pickDetail(before, 'category', 3)).toEqual({ extras: { payee: null, category: 3, tag: 4, labels: null, labelsSeparator: ';' } })
-  expect(pickDetail(before, 'payee', 2)).toEqual({ description: null, extras: { payee: 2, category: null, tag: 4, labels: null, labelsSeparator: ';' } })
-  expect(pickDetail(before, 'payee', null).extras).toEqual({ payee: null, category: null, tag: 4, labels: null, labelsSeparator: ';' })
+  expect(pickDetail(before, 'category', 3)).toMatchObject({ description: 2, extras: { payee: null, category: 3, tag: 4, labels: null, labelsSeparator: ';' } })
+  expect(pickDetail(before, 'payee', 2)).toMatchObject({ description: null, extras: { payee: 2, category: null, tag: 4, labels: null, labelsSeparator: ';' } })
+  expect(pickDetail(before, 'payee', null)).toEqual({ extras: { payee: null, category: null, tag: 4, labels: null, labelsSeparator: ';' } })
   const picked = { ...before, ...pickDetail(before, 'payee', 2) }
   expect(releaseTakenExtras(picked)).toBe(picked)
 })
 
-it('a category or payee is not released from a date, amount or account column, only from Description', () => {
+it('one column, one role: a Category pick takes the Amount, Date or per-row Account column, and that step needs an answer again', () => {
+  const before = answers({ account: { kind: 'column', column: 5, currencies: {} } })
+  const amount = { ...before, ...pickDetail(before, 'category', 1) }
+  expect(amount.amount.column).toBeNull()
+  expect(amount.extras.category).toBe(1)
+  expect(missingAnswer('amount', amount)).toBe(true)
+  expect(releaseTakenExtras(amount)).toBe(amount)
+  const date = { ...before, ...pickDetail(before, 'payee', 0) }
+  expect(date.date.column).toBeNull()
+  expect(missingAnswer('date', date)).toBe(true)
+  const account = { ...before, ...pickDetail(before, 'category', 5) }
+  expect(account.account).toBeNull()
+  expect(missingAnswer('account', account)).toBe(true)
+  const dual = answers({ amount: { mode: 'dual', column: null, inColumn: 1, outColumn: 6, flip: false, sep: '.' } })
+  expect(pickDetail(dual, 'payee', 6).amount).toMatchObject({ inColumn: 1, outColumn: null })
+})
+
+it('a guessed category or payee on an Account, Date, Amount or Description column is released', () => {
   const before = answers({ extras: { payee: 1, category: 0, tag: null, labels: null, labelsSeparator: ';' } })
-  expect(releaseTakenExtras(before)).toBe(before)
+  expect(releaseTakenExtras(before).extras).toMatchObject({ payee: null, category: null })
 })
 
 it('Extra details offers neither the category nor the payee column, and a tag on either is released', () => {

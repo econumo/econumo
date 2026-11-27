@@ -177,8 +177,9 @@ Built like Description: the guessed answer first ("Strata · Interest · Car Ins
 category". Optional: with nothing that fits, or None picked, the step answers calmly ("Your
 file has no categories. You can sort transactions into categories later.") with Looks
 right; it never warns and never blocks Import. The "N new categories will be created" note
-and the shared-account "left out" note live here. A pick takes its column from Description
-and from the other details (the last pick wins).
+and the shared-account "left out" note live here. One column has one role: a pick takes its
+column from whichever step read it (the last pick wins), and a required step that loses it
+shows its warning mark again; the guess and the AI never share a column.
 
 ### 6. Description: "Which column describes each transaction?"
 
