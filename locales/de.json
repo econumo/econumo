@@ -445,6 +445,7 @@
         "found": "Konten in Ihrer Datei",
         "currency_of": "Währung für {name}",
         "name_hint": "Sie können es später umbenennen",
+        "name_placeholder": "z. B. Girokonto",
         "currency_unknown": "Die Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen.",
         "per_row": "Ihre Datei nennt zu jeder Buchung das Konto",
         "transactions": "{count} Buchung | {count} Buchungen",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "Nicht gewählt",
         "new_account": "Neu: {name} · {currency}",
+        "name_new_account": "Neues Konto benennen",
         "none": "Keine Beschreibung",
         "with": "Mit {list}",
         "nothing_extra": "Nichts weiter",

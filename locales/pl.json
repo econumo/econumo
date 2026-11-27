@@ -445,6 +445,7 @@
         "found": "Konta w Twoim pliku",
         "currency_of": "Waluta dla {name}",
         "name_hint": "Nazwę możesz zmienić później",
+        "name_placeholder": "np. Karta na co dzień",
         "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
         "per_row": "Twój plik podaje konto każdej transakcji",
         "transactions": "{count} transakcja | {count} transakcje | {count} transakcji",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "Nie wybrano",
         "new_account": "Nowe: {name} · {currency}",
+        "name_new_account": "Nazwij nowe konto",
         "none": "Bez opisu",
         "with": "Z: {list}",
         "nothing_extra": "Nic więcej",

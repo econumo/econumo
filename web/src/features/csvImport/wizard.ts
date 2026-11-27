@@ -196,10 +196,6 @@ export function visibleSteps(answers: WizardAnswers | null, profiles: ColumnProf
   return STEP_ORDER.filter((step) => step !== 'extras' || hasExtras || open === 'extras')
 }
 
-export function defaultAccountName(fileName: string): string {
-  return fileName.replace(/\.[^.]+$/, '') || fileName
-}
-
 // names are matched trimmed and case-insensitively, as the server matches them
 export const nameKey = (name: string) => name.trim().toLowerCase()
 

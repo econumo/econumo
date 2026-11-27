@@ -211,6 +211,7 @@ it('the Account step the wizard opens on is checked once answered and left with 
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'A new account' }))
+  await user.type(screen.getByLabelText('Account name'), 'statement')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(marker(/^Account/)?.querySelector('svg.lucide-check')).not.toBeNull()
 })
@@ -419,6 +420,7 @@ it('on a phone, before a file is read, the dialog asks for one', async () => {
 const toCheckWithNewAccount = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'A new account' }))
+  await user.type(screen.getByLabelText('Account name'), 'statement')
   await user.click(screen.getByRole('button', { name: /^Check/ }))
 }
 
@@ -531,4 +533,18 @@ it('a failed account create reads the accounts and folders again', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Nope')
   expect(reads.accounts).toBeGreaterThan(before.accounts)
   expect(reads.folders).toBeGreaterThan(before.folders)
+})
+
+it('Import stays disabled until the new account is named, and typing a name enables it', async () => {
+  server.use(...coreHandlers({ accounts: [] }))
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(screen.getByLabelText('Account name')).toHaveValue('')
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  expect(await screen.findByRole('button', { name: /^Import/ })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: /^Account/ }))
+  await user.type(screen.getByLabelText('Account name'), 'Everyday')
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeEnabled()
 })

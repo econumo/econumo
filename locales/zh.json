@@ -445,6 +445,7 @@
         "found": "您文件中的账户",
         "currency_of": "{name} 的货币",
         "name_hint": "以后可以改名",
+        "name_placeholder": "例如：日常银行卡",
         "currency_unknown": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。",
         "per_row": "您的文件为每笔交易写明了账户",
         "transactions": "{count} 笔交易",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "未选择",
         "new_account": "新建：{name} · {currency}",
+        "name_new_account": "给新账户起个名字",
         "none": "无描述",
         "with": "包括{list}",
         "nothing_extra": "无其他",

@@ -26,7 +26,6 @@ import { useColumnGuess } from './useColumnGuess'
 import { WizardShell, type ShellStep } from './WizardShell'
 import {
   claimPicked,
-  defaultAccountName,
   distinctNames,
   missingAnswer,
   nameKey,
@@ -167,7 +166,6 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       writableAccountIds: writableAccounts(accountsQuery.data ?? [], user?.id).map((a) => a.id),
       userCurrencyId: userCurrencyId(user) ?? '',
       locale: navigator.language,
-      defaultAccountName: defaultAccountName(loaded.fileName),
       currencies: currenciesQuery.data ?? [],
     })
     setAnswersState(releaseTakenExtras(guessed))

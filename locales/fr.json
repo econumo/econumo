@@ -445,6 +445,7 @@
         "found": "Comptes dans votre fichier",
         "currency_of": "Devise de {name}",
         "name_hint": "Vous pourrez le renommer plus tard",
+        "name_placeholder": "p. ex. Carte du quotidien",
         "currency_unknown": "Le fichier indique {code}, qui n'est pas configurée ici. Vous pouvez l'ajouter dans les Paramètres.",
         "per_row": "Votre fichier indique le compte de chaque opération",
         "transactions": "{count} opération | {count} opérations",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "Non choisi",
         "new_account": "Nouveau : {name} · {currency}",
+        "name_new_account": "Nommez le nouveau compte",
         "none": "Pas de description",
         "with": "Avec {list}",
         "nothing_extra": "Rien de plus",

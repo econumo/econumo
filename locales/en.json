@@ -445,6 +445,7 @@
         "found": "Accounts in your file",
         "currency_of": "Currency for {name}",
         "name_hint": "You can rename it later",
+        "name_placeholder": "e.g. Everyday card",
         "currency_unknown": "The file says {code}, which isn't set up here. You can add it in Settings.",
         "per_row": "Your file names the account for each transaction",
         "transactions": "{count} transaction | {count} transactions",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "Not chosen",
         "new_account": "New: {name} · {currency}",
+        "name_new_account": "Name the new account",
         "none": "No description",
         "with": "With {list}",
         "nothing_extra": "Nothing extra",

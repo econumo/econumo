@@ -445,6 +445,7 @@
         "found": "Conti nel tuo file",
         "currency_of": "Valuta di {name}",
         "name_hint": "Puoi rinominarlo più tardi",
+        "name_placeholder": "ad es. Carta di tutti i giorni",
         "currency_unknown": "Il file indica {code}, che qui non è configurata. Puoi aggiungerla nelle Impostazioni.",
         "per_row": "Il tuo file indica il conto di ogni movimento",
         "transactions": "{count} movimento | {count} movimenti",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "Non scelto",
         "new_account": "Nuovo: {name} · {currency}",
+        "name_new_account": "Dai un nome al nuovo conto",
         "none": "Nessuna descrizione",
         "with": "Con {list}",
         "nothing_extra": "Nient’altro",

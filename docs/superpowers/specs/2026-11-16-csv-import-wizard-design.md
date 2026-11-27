@@ -127,8 +127,8 @@ stays on this step.
 
 ### 2. Account: "Which account is this statement from?"
 
-- **A new account** (default when the user has no writable accounts): name (pre-filled with
-  a sensible default, e.g. the file name without extension, editable) and currency
+- **A new account** (default when the user has no writable accounts): name (starts empty:
+  the file name is not a default; an empty name is a missing answer until typed) and currency
   (defaults to the user's currency, the same picker the Accounts step uses).
 - **An account I already have** (default when they have one or more): the account picker,
   writable accounts only, as today.

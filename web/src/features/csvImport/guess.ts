@@ -147,7 +147,6 @@ interface GuessContext {
   writableAccountIds: readonly string[]
   userCurrencyId: string
   locale: string
-  defaultAccountName: string
   // resolves an Econumo export's account_currency codes; unknown codes get userCurrencyId
   currencies?: ReadonlyArray<{ id: string; code: string }>
 }
@@ -213,7 +212,7 @@ export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: G
   const writable = ctx.writableAccountIds
   const account: AccountChoice | null =
     writable.length === 0
-      ? { kind: 'new', name: ctx.defaultAccountName, currencyId: fileCurrencyId(file, ctx.currencies ?? []) ?? ctx.userCurrencyId }
+      ? { kind: 'new', name: '', currencyId: fileCurrencyId(file, ctx.currencies ?? []) ?? ctx.userCurrencyId }
       : writable.length === 1
         ? { kind: 'existing', accountId: writable[0] }
         : null

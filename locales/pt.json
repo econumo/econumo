@@ -445,6 +445,7 @@
         "found": "Contas no seu ficheiro",
         "currency_of": "Moeda de {name}",
         "name_hint": "Pode mudar o nome mais tarde",
+        "name_placeholder": "p. ex. Cartão do dia a dia",
         "currency_unknown": "O ficheiro indica {code}, que não está configurada aqui. Pode adicioná-la nas Definições.",
         "per_row": "O seu ficheiro indica a conta de cada movimento",
         "transactions": "{count} movimento | {count} movimentos",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "Por escolher",
         "new_account": "Nova: {name} · {currency}",
+        "name_new_account": "Dê um nome à nova conta",
         "none": "Sem descrição",
         "with": "Com {list}",
         "nothing_extra": "Nada mais",

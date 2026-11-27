@@ -5,7 +5,7 @@ import { guessAnswers } from './guess'
 import { parseCsvText } from './parse'
 import type { WizardAnswers } from './prepare'
 
-const ctx = { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB', defaultAccountName: 'statement' }
+const ctx = { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB' }
 const uuid = (i: number) => `01a1be03-f8df-7603-b2b1-2c3d4e5f6a${String(i).padStart(2, '0')}`
 const day = (i: number) => `2026-11-${String(i + 1).padStart(2, '0')}`
 const RENT = 'Monthly rent for the flat on Main Street and the garage'

@@ -4,7 +4,7 @@ import { applyAiGuess, guessAnswers, isEconumoExport, redetectFormats } from './
 import { parseCsvText } from './parse'
 import type { StepId } from './prepare'
 
-const ctx = { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-eur', locale: 'de', defaultAccountName: 'Statement' }
+const ctx = { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-eur', locale: 'de' }
 
 function guess(text: string, overrides: Partial<Parameters<typeof guessAnswers>[2]> = {}) {
   const file = parseCsvText(text)
@@ -62,7 +62,7 @@ describe('guessAnswers', () => {
     expect(guess(text, { writableAccountIds: ['acc-1'] }).account).toEqual({ kind: 'existing', accountId: 'acc-1' })
     expect(guess(text, { writableAccountIds: [] }).account).toEqual({
       kind: 'new',
-      name: 'Statement',
+      name: '',
       currencyId: 'cur-eur',
     })
   })

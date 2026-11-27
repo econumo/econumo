@@ -421,9 +421,11 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 Import step with a bank statement and NO accounts (e.g.
       `Buchungstag;Betrag;Verwendungszweck` with `03.11.2026;-12,50;REWE`,
       `05.11.2026;2.500,00;Gehalt`): the wizard opens on Account with "A new
-      account" chosen (there is no "An account I already have"), the name
-      prefilled with the file name without ".csv" and the currency with the
-      user's currency; picking EUR there and importing creates ONE account with
+      account" chosen (there is no "An account I already have"), the name EMPTY
+      (placeholder "e.g. Everyday card"; the Account step shows its attention
+      mark, the sidebar says "Name the new account" and Continue/Import are
+      blocked until a name is typed) and the currency the user's currency;
+      naming it and picking EUR, then importing, creates ONE account with
       that name in EUR (in a "General" folder) holding exactly the file's rows,
       2,487.50 here; the step is ticked and Categories opens. Nothing is
       created before Import is pressed: closing the wizard earlier leaves no

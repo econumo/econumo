@@ -81,6 +81,8 @@ function renderWizard(text: string) {
 
 async function openCheck(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole('heading', { name: /Which account|Here is what/ })
+  const name = screen.queryByLabelText('Account name')
+  if (name) await user.type(name, 'statement')
   await user.click(screen.getByRole('button', { name: /^Check/ }))
   return screen.findByRole('heading', { name: "Here is what will be added" })
 }

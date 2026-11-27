@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ComponentType } from 'react'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -41,7 +41,7 @@ function StepHarness({ text, Step, onSet, open = true }: {
   const [choosing, setChoosing] = useState(open)
   const [profiles] = useState(() => profileColumns(file))
   const [answers, setAnswersState] = useState(() =>
-    guessAnswers(file, profiles, { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB', defaultAccountName: 'statement' }),
+    guessAnswers(file, profiles, { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB' }),
   )
   const rows = prepareRows(file, answers, new Map())
   const setAnswers = (step: StepId, patch: Partial<WizardAnswers>) => {
@@ -84,17 +84,29 @@ it('with no accounts, the Account step starts on a new account in the user’s c
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('radio', { name: 'A new account' })).toBeChecked()
   expect(screen.queryByRole('radio', { name: 'An account I already have' })).not.toBeInTheDocument()
-  expect(screen.getByLabelText('Account name')).toHaveValue('statement')
+  expect(screen.getByLabelText('Account name')).toHaveValue('')
+  expect(screen.getByLabelText('Account name')).toHaveAttribute('placeholder', 'e.g. Everyday card')
   expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
+})
+
+it('a new account is missing until it is named, and typing a name clears the mark', async () => {
+  server.use(...coreHandlers({ accounts: [] }))
+  renderWizard('Date,Amount\n2026-01-02,-5.50\n')
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toHaveAccessibleDescription('Name the new account')
+  fireEvent.change(screen.getByLabelText('Account name'), { target: { value: '   ' } })
+  expect(await screen.findByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Account name'), { target: { value: 'Travel card' } })
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Account.*needs your attention/ })).not.toBeInTheDocument())
 })
 
 it('a typed account name is saved after a pause in typing', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  fireEvent.change(screen.getByLabelText('Account name'), { target: { value: '' } })
-  expect(screen.getByRole('button', { name: 'Account' })).toBeInTheDocument()
-  expect(await screen.findByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Account name'), { target: { value: 'Card' } })
+  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Account.*needs your attention/ })).not.toBeInTheDocument())
 })
 
 it('a typed account name is kept when the step is left before the pause, with the field still focused', async () => {

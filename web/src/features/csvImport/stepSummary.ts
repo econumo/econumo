@@ -27,7 +27,7 @@ export function stepSummary(step: Exclude<StepId, 'file'>, ctx: SummaryContext):
   switch (step) {
     case 'account': {
       const { account } = answers
-      if (account?.kind === 'new') return k('new_account', { name: account.name, currency: ctx.currencyCode(account.currencyId) ?? '' })
+      if (account?.kind === 'new') return account.name.trim() === '' ? k('name_new_account') : k('new_account', { name: account.name, currency: ctx.currencyCode(account.currencyId) ?? '' })
       if (account?.kind === 'existing') {
         const found = ctx.account(account.accountId)
         return found ? `${found.name} · ${found.code}` : k('not_chosen')

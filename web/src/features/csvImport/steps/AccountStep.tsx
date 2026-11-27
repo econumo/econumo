@@ -21,7 +21,7 @@ import { AnswerRow, Field, QuietButton, Segmented, SkippedNote } from '../contro
 import { accountCurrencies, currencyColumn, fileCurrencyId, unknownRowsCurrency } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice, PreparedRow } from '../prepare'
-import { defaultAccountName, distinctNames, existingCodes, hasGuess, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
+import { distinctNames, existingCodes, hasGuess, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 
 type Option = AccountChoice['kind']
 type NewAccount = Extract<AccountChoice, { kind: 'new' }>
@@ -53,6 +53,7 @@ function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
       <Field label={t('transactions.import_wizard.account.name')} hint={t('transactions.import_wizard.account.name_hint')} htmlFor={nameId}>
         <Input
           id={nameId}
+          placeholder={t('transactions.import_wizard.account.name_placeholder')}
           className="h-10"
           value={name}
           onChange={(e) => {
@@ -308,7 +309,7 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
     // leaving "new" keeps the typed name for coming back, without saving it as the answer
     dropTypedName()
     const fallback: AccountChoice | null =
-      next === 'new' ? { kind: 'new', name: defaultAccountName(state.fileName), currencyId: fileCurrencyId(state.file, currencies) ?? currencyId } : null
+      next === 'new' ? { kind: 'new', name: '', currencyId: fileCurrencyId(state.file, currencies) ?? currencyId } : null
     set(remembered.current[next] ?? fallback)
     // back to a column chosen before: its answer, not the list the other options left open
     if (next === 'column' && remembered.current.column) closeChoices()

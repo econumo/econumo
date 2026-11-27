@@ -445,6 +445,7 @@
         "found": "Rekeningen in uw bestand",
         "currency_of": "Valuta voor {name}",
         "name_hint": "U kunt de naam later wijzigen",
+        "name_placeholder": "bijv. Dagelijkse pas",
         "currency_unknown": "Het bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen.",
         "per_row": "Uw bestand vermeldt bij elke transactie de rekening",
         "transactions": "{count} transactie | {count} transacties",
@@ -568,6 +569,7 @@
       "summary": {
         "not_chosen": "Niet gekozen",
         "new_account": "Nieuw: {name} · {currency}",
+        "name_new_account": "Geef de nieuwe rekening een naam",
         "none": "Geen omschrijving",
         "with": "Met {list}",
         "nothing_extra": "Verder niets",
