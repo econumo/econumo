@@ -150,33 +150,31 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
    `removeMemberRecords` deletes the budget elements, savings rows and account memberships a
    departing member leaves behind - `budgets_elements.external_id` has no foreign key, so the
    cascade alone would leave orphan elements with plans, debts and comments); delete invites.
-4. Replace every row that is about to leave a partner's account (an account NOT owned by the
-   user) with a correction on that account, one correction per affected side:
-   - a row the user wrote into a partner account (`transactions.user_id` = the user): a
-     correction of the same type and amount on that account; a transfer the user wrote between
-     two partner accounts gives an expense on the source (`amount`) and an income on the
-     recipient (`amount_recipient`);
-   - a transfer from a partner account into one of the user's accounts: an expense on the
-     partner account for `amount`;
-   - a transfer from one of the user's accounts into a partner account: an income on the
-     partner account for `amount_recipient`.
-   Each correction keeps the original's `spent_at` (date and time as stored) and its position
-   in the day on that side (`sort_key`, or `recipient_sort_key` for the recipient side), is
-   authored by the account's owner, and its description is
-   "Original transaction deleted: <original description>" (just "Original transaction deleted"
-   when the original had none; truncated to the column's 255 characters), English like the
-   existing account-deleted correction (`internal/account/zero.go`). Transfers carry no
-   category, payee or tag; for an expense/income the user wrote, a category, payee, tag or
-   label is kept only when it belongs to the account's owner (normally they are the user's own
-   and are deleted, so the correction has none). Then delete the originals that the cascade would not remove
-   (transfers from a partner account into the user's account; the cascade would only NULL
-   their recipient).
+4. Rows the user wrote into a partner's account (an account NOT owned by the user,
+   `transactions.user_id` = the user) stay as they are: a row written into another user's
+   account already uses that account owner's categories, payees, tags and labels. The wipe
+   reassigns `user_id` to the account's owner and appends the note to the description:
+   "<original description> (original author deleted)" (just "Original author deleted" when
+   empty; truncated to the column's 255 characters). Date, order, amounts, category, payee, tag
+   and labels are untouched. This includes transfers the user wrote between two partner
+   accounts.
+5. Transfers between one of the user's accounts and a partner account lose their other side,
+   so the partner's side becomes a correction on that account:
+   - partner account -> user's account: an expense on the partner account for `amount`;
+   - user's account -> partner account: an income on the partner account for
+     `amount_recipient`.
+   The correction keeps the original's `spent_at` and its position in the day on that side
+   (`sort_key`, or `recipient_sort_key` for the recipient side), is authored by the account's
+   owner, and its description is "Original transaction deleted: <original description>" (just
+   "Original transaction deleted" when empty; truncated to 255). Transfers carry no category,
+   payee or tag. Then the originals are deleted (the cascade would remove the second kind and
+   only NULL the recipient of the first). Wording of both notes is English, like the existing
+   account-deleted correction (`internal/account/zero.go`).
 6. Debts on a partner's budget whose currency is one of the user's custom currencies switch to
    the budget's currency (`debts.currency_id` is `NO ACTION` and would block the delete).
    Budget elements in that situation fall back by the existing `SET NULL`.
 7. `DELETE FROM users WHERE id = ?`. The cascade removes the user's own budgets with everything
-   inside them, their accounts with every transaction in them, every transaction they wrote
-   into partners' accounts, their comments, categories, tags, payees, labels, folders,
+   inside them, their accounts with every transaction in them, their comments, categories, tags, payees, labels, folders,
    currencies, recurring templates (including ones on partners' accounts), imports, debts,
    options, identities, tokens, OAuth grants and the OAuth apps they own, and the code/request
    tables.
@@ -187,10 +185,10 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
    (`txrevision`, inside this transaction).
 10. Write the `deleted` audit row (old user id, email hash, reason, `lifetimeAccess`).
 
-What the partner gives up: the user's entries in their accounts become uncategorized
-corrections on the same dates (balances on every day, net worth, and account order unchanged;
-the original description is kept in the correction's description; the user's own category,
-payee and tag are gone). A partner's budget recalculates without the user's accounts and
+What the partner sees: transfers with the user's accounts become corrections on the same
+dates (balances on every day, net worth, and account order unchanged;
+the original description kept). Rows the user wrote into the partner's accounts stay whole,
+now authored by the partner, with a note in the description. A partner's budget recalculates without the user's accounts and
 categories; intended - the same end state as the user disconnecting everyone and deleting
 everything by hand.
 
@@ -235,7 +233,8 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 - **Wipe**: disconnect, then delete the `users` row and let the database cascade (chosen; a new
   table that cascades from `users` is covered automatically) vs keeping the row as a tombstone
   and deleting root tables in code (an explicit list that must grow with the schema).
-- **Partner rows**: a same-date correction for every removed row (chosen; balances right on
+- **Partner rows**: rows written into partner accounts reassigned to the account owner with a
+  note, cross-user transfers replaced by same-date corrections (chosen; balances right on
   every day, no schema change) vs one correction per account dated today (past balances
   shift) vs converting each cross-user row in place vs dropping the
   foreign key on `transactions.user_id` (SQLite table rebuild, "Deleted" author handling).
