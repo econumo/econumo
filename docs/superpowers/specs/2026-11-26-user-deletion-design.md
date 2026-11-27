@@ -143,13 +143,20 @@ an error for the CLI and impossible from the API (no session survives the mark).
   `GET /api/v1/transaction/export-transaction-list`) -> confirm -> local sign-out at once (the
   session is already revoked; a closed tab must not leave cached data behind) -> the sign-in
   page showing "Your data will be deleted within a month. Sign in before then to keep it."
-  Confirm is refused while changes made offline are still waiting to be sent (sign-out drops
-  them, and the CSV holds server rows only). If the tab dies between the server's commit and
-  the response, a flag set before the request makes the next refused request finish the local
-  clean-up. The flag is a timestamp and counts for ten minutes, so an ordinary expired session
-  later on is never mistaken for a deletion.
+  Confirm is refused while the stored offline queue is still loading or changes made offline
+  are still waiting to be sent (sign-out drops them, and the CSV holds server rows only), and
+  while the download has not finished; the download itself starts only once the queue is known
+  and nothing is waiting, after the account list has loaded (a failed account list counts as a
+  failed download). Refused changes do not block. If the tab dies between the server's commit
+  and the response, a flag set before the request makes the next refused request finish the
+  local clean-up. The flag is a timestamp and counts for ten minutes, so an ordinary expired
+  session later on is never mistaken for a deletion; a sign-in removes it. The confirm's own
+  401 is read by the page: when a flag from an earlier attempt that got no response was
+  already pending, it finishes the clean-up; otherwise the session was revoked before this
+  attempt and it is an ordinary expired session (nothing is wiped, the offline queue stays).
   Offline-disabled via `useOnline`. Analytics event on confirm.
-- The CSV download failing does not block deletion, but the UI says so and offers a retry.
+- The CSV download failing does not block deletion, but the UI says so and offers a retry
+  (which reloads the account list first).
 - The existing export lists live accounts only (`ListExportAccountsForUser` skips deleted
   ones). The dialog says so in plain words: "The file contains the transactions of your
   current accounts. Accounts you deleted earlier are not in it."
@@ -241,7 +248,11 @@ it a row that was never stamped could not be stamped, and an active user would a
 `created_at`): at most one extra write per user per day (the earlier "no extra
 writes" was wrong: `Touch` writes `access_tokens`, not `users`). It is a blind, monotonic
 update, so it is the one write to a user row that does not take the row lock first; on
-PostgreSQL it waits behind a holder of that lock, which is correct.
+PostgreSQL it waits behind a holder of that lock, which is correct. On a token use it is issued
+BEFORE the token touch: an inactivity mark holds the row lock for its whole transaction, so
+the stamp either lands before the mark's re-check (and prevents the mark) or waits behind it,
+after which the touch finds the token revoked and the request is refused. A failed stamp is
+logged and never fails the request.
 
 Session creation (`createSession`, the one place sessions are minted: password login, provider
 handoff, login after a password reset) clears `deletion_marked_at` and `deletion_reason` on a

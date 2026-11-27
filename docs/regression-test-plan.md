@@ -1779,6 +1779,12 @@ and on tablet/phone only with a hardware keyboard.
       categories;
       transactions of member categories aggregate under the envelope; edit
       membership; delete envelope returns categories to top level.
+- [ ] Envelope in a shared budget whose currency is the owner's custom
+      currency: the partner (a member with the `user` role) creates an envelope
+      keeping the dialog's default currency (the budget's) and it is saved in
+      that currency; editing another envelope to the budget's currency also
+      saves. Picking the owner's custom currency for an envelope is refused
+      only when it is not the budget's currency.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the
       category (tagged-spend accounting rule).
 - [ ] 📱 **Plan grid header and window** (desktop and tablet): there is
@@ -3436,6 +3442,20 @@ User C sees none of it.
       Every other device is signed out; signing in again cancels the deletion and nothing is lost.
 - [ ] Delete my data, passwordless account (provider sign-in only): no password is asked.
 - [ ] Delete my data: a wrong code is refused; the page stays on the code step.
+- [ ] Delete my data, session revoked meanwhile: reach the code step, revoke this session
+      from the Sessions list on another device, then enter the code
+      and press Delete my data: the sign-in page says the session expired (not that the data
+      will be deleted), signing in again shows the account unmarked, and changes refused
+      earlier are still listed under "Not saved" in the Inbox.
+- [ ] 📱 Delete my data, code step: "Delete my data" stays disabled until the CSV download
+      has finished (or failed, with the failure message and "Try the download again"), and
+      while changes made offline are waiting to be sent no download starts and the button
+      says why; once they are sent the download runs and the button enables. Changes listed
+      under "Not saved" do not block it.
+- [ ] Delete my data with the account list failing to load (block
+      `get-account-list` in the browser's dev tools): the code step shows the download
+      failure and "Try the download again"; "Delete my data" is enabled; unblocking and
+      pressing the retry downloads the CSV.
 - [ ] `user:delete <email>` after the above: the partner's shared accounts and budgets are gone,
       transfers with them show as "Original transaction deleted: ..." on the same dates, and the
       partner's balances are unchanged.
