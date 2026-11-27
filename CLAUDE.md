@@ -281,7 +281,7 @@ the quick-start subset. Non-obvious points:
 - `ECONUMO_TRIAL`: trial days for self-registered users (`0` = permanent full access); after
   it they are `readonly` (HTTP 402 on writes).
 - `ECONUMO_ADMIN_PORT` + `ECONUMO_ADMIN_TOKEN`: a second, private listener for the payment
-  portal (`/admin/set-access`, `/admin/user-context`, `/admin/affiliate-users`), never on the public mux. The token
+  portal (`/admin/set-access`, `/admin/user-context`, `/admin/affiliate-users`, `/admin/deleted-users`), never on the public mux. The token
   (random, at least 32 chars) is also the HMAC key for billing links (`ECONUMO_BILLING_URL`),
   `econumo://` AI gateway tokens and the `econumo-access:v1` bearer of the server's
   `get-access` call to billing (`GET /api/v1/user/get-billing-access`, cached per user).
@@ -289,6 +289,8 @@ the quick-start subset. Non-obvious points:
   program whose cookie holds a valid code is copied into the write-once, server-only user
   options `affiliate` (program) and `affiliate_code`, only when `ECONUMO_BILLING_URL` is also
   set; billing reads them on the admin listener (`/admin/affiliate-users?since=…`, optional `program=…`).
+- `ECONUMO_INACTIVE_USER_DAYS` (mark idle users, `0` = never), `ECONUMO_USER_DELETION_DAYS`
+  (wipe this long after the mark, `0` = only `user:delete`), `ECONUMO_INACTIVE_USER_EXCLUDE`.
 - Provider slots `ECONUMO_OAUTH_GOOGLE_*`, `ECONUMO_OAUTH_APPLE_*`, `ECONUMO_OIDC_*` are each
   all-or-nothing. Apple's key is a file path (`_PRIVATE_KEY_FILE`).
   `ECONUMO_OIDC_TRUST_EMAIL` treats the custom issuer's email as verified. See
@@ -381,7 +383,8 @@ global app and prints its secret once. CLI-created users never get a trial.
   the six public `oauth` routes.
 - **Read-only access**: a `readonly` caller gets HTTP 402 on any `POST` outside the
   middleware's allowlist (account security actions, `update-analytics`, `update-ai`,
-  `update-last-seen-version`, declining or approving a `read` authorization). `GET` is never
+  `update-last-seen-version`, `request-user-deletion`/`confirm-user-deletion`, declining or
+  approving a `read` authorization). `GET` is never
   restricted.
 - **`Idempotency-Key`** (`internal/web/middleware/idempotency.go`): the SPA sends a UUIDv7 on
   every `POST`. The server checks the table BEFORE the handler and records the key inside the
@@ -516,6 +519,21 @@ Specs: `2026-11-13-debts-on-elements-design.md` (the current model),
   `DebtUsage` port (`Prepare`/`Release`/`Reassign`).
 - SPA: reached from the element's row menu; the only way in is `DebtReviewScreen` (tabs
   Overview, Balance, Settings, Danger zone).
+
+### User deletion (`internal/user/deletion_*.go`, spec `2026-11-26-user-deletion-design.md`)
+
+- Mark, then wipe. A mark revokes every session, PAT and grant; a new sign-in cancels it. Marks come
+  from Settings "Delete my data" (password + emailed code), the daily inactivity pass, or
+  `user:mark-deleted`; `user:list-pending-deletion` lists them.
+- Household rule: a user connected to an active user is never marked inactive, and an
+  inactive mark is released (also re-checked inside the wipe) once a connected user is active.
+- The wipe (daily after `ECONUMO_USER_DELETION_DAYS`, or `user:delete`) is one transaction:
+  the global wipe lock, the budget rows in id order, the user row, then the owned accounts.
+  Every cross-feature step is a method on the owning feature, sequenced in
+  `internal/server/glue_user_wipe.go`; partners keep their rows (transfers become corrections).
+- `users_audit` (mark, cancel, deleted, lifetime re-grant) outlives the user row; billing reads
+  deletions on `/admin/deleted-users`. `internal/test/wipeguard`: every foreign key to `users`
+  cascades, and a user column without one is on its handled list.
 
 ### Transaction import (`internal/imports`)
 

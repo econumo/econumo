@@ -1115,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Usuń moje dane",
+      "header": "Usuń moje dane",
+      "explain": {
+        "what": "Spowoduje to usunięcie Twoich kont wraz z transakcjami, budżetów, kategorii, odbiorców, tagów i ustawień.",
+        "shared": "Osoby, którym udostępniasz dane, tracą konta i budżety, które im udostępniasz. Zachowują własne dane: transakcje, które wprowadzono w ich kontach, pozostają wraz z opisami, a przelewy między Twoimi kontami a ich kontami pozostają jako korekty z zachowanym opisem.",
+        "cancel": "Ponowne zalogowanie się przed usunięciem danych anuluje usunięcie.",
+        "subscription": "Usunięcie danych nie anuluje subskrypcji. Najpierw anuluj ją w płatnościach.",
+        "billing_link": "Otwórz płatności"
+      },
+      "form": {
+        "password": { "label": "Hasło" },
+        "submit": { "label": "Wyślij kod potwierdzający" }
+      },
+      "confirm": {
+        "information": "Wysłaliśmy kod potwierdzający na Twój adres e-mail.",
+        "pending_writes": "Niektóre Twoje zmiany wciąż czekają na wysłanie. Poczekaj, aż zostaną wysłane, zanim usuniesz dane.",
+        "action": "Usuń moje dane",
+        "export": {
+          "done": "Twoje transakcje zostały pobrane. Plik zawiera transakcje z Twoich obecnych kont. Kont usuniętych wcześniej w nim nie ma.",
+          "failed": "Nie udało się pobrać Twoich transakcji.",
+          "retry": "Spróbuj pobrać ponownie",
+          "none": "Nie masz własnych kont do wyeksportowania."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Imię",
@@ -1289,6 +1315,9 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Twoje dane zostaną usunięte w ciągu miesiąca. Zaloguj się wcześniej, aby je zachować."
+    },
     "sign_in_failed": {
       "header": "Nie udało się zalogować",
       "information": "Sprawdź adres e-mail i hasło, a następnie spróbuj ponownie. Jeśli problem się powtarza, skontaktuj się z pomocą techniczną."

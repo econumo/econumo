@@ -1115,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Eliminar os meus dados",
+      "header": "Eliminar os meus dados",
+      "explain": {
+        "what": "Isto elimina as suas contas com as respetivas transações, os seus orçamentos, categorias, beneficiários, etiquetas e definições.",
+        "shared": "As pessoas com quem partilha perdem as contas e os orçamentos que partilha com elas. Mantêm os seus próprios dados: as transações que introduziu nas contas delas ficam, com as respetivas descrições, e as transferências entre as suas contas e as delas ficam como correções que mantêm a descrição.",
+        "cancel": "Iniciar sessão novamente antes de os seus dados serem eliminados cancela a eliminação.",
+        "subscription": "Eliminar os seus dados não cancela uma subscrição. Cancele-a primeiro na faturação.",
+        "billing_link": "Abrir faturação"
+      },
+      "form": {
+        "password": { "label": "Palavra-passe" },
+        "submit": { "label": "Enviar código de confirmação" }
+      },
+      "confirm": {
+        "information": "Enviámos um código de confirmação para o seu email.",
+        "pending_writes": "Algumas das suas alterações ainda estão à espera de ser enviadas. Aguarde até serem enviadas antes de eliminar os seus dados.",
+        "action": "Eliminar os meus dados",
+        "export": {
+          "done": "As suas transações foram transferidas. O ficheiro contém as transações das suas contas atuais. As contas que eliminou anteriormente não estão incluídas.",
+          "failed": "Não foi possível transferir as suas transações.",
+          "retry": "Tentar transferir novamente",
+          "none": "Não tem contas suas para exportar."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Nome",
@@ -1289,6 +1315,9 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Os seus dados serão eliminados no prazo de um mês. Inicie sessão antes disso para os manter."
+    },
     "sign_in_failed": {
       "header": "Falha ao iniciar sessão",
       "information": "Verifique o email e a palavra-passe e tente novamente. Se o problema persistir, contacte o suporte."

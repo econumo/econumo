@@ -14,6 +14,7 @@ import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ProfilePage } from '@/features/settings/ProfilePage'
 import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
 import { ChangeEmailPage } from '@/features/settings/ChangeEmailPage'
+import { DeleteDataPage } from '@/features/settings/DeleteDataPage'
 import { SessionsPage } from '@/features/settings/SessionsPage'
 import { PersonalTokensPage } from '@/features/settings/PersonalTokensPage'
 import { AppLockPage } from '@/features/appLock/AppLockPage'
@@ -77,6 +78,7 @@ export function createRouter() {
                 { path: '/settings/profile/app-lock', element: <AppLockPage /> },
                 { path: '/settings/profile/connected-apps', element: <ConnectedAppsPage /> },
                 { path: '/settings/profile/linked-accounts', element: <LinkedAccountsPage /> },
+                { path: '/settings/profile/delete-data', element: <DeleteDataPage /> },
                 { path: '/settings/accounts', element: <AccountsSettingsPage /> },
                 { path: '/settings/categories', element: <CategoriesPage /> },
                 { path: '/settings/payees', element: <PayeesPage /> },

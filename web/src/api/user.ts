@@ -70,6 +70,14 @@ export async function confirmEmailChange(code: string): Promise<CurrentUserDto> 
   return response.data.data
 }
 
+export async function requestUserDeletion(password: string): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/request-user-deletion'), { password })
+}
+
+export async function confirmUserDeletion(code: string): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/confirm-user-deletion'), { code })
+}
+
 // Returns the seconds to wait before another code may be requested, same
 // Retry-After contract as resendVerificationCode.
 export async function resendEmailChangeCode(): Promise<number> {

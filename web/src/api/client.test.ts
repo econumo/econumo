@@ -167,3 +167,57 @@ it('on 401 navigates via the registered router instead of a page load', async ()
   expect(assign).not.toHaveBeenCalled()
   setRouter(null)
 })
+
+describe('an interrupted deletion confirm', () => {
+  const CLEANUP_KEY = 'econumo.deletionCleanup'
+  const unauthorized = () =>
+    server.use(
+      http.get('*/api/v1/secure', () =>
+        HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 }),
+      ),
+    )
+  let assign: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    assign = vi.fn()
+    Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  })
+
+  it('a 401 within 10 minutes of the confirm clears the local data and says the deletion is scheduled', async () => {
+    unauthorized()
+    setToken('tok', 'u1')
+    localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
+    localStorage.setItem(CLEANUP_KEY, String(Date.now() - 60_000))
+    await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=deletion-scheduled'))
+    expect(getToken()).toBeNull()
+    expect(localStorage.getItem('econumo.query-cache')).toBeNull()
+    expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
+  })
+
+  it('a 401 later than 10 minutes drops the flag and is an ordinary expired session', async () => {
+    const { setRouter } = await import('@/app/routerRef')
+    const navigate = vi.fn(async () => {})
+    setRouter({ navigate } as unknown as Parameters<typeof setRouter>[0])
+    try {
+      unauthorized()
+      setToken('tok', 'u1')
+      localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
+      localStorage.setItem(CLEANUP_KEY, String(Date.now() - 11 * 60_000))
+      await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+      expect(navigate).toHaveBeenCalledWith('/login?reason=expired')
+      expect(assign).not.toHaveBeenCalled()
+      expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
+      expect(localStorage.getItem('econumo.query-cache')).toBe('{"stale":"finances"}')
+    } finally {
+      setRouter(null)
+    }
+  })
+
+  it('a successful response to another request leaves the flag alone', async () => {
+    server.use(http.get('*/api/v1/ping', () => HttpResponse.json({ success: true, message: '', data: {} })))
+    const stamp = String(Date.now())
+    localStorage.setItem(CLEANUP_KEY, stamp)
+    await api.get(apiUrl('/api/v1/ping'))
+    expect(localStorage.getItem(CLEANUP_KEY)).toBe(stamp)
+  })
+})

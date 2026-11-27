@@ -1115,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Supprimer mes données",
+      "header": "Supprimer mes données",
+      "explain": {
+        "what": "Cela supprime vos comptes avec leurs transactions, vos budgets, catégories, bénéficiaires, tags et paramètres.",
+        "shared": "Les personnes avec qui vous partagez perdent les comptes et budgets que vous partagez avec elles. Elles conservent leurs propres données : les transactions que vous avez saisies dans leurs comptes restent, avec leurs descriptions, et les virements entre vos comptes et les leurs restent sous forme de corrections qui gardent la description.",
+        "cancel": "Vous reconnecter avant la suppression de vos données annule la suppression.",
+        "subscription": "Supprimer vos données n’annule pas un abonnement. Annulez-le d’abord dans la facturation.",
+        "billing_link": "Ouvrir la facturation"
+      },
+      "form": {
+        "password": { "label": "Mot de passe" },
+        "submit": { "label": "Envoyer le code de confirmation" }
+      },
+      "confirm": {
+        "information": "Nous avons envoyé un code de confirmation à votre adresse e-mail.",
+        "pending_writes": "Certaines de vos modifications attendent encore d’être envoyées. Attendez qu’elles soient envoyées avant de supprimer vos données.",
+        "action": "Supprimer mes données",
+        "export": {
+          "done": "Vos transactions ont été téléchargées. Le fichier contient les transactions de vos comptes actuels. Les comptes que vous avez supprimés auparavant n’y figurent pas.",
+          "failed": "Le téléchargement de vos transactions a échoué.",
+          "retry": "Relancer le téléchargement",
+          "none": "Vous n’avez aucun compte à vous à exporter."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Nom",
@@ -1289,6 +1315,9 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Vos données seront supprimées dans un délai d’un mois. Connectez-vous avant pour les conserver."
+    },
     "sign_in_failed": {
       "header": "Échec de la connexion",
       "information": "Vérifiez votre e-mail et votre mot de passe, puis réessayez. Si le problème persiste, contactez l’assistance."

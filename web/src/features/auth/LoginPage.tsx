@@ -38,6 +38,7 @@ export function LoginPage() {
   const [verifyOpen, setVerifyOpen] = useState(false)
   const [verifyCooldown, setVerifyCooldown] = useState(0)
   const sessionExpired = searchParams.get('reason') === 'expired'
+  const deletionScheduled = searchParams.get('reason') === 'deletion-scheduled'
   const oauthError = searchParams.get('oauthError')
   const customApiAllowed = config.isCustomApiAllowed()
 
@@ -109,6 +110,12 @@ export function LoginPage() {
         {sessionExpired ? (
           <Alert variant="destructive">
             <AlertDescription>{t('auth.page.sign_in.session_expired')}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {deletionScheduled ? (
+          <Alert>
+            <AlertDescription>{t('auth.login.deletion_scheduled')}</AlertDescription>
           </Alert>
         ) : null}
 

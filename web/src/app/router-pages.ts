@@ -18,6 +18,7 @@ export const RouterPage = {
   SETTINGS_APP_LOCK: '/settings/profile/app-lock',
   SETTINGS_CONNECTED_APPS: '/settings/profile/connected-apps',
   SETTINGS_LINKED_ACCOUNTS: '/settings/profile/linked-accounts',
+  SETTINGS_DELETE_DATA: '/settings/profile/delete-data',
   SETTINGS_ACCOUNTS: '/settings/accounts',
   SETTINGS_CATEGORIES: '/settings/categories',
   SETTINGS_PAYEES: '/settings/payees',

@@ -1115,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Elimina i miei dati",
+      "header": "Elimina i miei dati",
+      "explain": {
+        "what": "Vengono eliminati i tuoi conti con le relative transazioni, i tuoi budget, le categorie, i beneficiari, i tag e le impostazioni.",
+        "shared": "Le persone con cui condividi perdono i conti e i budget che condividi con loro. Mantengono i propri dati: le transazioni che hai inserito nei loro conti restano, con le loro descrizioni, e i trasferimenti tra i tuoi conti e i loro restano come correzioni che mantengono la descrizione.",
+        "cancel": "Accedere di nuovo prima che i tuoi dati vengano eliminati annulla l'eliminazione.",
+        "subscription": "Eliminare i tuoi dati non annulla un abbonamento. Annullalo prima nella fatturazione.",
+        "billing_link": "Apri la fatturazione"
+      },
+      "form": {
+        "password": { "label": "Password" },
+        "submit": { "label": "Invia il codice di conferma" }
+      },
+      "confirm": {
+        "information": "Abbiamo inviato un codice di conferma alla tua email.",
+        "pending_writes": "Alcune delle tue modifiche sono ancora in attesa di essere inviate. Attendi che vengano inviate prima di eliminare i tuoi dati.",
+        "action": "Elimina i miei dati",
+        "export": {
+          "done": "Le tue transazioni sono state scaricate. Il file contiene le transazioni dei tuoi conti attuali. I conti che hai eliminato in precedenza non sono inclusi.",
+          "failed": "Il download delle tue transazioni non è riuscito.",
+          "retry": "Riprova il download",
+          "none": "Non hai conti tuoi da esportare."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Nome",
@@ -1289,6 +1315,9 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "I tuoi dati verranno eliminati entro un mese. Accedi prima di allora per conservarli."
+    },
     "sign_in_failed": {
       "header": "Accesso non riuscito",
       "information": "Controlla la tua email e la password e riprova. Se il problema persiste, contatta l'assistenza."

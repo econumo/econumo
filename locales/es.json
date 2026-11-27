@@ -1115,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Eliminar mis datos",
+      "header": "Eliminar mis datos",
+      "explain": {
+        "what": "Esto elimina tus cuentas con sus transacciones, tus presupuestos, categorías, beneficiarios, etiquetas y ajustes.",
+        "shared": "Las personas con las que compartes pierden las cuentas y los presupuestos que compartes con ellas. Conservan sus propios datos: las transacciones que introdujiste en sus cuentas se mantienen, con sus descripciones, y las transferencias entre tus cuentas y las suyas se mantienen como correcciones que conservan la descripción.",
+        "cancel": "Si vuelves a iniciar sesión antes de que se eliminen tus datos, la eliminación se cancela.",
+        "subscription": "Eliminar tus datos no cancela una suscripción. Cancélala primero en facturación.",
+        "billing_link": "Abrir facturación"
+      },
+      "form": {
+        "password": { "label": "Contraseña" },
+        "submit": { "label": "Enviar el código de confirmación" }
+      },
+      "confirm": {
+        "information": "Hemos enviado un código de confirmación a tu correo electrónico.",
+        "pending_writes": "Algunos de tus cambios aún esperan para enviarse. Espera a que se envíen antes de eliminar tus datos.",
+        "action": "Eliminar mis datos",
+        "export": {
+          "done": "Se han descargado tus transacciones. El archivo contiene las transacciones de tus cuentas actuales. Las cuentas que eliminaste antes no están incluidas.",
+          "failed": "No se pudieron descargar tus transacciones.",
+          "retry": "Intentar la descarga de nuevo",
+          "none": "No tienes cuentas propias que exportar."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Nombre",
@@ -1289,6 +1315,9 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Tus datos se eliminarán en el plazo de un mes. Inicia sesión antes para conservarlos."
+    },
     "sign_in_failed": {
       "header": "No se pudo iniciar sesión",
       "information": "Revisa tu correo electrónico y tu contraseña e inténtalo de nuevo. Si el problema continúa, ponte en contacto con soporte."

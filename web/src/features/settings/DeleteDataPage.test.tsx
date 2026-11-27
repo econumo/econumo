@@ -1,0 +1,349 @@
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
+import { createMemoryRouter, RouterProvider } from 'react-router'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/test/msw'
+import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
+import { queryKeys } from '@/app/queryKeys'
+import { setToken } from '@/lib/storage'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate } from '@/features/pendingWrites/store'
+import { LoginPage } from '@/features/auth/LoginPage'
+import { DeleteDataPage } from './DeleteDataPage'
+
+const CLEANUP_KEY = 'econumo.deletionCleanup'
+const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+const assign = vi.fn()
+const downloads: string[] = []
+
+function renderPage(user: Record<string, unknown> = fixtureUser) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  queryClient.setQueryData(queryKeys.user, user)
+  const router = createMemoryRouter(
+    [
+      { path: '/settings/profile/delete-data', element: <DeleteDataPage /> },
+      { path: '/settings/profile', element: <div>Profile page</div> },
+    ],
+    { initialEntries: ['/settings/profile/delete-data'] },
+  )
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  return { queryClient }
+}
+
+function okEnvelope() {
+  return HttpResponse.json({ success: true, message: '', data: {} })
+}
+
+interface ExportLog {
+  calls: string[]
+}
+
+function exportHandler(log: ExportLog, status = 200) {
+  return http.get('*/api/v1/transaction/export-transaction-list', ({ request }) => {
+    log.calls.push(new URL(request.url).searchParams.get('accountId') ?? '')
+    if (status !== 200) {
+      return HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status })
+    }
+    return new HttpResponse('transaction_id\n', { headers: { 'Content-Type': 'text/csv; charset=UTF-8' } })
+  })
+}
+
+async function goToCode(user: ReturnType<typeof userEvent.setup>, withPassword = true) {
+  if (withPassword) {
+    await user.type(screen.getByLabelText('Password'), 'secret123')
+  }
+  await user.click(screen.getByRole('button', { name: 'Send confirmation code' }))
+  await screen.findByLabelText('Confirmation code')
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  window.econumoConfig = {}
+  onlineManager.setOnline(true)
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  URL.createObjectURL = vi.fn(() => 'blob:mock')
+  URL.revokeObjectURL = vi.fn()
+  downloads.length = 0
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    downloads.push(this.download)
+  })
+  assign.mockClear()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+})
+
+afterEach(() => {
+  onlineManager.setOnline(true)
+  vi.restoreAllMocks()
+})
+
+describe('the request phase', () => {
+  it('asks for the password, then POSTs it and shows the code phase', async () => {
+    let body: unknown
+    const log: ExportLog = { calls: [] }
+    server.use(
+      ...coreHandlers(),
+      exportHandler(log),
+      http.post('*/api/v1/user/request-user-deletion', async ({ request }) => {
+        body = await request.json()
+        return okEnvelope()
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    expect(screen.getByText(/This deletes your accounts with their transactions/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Send confirmation code' }))
+    expect(await screen.findByText('Required field')).toBeInTheDocument()
+    expect(body).toBeUndefined()
+
+    await goToCode(user)
+    expect(body).toEqual({ password: 'secret123' })
+    expect(screen.getByText('We sent a confirmation code to your email.')).toBeInTheDocument()
+  })
+
+  it('a wrong password shows the field error', async () => {
+    server.use(
+      ...coreHandlers(),
+      http.post('*/api/v1/user/request-user-deletion', () =>
+        HttpResponse.json({ success: false, message: 'Invalid', code: 400, errors: { password: ['Wrong password'] } }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('Password'), 'nope')
+    await user.click(screen.getByRole('button', { name: 'Send confirmation code' }))
+    expect(await screen.findByText('Wrong password')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Confirmation code')).not.toBeInTheDocument()
+  })
+
+  it('a passwordless user is asked for no password and sends an empty one', async () => {
+    let body: unknown
+    server.use(
+      ...coreHandlers(),
+      exportHandler({ calls: [] }),
+      http.post('*/api/v1/user/request-user-deletion', async ({ request }) => {
+        body = await request.json()
+        return okEnvelope()
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage({ ...fixtureUser, hasPassword: false })
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+    await goToCode(user, false)
+    expect(body).toEqual({ password: '' })
+  })
+
+  it('asks for no password where the signed-in backend has password sign-in off', async () => {
+    window.econumoConfig = { PASSWORD_LOGIN: false }
+    let body: unknown
+    server.use(
+      ...coreHandlers(),
+      exportHandler({ calls: [] }),
+      http.post('*/api/v1/user/request-user-deletion', async ({ request }) => {
+        body = await request.json()
+        return okEnvelope()
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage({ ...fixtureUser, hasPassword: true })
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+    await goToCode(user, false)
+    expect(body).toEqual({ password: '' })
+  })
+
+  it('renders the billing link only when billing is configured', () => {
+    server.use(...coreHandlers())
+    renderPage()
+    expect(screen.queryByRole('button', { name: 'Open billing' })).not.toBeInTheDocument()
+  })
+
+  it('renders the billing link with BILLING_URL set', () => {
+    window.econumoConfig = { BILLING_URL: 'https://billing.example.test' }
+    server.use(...coreHandlers())
+    renderPage()
+    expect(screen.getByRole('button', { name: 'Open billing' })).toBeInTheDocument()
+  })
+})
+
+describe('the download', () => {
+  it('runs once on the code phase, for the accounts the user owns only', async () => {
+    const log: ExportLog = { calls: [] }
+    const withShared = [...fixtureAccounts, { ...fixtureAccounts[0], id: 'a-shared', name: 'Partner wallet', owner: partner }]
+    server.use(
+      ...coreHandlers({ accounts: withShared }),
+      exportHandler(log),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    expect(log.calls).toEqual([])
+    await goToCode(user)
+    expect(await screen.findByText(/Your transactions were downloaded/)).toBeInTheDocument()
+    expect(log.calls).toEqual(['a1,a2,a3,a-hidden'])
+    expect(downloads).toEqual([expect.stringMatching(/^transactions-\d{4}-\d{2}-\d{2}\.csv$/)])
+  })
+
+  it('waits for the account list before downloading', async () => {
+    const log: ExportLog = { calls: [] }
+    let releaseAccounts: () => void = () => {}
+    const accountsReady = new Promise<void>((resolve) => {
+      releaseAccounts = resolve
+    })
+    server.use(
+      http.get('*/api/v1/account/get-account-list', async () => {
+        await accountsReady
+        return HttpResponse.json({ success: true, message: '', data: { items: fixtureAccounts } })
+      }),
+      ...coreHandlers(),
+      exportHandler(log),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(log.calls).toEqual([])
+    releaseAccounts()
+    await waitFor(() => expect(log.calls).toEqual(['a1,a2,a3,a-hidden']))
+  })
+
+  it('a failed download offers a retry and leaves Confirm enabled', async () => {
+    const log: ExportLog = { calls: [] }
+    server.use(
+      ...coreHandlers(),
+      exportHandler(log, 500),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    expect(await screen.findByText('The download of your transactions failed.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled()
+
+    server.use(exportHandler(log))
+    await user.click(screen.getByRole('button', { name: 'Try the download again' }))
+    expect(await screen.findByText(/Your transactions were downloaded/)).toBeInTheDocument()
+    expect(log.calls).toHaveLength(2)
+  })
+
+  it('makes no request for a user who owns no account', async () => {
+    const log: ExportLog = { calls: [] }
+    server.use(
+      ...coreHandlers({ accounts: [{ ...fixtureAccounts[0], id: 'a-shared', name: 'Partner wallet', owner: partner }] }),
+      exportHandler(log),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    expect(await screen.findByText('You have no accounts of your own to export.')).toBeInTheDocument()
+    expect(log.calls).toEqual([])
+  })
+})
+
+describe('the confirm', () => {
+  function codePhaseHandlers() {
+    return [...coreHandlers(), exportHandler({ calls: [] }), http.post('*/api/v1/user/request-user-deletion', () => okEnvelope())]
+  }
+
+  it('POSTs the code, clears the local data and goes to the sign-in page', async () => {
+    let body: unknown
+    let flagWhenSent: string | null = null
+    server.use(
+      ...codePhaseHandlers(),
+      http.post('*/api/v1/user/confirm-user-deletion', async ({ request }) => {
+        body = await request.json()
+        flagWhenSent = localStorage.getItem(CLEANUP_KEY)
+        return okEnvelope()
+      }),
+    )
+    setToken('tok', 'u1')
+    localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await screen.findByText(/Your transactions were downloaded/)
+    await user.type(screen.getByLabelText('Confirmation code'), '482913')
+    await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=deletion-scheduled'))
+    expect(body).toEqual({ code: '482913' })
+    expect(Number(flagWhenSent)).toBeGreaterThan(0)
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem('econumo.query-cache')).toBeNull()
+    expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
+  })
+
+  it('a refused code shows the server message, stays on the code phase and drops the flag', async () => {
+    server.use(
+      ...codePhaseHandlers(),
+      http.post('*/api/v1/user/confirm-user-deletion', () =>
+        HttpResponse.json({ success: false, message: 'The confirmation code is not valid.', code: 400, errors: {} }, { status: 400 }),
+      ),
+    )
+    setToken('tok', 'u1')
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await user.type(screen.getByLabelText('Confirmation code'), '999999')
+    await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+    expect(await screen.findByText('The confirmation code is not valid.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Confirmation code')).toBeInTheDocument()
+    expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
+    expect(localStorage.getItem('token')).toBe('tok')
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it('is disabled while a change waits to be sent', async () => {
+    setToken('tok', 'u1')
+    await loadPendingWrites('u1')
+    await mutate((ops) => addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }))
+    server.use(...codePhaseHandlers())
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    expect(screen.getByText(/Some of your changes are still waiting to be sent/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeDisabled()
+  })
+
+  it('is enabled with the queue empty', async () => {
+    setToken('tok', 'u1')
+    await loadPendingWrites('u1')
+    server.use(...codePhaseHandlers())
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    expect(screen.queryByText(/Some of your changes are still waiting to be sent/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled()
+  })
+})
+
+it('offline, both submit buttons are disabled', async () => {
+  server.use(...coreHandlers(), exportHandler({ calls: [] }), http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()))
+  const user = userEvent.setup()
+  renderPage()
+  act(() => onlineManager.setOnline(false))
+  expect(screen.getByRole('button', { name: 'Send confirmation code' })).toBeDisabled()
+  act(() => onlineManager.setOnline(true))
+  await goToCode(user)
+  act(() => onlineManager.setOnline(false))
+  expect(screen.getByRole('button', { name: 'Delete my data' })).toBeDisabled()
+})
+
+it('the sign-in page says the data will be deleted', async () => {
+  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = createMemoryRouter([{ path: '/login', element: <LoginPage /> }], { initialEntries: ['/login?reason=deletion-scheduled'] })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText('Your data will be deleted within a month. Sign in before then to keep it.')).toBeInTheDocument()
+})

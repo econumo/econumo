@@ -153,6 +153,21 @@ export function useConfirmEmailChange() {
   })
 }
 
+export function useRequestUserDeletion() {
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: ({ password }: { password: string }) => userApi.requestUserDeletion(password),
+  })
+}
+
+export function useConfirmUserDeletion() {
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: ({ code }: { code: string }) => userApi.confirmUserDeletion(code),
+    onSuccess: () => trackEvent(METRICS.USER_DELETE_DATA),
+  })
+}
+
 export function useResendEmailChangeCode() {
   return useMutation({
     meta: { handlesOwnErrors: true },

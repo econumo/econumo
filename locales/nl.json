@@ -1115,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Mijn gegevens verwijderen",
+      "header": "Mijn gegevens verwijderen",
+      "explain": {
+        "what": "Hiermee worden uw rekeningen met hun transacties, uw budgetten, categorieën, begunstigden, tags en instellingen verwijderd.",
+        "shared": "Mensen met wie u deelt, verliezen de rekeningen en budgetten die u met hen deelt. Hun eigen gegevens houden ze: transacties die u in hun rekeningen hebt ingevoerd, blijven staan met hun omschrijvingen, en overboekingen tussen uw rekeningen en die van hen blijven staan als correcties die de omschrijving behouden.",
+        "cancel": "Als u opnieuw inlogt voordat uw gegevens zijn verwijderd, wordt de verwijdering geannuleerd.",
+        "subscription": "Het verwijderen van uw gegevens zegt geen abonnement op. Zeg het eerst op in de facturering.",
+        "billing_link": "Facturering openen"
+      },
+      "form": {
+        "password": { "label": "Wachtwoord" },
+        "submit": { "label": "Bevestigingscode verzenden" }
+      },
+      "confirm": {
+        "information": "We hebben een bevestigingscode naar uw e-mailadres gestuurd.",
+        "pending_writes": "Sommige van uw wijzigingen wachten nog om verzonden te worden. Wacht tot ze verzonden zijn voordat u uw gegevens verwijdert.",
+        "action": "Mijn gegevens verwijderen",
+        "export": {
+          "done": "Uw transacties zijn gedownload. Het bestand bevat de transacties van uw huidige rekeningen. Rekeningen die u eerder hebt verwijderd, staan er niet in.",
+          "failed": "Het downloaden van uw transacties is mislukt.",
+          "retry": "Download opnieuw proberen",
+          "none": "U hebt geen eigen rekeningen om te exporteren."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Naam",
@@ -1289,6 +1315,9 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Uw gegevens worden binnen een maand verwijderd. Log daarvoor in om ze te behouden."
+    },
     "sign_in_failed": {
       "header": "Inloggen mislukt",
       "information": "Controleer uw e-mailadres en wachtwoord en probeer het opnieuw. Neem contact op met de klantenservice als het probleem aanhoudt."

@@ -1115,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Delete my data",
+      "header": "Delete my data",
+      "explain": {
+        "what": "This deletes your accounts with their transactions, your budgets, categories, payees, tags and settings.",
+        "shared": "People you share with lose the accounts and budgets you share with them. They keep their own data: transactions you entered in their accounts stay, with their descriptions, and transfers between your accounts and theirs stay as corrections that keep the description.",
+        "cancel": "Signing in again before your data is deleted cancels the deletion.",
+        "subscription": "Deleting your data does not cancel a subscription. Cancel it in billing first.",
+        "billing_link": "Open billing"
+      },
+      "form": {
+        "password": { "label": "Password" },
+        "submit": { "label": "Send confirmation code" }
+      },
+      "confirm": {
+        "information": "We sent a confirmation code to your email.",
+        "pending_writes": "Some of your changes are still waiting to be sent. Wait until they are sent before you delete your data.",
+        "action": "Delete my data",
+        "export": {
+          "done": "Your transactions were downloaded. The file contains the transactions of your current accounts. Accounts you deleted earlier are not in it.",
+          "failed": "The download of your transactions failed.",
+          "retry": "Try the download again",
+          "none": "You have no accounts of your own to export."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Name",
@@ -1289,6 +1315,9 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Your data will be deleted within a month. Sign in before then to keep it."
+    },
     "sign_in_failed": {
       "header": "Sign-in failed",
       "information": "Check your email and password and try again. If the problem persists, contact support."

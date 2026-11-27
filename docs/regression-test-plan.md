@@ -3430,6 +3430,15 @@ User C sees none of it.
       daily pass the other is no longer in `user:list-pending-deletion`.
 - [ ] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the
       daily pass; with the setting at 0 they stay until `user:delete`.
+- [ ] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →
+      the CSV of your transactions downloads → Delete my data → the sign-in page says the data
+      will be deleted.
+      Every other device is signed out; signing in again cancels the deletion and nothing is lost.
+- [ ] Delete my data, passwordless account (provider sign-in only): no password is asked.
+- [ ] Delete my data: a wrong code is refused; the page stays on the code step.
+- [ ] `user:delete <email>` after the above: the partner's shared accounts and budgets are gone,
+      transfers with them show as "Original transaction deleted: ..." on the same dates, and the
+      partner's balances are unchanged.
 
 ## 12a. Connected apps (MCP OAuth)
 
