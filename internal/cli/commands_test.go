@@ -952,8 +952,8 @@ func TestUserPurgeDeleted(t *testing.T) {
 	if !strings.Contains(stdout, "released 0, deleted 0") {
 		t.Errorf("stdout = %q, want the summary", stdout)
 	}
-	if !regexp.MustCompile(`(?m)^failed ` + failing + `: \S+.*: .*refused`).MatchString(stderr) {
-		t.Errorf("stderr = %q, want one failure line with the user id, the reason and the error", stderr)
+	if !regexp.MustCompile(`(?m)^failed ` + failing + `: sqlite \d+: .*refused`).MatchString(stderr) {
+		t.Errorf("stderr = %q, want one failure line with the user id, the driver code and the error", stderr)
 	}
 }
 
