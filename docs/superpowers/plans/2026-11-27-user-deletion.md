@@ -387,7 +387,7 @@ ORDER BY u.id;
 **Interfaces:**
 - Produces: `wipeguard.Check(t *testing.T, db *dbtest.DB)`.
 
-- [ ] **Step 1: Write `Check`** as a test helper that reads the foreign keys and columns of every table (`pragma_foreign_key_list` / `pragma_table_info` on sqlite, `pg_constraint` / `information_schema.columns` on pgsql) and fails when:
+- [x] **Step 1: Write `Check`** as a test helper that reads the foreign keys and columns of every table (`pragma_foreign_key_list` / `pragma_table_info` on sqlite, `pg_constraint` / `information_schema.columns` on pgsql) and fails when:
   1. a foreign key to `users(id)` is not `CASCADE`;
   2. inside the set of tables reachable from `users` by `CASCADE`, a foreign key into that set is `NO ACTION`/`RESTRICT`, or `SET NULL` on a NOT NULL column, and is not in `handledBlockers`;
   3. a column named `*_id` or `external_id` has no foreign key and is not in `handledLooseIDs`.
@@ -419,9 +419,9 @@ var handledLooseIDs = map[string]string{
 ```
 
   Every entry of both maps must still match a real column (a stale entry fails the test).
-- [ ] **Step 2: Run** `go test ./internal/test/wipeguard/ -count=1` and the PostgreSQL variant. Expected: PASS on both with exactly these lists. If a column appears that is not listed, STOP and report it (the spec must decide what the wipe does with it).
-- [ ] **Step 3: Prove the guard bites:** temporarily delete one map entry, see the test fail naming that column, restore it.
-- [ ] **Step 4: Commit.**
+- [x] **Step 2: Run** `go test ./internal/test/wipeguard/ -count=1` and the PostgreSQL variant. Expected: PASS on both with exactly these lists. If a column appears that is not listed, STOP and report it (the spec must decide what the wipe does with it).
+- [x] **Step 3: Prove the guard bites:** temporarily delete one map entry, see the test fail naming that column, restore it.
+- [x] **Step 4: Commit.**
 
 ---
 
