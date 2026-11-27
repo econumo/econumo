@@ -118,9 +118,9 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		Analytics:          true,
 		DataSalt:           ignoredDataSalt, // set on purpose; the API must ignore it
 		CORSAllowedOrigins: []string{"*"},
-		// AppURL drives both the oauth redirect/handoff URLs and the mailer's
-		// WithAppLink wrapper (an extra trailing line on reset emails —
-		// resetCodeRe still matches, anchored on the code marker text).
+		// AppURL drives both the oauth redirect/handoff URLs and the app URL
+		// in the email footer (resetCodeRe still matches, anchored on the code
+		// marker text).
 		AppURL:           "https://app.example.test",
 		OIDCIssuerURL:    fakeIDP.IssuerURL(),
 		OIDCClientID:     fakeIDP.ClientID,

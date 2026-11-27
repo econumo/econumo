@@ -13,20 +13,21 @@ type VerifySender struct {
 	m       Mailer
 	from    string
 	replyTo string
+	appURL  string
 }
 
 // NewVerifySender wires the verification email sender over a Mailer with the
 // configured From / Reply-To addresses (the from / reply_to query params of
 // MAILER_DSN).
-func NewVerifySender(m Mailer, from, replyTo string) *VerifySender {
-	return &VerifySender{m: m, from: from, replyTo: replyTo}
+func NewVerifySender(m Mailer, from, replyTo, appURL string) *VerifySender {
+	return &VerifySender{m: m, from: from, replyTo: replyTo, appURL: appURL}
 }
 
 // SendVerificationCode emails the verification code to the user in the
 // caller's language.
 func (s *VerifySender) SendVerificationCode(ctx context.Context, to, name, code string) error {
 	lang := reqctx.Language(ctx)
-	subject := i18n.T(lang, "emails.verify.subject", nil)
-	body := i18n.T(lang, "emails.verify.body", map[string]any{"name": name, "code": code})
-	return s.m.Send(ctx, Message{From: s.from, To: to, ReplyTo: s.replyTo, Subject: subject, Text: body})
+	c := Compose(lang, "verify", nil, name, code, s.appURL)
+	return s.m.Send(ctx, Message{From: s.from, To: to, ReplyTo: s.replyTo,
+		Subject: i18n.T(lang, "emails.verify.subject", nil), Text: RenderText(c)})
 }

@@ -205,13 +205,10 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	if mailTransport == nil {
 		mailTransport = MailTransport(cfg)
 	}
-	if cfg.AppURL != "" {
-		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
-	}
-	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
-	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
-	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
-	identityMailer := mailer.NewIdentitySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo, cfg.AppURL)
+	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo, cfg.AppURL)
+	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo, cfg.AppURL)
+	identityMailer := mailer.NewIdentitySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo, cfg.AppURL)
 	limiterLimits := map[string]int{
 		appuser.RateScopeLogin:              cfg.RateLimitLogin,
 		appuser.RateScopeReset:              cfg.RateLimitReset,

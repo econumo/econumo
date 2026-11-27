@@ -60,7 +60,7 @@ func TestOAuthNotifier_IdentityLinked_RendersInTheStoredLanguage(t *testing.T) {
 	}
 
 	c := &captureMailer{}
-	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	notifier := NewOAuthNotifier(userSvc, sender, identityEmailsStub{})
 
 	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Google"); err != nil {
@@ -95,7 +95,7 @@ func TestOAuthNotifier_IdentityUnlinked_RendersInTheStoredLanguage(t *testing.T)
 	}
 
 	c := &captureMailer{}
-	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"), identityEmailsStub{})
+	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", ""), identityEmailsStub{})
 
 	if err := notifier.IdentityUnlinked(context.Background(), vo.MustParseId(userID), "Google"); err != nil {
 		t.Fatalf("IdentityUnlinked: %v", err)
@@ -118,7 +118,7 @@ func TestOAuthNotifier_IdentityUnlinked_DefaultsToEnglish(t *testing.T) {
 
 	userSvc, _ := newTestUserSvc(db)
 	c := &captureMailer{}
-	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"), identityEmailsStub{})
+	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", ""), identityEmailsStub{})
 
 	if err := notifier.IdentityUnlinked(context.Background(), vo.MustParseId(userID), "Apple"); err != nil {
 		t.Fatalf("IdentityUnlinked: %v", err)
@@ -138,7 +138,7 @@ func TestOAuthNotifier_IdentityLinked_DefaultsToEnglish(t *testing.T) {
 
 	userSvc, _ := newTestUserSvc(db)
 	c := &captureMailer{}
-	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	notifier := NewOAuthNotifier(userSvc, sender, identityEmailsStub{})
 
 	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Apple"); err != nil {
@@ -171,7 +171,7 @@ func TestOAuthNotifier_IdentityNotices_CcTheLinkedAddresses(t *testing.T) {
 
 	userSvc, _ := newTestUserSvc(db)
 	c := &captureMailer{}
-	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	// The account email is among the linked addresses, as it is whenever the
 	// account was created through a provider; it must not be duplicated.
 	emails := identityEmailsStub{emails: []string{"owner5@example.test", "eve@gmail.test"}}
@@ -209,7 +209,7 @@ func TestOAuthNotifier_IdentityLinked_StillSendsWhenTheLookupFails(t *testing.T)
 
 	userSvc, _ := newTestUserSvc(db)
 	c := &captureMailer{}
-	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test", "")
 	notifier := NewOAuthNotifier(userSvc, sender, identityEmailsStub{err: errors.New("boom")})
 
 	// The copy list is a nicety; losing it must not cost the owner the notice.

@@ -38,8 +38,7 @@ type Mailer interface {
 // ccAddresses normalizes a CC candidate list for a message addressed to `to`:
 // it trims, drops empties, drops `to` itself, and dedupes case-insensitively
 // while preserving order. It lives beside the senders rather than in a
-// transport so the notice senders share one policy and WithAppLink cannot
-// bypass it. Only the NOTICES pass a list: a reset, verification or
+// transport so the notice senders share one policy. Only the NOTICES pass a list: a reset, verification or
 // change-email code exists to prove control of one specific mailbox, so
 // copying one elsewhere would defeat the check it exists for.
 func ccAddresses(to string, candidates []string) []string {
@@ -79,24 +78,6 @@ func New(t Transport) Mailer {
 	default:
 		return console{out: os.Stdout}
 	}
-}
-
-// WithAppLink wraps a Mailer so every message body ends with the instance's
-// public URL (ECONUMO_URL) on the line directly below the body. Applied once at composition time,
-// it covers every current and future email without per-sender plumbing; when
-// the URL is unset the wrapper is not installed, so bodies are unchanged.
-func WithAppLink(inner Mailer, appURL string) Mailer {
-	return linkMailer{inner: inner, appURL: appURL}
-}
-
-type linkMailer struct {
-	inner  Mailer
-	appURL string
-}
-
-func (m linkMailer) Send(ctx context.Context, msg Message) error {
-	msg.Text = strings.TrimRight(msg.Text, "\n") + "\n" + m.appURL
-	return m.inner.Send(ctx, msg)
 }
 
 // console renders each message to out (stdout in production) instead of sending

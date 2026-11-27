@@ -21,10 +21,10 @@ import (
 )
 
 // changeCodeFrom extracts the 6-digit code from a rendered change_email email
-// body ("...confirm your new email address: <code>...").
+// body ("...code is: <code>...").
 func changeCodeFrom(t *testing.T, body string) string {
 	t.Helper()
-	const marker = "email address: "
+	const marker = "code is: "
 	i := strings.Index(body, marker)
 	if i < 0 || len(body) < i+len(marker)+6 {
 		t.Fatalf("no code in email body: %q", body)
@@ -62,7 +62,7 @@ func newChangeEmailSvc(t *testing.T, db *dbtest.DB, repo appuser.Repository, ecR
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
-	changeMailer := mailer.NewChangeEmailSender(cap, "noreply@econumo.test", "")
+	changeMailer := mailer.NewChangeEmailSender(cap, "noreply@econumo.test", "", "")
 	limiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
 			appuser.RateScopeRequestEmailChange: 1000,

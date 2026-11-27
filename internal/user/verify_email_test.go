@@ -69,8 +69,8 @@ func newVerifySvcStore(t *testing.T, db *dbtest.DB, cap *captureMailer, evs appu
 	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
-		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
-		evs, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
+		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", "", ""),
+		evs, mailer.NewVerifySender(cap, "noreply@econumo.test", "", ""),
 		ecRepo, nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, 0, enabled), clk
 }
@@ -101,8 +101,8 @@ func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit 
 		IP:     0,
 	}, clk)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
-		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
-		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
+		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", "", ""),
+		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", "", ""),
 		ecRepo, nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, true, 0, true), clk
 }

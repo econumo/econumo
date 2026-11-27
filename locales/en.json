@@ -955,9 +955,19 @@
       "header": "Imported from"
     },
     "rules": {
-      "field": { "external_payee": "Payee", "description": "Description" },
-      "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
-      "action": { "classify": "Classify", "skip": "Skip" },
+      "field": {
+        "external_payee": "Payee",
+        "description": "Description"
+      },
+      "type": {
+        "contains": "contains",
+        "prefix": "starts with",
+        "exact": "is exactly"
+      },
+      "action": {
+        "classify": "Classify",
+        "skip": "Skip"
+      },
       "prompt": {
         "title": "Create an import rule",
         "changed_category": "You set the category to {name}. Create a rule for similar imports?",
@@ -1026,7 +1036,12 @@
       "account": "Account",
       "reimport": "Import again",
       "reimport_hint": "Import it again to add it back, or to match a transaction you entered yourself, such as a transfer.",
-      "reimported": { "created": "Imported again", "matched": "Matched to an existing transaction", "queued": "Imported again; it is waiting in the Inbox", "skipped": "Not added: a skip rule or an ignored account matched it" }
+      "reimported": {
+        "created": "Imported again",
+        "matched": "Matched to an existing transaction",
+        "queued": "Imported again; it is waiting in the Inbox",
+        "skipped": "Not added: a skip rule or an ignored account matched it"
+      }
     },
     "suggestions": {
       "dismiss": "Dismiss",
@@ -2667,29 +2682,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "Hi {name},",
+      "greeting_anonymous": "Hi,",
+      "code_label": "Confirmation code",
+      "code_text": "Your confirmation code is: {code}.",
+      "tagline": "Manage money. Together.",
+      "open_app": "Open Econumo"
+    },
     "reset": {
       "subject": "Reset password confirmation code",
-      "body": "Hi {name},\nYour confirmation code is: {code}.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+      "heading": "Reset your password",
+      "body": "Enter this code in Econumo to choose a new password.",
+      "note": "If you didn't request this code, you can ignore this email. Your password stays the same."
     },
     "verify": {
       "subject": "Email verification code",
-      "body": "Hi {name},\nYour confirmation code is: {code}.\n\nEnter this code on the sign-in screen to verify your email address.\n\nIf you didn't create an Econumo account, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+      "heading": "Verify your email",
+      "body": "Enter this code on the sign-in screen to verify your email address.",
+      "note": "If you didn't create an Econumo account, you can ignore this email."
     },
     "change_email": {
       "subject": "Confirm your new email",
-      "body": "Hi {name},\n\nUse this code to confirm your new email address: {code}\n\nThe code expires in 10 minutes. If you did not request this, you can ignore this email."
+      "heading": "Confirm your new email",
+      "body": "Use this code to confirm your new email address. It expires in 10 minutes.",
+      "note": "If you didn't request this, you can ignore this email."
     },
     "change_email_notice": {
       "subject": "Email change requested",
-      "body": "Hi {name},\n\nSomeone requested to change the email on your account to {email}. If this was not you, please change your password immediately."
+      "heading": "Email change requested",
+      "body": "Someone requested to change the email on your account to {email}.",
+      "note": "If this wasn't you, change your password right away."
     },
     "identity_linked": {
       "subject": "A new sign-in method was added",
-      "body": "Hi {name},\n\nYour {provider} account was just linked to your Econumo account and can now be used to sign in.\n\nIf this wasn't you, unlink the account from Settings and change your password.\n\n--\nEconumo — Manage money. Together.\n"
+      "heading": "New sign-in method added",
+      "body": "Your {provider} account was just linked to your Econumo account and can now be used to sign in.",
+      "note": "If this wasn't you, unlink it in Settings and change your password."
     },
     "identity_unlinked": {
       "subject": "A sign-in method was removed",
-      "body": "Hi {name},\n\nYour {provider} account was just unlinked from your Econumo account and can no longer be used to sign in.\n\nIf this wasn't you, change your password and review the linked accounts in Settings.\n\n--\nEconumo — Manage money. Together.\n"
+      "heading": "Sign-in method removed",
+      "body": "Your {provider} account was just unlinked from your Econumo account and can no longer be used to sign in.",
+      "note": "If this wasn't you, change your password and review the linked accounts in Settings."
     }
   }
 }

@@ -96,10 +96,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 	emailVerificationRepo := userrepo.NewEmailVerificationRepo(cfg.DatabaseDriver, txm)
 	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
 	mailTransport := server.MailTransport(cfg)
-	if cfg.AppURL != "" {
-		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
-	}
-	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo, cfg.AppURL)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, server.NewUserCurrencyLookup(currencyLookup), budgetExistence,
 		passwordReqRepo, resetMailer, emailVerificationRepo, nil,
