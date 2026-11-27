@@ -146,7 +146,8 @@ an error for the CLI and impossible from the API (no session survives the mark).
   Confirm is refused while changes made offline are still waiting to be sent (sign-out drops
   them, and the CSV holds server rows only). If the tab dies between the server's commit and
   the response, a flag set before the request makes the next refused request finish the local
-  clean-up.
+  clean-up; any later successful request removes the flag, so an ordinary expired session is
+  never mistaken for a deletion.
   Offline-disabled via `useOnline`. Analytics event on confirm.
 - The CSV download failing does not block deletion, but the UI says so and offers a retry.
 - The existing export lists live accounts only (`ListExportAccountsForUser` skips deleted
@@ -291,7 +292,11 @@ one line of wiring, with a test.
 1. Every budget the wipe will touch, in id order, through the debt feature's budget lock. Its
    `Prepare` must be first in a transaction (`internal/category/ports.go`), so budgets come
    before the user row.
-2. The user row. The mark is re-checked after this lock, never before.
+2. The user row. The mark is re-checked after this lock, never before. For an `inactive`
+   mark, the user rows of the connected users follow at once, in id order, before the
+   household check: a partner's sign-in writes that row, so it either lands before the check
+   (and the mark is cancelled) or waits for the wipe; it cannot land between the check and
+   the delete.
    The wipe's lock on it is the strong one (`FOR UPDATE` on PostgreSQL). The ordinary row
    lock (`FOR NO KEY UPDATE`) lets an insert that references `users.id` through, so a
    request that authenticated before the mark could still add a row authored by the user to
@@ -303,11 +308,7 @@ one line of wiring, with a test.
    after step 6 scanned it; the cascade would then delete that transfer with no correction
    on the partner's side. After the wipe commits, the waiting write fails on the missing
    account. The two-connection test covers exactly this interleaving.
-4. For an `inactive` mark only: the user rows of the connected users, in id order, before the
-   household check. A partner's sign-in writes that row, so it either lands before the check
-   (and the mark is cancelled) or waits for the wipe; it cannot land between the check and
-   the delete.
-5. Everything else. Any other user row is locked only late, right before its active-budget
+4. Everything else. Any other user row is locked only late, right before its active-budget
    pointer is cleared. `RevokeAccess` and member removal take the budget lock first as well
    (changed here), so a partner revoking the user mid-wipe waits instead of deadlocking.
 
@@ -498,11 +499,13 @@ partner and the third user still share their budget; no row anywhere names the w
   lifetime account, without end. Deleting the re-granted account writes a new `deleted` row and
   re-arms it.
 - The re-grant needs proof of the mailbox, because the hash is all that ties the new user to
-  the old one. It happens at the moment the proof exists, wherever an account's address is
-  proven: a provider sign-up (the provider verified the address), the verification code being
-  confirmed when `ECONUMO_EMAIL_VERIFICATION` is on, a password reset completed with its
-  emailed code, an email change confirmed with its code, a provider reporting a passwordless
-  account's new verified address, or an operator command that sets or vouches for the address (`user:create`, `user:verify-email`, `user:change-email`). A password
+  the old one. It happens at the moment a newly registered account's address is proven: a
+  provider sign-up (the provider verified the address), the verification code being confirmed
+  when `ECONUMO_EMAIL_VERIFICATION` is on, a password reset completed with its emailed code,
+  or an operator command that creates or vouches for the account (`user:create`,
+  `user:verify-email`). An EXISTING account that moves to the address by an email change is
+  not re-granted: the feature is about registering again, and the operator can vouch with
+  `user:verify-email`. A password
   registration with the gate off proves nothing (`NewUser` starts with `email_verified = true`)
   and gets no automatic re-grant. The operator's `user:verify-email <email>` vouches for the
   mailbox and runs the same re-grant, consuming the deletion. `user:set-access` is NOT the
@@ -516,9 +519,8 @@ partner and the third user still share their budget; no row anywhere names the w
   `reason`, `lifetimeAccess`), oldest first, with the same composite cursor as
   `ListAffiliateUsers` (`since` plus an after-id): a batch of wipes shares one second, and a
   page that ends inside it must neither skip nor repeat rows. Wipes are serialized and each
-  writes its `deleted` row last, with a timestamp never earlier than the newest existing
-  `deleted` row (a clock set back cannot reorder them), so rows appear in cursor order and a
-  forward-only cursor misses nothing on one server. Belt and braces for app servers whose clocks differ: re-read
+  writes its `deleted` row last, so rows appear in cursor order and a forward-only cursor
+  misses nothing on one server whose clock does not go back. For a clock that is set back, or app servers whose clocks differ: re-read
   a short overlap and skip ids already processed. Billing polls it and cancels subscriptions
   (separate billing PR). `lifetimeAccess` is there so billing keeps a lifetime purchase instead
   of treating it as cancelled.
