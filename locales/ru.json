@@ -442,7 +442,7 @@
         "name": "Название счёта",
         "currency": "Валюта",
         "column_question": "Что из этого — счёт?",
-        "found": "Счета в этом файле",
+        "found": "Счета в вашем файле",
         "currency_of": "Валюта для «{name}»",
         "name_hint": "Название можно изменить позже",
         "currency_unknown": "В файле указана {code}, но такой валюты здесь нет. Её можно добавить в настройках.",
@@ -454,9 +454,8 @@
         "currency_default": "Новые счета будут в {currency}",
         "currency_default_hint": "В вашем файле не указана валюта",
         "currency_new_accounts": "Валюта новых счетов",
-        "goes_into_existing": "в ваш существующий счёт ({code})",
-        "new_in": "новый счёт в {code}",
-        "currency_unknown_here": "в файле указана {code}, но такой валюты здесь нет. Её можно добавить в настройках.",
+        "status_existing": "Ваш существующий счёт · {code}",
+        "status_new": "Новый счёт · {code}",
         "change_currency": "Изменить валюту"
       },
       "date": {

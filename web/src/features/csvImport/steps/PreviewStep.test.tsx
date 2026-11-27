@@ -349,8 +349,8 @@ it('an Econumo export asks the AI nothing and shows its accounts on the Check st
       'a1,Wallet,EUR,Food,Lunch,,,Cafe,-4.5,2026-03-04 14:05:09\n',
   )
   await screen.findByRole('heading', { name: "Here is what will be added" })
-  expect(screen.getByText('Accounts in this file')).toBeInTheDocument()
-  expect(within(screen.getByRole('list', { name: 'Accounts in this file' })).getByRole('listitem')).toHaveTextContent('Wallet — new account in EUR')
+  expect(screen.getByText('Accounts in your file')).toBeInTheDocument()
+  expect(within(screen.getByRole('list', { name: 'Accounts in your file' })).getByRole('listitem')).toHaveTextContent('Wallet New account · EUR')
   await userEvent.setup().click(screen.getByRole('button', { name: 'Change currency' }))
   expect(screen.getByRole('combobox', { name: 'Currency for Wallet' })).toHaveValue('EUR')
   expect(screen.getByRole('button', { name: 'Mar 4, 2026 14:05:09' })).toHaveTextContent('Mar 4')

@@ -442,7 +442,7 @@
         "name": "Account name",
         "currency": "Currency",
         "column_question": "Which of these is the account?",
-        "found": "Accounts in this file",
+        "found": "Accounts in your file",
         "currency_of": "Currency for {name}",
         "name_hint": "You can rename it later",
         "currency_unknown": "The file says {code}, which isn't set up here. You can add it in Settings.",
@@ -454,9 +454,8 @@
         "currency_default": "New accounts will be in {currency}",
         "currency_default_hint": "Your file doesn't say which currency",
         "currency_new_accounts": "Currency for new accounts",
-        "goes_into_existing": "goes into your existing account ({code})",
-        "new_in": "new account in {code}",
-        "currency_unknown_here": "your file says {code}, which isn't set up here. You can add it in Settings.",
+        "status_existing": "Your existing account · {code}",
+        "status_new": "New account · {code}",
         "change_currency": "Change currency"
       },
       "date": {

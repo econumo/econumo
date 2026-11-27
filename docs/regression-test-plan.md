@@ -774,10 +774,11 @@ navigation (single-pane vs sidebar).
       also bring along:" with "Budget tag: … (from “tag”)" lines — with the
       file's own name in small grey text under it ("from “Buchungstag”") and a
       quiet "Change" on the right. Under the per-row account's row, a second
-      answer row for the currency, then one plain line per account (no form
-      fields): "WS Cash · 572 transactions — new account in CAD" with a quiet
-      "Change currency", or "Cash · 6 transactions — goes into your existing
-      account (EUR)"). The footer's primary button reads "Looks right"
+      answer row for the currency, then a small grey heading "Accounts in your
+      file" over one line per account (no form fields): "WS Cash · 572
+      transactions" on the left and "New account · CAD" with a quiet "Change
+      currency" on the right, or "Your existing account · EUR" (the status
+      drops under the name on a phone). The footer's primary button reads "Looks right"
       instead of Continue (goes to the next step; never an empty footer, also
       on Account). Open questions (date order, decimal separator, "Spending
       shows as" with Flip the signs, Reporting tags' separator) and the grey
@@ -985,15 +986,16 @@ navigation (single-pane vs sidebar).
       all, tagged "used for currency"; picking it there takes it from the
       currency (last pick wins) and new accounts move to the picked
       currency. Under that, one
-      plain line per name with how many transactions it gets: a name matching
-      a writable account (any letter case) reads "— goes into your existing
-      account (EUR)" with no currency choice; every other reads "— new
-      account in CAD" (the one code its own rows name when the app knows it,
+      line per name under "Accounts in your file", with how many
+      transactions it gets: a name matching a writable account (any letter
+      case) reads "Your existing account · EUR" with no currency choice;
+      every other reads "New account · CAD" (the one code its own rows name when the app knows it,
       else the currency picked above) and a quiet "Change currency" opens a
       small picker for that account only, which wins over the file and the
       picker above and survives picking the account or currency again. A
-      code the app has no currency for reads "— new account in USD — your
-      file says AUD, which isn't set up here. You can add it in Settings."
+      code the app has no currency for reads "New account · USD" with the note
+      "The file says AUD, which isn't set up here. You can add it in
+      Settings." under it
       Import creates the new accounts
       (in the user's first visible folder, never a hidden one, or "General"
       for a user with none) and
@@ -1001,18 +1003,18 @@ navigation (single-pane vs sidebar).
       left out (no readable date or amount, or skipped) gets no account. Pressing Import again after an error
       never creates an account twice, also after choosing the file again or
       closing and reopening the dialog: an account the failed Import made is
-      then listed as "goes into your existing account (…)".
+      then listed as "Your existing account · …".
 - [ ] Econumo export: export transactions (§ CSV export) and import that file,
       with the UI in English and in another language: the wizard skips
-      straight to Check, with "Accounts in this file" listing each account (on
+      straight to Check, with "Accounts in your file" listing each account (on
       the Account step: "Your file names the account for each transaction"
       with "WS Cash · N transactions", and the step list reads "From WS Cash
       and N more accounts"; transaction_id never shows among the choices
       until "Show all"); the currency row reads "Your file says each
       account's currency" from “account_currency”, and a new account reads
-      "new account in CAD" (CAD stays CAD when the instance has CAD, also for
-      a user whose currency is USD; otherwise "new account in USD — your file
-      says CAD, which isn't set up here. You can add it in Settings."). Every column is used by itself, the tags column
+      "New account · CAD" (CAD stays CAD when the instance has CAD, also for
+      a user whose currency is USD; otherwise "New account · USD" with "The
+      file says CAD, which isn't set up here. You can add it in Settings."). Every column is used by itself, the tags column
       included, and the imported rows keep their account, category, payee,
       budget tag and reporting tags, also on a transaction with more than 10
       reporting tags (the limit is 50, as when entering a transaction). The

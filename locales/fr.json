@@ -442,7 +442,7 @@
         "name": "Nom du compte",
         "currency": "Devise",
         "column_question": "Lequel de ces éléments est le compte ?",
-        "found": "Comptes dans ce fichier",
+        "found": "Comptes dans votre fichier",
         "currency_of": "Devise de {name}",
         "name_hint": "Vous pourrez le renommer plus tard",
         "currency_unknown": "Le fichier indique {code}, qui n'est pas configurée ici. Vous pouvez l'ajouter dans les Paramètres.",
@@ -454,9 +454,8 @@
         "currency_default": "Les nouveaux comptes seront en {currency}",
         "currency_default_hint": "Votre fichier n'indique pas la devise",
         "currency_new_accounts": "Devise des nouveaux comptes",
-        "goes_into_existing": "va dans votre compte existant ({code})",
-        "new_in": "nouveau compte en {code}",
-        "currency_unknown_here": "votre fichier indique {code}, qui n'est pas configurée ici. Vous pouvez l'ajouter dans les Paramètres.",
+        "status_existing": "Votre compte existant · {code}",
+        "status_new": "Nouveau compte · {code}",
         "change_currency": "Changer la devise"
       },
       "date": {

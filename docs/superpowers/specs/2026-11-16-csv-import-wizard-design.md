@@ -135,8 +135,8 @@ stays on this step.
 - **Each row says which account** (a small secondary option): pick the column, shown with
   sample values, as on the other steps. Pre-selected when an Econumo export is recognised.
   The step then lists the distinct account names found: a name matching one of the user's
-  writable accounts (case-insensitive, as the server matches) reads "goes into your
-  existing account (EUR)"; every other reads "new account in CAD" with a quiet "Change
+  writable accounts (case-insensitive, as the server matches) reads "Your existing
+  account · EUR"; every other reads "New account · CAD" with a quiet "Change
   currency" that opens a per-account picker. Where that currency comes from is a second
   answer row, a role like the others (one part of the file, one role; never uploaded, it
   only decides new accounts' currency): a part of the file holding three-letter codes

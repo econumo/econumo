@@ -442,7 +442,7 @@
         "name": "Nazwa konta",
         "currency": "Waluta",
         "column_question": "Które z nich to konto?",
-        "found": "Konta w tym pliku",
+        "found": "Konta w Twoim pliku",
         "currency_of": "Waluta dla {name}",
         "name_hint": "Nazwę możesz zmienić później",
         "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
@@ -454,9 +454,8 @@
         "currency_default": "Nowe konta będą w {currency}",
         "currency_default_hint": "Twój plik nie podaje waluty",
         "currency_new_accounts": "Waluta nowych kont",
-        "goes_into_existing": "trafi na Twoje istniejące konto ({code})",
-        "new_in": "nowe konto w {code}",
-        "currency_unknown_here": "Twój plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
+        "status_existing": "Twoje istniejące konto · {code}",
+        "status_new": "Nowe konto · {code}",
         "change_currency": "Zmień walutę"
       },
       "date": {

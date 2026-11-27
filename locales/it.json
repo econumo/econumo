@@ -442,7 +442,7 @@
         "name": "Nome del conto",
         "currency": "Valuta",
         "column_question": "Quale di questi è il conto?",
-        "found": "Conti in questo file",
+        "found": "Conti nel tuo file",
         "currency_of": "Valuta di {name}",
         "name_hint": "Puoi rinominarlo più tardi",
         "currency_unknown": "Il file indica {code}, che qui non è configurata. Puoi aggiungerla nelle Impostazioni.",
@@ -454,9 +454,8 @@
         "currency_default": "I nuovi conti saranno in {currency}",
         "currency_default_hint": "Il tuo file non indica la valuta",
         "currency_new_accounts": "Valuta dei nuovi conti",
-        "goes_into_existing": "va nel tuo conto esistente ({code})",
-        "new_in": "nuovo conto in {code}",
-        "currency_unknown_here": "il tuo file indica {code}, che qui non è configurata. Puoi aggiungerla nelle Impostazioni.",
+        "status_existing": "Il tuo conto esistente · {code}",
+        "status_new": "Nuovo conto · {code}",
         "change_currency": "Cambia valuta"
       },
       "date": {

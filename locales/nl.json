@@ -442,7 +442,7 @@
         "name": "Naam van de rekening",
         "currency": "Valuta",
         "column_question": "Welke hiervan is de rekening?",
-        "found": "Rekeningen in dit bestand",
+        "found": "Rekeningen in uw bestand",
         "currency_of": "Valuta voor {name}",
         "name_hint": "U kunt de naam later wijzigen",
         "currency_unknown": "Het bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen.",
@@ -454,9 +454,8 @@
         "currency_default": "Nieuwe rekeningen worden in {currency} aangemaakt",
         "currency_default_hint": "Uw bestand vermeldt geen valuta",
         "currency_new_accounts": "Valuta voor nieuwe rekeningen",
-        "goes_into_existing": "gaat naar uw bestaande rekening ({code})",
-        "new_in": "nieuwe rekening in {code}",
-        "currency_unknown_here": "uw bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen.",
+        "status_existing": "Uw bestaande rekening · {code}",
+        "status_new": "Nieuwe rekening · {code}",
         "change_currency": "Valuta wijzigen"
       },
       "date": {

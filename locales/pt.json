@@ -442,7 +442,7 @@
         "name": "Nome da conta",
         "currency": "Moeda",
         "column_question": "Qual destes é a conta?",
-        "found": "Contas neste ficheiro",
+        "found": "Contas no seu ficheiro",
         "currency_of": "Moeda de {name}",
         "name_hint": "Pode mudar o nome mais tarde",
         "currency_unknown": "O ficheiro indica {code}, que não está configurada aqui. Pode adicioná-la nas Definições.",
@@ -454,9 +454,8 @@
         "currency_default": "As novas contas ficarão em {currency}",
         "currency_default_hint": "O seu ficheiro não indica a moeda",
         "currency_new_accounts": "Moeda das novas contas",
-        "goes_into_existing": "vai para a sua conta existente ({code})",
-        "new_in": "nova conta em {code}",
-        "currency_unknown_here": "o seu ficheiro indica {code}, que não está configurada aqui. Pode adicioná-la nas Definições.",
+        "status_existing": "A sua conta existente · {code}",
+        "status_new": "Conta nova · {code}",
         "change_currency": "Alterar moeda"
       },
       "date": {
