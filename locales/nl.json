@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "De bevestigingscode is ongeldig.",
       "verification_code_expired": "De code is verlopen.",
       "email_unchanged": "Het nieuwe e-mailadres is hetzelfde als uw huidige e-mailadres.",
-      "password_login_disabled": "Inloggen met een wachtwoord is uitgeschakeld"
+      "password_login_disabled": "Inloggen met een wachtwoord is uitgeschakeld",
+      "deletion_already_marked": "Deze gebruiker is al gemarkeerd voor verwijdering.",
+      "deletion_not_marked": "Deze gebruiker is niet gemarkeerd voor verwijdering."
     }
   },
   "emails": {

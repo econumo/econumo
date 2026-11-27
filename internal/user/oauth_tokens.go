@@ -61,6 +61,9 @@ func (s *Service) IssueOAuthAccessToken(ctx context.Context, userID, grantID vo.
 	if n != 1 {
 		return "", false, nil
 	}
+	if err := s.stampActive(ctx, userID, now); err != nil {
+		return "", false, err
+	}
 	return raw, true, nil
 }
 

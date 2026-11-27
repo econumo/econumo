@@ -56,6 +56,10 @@ type Service struct {
 	aiSuggestions         AISuggestionClearer
 	mcpGrants             MCPGrantRevoker
 	appVersion            string
+	deletion              DeletionStore
+	audit                 AuditLog
+	deletionRequests      DeletionRequests
+	deletionCfg           DeletionConfig
 }
 
 func NewService(
@@ -140,6 +144,21 @@ func (s *Service) SetIdentityEmailLister(l IdentityEmailLister) { s.identityEmai
 func (s *Service) SetAISuggestionClearer(c AISuggestionClearer) { s.aiSuggestions = c }
 
 func (s *Service) SetAppVersion(v string) { s.appVersion = v }
+
+type DeletionConfig struct {
+	InactiveDays int
+	DeletionDays int
+	Exclude      map[string]bool // model.NormalizeEmail-ed addresses
+}
+
+// SetDeletion installs the deletion stores. Until it is called every
+// deletion path is a no-op, which keeps unrelated tests untouched.
+func (s *Service) SetDeletion(store DeletionStore, audit AuditLog, requests DeletionRequests, cfg DeletionConfig) {
+	s.deletion = store
+	s.audit = audit
+	s.deletionRequests = requests
+	s.deletionCfg = cfg
+}
 
 // Logout revokes the presenting session. The "test" literal is a frozen wire
 // constant clients depend on (see LogoutResult).

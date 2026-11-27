@@ -33,6 +33,9 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.Principal
 		if n == 0 {
 			return model.Principal{}, errs.NewUnauthorized("Invalid access token")
 		}
+		if err := s.stampActive(ctx, t.UserID, now); err != nil {
+			return model.Principal{}, err
+		}
 	}
 	u := model.User{AccessLevel: level, AccessUntil: until}
 	return model.Principal{UserID: t.UserID, TokenID: t.ID, Level: u.EffectiveAccessLevel(now), Scope: t.Scope}, nil

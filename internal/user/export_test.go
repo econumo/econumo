@@ -28,3 +28,9 @@ func (s *Service) RehashLegacyPasswordForTest(ctx context.Context, u *model.User
 func (s *Service) RevokeTokensForTest(ctx context.Context, userID vo.Id, exceptTokenID vo.Id, now time.Time, kinds ...string) error {
 	return s.revokeTokens(ctx, userID, exceptTokenID, now, kinds...)
 }
+
+// CreateSessionForTest exposes createSession so a test can present a
+// credentials generation read before a concurrent write.
+func (s *Service) CreateSessionForTest(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, now time.Time, generation int64) (string, error) {
+	return s.createSession(ctx, userID, userAgent, provider, idToken, now, generation)
+}

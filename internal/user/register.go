@@ -111,7 +111,12 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	if requireVerification {
 		u.RequireEmailVerification()
 	}
-	if err := s.tx.WithTx(ctx, func(ctx context.Context) error { return s.repo.Save(ctx, u) }); err != nil {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.Save(ctx, u); err != nil {
+			return err
+		}
+		return s.stampActive(ctx, u.ID, now)
+	}); err != nil {
 		return nil, err
 	}
 	return u, nil

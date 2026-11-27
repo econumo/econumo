@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "Nieprawidłowy kod potwierdzający.",
       "verification_code_expired": "Kod wygasł.",
       "email_unchanged": "Nowy adres e-mail jest taki sam jak obecny.",
-      "password_login_disabled": "Logowanie hasłem jest wyłączone"
+      "password_login_disabled": "Logowanie hasłem jest wyłączone",
+      "deletion_already_marked": "Ten użytkownik jest już oznaczony do usunięcia.",
+      "deletion_not_marked": "Ten użytkownik nie jest oznaczony do usunięcia."
     }
   },
   "emails": {

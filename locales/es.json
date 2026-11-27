@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "El código de confirmación no es válido.",
       "verification_code_expired": "El código ha expirado.",
       "email_unchanged": "El nuevo correo electrónico es el mismo que el actual.",
-      "password_login_disabled": "El inicio de sesión con contraseña está desactivado"
+      "password_login_disabled": "El inicio de sesión con contraseña está desactivado",
+      "deletion_already_marked": "Este usuario ya está marcado para eliminación.",
+      "deletion_not_marked": "Este usuario no está marcado para eliminación."
     }
   },
   "emails": {

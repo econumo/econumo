@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "Der Bestätigungscode ist ungültig.",
       "verification_code_expired": "Der Code ist abgelaufen",
       "email_unchanged": "Die neue E-Mail-Adresse ist mit Ihrer aktuellen identisch.",
-      "password_login_disabled": "Die Anmeldung mit Passwort ist deaktiviert"
+      "password_login_disabled": "Die Anmeldung mit Passwort ist deaktiviert",
+      "deletion_already_marked": "Dieser Benutzer ist bereits zur Löschung vorgemerkt.",
+      "deletion_not_marked": "Dieser Benutzer ist nicht zur Löschung vorgemerkt."
     }
   },
   "emails": {

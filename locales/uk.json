@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "Невірний код підтвердження.",
       "verification_code_expired": "Термін дії коду минув.",
       "email_unchanged": "Новий email збігається з поточним.",
-      "password_login_disabled": "Вхід за паролем вимкнено"
+      "password_login_disabled": "Вхід за паролем вимкнено",
+      "deletion_already_marked": "Цього користувача вже позначено для видалення.",
+      "deletion_not_marked": "Цього користувача не позначено для видалення."
     }
   },
   "emails": {

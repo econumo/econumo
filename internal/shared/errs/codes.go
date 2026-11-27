@@ -120,6 +120,8 @@ const (
 	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 	CodeUserEmailUnchanged            = "user.email_unchanged"
 	CodeUserPasswordLoginDisabled     = "user.password_login_disabled"
+	CodeUserDeletionAlreadyMarked     = "user.deletion_already_marked"
+	CodeUserDeletionNotMarked         = "user.deletion_not_marked"
 
 	CodeImportSourceNotFound        = "import.source_not_found"
 	CodeImportProviderUnsupported   = "import.provider_unsupported"
@@ -276,6 +278,8 @@ var AllCodes = []string{
 	CodeUserVerificationCodeExpired,
 	CodeUserEmailUnchanged,
 	CodeUserPasswordLoginDisabled,
+	CodeUserDeletionAlreadyMarked,
+	CodeUserDeletionNotMarked,
 
 	CodeImportSourceNotFound,
 	CodeImportProviderUnsupported,

@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "Le code de confirmation n’est pas valide.",
       "verification_code_expired": "Le code a expiré.",
       "email_unchanged": "Le nouvel e-mail est identique à votre e-mail actuel.",
-      "password_login_disabled": "La connexion par mot de passe est désactivée"
+      "password_login_disabled": "La connexion par mot de passe est désactivée",
+      "deletion_already_marked": "Cet utilisateur est déjà marqué pour suppression.",
+      "deletion_not_marked": "Cet utilisateur n'est pas marqué pour suppression."
     }
   },
   "emails": {

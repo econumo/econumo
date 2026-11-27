@@ -27,6 +27,9 @@ func (s *Service) reclaimCredentials(ctx context.Context, u *model.User, provenE
 	if err := s.emailChangeRequests.DeleteByUser(ctx, u.ID); err != nil {
 		return err
 	}
+	if err := s.deleteDeletionRequests(ctx, u.ID); err != nil {
+		return err
+	}
 	if err := s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal, model.TokenKindOAuth); err != nil {
 		return err
 	}

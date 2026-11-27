@@ -100,6 +100,9 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentToken
 		if err := s.emailChangeRequests.DeleteByUser(ctx, userID); err != nil {
 			return err
 		}
+		if err := s.deleteDeletionRequests(ctx, userID); err != nil {
+			return err
+		}
 		return s.revokeTokens(ctx, userID, currentTokenID, now, model.TokenKindSession)
 	}); err != nil {
 		return nil, err

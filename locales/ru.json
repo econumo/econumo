@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "Неверный код подтверждения.",
       "verification_code_expired": "Срок действия кода истёк.",
       "email_unchanged": "Новый email совпадает с текущим.",
-      "password_login_disabled": "Вход по паролю отключён"
+      "password_login_disabled": "Вход по паролю отключён",
+      "deletion_already_marked": "Этот пользователь уже отмечен для удаления.",
+      "deletion_not_marked": "Этот пользователь не отмечен для удаления."
     }
   },
   "emails": {

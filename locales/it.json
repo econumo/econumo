@@ -2663,7 +2663,9 @@
       "verification_code_invalid": "Il codice di conferma non è valido.",
       "verification_code_expired": "Il codice è scaduto",
       "email_unchanged": "La nuova email coincide con quella attuale.",
-      "password_login_disabled": "L'accesso con password è disattivato"
+      "password_login_disabled": "L'accesso con password è disattivato",
+      "deletion_already_marked": "Questo utente è già contrassegnato per l'eliminazione.",
+      "deletion_not_marked": "Questo utente non è contrassegnato per l'eliminazione."
     }
   },
   "emails": {
