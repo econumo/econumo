@@ -215,8 +215,9 @@ user:delete <email>               # wipe now; refuses a user who is not marked
 user:purge-deleted                # one pass of the release + wipe job, by hand
 ```
 
-`user:delete` on an `inactive` mark that the household rule cancels says so ("not deleted: a
-connected user is active; the mark was removed") and exits non-zero. An operator who wants
+`user:delete` on an `inactive` mark that the household rule cancels says so ("not deleted: the
+inactivity mark no longer applies (a connected user is active, or inactivity marking is
+off); the mark was removed") and exits non-zero. An operator who wants
 that user gone anyway runs `user:mark-deleted` (reason `cli`, outside the rule) and then
 `user:delete`: the override is a deliberate second command, not a flag.
 
