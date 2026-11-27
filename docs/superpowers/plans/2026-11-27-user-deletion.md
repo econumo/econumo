@@ -937,7 +937,7 @@ func NewDeletionJob(svc *Service, clock port.Clock) *DeletionJob
 func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after boot, then every 24 h
 ```
 
-- [ ] **Step 1: Failing tests** (a settable clock; `SetDeletion` with the config under test; a recording or failing mailer):
+- [x] **Step 1: Failing tests** (a settable clock; `SetDeletion` with the config under test; a recording or failing mailer):
 
 ```go
 // cutoff rule: InactiveDays 30 -> a stamp 30 days 23 h old is NOT inactive, 31 days 1 h old is
@@ -971,23 +971,23 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 //   -> WipeReleased, row still there
 ```
 
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run 'TestMarkInactive|TestRelease|TestWipeExpired|TestWipe_Releases' -count=1`
-- [ ] **Step 3: Implement.** `cutoff = now - (InactiveDays+1)*24h`. `MarkInactive` per candidate: skip `Exclude[model.NormalizeEmail(decoded)]`; send; on a send error `slog.Warn("deletion: inactivity notice failed", "user_id", ..., "err_type", ...)` and continue; else one transaction: `LockRow`, then re-read EVERYTHING the selection relied on, because the mail took time: the user is still active (`is_active`), still unmarked, their own stamp is still older than the cutoff, their address is still the one the notice went to, and `HasActiveConnection` is still false; only then `markForDeletion`. `ReleaseInactiveMarks` does the mirror image per listed mark: `LockRow`, `GetState`, and it releases only when the reason is still `inactive` and `MarkedAt` equals the listed value. A listing error is returned (and lands in `DeletionPassResult.Err`), never swallowed. `WipeExpired` passes each selected `MarkedAt` to `Wipe`; a failure logs `slog.Error("deletion: wipe failed", "user_id", ..., "err_type", ...)`. The job runs release, wipe, mark in that order and ends with `slog.Info("deletion: pass done", "released", n, "wiped", n, "failed", n, "marked", n)`. `StartPolling` follows `RateUpdater.StartPolling` (one goroutine, so runs never overlap) with a 2-minute first delay; it always starts (the release pass matters at any setting).
-- [ ] **Step 4: Start it** in `cmd/econumo/main.go` next to `rateUpdater.StartPolling(ctx)` from `Built.Users`.
-- [ ] **Step 5: Regression plan** (section 12), four items:
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run 'TestMarkInactive|TestRelease|TestWipeExpired|TestWipe_Releases' -count=1`
+- [x] **Step 3: Implement.** `cutoff = now - (InactiveDays+1)*24h`. `MarkInactive` per candidate: skip `Exclude[model.NormalizeEmail(decoded)]`; send; on a send error `slog.Warn("deletion: inactivity notice failed", "user_id", ..., "err_type", ...)` and continue; else one transaction: `LockRow`, then re-read EVERYTHING the selection relied on, because the mail took time: the user is still active (`is_active`), still unmarked, their own stamp is still older than the cutoff, their address is still the one the notice went to, and `HasActiveConnection` is still false; only then `markForDeletion`. `ReleaseInactiveMarks` does the mirror image per listed mark: `LockRow`, `GetState`, and it releases only when the reason is still `inactive` and `MarkedAt` equals the listed value. A listing error is returned (and lands in `DeletionPassResult.Err`), never swallowed. `WipeExpired` passes each selected `MarkedAt` to `Wipe`; a failure logs `slog.Error("deletion: wipe failed", "user_id", ..., "err_type", ...)`. The job runs release, wipe, mark in that order and ends with `slog.Info("deletion: pass done", "released", n, "wiped", n, "failed", n, "marked", n)`. `StartPolling` follows `RateUpdater.StartPolling` (one goroutine, so runs never overlap) with a 2-minute first delay; it always starts (the release pass matters at any setting).
+- [x] **Step 4: Start it** in `cmd/econumo/main.go` next to `rateUpdater.StartPolling(ctx)` from `Built.Users`.
+- [x] **Step 5: Regression plan** (section 12), four items:
 
 ```
-- [ ] Inactivity (ECONUMO_INACTIVE_USER_DAYS=1 on a test server, a user idle for 2+ days):
+- [x] Inactivity (ECONUMO_INACTIVE_USER_DAYS=1 on a test server, a user idle for 2+ days):
       after the daily pass the user gets ONE email, is signed out everywhere, and
       `user:list-pending-deletion` lists them with reason `inactive`.
-- [ ] The same with a connected user who signed in today: the idle user is NOT marked.
-- [ ] Two connected users both marked inactive; one signs in: after the next daily pass the
+- [x] The same with a connected user who signed in today: the idle user is NOT marked.
+- [x] Two connected users both marked inactive; one signs in: after the next daily pass the
       other is no longer in `user:list-pending-deletion`.
-- [ ] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the daily pass;
+- [x] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the daily pass;
       with the setting at 0 they stay until `user:delete`.
 ```
 
-- [ ] **Step 6: Run, PASS; `go build ./...`. Commit.**
+- [x] **Step 6: Run, PASS; `go build ./...`. Commit.**
 
 ### Task 18: CLI
 
