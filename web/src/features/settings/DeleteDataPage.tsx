@@ -11,11 +11,11 @@ import { getBillingUrl } from '@/lib/config'
 import { downloadBlob, localDateStamp } from '@/lib/download'
 import { isNotEmpty, isValidRecoveryCode } from '@/lib/validation'
 import { DELETION_CLEANUP_KEY, deletionConfirmPending, expireSession, finishDeletionCleanup, setDeletionConfirmInFlight } from '@/api/client'
+import { getAccountListWithin } from '@/api/account'
 import { exportTransactionList } from '@/api/transaction'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
-import { useAccounts } from '@/features/accounts/queries'
 import { signOutLocally } from '@/features/auth/localSignOut'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { useStoredQueueSettled, useWaitingCount } from '@/features/pendingWrites/hooks'
@@ -27,6 +27,12 @@ type ExportState = 'idle' | 'running' | 'done' | 'failed' | 'none'
 // generous: a large export is slow, but a stalled one must end as failed
 // rather than keep Confirm disabled
 const EXPORT_TIMEOUT_MS = 5 * 60_000
+// The export's account list is its own request, outside the app's retry policy
+// (which retries an unreachable backend forever): any failure must end as a
+// failed export with Retry, never as a download that runs for good.
+const ACCOUNT_LIST_TIMEOUT_MS = 30_000
+// A hung confirm would keep the in-flight marker set, muting every other 401.
+const CONFIRM_TIMEOUT_MS = 60_000
 
 function setCleanupFlag(): void {
   try {
@@ -53,7 +59,6 @@ export function DeleteDataPage() {
   const { t } = useTranslation()
   const online = useOnline()
   const { data: user } = useUserData()
-  const { refetch: refetchAccounts } = useAccounts()
   const passwordLogin = usePasswordLoginAvailable()
   const askPassword = user?.hasPassword !== false && passwordLogin
   // 0 means nothing until the stored queue is in memory; a store that gave up
@@ -97,17 +102,20 @@ export function DeleteDataPage() {
 
   // One path for the first run and for Retry. The account list is fetched
   // fresh: a cached one can miss an account made on another device, so a
-  // failed fetch is a failed export, never a silent fallback to the cache.
+  // failed fetch is a failed export, never a silent fallback to the cache. It
+  // is read straight from the API, so the shared accounts query is untouched.
   const runExport = useCallback(async () => {
     exportStarted.current = true
     setExportState('running')
-    const res = await refetchAccounts()
-    if (res.isError || res.data === undefined) {
+    let fresh: Awaited<ReturnType<typeof getAccountListWithin>>
+    try {
+      fresh = await getAccountListWithin(ACCOUNT_LIST_TIMEOUT_MS)
+    } catch {
       setExportState('failed')
       return
     }
-    await download(ownedAccountIds(res.data, userId))
-  }, [refetchAccounts, download, userId])
+    await download(ownedAccountIds(fresh, userId))
+  }, [download, userId])
 
   useEffect(() => {
     if (!exportReady || exportStarted.current) {
@@ -157,8 +165,10 @@ export function DeleteDataPage() {
     // response, the next 401 still clears what this browser holds.
     setCleanupFlag()
     setDeletionConfirmInFlight(true)
+    let confirmed = false
     try {
-      await confirmDeletion.mutateAsync({ code: trimmed })
+      await confirmDeletion.mutateAsync({ code: trimmed, timeout: CONFIRM_TIMEOUT_MS })
+      confirmed = true
     } catch (err) {
       if (isAxiosError(err) && err.response?.status === 401) {
         if (earlierAttemptPending) {
@@ -180,10 +190,18 @@ export function DeleteDataPage() {
       setConfirming(false)
       return
     } finally {
-      setDeletionConfirmInFlight(false)
+      // on success the marker stays until this page's own clean-up is done,
+      // so a sibling 401 cannot start a second one meanwhile
+      if (!confirmed) {
+        setDeletionConfirmInFlight(false)
+      }
     }
     // the server has revoked every session: a closed tab must not leave the data behind
-    await signOutLocally()
+    try {
+      await signOutLocally()
+    } finally {
+      setDeletionConfirmInFlight(false)
+    }
     clearCleanupFlag()
     window.location.assign('/login?reason=deletion-scheduled')
   }

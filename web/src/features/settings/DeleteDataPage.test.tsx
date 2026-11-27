@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { AxiosError } from 'axios'
+import { createAppQueryClient } from '@/lib/appQueryClient'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
@@ -25,13 +27,31 @@ vi.mock('@/features/pendingWrites/hooks', async (importOriginal) => {
   }
 })
 
+// counts sign-outs and can hold one, for the page's own clean-up and the interceptor's alike
+const signOutGate = vi.hoisted(() => ({ hold: null as Promise<void> | null, calls: 0 }))
+vi.mock('@/features/auth/localSignOut', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/features/auth/localSignOut')>()
+  return {
+    ...real,
+    signOutLocally: async (...args: Parameters<typeof real.signOutLocally>) => {
+      signOutGate.calls++
+      if (signOutGate.hold) {
+        await signOutGate.hold
+      }
+      return real.signOutLocally(...args)
+    },
+  }
+})
+
 const CLEANUP_KEY = 'econumo.deletionCleanup'
 const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
 const assign = vi.fn()
 const downloads: string[] = []
 
-function renderPage(user: Record<string, unknown> = fixtureUser) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+function renderPage(
+  user: Record<string, unknown> = fixtureUser,
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
+) {
   queryClient.setQueryData(queryKeys.user, user)
   const router = createMemoryRouter(
     [
@@ -89,6 +109,8 @@ beforeEach(() => {
   })
   assign.mockClear()
   queueOverride.settled = undefined
+  signOutGate.hold = null
+  signOutGate.calls = 0
   Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
 })
 
@@ -353,6 +375,34 @@ describe('the download', () => {
     expect(log.calls).toEqual([])
   })
 
+  it('an unreachable account list ends as a failed download under the app\'s own retry policy', async () => {
+    const log: ExportLog = { calls: [] }
+    server.use(
+      http.get('*/api/v1/account/get-account-list', () => HttpResponse.error()),
+      ...coreHandlers(),
+      exportHandler(log),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    renderPage(fixtureUser, createAppQueryClient())
+    await goToCode(user)
+    expect(await screen.findByText('The download of your transactions failed.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try the download again' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled()
+    expect(log.calls).toEqual([])
+  })
+
+  it('fetches the export\'s account list with a 30-second timeout', async () => {
+    server.use(...coreHandlers(), exportHandler({ calls: [] }), http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()))
+    const get = vi.spyOn(api, 'get')
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    expect(await screen.findByText(/Your transactions were downloaded/)).toBeInTheDocument()
+    const listCall = get.mock.calls.find(([url]) => String(url).includes('get-account-list'))
+    expect(listCall?.[1]).toMatchObject({ timeout: 30_000 })
+  })
+
   it('exports the freshly fetched account list, not the cached one', async () => {
     const log: ExportLog = { calls: [] }
     const fresh = [...fixtureAccounts, { ...fixtureAccounts[0], id: 'a-new', name: 'Made on another device' }]
@@ -570,10 +620,43 @@ describe('the confirm', () => {
       await user.click(screen.getByRole('button', { name: 'Delete my data' }))
     }
 
-    it('after a success', async () => {
+    it('after a success, only once the page finished its own clean-up', async () => {
+      let releaseSignOut: () => void = () => {}
+      signOutGate.hold = new Promise<void>((resolve) => {
+        releaseSignOut = resolve
+      })
+      server.use(http.get('*/api/v1/secure', () =>
+        HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 })))
       await confirmWith(() => okEnvelope())
+      await waitFor(() => expect(signOutGate.calls).toBe(1))
+      // a sibling 401 while the page signs out must not start a second clean-up
+      await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(signOutGate.calls).toBe(1)
+
+      signOutGate.hold = null
+      releaseSignOut()
       await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=deletion-scheduled'))
+      expect(signOutGate.calls).toBe(1)
       setToken('tok', 'u1')
+      await siblingUnauthorizedRunsCleanup()
+    })
+
+    it('after a timed-out confirm, which keeps the flag', async () => {
+      const post = api.post.bind(api)
+      let confirmConfig: unknown
+      vi.spyOn(api, 'post').mockImplementation((url, data, config) => {
+        if (String(url).includes('confirm-user-deletion')) {
+          confirmConfig = config
+          return Promise.reject(new AxiosError('timeout of 60000ms exceeded', AxiosError.ECONNABORTED))
+        }
+        return post(url, data, config)
+      })
+      await confirmWith(() => okEnvelope())
+      expect(await screen.findByText(/timeout|Something went wrong|try again/i)).toBeInTheDocument()
+      expect(confirmConfig).toMatchObject({ timeout: 60_000 })
+      expect(Number(localStorage.getItem(CLEANUP_KEY))).toBeGreaterThan(0)
+      expect(assign).not.toHaveBeenCalled()
       await siblingUnauthorizedRunsCleanup()
     })
 

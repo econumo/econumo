@@ -74,8 +74,8 @@ export async function requestUserDeletion(password: string): Promise<void> {
   await api.post(apiUrl('/api/v1/user/request-user-deletion'), { password })
 }
 
-export async function confirmUserDeletion(code: string): Promise<void> {
-  await api.post(apiUrl('/api/v1/user/confirm-user-deletion'), { code })
+export async function confirmUserDeletion(code: string, opts?: { timeout?: number }): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/confirm-user-deletion'), { code }, { timeout: opts?.timeout })
 }
 
 // Returns the seconds to wait before another code may be requested, same

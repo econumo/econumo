@@ -163,7 +163,7 @@ export function useRequestUserDeletion() {
 export function useConfirmUserDeletion() {
   return useMutation({
     meta: { handlesOwnErrors: true },
-    mutationFn: ({ code }: { code: string }) => userApi.confirmUserDeletion(code),
+    mutationFn: ({ code, timeout }: { code: string; timeout?: number }) => userApi.confirmUserDeletion(code, { timeout }),
     onSuccess: () => trackEvent(METRICS.USER_DELETE_DATA),
   })
 }
