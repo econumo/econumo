@@ -1083,12 +1083,12 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 - Produces (TS): `ConnectionDto.deletionMarkedAt: string`; `Inbox.markedConnections: ConnectionDto[]` (NOT added to `count`: the row has no action and may stay for weeks).
 - `en` copy: `inbox.sharing.scheduled_for_deletion`: `{name}'s data is scheduled for deletion. The accounts and budgets they share with you will disappear, and transfers with their accounts will become corrections.`
 
-- [ ] **Step 1: Failing tests.** Go (`internal/connection`): a marked connected user -> `DeletionMarkedAt` is the formatted time; unmarked -> `""`. Vitest `DeletionNoticeSection.test.tsx`: renders one row per connection with a non-empty `deletionMarkedAt`, showing the name and the copy; renders nothing for an empty list. `useInbox.test.tsx`: `markedConnections` holds only marked connections and `count` is unchanged by them. `InboxPage.test.tsx`: with a marked connection as the only item the page shows the notice and NOT the "All caught up" empty state.
-- [ ] **Step 2: Run, FAIL** (`go test ./internal/connection/ -count=1`; `cd web && pnpm test src/features/inbox`).
-- [ ] **Step 3: Implement.** In `InboxPage.tsx` the Sharing section renders when `invites.length > 0 || markedConnections.length > 0`, notices first, and the empty-state predicate (today `count === 0` with nothing skipped) also requires `markedConnections.length === 0`. The row is a card like the invite card (`UserAvatar`, text), no buttons. `useInbox` reads `useConnections()`.
-- [ ] **Step 4: Regenerate apiparity and mcpparity goldens; read the diff** (only the added field). `make swagger`. `cd web && pnpm lint && pnpm exec tsc -b`.
-- [ ] **Step 5: i18n + regression plan.** Add the key to all 11 catalogues. In section 11 add: `- [ ] 📱 A connected user is marked for deletion (user:mark-deleted): the partner's Inbox shows "<name>'s data is scheduled for deletion..." under Sharing without changing the Inbox badge count; it disappears when that user signs in.`
-- [ ] **Step 6: Commit.**
+- [x] **Step 1: Failing tests.** Go (`internal/connection`): a marked connected user -> `DeletionMarkedAt` is the formatted time; unmarked -> `""`. Vitest `DeletionNoticeSection.test.tsx`: renders one row per connection with a non-empty `deletionMarkedAt`, showing the name and the copy; renders nothing for an empty list. `useInbox.test.tsx`: `markedConnections` holds only marked connections and `count` is unchanged by them. `InboxPage.test.tsx`: with a marked connection as the only item the page shows the notice and NOT the "All caught up" empty state.
+- [x] **Step 2: Run, FAIL** (`go test ./internal/connection/ -count=1`; `cd web && pnpm test src/features/inbox`).
+- [x] **Step 3: Implement.** In `InboxPage.tsx` the Sharing section renders when `invites.length > 0 || markedConnections.length > 0`, notices first, and the empty-state predicate (today `count === 0` with nothing skipped) also requires `markedConnections.length === 0`. The row is a card like the invite card (`UserAvatar`, text), no buttons. `useInbox` reads `useConnections()`.
+- [x] **Step 4: Regenerate apiparity and mcpparity goldens; read the diff** (only the added field). `make swagger`. `cd web && pnpm lint && pnpm exec tsc -b`.
+- [x] **Step 5: i18n + regression plan.** Add the key to all 11 catalogues. In section 11 add: `- [ ] 📱 A connected user is marked for deletion (user:mark-deleted): the partner's Inbox shows "<name>'s data is scheduled for deletion..." under Sharing without changing the Inbox badge count; it disappears when that user signs in.`
+- [x] **Step 6: Commit.**
 
 ### Task 22: "Delete my data" in Settings
 
