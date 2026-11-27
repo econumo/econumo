@@ -3125,6 +3125,7 @@ User C sees none of it.
       after repeated bad codes (429 toast).
 - [ ] Delete the connection (confirm) → shared grants are revoked on both
       sides.
+- [ ] Three users: A and B are both members of C's budget. A removes the connection with B: B stays a member of C's budget with their categories and plans.
 
 **Account sharing**
 - [ ] A shares an account with B (`guest`, then upgrade to `user`, `admin`):

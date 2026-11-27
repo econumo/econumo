@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -54,20 +55,7 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	activeBudget := revokerBudgetA
 	f.Option(revokerUserB, "budget", &activeBudget)
 
-	budgets := budgetrepo.NewRepo("sqlite", db.TX)
-	budgetSvc := appbudget.NewService(
-		budgets, nil, nil, nil,
-		server.NewBudgetUserLookup(userrepo.NewRepo("sqlite", db.TX), clock.New()),
-		nil, nil,
-		budgetrepo.NewMetadataLookup(
-			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo("sqlite", db.TX)),
-			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", db.TX)),
-			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", db.TX)),
-		),
-		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", db.TX)),
-		operationrepo.NewGuard("sqlite", db.TX),
-		db.TX, clock.New(),
-	)
+	budgets, budgetSvc := newRevokerBudgetSvc(db)
 	revoker := server.NewConnectionBudgetRevoker(budgets, budgetSvc)
 
 	// userA owns budgetA; userB has an access grant on it.
@@ -119,6 +107,141 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	}
 	if optValue != nil {
 		t.Errorf("want userB's active-budget option cleared, got %q", *optValue)
+	}
+}
+
+func newRevokerBudgetSvc(db *dbtest.DB) (*budgetrepo.Repo, *appbudget.Service) {
+	budgets := budgetrepo.NewRepo("sqlite", db.TX)
+	budgetSvc := appbudget.NewService(
+		budgets, nil, nil, nil,
+		server.NewBudgetUserLookup(userrepo.NewRepo("sqlite", db.TX), clock.New()),
+		nil, nil,
+		budgetrepo.NewMetadataLookup(
+			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo("sqlite", db.TX)),
+			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", db.TX)),
+			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", db.TX)),
+		),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", db.TX)),
+		operationrepo.NewGuard("sqlite", db.TX),
+		db.TX, clock.New(),
+	)
+	return budgets, budgetSvc
+}
+
+const (
+	revokerUserP2     = "33333333-3333-3333-3333-333333333333"
+	revokerBudgetP2   = "b0d00000-0000-0000-0000-00000000b0c1"
+	revokerBudgetLow  = "b0d00000-0000-0000-0000-00000000b0e1"
+	revokerBudgetHigh = "b0d00000-0000-0000-0000-00000000b0f2"
+	revokerCatP1      = "cccccccc-cccc-cccc-cccc-ccccccccccc1"
+)
+
+// TestConnectionBudgetRevoker_LeavesThirdPartyBudgets: U and P1 are both
+// members of P2's budget; disconnecting U and P1 must not touch it.
+func TestConnectionBudgetRevoker_LeavesThirdPartyBudgets(t *testing.T) {
+	cases := []struct {
+		name string
+		a, b string
+	}{
+		{"U then P1", revokerUserA, revokerUserB},
+		{"P1 then U", revokerUserB, revokerUserA},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := dbtest.NewSQLite(t)
+			ctx := context.Background()
+			f := fixture.New(t, db)
+			seedRevokerUser(t, f, revokerUserA)
+			seedRevokerUser(t, f, revokerUserB)
+			seedRevokerUser(t, f, revokerUserP2)
+			f.Category(fixture.Category{ID: revokerCatP1, UserID: revokerUserB, Name: "Groceries", Type: 0, Icon: "local_offer"})
+			f.Budget(fixture.Budget{ID: revokerBudgetP2, UserID: revokerUserP2, CurrencyID: revokerUSDID, Name: "P2's"})
+			f.BudgetAccess(revokerBudgetP2, revokerUserA, int(model.BudgetRoleUser), true)
+			f.BudgetAccess(revokerBudgetP2, revokerUserB, int(model.BudgetRoleUser), true)
+			f.BudgetElement(fixture.BudgetElement{BudgetID: revokerBudgetP2, ExternalID: revokerCatP1, Type: int(model.ElementCategory)})
+
+			budgets, budgetSvc := newRevokerBudgetSvc(db)
+			revoker := server.NewConnectionBudgetRevoker(budgets, budgetSvc)
+
+			if err := revoker.RevokeBetween(ctx, vo.MustParseId(tc.a), vo.MustParseId(tc.b)); err != nil {
+				t.Fatalf("RevokeBetween: %v", err)
+			}
+
+			list, err := budgets.ListAccess(ctx, vo.MustParseId(revokerBudgetP2))
+			if err != nil {
+				t.Fatalf("ListAccess: %v", err)
+			}
+			if got := len(list); got != 2 {
+				t.Errorf("access rows on P2's budget = %d, want 2", got)
+			}
+			els, err := budgets.ListElements(ctx, vo.MustParseId(revokerBudgetP2))
+			if err != nil {
+				t.Fatalf("ListElements: %v", err)
+			}
+			if got := len(els); got != 1 {
+				t.Errorf("P1's elements on P2's budget = %d, want 1", got)
+			}
+		})
+	}
+}
+
+type recordingRemover struct {
+	inner interface {
+		RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error
+	}
+	budgetIDs []string
+}
+
+func (r *recordingRemover) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error {
+	r.budgetIDs = append(r.budgetIDs, budgetID.String())
+	return r.inner.RemoveMember(ctx, budgetID, memberID)
+}
+
+// TestConnectionBudgetRevoker_RemovesInBudgetIDOrder: removals of both
+// directions run in one pass ordered by budget id, the order budget locks are
+// taken everywhere.
+func TestConnectionBudgetRevoker_RemovesInBudgetIDOrder(t *testing.T) {
+	cases := []struct {
+		name string
+		a, b string
+	}{
+		{"A then B", revokerUserA, revokerUserB},
+		{"B then A", revokerUserB, revokerUserA},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := dbtest.NewSQLite(t)
+			ctx := context.Background()
+			f := fixture.New(t, db)
+			seedRevokerUser(t, f, revokerUserA)
+			seedRevokerUser(t, f, revokerUserB)
+			f.Budget(fixture.Budget{ID: revokerBudgetHigh, UserID: revokerUserA, CurrencyID: revokerUSDID, Name: "A's"})
+			f.BudgetAccess(revokerBudgetHigh, revokerUserB, int(model.BudgetRoleUser), true)
+			f.Budget(fixture.Budget{ID: revokerBudgetLow, UserID: revokerUserB, CurrencyID: revokerUSDID, Name: "B's"})
+			f.BudgetAccess(revokerBudgetLow, revokerUserA, int(model.BudgetRoleUser), true)
+
+			budgets, budgetSvc := newRevokerBudgetSvc(db)
+			rec := &recordingRemover{inner: budgetSvc}
+			revoker := server.NewConnectionBudgetRevoker(budgets, rec)
+
+			if err := revoker.RevokeBetween(ctx, vo.MustParseId(tc.a), vo.MustParseId(tc.b)); err != nil {
+				t.Fatalf("RevokeBetween: %v", err)
+			}
+
+			want := []string{revokerBudgetLow, revokerBudgetHigh}
+			if !slices.Equal(rec.budgetIDs, want) {
+				t.Errorf("RemoveMember budget order = %v, want %v", rec.budgetIDs, want)
+			}
+			for _, id := range want {
+				list, err := budgets.ListAccess(ctx, vo.MustParseId(id))
+				if err != nil {
+					t.Fatalf("ListAccess: %v", err)
+				}
+				if len(list) != 0 {
+					t.Errorf("budget %s: %d access rows left, want 0", id, len(list))
+				}
+			}
+		})
 	}
 }
 
