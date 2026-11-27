@@ -557,6 +557,9 @@ func TestWipeExpired_ContinuesPastAFailure(t *testing.T) {
 	if failed[0].ErrType != "user_test.wipeRefused" {
 		t.Errorf("ErrType = %q, want the Go type name", failed[0].ErrType)
 	}
+	if _, ok := failed[0].Err.(wipeRefused); !ok {
+		t.Errorf("Err = %v, want the wipe's error", failed[0].Err)
+	}
 	if !e.exists(t, first) || e.exists(t, second) {
 		t.Error("want the first user kept and the second wiped")
 	}

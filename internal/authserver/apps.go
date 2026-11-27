@@ -16,7 +16,7 @@ var (
 	ErrAppAlreadyGlobal = errors.New("the app is already global")
 	ErrAppPublic        = errors.New("the app is public: it has no secret to rotate")
 	ErrAppNameRequired  = errors.New("name is required")
-	ErrAppBusy          = errors.New("the app keeps getting new connections; try again")
+	ErrAppBusy          = errs.NewSentinel("authserver.ErrAppBusy", "the app keeps getting new connections; try again")
 )
 
 func appNotFound() error { return errs.NewNotFound("OAuth app not found") }

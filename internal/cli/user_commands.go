@@ -16,12 +16,13 @@ import (
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-// reportPurge prints the pass summary and one line per failed wipe. Failures
-// carry the user id and the error type only: the error text may quote a row.
+// reportPurge prints the pass summary and one line per failed wipe: the user
+// id, the logged classification and, as user:delete does, the error itself,
+// which goes to the operator's console only, never to a log.
 func reportPurge(out, errOut io.Writer, res appuser.DeletionPassResult) error {
 	fmt.Fprintf(out, "released %d, deleted %d\n", res.Released, res.Wiped)
 	for _, f := range res.Failed {
-		fmt.Fprintf(errOut, "failed %s: %s\n", f.UserID.String(), f.ErrType)
+		fmt.Fprintf(errOut, "failed %s: %s: %v\n", f.UserID.String(), f.ErrType, f.Err)
 	}
 	if res.Err != nil {
 		return res.Err

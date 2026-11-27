@@ -53,11 +53,11 @@ func (j *DeletionJob) StartPolling(ctx context.Context) {
 func (j *DeletionJob) RunOnce(ctx context.Context) DeletionPassResult {
 	res := j.svc.PurgeDeleted(ctx)
 	if res.Err != nil {
-		slog.Error("deletion: pass failed", "step", "purge", "err_type", goErrType(res.Err))
+		slog.Error("deletion: pass failed", "step", "purge", "err_type", failureReason(res.Err))
 	}
 	marked, err := j.svc.MarkInactive(ctx)
 	if err != nil {
-		slog.Error("deletion: pass failed", "step", "mark", "err_type", goErrType(err))
+		slog.Error("deletion: pass failed", "step", "mark", "err_type", failureReason(err))
 		if res.Err == nil {
 			res.Err = err
 		}

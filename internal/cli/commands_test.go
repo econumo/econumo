@@ -952,11 +952,22 @@ func TestUserPurgeDeleted(t *testing.T) {
 	if !strings.Contains(stdout, "released 0, deleted 0") {
 		t.Errorf("stdout = %q, want the summary", stdout)
 	}
-	if !regexp.MustCompile(`(?m)^failed ` + failing + `: \S+$`).MatchString(stderr) {
-		t.Errorf("stderr = %q, want one failure line with the user id and the error type", stderr)
+	if !regexp.MustCompile(`(?m)^failed ` + failing + `: \S+.*: .*refused`).MatchString(stderr) {
+		t.Errorf("stderr = %q, want one failure line with the user id, the reason and the error", stderr)
 	}
-	if strings.Contains(stderr, "refused") || strings.Contains(stderr, "@") {
-		t.Errorf("stderr = %q carries the error text or an email", stderr)
+}
+
+func TestReportPurge_PrintsTheError(t *testing.T) {
+	var out, errOut bytes.Buffer
+	id := vo.NewId()
+	err := reportPurge(&out, &errOut, appuser.DeletionPassResult{Failed: []appuser.PassFailure{
+		{UserID: id, ErrType: "sqlite 19", Err: errors.New("constraint failed: refused")},
+	}})
+	if err == nil {
+		t.Fatal("a failed wipe must fail the command")
+	}
+	if want := "failed " + id.String() + ": sqlite 19: constraint failed: refused\n"; errOut.String() != want {
+		t.Errorf("stderr = %q, want %q", errOut.String(), want)
 	}
 }
 

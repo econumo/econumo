@@ -18,12 +18,35 @@ type DeletionPassResult struct {
 	Err                     error         // a pass that could not run at all (listing failed)
 }
 
+// PassFailure carries the error for the operator's console; logs keep the
+// classification (ErrType) only.
 type PassFailure struct {
 	UserID  vo.Id
 	ErrType string
+	Err     error
 }
 
-func goErrType(err error) string { return fmt.Sprintf("%T", err) }
+// failureReason names what went wrong without the error's message, which can
+// carry values: a known sentinel anywhere in the chain gives its name, a
+// driver error its code, anything else the root error's Go type.
+func failureReason(err error) string {
+	var named interface{ SentinelName() string }
+	if errors.As(err, &named) {
+		return named.SentinelName()
+	}
+	var pg interface{ SQLState() string }
+	if errors.As(err, &pg) {
+		return "sqlstate " + pg.SQLState()
+	}
+	var lite interface{ Code() int }
+	if errors.As(err, &lite) {
+		return fmt.Sprintf("sqlite %d", lite.Code())
+	}
+	for next := errors.Unwrap(err); next != nil; next = errors.Unwrap(err) {
+		err = next
+	}
+	return fmt.Sprintf("%T", err)
+}
 
 func (s *Service) requireDeletionStores() error {
 	if s.deletion == nil || s.audit == nil {
@@ -49,7 +72,7 @@ func (s *Service) ReleaseInactiveMarks(ctx context.Context) (int, error) {
 		}
 		ok, err := s.releaseListedMark(ctx, m)
 		if err != nil {
-			slog.Warn("deletion: release failed", "user_id", m.ID.String(), "err_type", goErrType(err))
+			slog.Warn("deletion: release failed", "user_id", m.ID.String(), "err_type", failureReason(err))
 			continue
 		}
 		if ok {
@@ -113,8 +136,9 @@ func (s *Service) WipeExpired(ctx context.Context) (wiped int, failed []PassFail
 		markedAt := m.MarkedAt
 		outcome, werr := s.Wipe(ctx, m.ID, &markedAt)
 		if werr != nil {
-			slog.Error("deletion: wipe failed", "user_id", m.ID.String(), "err_type", goErrType(werr))
-			failed = append(failed, PassFailure{UserID: m.ID, ErrType: goErrType(werr)})
+			reason := failureReason(werr)
+			slog.Error("deletion: wipe failed", "user_id", m.ID.String(), "err_type", reason)
+			failed = append(failed, PassFailure{UserID: m.ID, ErrType: reason, Err: werr})
 			continue
 		}
 		if outcome == WipeDone {
@@ -144,7 +168,7 @@ func (s *Service) MarkInactive(ctx context.Context) (int, error) {
 	for _, c := range candidates {
 		email, err := s.encode.Decode(c.Email)
 		if err != nil {
-			slog.Warn("deletion: inactivity mark failed", "user_id", c.ID.String(), "err_type", goErrType(err))
+			slog.Warn("deletion: inactivity mark failed", "user_id", c.ID.String(), "err_type", failureReason(err))
 			continue
 		}
 		if s.deletionCfg.Exclude[model.NormalizeEmail(email)] {
@@ -152,12 +176,12 @@ func (s *Service) MarkInactive(ctx context.Context) (int, error) {
 		}
 		// Nobody is marked without the notice going out.
 		if err := s.deletionSender.SendInactivityNotice(ctx, c.Language, email, c.Name, s.deletionCfg.InactiveDays); err != nil {
-			slog.Warn("deletion: inactivity notice failed", "user_id", c.ID.String(), "err_type", goErrType(err))
+			slog.Warn("deletion: inactivity notice failed", "user_id", c.ID.String(), "err_type", failureReason(err))
 			continue
 		}
 		ok, err := s.markIfStillInactive(ctx, c, cutoff)
 		if err != nil {
-			slog.Warn("deletion: inactivity mark failed", "user_id", c.ID.String(), "err_type", goErrType(err))
+			slog.Warn("deletion: inactivity mark failed", "user_id", c.ID.String(), "err_type", failureReason(err))
 			continue
 		}
 		if ok {

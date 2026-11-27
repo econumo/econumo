@@ -34,3 +34,6 @@ func (s *Service) RevokeTokensForTest(ctx context.Context, userID vo.Id, exceptT
 func (s *Service) CreateSessionForTest(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, now time.Time, generation int64) (string, error) {
 	return s.createSession(ctx, userID, userAgent, provider, idToken, now, generation)
 }
+
+// FailureReasonForTest exposes the classification a failed wipe logs.
+func FailureReasonForTest(err error) string { return failureReason(err) }

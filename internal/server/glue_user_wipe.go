@@ -2,17 +2,17 @@ package server
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"strings"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
 // ErrWipeSetChanged: retry the wipe; nothing was changed.
-var ErrWipeSetChanged = errors.New("wipe: the set of budgets changed while locking")
+var ErrWipeSetChanged = errs.NewSentinel("server.ErrWipeSetChanged", "wipe: the set of budgets changed while locking")
 
 type wipeDebts interface {
 	BudgetIDsOfCategories(ctx context.Context, ids ...vo.Id) ([]vo.Id, error)
