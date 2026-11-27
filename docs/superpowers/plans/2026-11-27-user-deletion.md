@@ -560,10 +560,10 @@ func (s *Service) LockOwnedForWipe(ctx context.Context, userID vo.Id) error
 func (s *Service) UnwindGrantsOf(ctx context.Context, userID vo.Id) error
 ```
 
-- [ ] **Step 1: Failing tests.** `TestUnwindGrantsOf`: U holds an accepted grant on P's account (placed in one of U's folders, with an `accounts_options` row) and a pending one on T's; P holds a grant on U's account (in P's folder, with options). After the call no `accounts_access` row names U as grantee or one of U's accounts; P's folder no longer holds U's account; P's own accounts and folders are untouched. `TestLockOwnedForWipe_PgsqlBlocksTransactionWrites` (`//go:build enginecompare`, pattern `dbtest.AssertLockWaitsForKeyShare` in `internal/test/dbtest/lock_pgsql.go`): after `LockOwnedForWipe` in one connection, an `INSERT INTO transactions` on that account from a second connection waits until the first commits.
-- [ ] **Step 2: Run, see FAIL.**
-- [ ] **Step 3: Implement.** New pgsql query `LockAccountsByOwner :many` = `SELECT id FROM accounts WHERE user_id = $1 ORDER BY id FOR UPDATE`; the sqlite querier is a Go no-op (pattern: `internal/category/repo/sqlite.go` `LockCategoryRow`). Put `ListIDsByOwner` and the lock on the `AccountStore` interface.
-- [ ] **Step 4: Run (sqlite, then the PostgreSQL command). PASS. Commit.**
+- [x] **Step 1: Failing tests.** `TestUnwindGrantsOf`: U holds an accepted grant on P's account (placed in one of U's folders, with an `accounts_options` row) and a pending one on T's; P holds a grant on U's account (in P's folder, with options). After the call no `accounts_access` row names U as grantee or one of U's accounts; P's folder no longer holds U's account; P's own accounts and folders are untouched. `TestLockOwnedForWipe_PgsqlBlocksTransactionWrites` (`//go:build enginecompare`, pattern `dbtest.AssertLockWaitsForKeyShare` in `internal/test/dbtest/lock_pgsql.go`): after `LockOwnedForWipe` in one connection, an `INSERT INTO transactions` on that account from a second connection waits until the first commits.
+- [x] **Step 2: Run, see FAIL.**
+- [x] **Step 3: Implement.** New pgsql query `LockAccountsByOwner :many` = `SELECT id FROM accounts WHERE user_id = $1 ORDER BY id FOR UPDATE`; the sqlite querier is a Go no-op (pattern: `internal/category/repo/sqlite.go` `LockCategoryRow`). Put `ListIDsByOwner` and the lock on the `AccountStore` interface.
+- [x] **Step 4: Run (sqlite, then the PostgreSQL command). PASS. Commit.**
 
 ### Task 10: transaction
 
