@@ -289,3 +289,31 @@ func TestChangeEmailSender_NoticeCcsLinkedAddressesButTheCodeDoesNot(t *testing.
 		t.Errorf("code message = To %q Cc %v, want the new address only", c.msg.To, c.msg.Cc)
 	}
 }
+
+func TestResendRequest_CarriesHTMLTextAndInlineLogo(t *testing.T) {
+	c := &captureMailer{}
+	s := NewResetSender(c, "from@econumo.test", "reply@econumo.test", "")
+	if err := s.SendResetPasswordCode(context.Background(), "user@x.test", "Alice", "482913"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	p := resendParams(c.msg)
+	if p.Html == "" || p.Text == "" {
+		t.Fatalf("html/text empty: %q / %q", p.Html, p.Text)
+	}
+	if len(p.Attachments) != 1 || p.Attachments[0].ContentId != "econumo-logo" || p.Attachments[0].ContentType != "image/png" || len(p.Attachments[0].Content) == 0 {
+		t.Fatalf("attachments = %+v", p.Attachments)
+	}
+	if p.ReplyTo != "reply@econumo.test" {
+		t.Errorf("reply-to = %q", p.ReplyTo)
+	}
+}
+
+func TestResetSender_SendsHTML(t *testing.T) {
+	msg := sendResetCapture(t, context.Background(), "user@x.test", "Alice", "482913")
+	if !strings.Contains(msg.HTML, "482913") {
+		t.Errorf("html missing code: %q", msg.HTML)
+	}
+	if len(msg.Inline) != 1 {
+		t.Errorf("inline = %d, want 1", len(msg.Inline))
+	}
+}

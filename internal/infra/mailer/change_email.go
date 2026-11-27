@@ -24,8 +24,11 @@ func NewChangeEmailSender(m Mailer, from, replyTo, appURL string) *ChangeEmailSe
 func (s *ChangeEmailSender) SendEmailChangeCode(ctx context.Context, to, name, code string) error {
 	lang := reqctx.Language(ctx)
 	c := Compose(lang, "change_email", nil, name, code, s.appURL)
-	return s.m.Send(ctx, Message{From: s.from, To: to, ReplyTo: s.replyTo,
-		Subject: i18n.T(lang, "emails.change_email.subject", nil), Text: RenderText(c)})
+	msg, err := newMessage(s.from, to, s.replyTo, i18n.T(lang, "emails.change_email.subject", nil), nil, c)
+	if err != nil {
+		return err
+	}
+	return s.m.Send(ctx, msg)
 }
 
 // SendEmailChangeNotice emails the OLD address that a change was requested,
@@ -35,6 +38,9 @@ func (s *ChangeEmailSender) SendEmailChangeCode(ctx context.Context, to, name, c
 func (s *ChangeEmailSender) SendEmailChangeNotice(ctx context.Context, to, name, newEmail string, cc []string) error {
 	lang := reqctx.Language(ctx)
 	c := Compose(lang, "change_email_notice", map[string]any{"email": newEmail}, name, "", s.appURL)
-	return s.m.Send(ctx, Message{From: s.from, To: to, Cc: ccAddresses(to, cc), ReplyTo: s.replyTo,
-		Subject: i18n.T(lang, "emails.change_email_notice.subject", nil), Text: RenderText(c)})
+	msg, err := newMessage(s.from, to, s.replyTo, i18n.T(lang, "emails.change_email_notice.subject", nil), ccAddresses(to, cc), c)
+	if err != nil {
+		return err
+	}
+	return s.m.Send(ctx, msg)
 }

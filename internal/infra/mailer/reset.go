@@ -43,6 +43,9 @@ func NewResetSender(m Mailer, from, replyTo, appURL string) *ResetSender {
 func (s *ResetSender) SendResetPasswordCode(ctx context.Context, to, name, code string) error {
 	lang := reqctx.Language(ctx)
 	c := Compose(lang, "reset", nil, name, code, s.appURL)
-	return s.m.Send(ctx, Message{From: s.from, To: to, ReplyTo: s.replyTo,
-		Subject: i18n.T(lang, "emails.reset.subject", nil), Text: RenderText(c)})
+	msg, err := newMessage(s.from, to, s.replyTo, i18n.T(lang, "emails.reset.subject", nil), nil, c)
+	if err != nil {
+		return err
+	}
+	return s.m.Send(ctx, msg)
 }

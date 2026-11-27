@@ -49,6 +49,9 @@ func (s *IdentitySender) send(ctx context.Context, to, key string, params map[st
 		lang = reqctx.Language(ctx)
 	}
 	c := Compose(lang, key, params, name, "", s.appURL)
-	return s.m.Send(ctx, Message{From: s.from, To: to, Cc: ccAddresses(to, cc), ReplyTo: s.replyTo,
-		Subject: i18n.T(lang, "emails."+key+".subject", nil), Text: RenderText(c)})
+	msg, err := newMessage(s.from, to, s.replyTo, i18n.T(lang, "emails."+key+".subject", nil), ccAddresses(to, cc), c)
+	if err != nil {
+		return err
+	}
+	return s.m.Send(ctx, msg)
 }

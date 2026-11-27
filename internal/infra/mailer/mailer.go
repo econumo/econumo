@@ -29,6 +29,27 @@ type Message struct {
 	ReplyTo string
 	Subject string
 	Text    string
+	HTML    string
+	Inline  []InlineFile
+}
+
+// InlineFile is an image embedded in the HTML part and referenced as cid:ContentID.
+type InlineFile struct {
+	ContentID, Filename, ContentType string
+	Data                             []byte
+}
+
+// newMessage builds the message for c with its text part, HTML part and the
+// inline logo. A render failure is returned so a message is never sent
+// text-only by accident.
+func newMessage(from, to, replyTo, subject string, cc []string, c Content) (Message, error) {
+	html, err := RenderHTML(c)
+	if err != nil {
+		return Message{}, fmt.Errorf("mailer: render html: %w", err)
+	}
+	return Message{From: from, To: to, Cc: cc, ReplyTo: replyTo, Subject: subject,
+		Text: RenderText(c), HTML: html,
+		Inline: []InlineFile{{ContentID: LogoContentID, Filename: "econumo.png", ContentType: "image/png", Data: Logo}}}, nil
 }
 
 type Mailer interface {
@@ -106,18 +127,26 @@ type resendMailer struct {
 }
 
 func (m *resendMailer) Send(ctx context.Context, msg Message) error {
+	if _, err := m.client.Emails.SendWithContext(ctx, resendParams(msg)); err != nil {
+		return fmt.Errorf("mailer: resend send: %w", err)
+	}
+	return nil
+}
+
+func resendParams(msg Message) *resend.SendEmailRequest {
 	params := &resend.SendEmailRequest{
 		From:    msg.From,
 		To:      []string{msg.To},
 		Cc:      msg.Cc,
 		Subject: msg.Subject,
 		Text:    msg.Text,
+		Html:    msg.HTML,
+		ReplyTo: msg.ReplyTo,
 	}
-	if msg.ReplyTo != "" {
-		params.ReplyTo = msg.ReplyTo
+	for _, f := range msg.Inline {
+		params.Attachments = append(params.Attachments, &resend.Attachment{
+			Content: f.Data, Filename: f.Filename, ContentType: f.ContentType, ContentId: f.ContentID,
+		})
 	}
-	if _, err := m.client.Emails.SendWithContext(ctx, params); err != nil {
-		return fmt.Errorf("mailer: resend send: %w", err)
-	}
-	return nil
+	return params
 }
