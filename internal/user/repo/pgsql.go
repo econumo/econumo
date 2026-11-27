@@ -131,3 +131,11 @@ func (pgsqlQuerier) ListAffiliateUsers(ctx context.Context, db backend.DBTX, pro
 	}
 	return out, nil
 }
+
+func (pgsqlQuerier) ListLifetimeUserIDsMissingInactivityMonths(ctx context.Context, db backend.DBTX) ([]string, error) {
+	return pgsqlgen.New(db).ListLifetimeUserIDsMissingInactivityMonths(ctx)
+}
+
+func (pgsqlQuerier) InsertUserOptionIfMissing(ctx context.Context, db backend.DBTX, p optionIfMissingParams) (int64, error) {
+	return pgsqlgen.New(db).InsertUserOptionIfMissing(ctx, pgsqlgen.InsertUserOptionIfMissingParams(p))
+}

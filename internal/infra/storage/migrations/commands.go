@@ -52,4 +52,7 @@ func init() {
 	// A command because model.NormalizeEmail folds what SQLite's ASCII-only lower()
 	// cannot, and only Go can tell a colliding address from a free one row by row.
 	RegisterCommand("20261103000001", "migration:normalize-emails")
+	// Lifetime accounts that exist when per-user inactivity periods arrive get
+	// 36 months, once. A command because each option row needs a UUIDv7 id.
+	RegisterCommand("20261127000001", "migration:seed-lifetime-inactivity")
 }

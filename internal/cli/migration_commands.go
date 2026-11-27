@@ -44,6 +44,18 @@ func migrationCommands() []command {
 			},
 		},
 		{
+			name:    "migration:seed-lifetime-inactivity",
+			summary: "give lifetime accounts (full access, no end date) without an inactivity period 36 months (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := c.user.SeedLifetimeInactivity(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("seeded %d inactivity period(s)\n", n)
+				return nil
+			},
+		},
+		{
 			name:    "migration:normalize-emails",
 			summary: "rewrite stored addresses to their normalized form; one that would collide keeps its spelling and is logged (idempotent)",
 			run: func(ctx context.Context, c *container, args []string) error {

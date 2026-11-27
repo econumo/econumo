@@ -3426,14 +3426,24 @@ User C sees none of it.
 - [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot
       ("Dot 1" ... "Dot 9"); Enter or Space picks it (a single tap does the
       same), Clear and Done appear, and Done submits once 4 dots are picked.
-- [ ] Inactivity (ECONUMO_INACTIVE_USER_DAYS=1 on a test server, a user idle for
-      2+ days): after the daily pass the user gets ONE email, is signed out
+- [ ] Inactivity (ECONUMO_INACTIVE_USER_MONTHS=1 on a test server, a user idle for
+      32+ days): after the daily pass the user gets ONE email, is signed out
       everywhere, and `user:list-pending-deletion` lists them with reason
       `inactive`.
 - [ ] The same with a connected user who signed in today: the idle user is NOT
       marked.
 - [ ] Two connected users both marked inactive; one signs in: after the next
       daily pass the other is no longer in `user:list-pending-deletion`.
+- [ ] Per-user period (ECONUMO_INACTIVE_USER_MONTHS=2): a user who chose 4 months
+      (`update-inactivity-period` `{"months": 4}`) and is idle 70 days is NOT marked by
+      the daily pass; idle 125 days they are, and the email says 120 days. A user without
+      a choice idle 70 days is marked and the email says 60 days.
+- [ ] `update-inactivity-period` with a value outside the user's `inactivityChoices`, or any
+      value while ECONUMO_INACTIVE_USER_MONTHS=0, answers 400 "This value is not valid." on
+      `months`; get-user-data then shows `inactivityMonths` 0 and `inactivityChoices` [].
+- [ ] Upgrading a server with lifetime accounts (full access, no end date): each gets the
+      `inactivity_months` option 36 once (`migration:seed-lifetime-inactivity`, also runnable by
+      hand, a second run seeds 0); trial and read-only accounts get nothing.
 - [ ] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the
       daily pass; with the setting at 0 they stay until `user:delete`.
 - [ ] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →

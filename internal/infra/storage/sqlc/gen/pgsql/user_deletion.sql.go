@@ -160,7 +160,9 @@ func (q *Queries) InsertUserDeletionRequestIfGeneration(ctx context.Context, arg
 }
 
 const listInactiveUserCandidates = `-- name: ListInactiveUserCandidates :many
-SELECT u.id, u.email, u.name, u.language FROM users u
+SELECT u.id, u.email, u.name, u.language, u.last_active_at, u.created_at, o.value AS inactivity_months
+FROM users u
+LEFT JOIN users_options o ON o.user_id = u.id AND o.name = 'inactivity_months'
 WHERE u.deletion_marked_at IS NULL AND u.is_active = true
   AND COALESCE(u.last_active_at, u.created_at) < $1
   AND NOT EXISTS (
@@ -171,12 +173,17 @@ ORDER BY u.id
 `
 
 type ListInactiveUserCandidatesRow struct {
-	ID       string
-	Email    string
-	Name     string
-	Language string
+	ID               string
+	Email            string
+	Name             string
+	Language         string
+	LastActiveAt     *time.Time
+	CreatedAt        time.Time
+	InactivityMonths *string
 }
 
+// cutoff is the shortest period any account can have: Go applies each
+// candidate's own period (inactivity_months, else the server setting).
 func (q *Queries) ListInactiveUserCandidates(ctx context.Context, cutoff *time.Time) ([]ListInactiveUserCandidatesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listInactiveUserCandidates, cutoff)
 	if err != nil {
@@ -191,6 +198,9 @@ func (q *Queries) ListInactiveUserCandidates(ctx context.Context, cutoff *time.T
 			&i.Email,
 			&i.Name,
 			&i.Language,
+			&i.LastActiveAt,
+			&i.CreatedAt,
+			&i.InactivityMonths,
 		); err != nil {
 			return nil, err
 		}

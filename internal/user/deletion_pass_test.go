@@ -200,7 +200,7 @@ func (e *passEnv) release(t *testing.T) int {
 
 const day = 24 * time.Hour
 
-var inactive30 = appuser.DeletionConfig{InactiveDays: 30, DeletionDays: 30}
+var inactive30 = appuser.DeletionConfig{InactiveMonths: 1, DeletionDays: 30}
 
 func TestMarkInactive_CutoffRule(t *testing.T) {
 	e := newPassEnv(t, inactive30)
@@ -353,7 +353,7 @@ func TestMarkInactive_EmailChangedWhileTheMailWasSent(t *testing.T) {
 }
 
 func TestMarkInactive_Off(t *testing.T) {
-	e := newPassEnv(t, appuser.DeletionConfig{InactiveDays: 0, DeletionDays: 30})
+	e := newPassEnv(t, appuser.DeletionConfig{InactiveMonths: 0, DeletionDays: 30})
 	e.user(t, "ancient@pass.test", 4000*day)
 	e.svc.SetDeletionSender(nil)
 
@@ -438,7 +438,7 @@ func TestRelease_MarkedPartnerDoesNotCount(t *testing.T) {
 }
 
 func TestRelease_InactivityOff(t *testing.T) {
-	e := newPassEnv(t, appuser.DeletionConfig{InactiveDays: 0, DeletionDays: 30})
+	e := newPassEnv(t, appuser.DeletionConfig{InactiveMonths: 0, DeletionDays: 30})
 	idle := e.user(t, "idle@pass.test", 40*day)
 	cli := e.user(t, "cli@pass.test", 40*day)
 	self := e.user(t, "self@pass.test", 40*day)
@@ -462,7 +462,7 @@ func TestRelease_InactivityOff(t *testing.T) {
 }
 
 func TestRelease_RunsWhenDeletionDaysIsZero(t *testing.T) {
-	e := newPassEnv(t, appuser.DeletionConfig{InactiveDays: 30, DeletionDays: 0})
+	e := newPassEnv(t, appuser.DeletionConfig{InactiveMonths: 1, DeletionDays: 0})
 	a := e.user(t, "a@pass.test", 40*day)
 	b := e.user(t, "b@pass.test", time.Hour)
 	e.connect(t, a, b)
@@ -528,7 +528,7 @@ func TestWipeExpired_AgeRule(t *testing.T) {
 }
 
 func TestWipeExpired_DeletionDaysZero(t *testing.T) {
-	e := newPassEnv(t, appuser.DeletionConfig{InactiveDays: 30, DeletionDays: 0})
+	e := newPassEnv(t, appuser.DeletionConfig{InactiveMonths: 1, DeletionDays: 0})
 	old := e.user(t, "old@pass.test", 40*day)
 	e.mark(t, old, model.DeletionReasonCLI, e.clk.now.Add(-400*day))
 
@@ -585,7 +585,7 @@ func TestWipe_ReleasesInsteadOfWiping(t *testing.T) {
 }
 
 func TestWipe_InactivityOffReleases(t *testing.T) {
-	e := newPassEnv(t, appuser.DeletionConfig{InactiveDays: 0, DeletionDays: 30})
+	e := newPassEnv(t, appuser.DeletionConfig{InactiveMonths: 0, DeletionDays: 30})
 	u := e.user(t, "idle@pass.test", 40*day)
 	e.mark(t, u, model.DeletionReasonInactive, e.clk.now)
 
@@ -729,5 +729,166 @@ func TestDeletionJob_RunOnceRecoversAPanicOutsideAWipe(t *testing.T) {
 	}
 	if strings.Contains(logs.String(), "user_secret@example.test") {
 		t.Errorf("the log carries the panic value: %s", logs.String())
+	}
+}
+
+var inactive12 = appuser.DeletionConfig{InactiveMonths: 12, DeletionDays: 30}
+
+func (e *passEnv) setInactivityMonths(t *testing.T, id vo.Id, value string) {
+	t.Helper()
+	if err := e.users.UpsertOption(context.Background(), id, model.NewUserOption(vo.NewId(), model.OptionInactivityMonths, &value, e.clk.now)); err != nil {
+		t.Fatalf("UpsertOption: %v", err)
+	}
+}
+
+func (e *passEnv) noticeTo(t *testing.T, to string) string {
+	t.Helper()
+	for _, m := range e.mail.msgs {
+		if m.To == to {
+			return m.Text
+		}
+	}
+	t.Fatalf("no notice to %s", to)
+	return ""
+}
+
+func TestMarkInactive_OwnPeriod(t *testing.T) {
+	e := newPassEnv(t, inactive12)
+	a := e.user(t, "a@pass.test", 362*day)
+	aRecent := e.user(t, "a2@pass.test", 300*day)
+	b := e.user(t, "b@pass.test", 182*day)
+	e.setInactivityMonths(t, b, "6")
+	cRecent := e.user(t, "c@pass.test", 400*day)
+	e.setInactivityMonths(t, cRecent, "24")
+	c := e.user(t, "c2@pass.test", 722*day)
+	e.setInactivityMonths(t, c, "24")
+	d := e.user(t, "d@pass.test", 800*day)
+	e.setInactivityMonths(t, d, "36")
+
+	if n := e.markInactive(t); n != 3 {
+		t.Fatalf("marked = %d, want 3", n)
+	}
+	for id, want := range map[vo.Id]bool{a: true, aRecent: false, b: true, cRecent: false, c: true, d: false} {
+		if got := e.state(t, id).MarkedAt != nil; got != want {
+			t.Errorf("%s marked = %v, want %v", id, got, want)
+		}
+	}
+	if len(e.mail.msgs) != 3 {
+		t.Fatalf("emails = %d, want one per mark", len(e.mail.msgs))
+	}
+	if text := e.noticeTo(t, "b@pass.test"); !strings.Contains(text, "180") {
+		t.Errorf("B's notice does not carry 180 days:\n%s", text)
+	}
+	if text := e.noticeTo(t, "a@pass.test"); !strings.Contains(text, "360") {
+		t.Errorf("A's notice does not carry 360 days:\n%s", text)
+	}
+	if text := e.noticeTo(t, "c2@pass.test"); !strings.Contains(text, "720") {
+		t.Errorf("C's notice does not carry 720 days:\n%s", text)
+	}
+}
+
+// A partner's activity is measured against the candidate's own period,
+// whatever the partner's.
+func TestMarkInactive_HouseholdUsesTheCandidatesPeriod(t *testing.T) {
+	for _, tc := range []struct {
+		partnerIdle time.Duration
+		marked      bool
+	}{{100 * day, false}, {190 * day, true}} {
+		t.Run(tc.partnerIdle.String(), func(t *testing.T) {
+			e := newPassEnv(t, inactive12)
+			u := e.user(t, "cand@pass.test", 182*day)
+			e.setInactivityMonths(t, u, "6")
+			p := e.user(t, "partner@pass.test", tc.partnerIdle)
+			e.setInactivityMonths(t, p, "24")
+			e.connect(t, u, p)
+
+			e.markInactive(t)
+			if got := e.state(t, u).MarkedAt != nil; got != tc.marked {
+				t.Errorf("partner idle %v: candidate marked = %v, want %v", tc.partnerIdle, got, tc.marked)
+			}
+			if got := e.state(t, p).MarkedAt != nil; got {
+				t.Errorf("partner idle %v: the partner (24 months) must not be marked", tc.partnerIdle)
+			}
+		})
+	}
+}
+
+// A candidate past the shortest period but within their own, whose partner is
+// active within it, gets no notice: otherwise every pass would mail them.
+func TestMarkInactive_NoNoticeWhenThePartnerIsActiveWithinTheOwnPeriod(t *testing.T) {
+	e := newPassEnv(t, inactive12)
+	u := e.user(t, "long@pass.test", 722*day)
+	e.setInactivityMonths(t, u, "24")
+	p := e.user(t, "partner@pass.test", 200*day)
+	e.setInactivityMonths(t, p, "36")
+	e.connect(t, u, p)
+
+	if n := e.markInactive(t); n != 0 {
+		t.Fatalf("marked = %d, want 0", n)
+	}
+	if len(e.mail.msgs) != 0 {
+		t.Fatalf("emails = %d, want none", len(e.mail.msgs))
+	}
+}
+
+// The period is re-read under the row lock: a user who lengthened it while the
+// notice was being sent is judged by the new one.
+func TestMarkInactive_PeriodChangedWhileTheMailWasSent(t *testing.T) {
+	e := newPassEnv(t, inactive12)
+	u := e.user(t, "idle@pass.test", 200*day)
+	e.setInactivityMonths(t, u, "6")
+	e.mail.hook = func(mailer.Message) { e.setInactivityMonths(t, u, "24") }
+
+	if n := e.markInactive(t); n != 0 {
+		t.Fatalf("marked = %d, want 0", n)
+	}
+}
+
+func TestMarkInactive_OffIgnoresOptions(t *testing.T) {
+	e := newPassEnv(t, appuser.DeletionConfig{InactiveMonths: 0, DeletionDays: 30})
+	u := e.user(t, "idle@pass.test", 800*day)
+	e.setInactivityMonths(t, u, "1")
+	if n := e.markInactive(t); n != 0 || len(e.mail.msgs) != 0 {
+		t.Fatalf("marked = %d, emails = %d, want none", n, len(e.mail.msgs))
+	}
+}
+
+func TestRelease_UsesTheMarkedUsersPeriod(t *testing.T) {
+	for _, tc := range []struct {
+		months   string
+		released int
+	}{{"24", 1}, {"6", 0}} {
+		t.Run(tc.months, func(t *testing.T) {
+			e := newPassEnv(t, inactive12)
+			u := e.user(t, "idle@pass.test", 800*day)
+			e.setInactivityMonths(t, u, tc.months)
+			p := e.user(t, "partner@pass.test", 400*day)
+			e.connect(t, u, p)
+			e.mark(t, u, model.DeletionReasonInactive, e.clk.now)
+
+			if n := e.release(t); n != tc.released {
+				t.Fatalf("released = %d, want %d: the partner idle 400 days against %s months", n, tc.released, tc.months)
+			}
+			if tc.released == 1 {
+				assertCancelled(t, e, u, `{"reason":"inactive","cause":"active_connection"}`)
+			}
+		})
+	}
+}
+
+func TestWipe_ReleaseUsesTheMarkedUsersPeriod(t *testing.T) {
+	e := newPassEnv(t, inactive12)
+	u := e.user(t, "idle@pass.test", 800*day)
+	e.setInactivityMonths(t, u, "24")
+	p := e.user(t, "partner@pass.test", 400*day)
+	e.connect(t, u, p)
+	e.mark(t, u, model.DeletionReasonInactive, e.clk.now)
+
+	out, err := e.svc.Wipe(context.Background(), u, nil)
+	if err != nil || out != appuser.WipeReleased {
+		t.Fatalf("Wipe = %q, %v; want released", out, err)
+	}
+	if !e.exists(t, u) {
+		t.Fatal("the user row must stay")
 	}
 }

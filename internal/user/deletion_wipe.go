@@ -181,28 +181,40 @@ func (s *Service) unmarkInactive(ctx context.Context, userID vo.Id) error {
 		return err
 	}
 	cause := model.CancelCauseActiveConnection
-	if s.deletionCfg.InactiveDays == 0 {
+	if s.deletionCfg.InactiveMonths == 0 {
 		cause = model.CancelCauseInactivityOff
 	}
 	return s.writeDeletionAudit(ctx, userID, model.AuditDeletionCancelled,
 		deletionAuditDetails{Reason: model.DeletionReasonInactive, Cause: cause}, s.clock.Now())
 }
 
-// inactiveMarkStillAllowed: with the policy off there is no window left to
-// measure, so no inactive mark is allowed.
+// inactiveMarkStillAllowed runs under the user's row lock. Partners count as
+// active within the marked user's own period. With the policy off there is no
+// window left to measure, so no inactive mark is allowed.
 func (s *Service) inactiveMarkStillAllowed(ctx context.Context, userID vo.Id) (bool, error) {
-	if s.deletionCfg.InactiveDays == 0 {
+	if s.deletionCfg.InactiveMonths == 0 {
 		return false, nil
 	}
-	active, err := s.deletion.HasActiveConnection(ctx, userID, s.inactiveCutoff())
+	u, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	cutoff := s.inactiveCutoff(u.InactivityMonths(s.deletionCfg.InactiveMonths))
+	active, err := s.deletion.HasActiveConnection(ctx, userID, cutoff)
 	if err != nil {
 		return false, err
 	}
 	return !active, nil
 }
 
+// maxInactivityMonths caps a stored period before it becomes a duration: the
+// option is free text in the database, and an overflowed cutoff would land in
+// the future and mark everyone.
+const maxInactivityMonths = 12000
+
 // inactiveCutoff: the stamp has day precision, so the extra day keeps both
 // errors on the side of keeping data.
-func (s *Service) inactiveCutoff() time.Time {
-	return s.clock.Now().Add(-time.Duration(s.deletionCfg.InactiveDays+1) * 24 * time.Hour)
+func (s *Service) inactiveCutoff(months int) time.Time {
+	months = min(months, maxInactivityMonths)
+	return s.clock.Now().Add(-time.Duration(months*model.DaysPerInactivityMonth+1) * 24 * time.Hour)
 }

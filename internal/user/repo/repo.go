@@ -44,19 +44,20 @@ type (
 		// from the generated row types are positional.
 		CredentialsGeneration int64
 	}
-	optionRow           = sqlitegen.UsersOption
-	userParams          = sqlitegen.UpsertUserParams
-	optionParams        = sqlitegen.UpsertUserOptionParams
-	clearOptionParams   = sqlitegen.ClearUserOptionIfValueParams
-	languageParams      = sqlitegen.UpdateUserLanguageParams
-	timezoneParams      = sqlitegen.UpdateUserTimezoneParams
-	passwordIfGenParams = sqlitegen.UpdateUserPasswordIfGenerationParams
-	emailIfGenParams    = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
-	emailGenParams      = sqlitegen.UpdateUserEmailIfGenerationParams
-	emailLookupParams   = sqlitegen.GetUserByEmailParams
-	userEmailRow        = sqlitegen.ListUserEmailsOldestFirstRow
-	affiliateRow        = sqlitegen.ListAffiliateUsersRow
-	setEmailParams      = sqlitegen.SetUserEmailParams
+	optionRow             = sqlitegen.UsersOption
+	userParams            = sqlitegen.UpsertUserParams
+	optionParams          = sqlitegen.UpsertUserOptionParams
+	optionIfMissingParams = sqlitegen.InsertUserOptionIfMissingParams
+	clearOptionParams     = sqlitegen.ClearUserOptionIfValueParams
+	languageParams        = sqlitegen.UpdateUserLanguageParams
+	timezoneParams        = sqlitegen.UpdateUserTimezoneParams
+	passwordIfGenParams   = sqlitegen.UpdateUserPasswordIfGenerationParams
+	emailIfGenParams      = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
+	emailGenParams        = sqlitegen.UpdateUserEmailIfGenerationParams
+	emailLookupParams     = sqlitegen.GetUserByEmailParams
+	userEmailRow          = sqlitegen.ListUserEmailsOldestFirstRow
+	affiliateRow          = sqlitegen.ListAffiliateUsersRow
+	setEmailParams        = sqlitegen.SetUserEmailParams
 )
 
 type querier interface {
@@ -68,6 +69,8 @@ type querier interface {
 	SetUserEmail(ctx context.Context, db backend.DBTX, p setEmailParams) error
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
 	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
+	ListLifetimeUserIDsMissingInactivityMonths(ctx context.Context, db backend.DBTX) ([]string, error)
+	InsertUserOptionIfMissing(ctx context.Context, db backend.DBTX, p optionIfMissingParams) (int64, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
 	LockUserRow(ctx context.Context, db backend.DBTX, id string) error
 	BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
@@ -230,6 +233,34 @@ func (r *Repo) ListUserIDsMissingOption(ctx context.Context, name string) ([]vo.
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+func (r *Repo) ListLifetimeUserIDsMissingInactivityMonths(ctx context.Context) ([]vo.Id, error) {
+	raw, err := r.q.ListLifetimeUserIDsMissingInactivityMonths(ctx, r.db(ctx))
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]vo.Id, 0, len(raw))
+	for _, s := range raw {
+		id, perr := vo.ParseId(s)
+		if perr != nil {
+			return nil, perr
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func (r *Repo) InsertOptionIfMissing(ctx context.Context, userID vo.Id, o model.UserOption) (bool, error) {
+	n, err := r.q.InsertUserOptionIfMissing(ctx, r.db(ctx), optionIfMissingParams{
+		ID:        o.ID.String(),
+		UserID:    userID.String(),
+		Name:      o.Name,
+		Value:     o.Value,
+		CreatedAt: o.CreatedAt,
+		UpdatedAt: o.UpdatedAt,
+	})
+	return n == 1, err
 }
 
 func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error) {

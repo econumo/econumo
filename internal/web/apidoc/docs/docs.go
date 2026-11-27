@@ -14748,6 +14748,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/update-inactivity-period": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Sets after how many months without activity the authenticated user's data is deleted. months must be one of the user's inactivityChoices; while the server deletes no inactive accounts every value is refused. Returns the refreshed user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update inactivity period",
+                "parameters": [
+                    {
+                        "description": "Update inactivity period request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateInactivityPeriodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UpdateInactivityPeriodResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/update-language": {
             "post": {
                 "security": [
@@ -17016,6 +17085,16 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "inactivityChoices": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "inactivityMonths": {
+                    "description": "InactivityMonths is the caller's effective inactivity period, 0 when the\nserver does not delete inactive accounts; InactivityChoices are the periods\nupdate-inactivity-period accepts, empty when it does not.",
+                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -21113,6 +21192,23 @@ const docTemplate = `{
                 },
                 "tagId": {
                     "type": "string"
+                }
+            }
+        },
+        "model.UpdateInactivityPeriodRequest": {
+            "type": "object",
+            "properties": {
+                "months": {
+                    "type": "integer",
+                    "example": 6
+                }
+            }
+        },
+        "model.UpdateInactivityPeriodResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
                 }
             }
         },

@@ -35,15 +35,20 @@ type ReadModel interface {
 
 // ReadService serves the user read endpoints.
 type ReadService struct {
-	read   ReadModel
-	encode *auth.EncodeService
-	clock  port.Clock
+	read           ReadModel
+	encode         *auth.EncodeService
+	clock          port.Clock
+	inactiveMonths int
 }
 
 // NewReadService wires the read service.
 func NewReadService(read ReadModel, encode *auth.EncodeService, clock port.Clock) *ReadService {
 	return &ReadService{read: read, encode: encode, clock: clock}
 }
+
+// SetInactiveMonths is ECONUMO_INACTIVE_USER_MONTHS, which the current user's
+// inactivity fields are derived from.
+func (s *ReadService) SetInactiveMonths(months int) { s.inactiveMonths = months }
 
 // GetUserData returns the current-user view in one read path: the user row, its
 // options, and the synthetic currency_id (the stored currency option value) —
@@ -113,6 +118,7 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 	// option or dangling id is data corruption and surfaces as an error.
 	storedCurrencyID := ""
 	reportPeriod := model.DefaultReportPeriod
+	var inactivity *string
 	rawOptions := make([]model.OptionResult, 0, len(opts))
 	for _, o := range opts {
 		if model.IsServerOnlyOption(o.Name) {
@@ -128,6 +134,8 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 			if o.Value != nil {
 				reportPeriod = *o.Value
 			}
+		case model.OptionInactivityMonths:
+			inactivity = o.Value
 		}
 	}
 	if storedCurrencyID == "" {
@@ -154,18 +162,21 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})
 
 	level := model.EffectiveAccessLevel(u.AccessLevel, u.AccessUntil, s.clock.Now())
+	months, choices := model.CurrentInactivity(inactivity, s.inactiveMonths)
 
 	return model.CurrentUserResult{
-		Id:           u.ID,
-		Name:         u.Name,
-		Email:        email,
-		Avatar:       u.Avatar,
-		CreatedAt:    datetime.FormatOrEmpty(&u.CreatedAt),
-		Options:      options,
-		Currency:     currencyCode,
-		ReportPeriod: reportPeriod,
-		AccessLevel:  string(level),
-		AccessUntil:  datetime.FormatOrEmpty(u.AccessUntil),
-		HasPassword:  model.HasPasswordAlgorithm(u.Algorithm),
+		Id:                u.ID,
+		Name:              u.Name,
+		Email:             email,
+		Avatar:            u.Avatar,
+		CreatedAt:         datetime.FormatOrEmpty(&u.CreatedAt),
+		Options:           options,
+		Currency:          currencyCode,
+		ReportPeriod:      reportPeriod,
+		AccessLevel:       string(level),
+		AccessUntil:       datetime.FormatOrEmpty(u.AccessUntil),
+		HasPassword:       model.HasPasswordAlgorithm(u.Algorithm),
+		InactivityMonths:  months,
+		InactivityChoices: choices,
 	}, nil
 }

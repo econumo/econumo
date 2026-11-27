@@ -3,6 +3,7 @@ package model
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"strconv"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -66,10 +67,64 @@ type PendingDeletion struct {
 }
 
 type InactiveCandidate struct {
-	ID       vo.Id
-	Email    string
-	Name     string
-	Language string
+	ID               vo.Id
+	Email            string
+	Name             string
+	Language         string
+	LastActiveAt     *time.Time
+	CreatedAt        time.Time
+	InactivityOption *string // the stored inactivity_months value, nil when absent
+}
+
+func (c InactiveCandidate) InactivityMonths(serverMonths int) int {
+	return inactivityMonths(c.InactivityOption, serverMonths)
+}
+
+// Stamp is the moment the inactivity period is measured from.
+func (c InactiveCandidate) Stamp() time.Time {
+	if c.LastActiveAt != nil {
+		return *c.LastActiveAt
+	}
+	return c.CreatedAt
+}
+
+// DaysPerInactivityMonth: periods are counted in 30-day months, never calendar
+// months, so a period is the same length whenever it starts.
+const DaysPerInactivityMonth = 30
+
+// inactivityMonths owns the per-user period rule. A stored value that is not
+// among today's choices stays valid (the 36 months seeded for lifetime
+// accounts, or a choice made under an older server setting); an unparsable or
+// non-positive one reads as absent.
+func inactivityMonths(stored *string, serverMonths int) int {
+	if stored != nil {
+		if n, err := strconv.Atoi(*stored); err == nil && n > 0 {
+			return n
+		}
+	}
+	return serverMonths
+}
+
+// CurrentInactivity is what the current user carries: the effective period and
+// today's choices, 0 and an empty list while the server deletes nobody.
+func CurrentInactivity(stored *string, serverMonths int) (months int, choices []int) {
+	if serverMonths <= 0 {
+		return 0, []int{}
+	}
+	return inactivityMonths(stored, serverMonths), InactivityChoices(serverMonths)
+}
+
+// InactivityChoices are the periods a user may choose under the server setting:
+// half of it (left out when that is 0), the setting itself and its double.
+func InactivityChoices(serverMonths int) []int {
+	out := []int{}
+	if serverMonths <= 0 {
+		return out
+	}
+	if half := serverMonths / 2; half > 0 {
+		out = append(out, half)
+	}
+	return append(out, serverMonths, serverMonths*2)
 }
 
 // DeletionRequest is a pending self-service deletion code. Email is users.email

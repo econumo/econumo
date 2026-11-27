@@ -242,6 +242,7 @@ func BuildWithServices(cfg config.Config, db *sql.DB, seams Seams) (*Built, erro
 		userSvc.DisablePasswordLogin()
 	}
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
+	userReadSvc.SetInactiveMonths(cfg.InactiveUserMonths)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
 	billingAccessSvc, err := newBillingAccessService(cfg, userRepo, connectionrepo.NewRepo(cfg.DatabaseDriver, txm), clk, seams.BillingHTTPClient)
 	if err != nil {
@@ -624,5 +625,5 @@ func DeletionConfig(cfg config.Config) appuser.DeletionConfig {
 	for _, email := range cfg.InactiveUserExclude {
 		exclude[email] = true
 	}
-	return appuser.DeletionConfig{InactiveDays: cfg.InactiveUserDays, DeletionDays: cfg.UserDeletionDays, Exclude: exclude}
+	return appuser.DeletionConfig{InactiveMonths: cfg.InactiveUserMonths, DeletionDays: cfg.UserDeletionDays, Exclude: exclude}
 }

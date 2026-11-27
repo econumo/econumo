@@ -669,6 +669,14 @@ func TestReadonlyMayUpdateAnalytics(t *testing.T) {
 	}
 }
 
+// When one's own data is deleted is no paid feature.
+func TestReadonlyMayUpdateInactivityPeriod(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/update-inactivity-period", readonlyStub())
+	if !ran || rec.Code == http.StatusPaymentRequired {
+		t.Fatalf("status = %d, ran = %v, want the handler to run", rec.Code, ran)
+	}
+}
+
 // Opting out of AI is a privacy choice, so a lapsed user can still make it.
 func TestReadonlyMayUpdateAI(t *testing.T) {
 	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/update-ai", readonlyStub())

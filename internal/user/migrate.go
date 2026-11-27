@@ -217,3 +217,35 @@ func (s *Service) SeedAnalyticsOption(ctx context.Context, enabled bool) (int, e
 	}
 	return seeded, nil
 }
+
+// lifetimeInactivityMonths is what lifetime accounts that existed when per-user
+// periods arrived were given, once; later lifetime accounts start at the default.
+const lifetimeInactivityMonths = "36"
+
+// SeedLifetimeInactivity is migration:seed-lifetime-inactivity. Idempotent: a
+// user who already holds the option, whatever its value, is left alone.
+func (s *Service) SeedLifetimeInactivity(ctx context.Context) (int, error) {
+	var seeded int
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		ids, err := s.repo.ListLifetimeUserIDsMissingInactivityMonths(ctx)
+		if err != nil {
+			return err
+		}
+		now := s.clock.Now()
+		value := lifetimeInactivityMonths
+		for _, id := range ids {
+			ok, err := s.repo.InsertOptionIfMissing(ctx, id, model.NewUserOption(s.repo.NextIdentity(), model.OptionInactivityMonths, &value, now))
+			if err != nil {
+				return err
+			}
+			if ok {
+				seeded++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return seeded, nil
+}

@@ -4,6 +4,9 @@
 package model
 
 import (
+	"bytes"
+	"encoding/json"
+	"strconv"
 	"strings"
 
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -36,6 +39,11 @@ type CurrentUserResult struct {
 	AccessLevel  string         `json:"accessLevel"`
 	AccessUntil  string         `json:"accessUntil"`
 	HasPassword  bool           `json:"hasPassword"`
+	// InactivityMonths is the caller's effective inactivity period, 0 when the
+	// server does not delete inactive accounts; InactivityChoices are the periods
+	// update-inactivity-period accepts, empty when it does not.
+	InactivityMonths  int   `json:"inactivityMonths"`
+	InactivityChoices []int `json:"inactivityChoices"`
 }
 
 // ---------------------------------------------------------------------------
@@ -258,6 +266,45 @@ func (r UpdateAIRequest) Validate() error {
 
 // UpdateAIResult is the update-ai response.
 type UpdateAIResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
+// update-inactivity-period
+// ---------------------------------------------------------------------------
+
+// UpdateInactivityPeriodRequest is the update-inactivity-period request body.
+// Months is kept raw so a fraction or a string is the field's validation error,
+// not the decoder's "not valid JSON". Whether it is one of the server's choices
+// is checked by the service.
+type UpdateInactivityPeriodRequest struct {
+	Months json.RawMessage `json:"months" swaggertype:"integer" example:"6"`
+}
+
+func (r UpdateInactivityPeriodRequest) Validate() error {
+	if _, ok := r.months(); !ok {
+		return InvalidInactivityMonths()
+	}
+	return nil
+}
+
+// MonthsValue is the validated value; call it after Validate.
+func (r UpdateInactivityPeriodRequest) MonthsValue() int {
+	n, _ := r.months()
+	return n
+}
+
+func (r UpdateInactivityPeriodRequest) months() (int, bool) {
+	n, err := strconv.Atoi(string(bytes.TrimSpace(r.Months)))
+	return n, err == nil
+}
+
+func InvalidInactivityMonths() error {
+	return errs.NewValidation("Validation failed", errs.FieldError{Key: "months", Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
+}
+
+// UpdateInactivityPeriodResult is the update-inactivity-period response.
+type UpdateInactivityPeriodResult struct {
 	User CurrentUserResult `json:"user"`
 }
 

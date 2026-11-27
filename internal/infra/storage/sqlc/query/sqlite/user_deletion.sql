@@ -20,10 +20,14 @@ WHERE deletion_marked_at IS NOT NULL
 ORDER BY deletion_marked_at, id;
 
 -- name: ListInactiveUserCandidates :many
+-- cutoff is the shortest period any account can have: Go applies each
+-- candidate's own period (inactivity_months, else the server setting).
 -- A user connected to someone still active (and not marked) is kept: the
 -- shared data is in use. A literal ?1 rather than sqlc.arg(cutoff): sqlc's
 -- sqlite engine leaves a sqlc.arg inside a WHERE NOT EXISTS unrewritten.
-SELECT u.id, u.email, u.name, u.language FROM users u
+SELECT u.id, u.email, u.name, u.language, u.last_active_at, u.created_at, o.value AS inactivity_months
+FROM users u
+LEFT JOIN users_options o ON o.user_id = u.id AND o.name = 'inactivity_months'
 WHERE u.deletion_marked_at IS NULL AND u.is_active = 1
   AND COALESCE(u.last_active_at, u.created_at) < ?1
   AND NOT EXISTS (

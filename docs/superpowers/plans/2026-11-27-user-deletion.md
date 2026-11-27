@@ -204,7 +204,7 @@ func (r *DeletionRequest) IsExpired(now time.Time) bool
 func EmailHash(address string) string
 ```
 
-- Produces (`config.Config`): `InactiveUserDays int`, `UserDeletionDays int`, `InactiveUserExclude []string` (already `model.NormalizeEmail`-ed), `RateLimitRequestUserDeletion int` (default 3), `RateLimitConfirmUserDeletion int` (default 5).
+- Produces (`config.Config`): `InactiveUserMonths int`, `UserDeletionDays int`, `InactiveUserExclude []string` (already `model.NormalizeEmail`-ed), `RateLimitRequestUserDeletion int` (default 3), `RateLimitConfirmUserDeletion int` (default 5).
 
 - [x] **Step 1: Write the failing tests.**
 
@@ -220,9 +220,9 @@ func EmailHash(address string) string
 if got := model.EmailHash("  Anna@Example.TEST "); got != model.EmailHash("anna@example.test") { ... }
 if len(model.EmailHash("a@b.test")) != 64 { ... }
 // config
-t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "-1")            // Load() returns an error naming the variable
+t.Setenv("ECONUMO_INACTIVE_USER_MONTHS", "-1")          // Load() returns an error naming the variable
 t.Setenv("ECONUMO_USER_DELETION_DAYS", "abc")           // error
-t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "36501")          // error: above the 36500-day cap
+t.Setenv("ECONUMO_INACTIVE_USER_MONTHS", "601")          // error: above the 600-month cap (Task 23)
 t.Setenv("ECONUMO_USER_DELETION_DAYS", "36500")          // accepted
 t.Setenv("ECONUMO_INACTIVE_USER_EXCLUDE", " A@x.test ,b@x.test,") // []string{"a@x.test","b@x.test"}
 // unset: all three are 0 / 0 / nil
@@ -266,9 +266,13 @@ CREATE UNIQUE INDEX UNIQ_users_deletion_requests_user ON users_deletion_requests
 
 ```
 # --- User deletion -----------------------------------------------------------
-# Mark users with no activity for this many days for deletion and email them
-# once. 0 = never. A user connected to an active user is never marked.
-# ECONUMO_INACTIVE_USER_DAYS=0
+# Mark users with no activity for this many months (a month is 30 days) for
+# deletion and email them once. 0 = never, and users are offered nothing. Above
+# 0 it is also the default period: each user may choose half of it, it, or
+# double it in Settings (with 12: 6, 12 or 24 months). Lifetime accounts that
+# existed when per-user periods arrived were given 36 months. A user connected
+# to an active user is never marked. Whole number, 0 to 600.
+# ECONUMO_INACTIVE_USER_MONTHS=0
 # Delete a marked user's data this many days after the mark. 0 = never
 # automatically: run `user:delete <email>` by hand.
 # ECONUMO_USER_DELETION_DAYS=0
@@ -300,7 +304,7 @@ type DeletionStore interface {
 	// blind, monotonic, at most once per 24 h.
 	TouchLastActive(ctx context.Context, userID vo.Id, now time.Time) error
 	ListMarked(ctx context.Context) ([]model.MarkedUser, error) // marked_at, id
-	// cutoff = now - (InactiveUserDays+1) days.
+	// cutoff = now - (30 days + 1); Go applies each candidate's own period (Task 23).
 	ListInactiveCandidates(ctx context.Context, cutoff time.Time) ([]model.InactiveCandidate, error)
 	HasActiveConnection(ctx context.Context, userID vo.Id, cutoff time.Time) (bool, error)
 	DeleteUser(ctx context.Context, userID vo.Id) (int64, error)
@@ -439,7 +443,7 @@ var handledLooseIDs = map[string]string{
 
 ```go
 type DeletionConfig struct {
-	InactiveDays int
+	InactiveMonths int
 	DeletionDays int
 	Exclude      map[string]bool // model.NormalizeEmail-ed addresses
 }
@@ -924,11 +928,11 @@ type DeletionPassResult struct {
 }
 type PassFailure struct{ UserID vo.Id; ErrType string }
 // ReleaseInactiveMarks cancels inactive marks the household rule no longer allows,
-// and all of them when InactiveDays is 0.
+// and all of them when InactiveMonths is 0.
 func (s *Service) ReleaseInactiveMarks(ctx context.Context) (int, error)
 // WipeExpired wipes users marked at least DeletionDays ago; nobody when DeletionDays is 0.
 func (s *Service) WipeExpired(ctx context.Context) (wiped int, failed []PassFailure, err error)
-// MarkInactive emails and marks; nobody when InactiveDays is 0.
+// MarkInactive emails and marks; nobody when InactiveMonths is 0.
 func (s *Service) MarkInactive(ctx context.Context) (int, error)
 // PurgeDeleted = ReleaseInactiveMarks + WipeExpired (user:purge-deleted).
 func (s *Service) PurgeDeleted(ctx context.Context) DeletionPassResult
@@ -940,7 +944,7 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 - [x] **Step 1: Failing tests** (a settable clock; `SetDeletion` with the config under test; a recording or failing mailer):
 
 ```go
-// cutoff rule: InactiveDays 30 -> a stamp 30 days 23 h old is NOT inactive, 31 days 1 h old is
+// cutoff rule: InactiveMonths 1 (30 days) -> a stamp 30 days 23 h old is NOT inactive, 31 days 1 h old is
 // TestMarkInactive_MarksAndEmailsOnce: reason "inactive", one email to the decoded address in
 //   the user's stored language, days == 30
 // TestMarkInactive_SkipsExcludedAndConnected: an address in Exclude; a user connected to an
@@ -951,11 +955,11 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 // TestMarkInactive_SignedInWhileTheMailWasSent: the mailer's Send hook runs Login for that
 //   candidate -> the user is NOT marked and the new session still authenticates
 // TestMarkInactive_EmailChangedWhileTheMailWasSent: the hook changes users.email -> not marked
-// TestMarkInactive_Off: InactiveDays 0 -> 0, no email
+// TestMarkInactive_Off: InactiveMonths 0 -> 0, no email
 // TestRelease_PartnerCameBack: A and B both marked inactive; B logs in (mark cleared);
 //   ReleaseInactiveMarks -> A unmarked, audit cause "active_connection"
 // TestRelease_MarkedPartnerDoesNotCount: B marked self_initiated with a recent stamp -> A stays marked
-// TestRelease_InactivityOff: InactiveDays 0 -> every inactive mark released with cause
+// TestRelease_InactivityOff: InactiveMonths 0 -> every inactive mark released with cause
 //   "inactivity_off"; a "cli" and a "self_initiated" mark stay
 // TestRelease_RunsWhenDeletionDaysIsZero
 // TestRelease_DoesNotCancelAReplacementMark: the pass lists A's inactive mark; before it locks A,
@@ -972,12 +976,12 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 ```
 
 - [x] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run 'TestMarkInactive|TestRelease|TestWipeExpired|TestWipe_Releases' -count=1`
-- [x] **Step 3: Implement.** `cutoff = now - (InactiveDays+1)*24h`. `MarkInactive` per candidate: skip `Exclude[model.NormalizeEmail(decoded)]`; send; on a send error `slog.Warn("deletion: inactivity notice failed", "user_id", ..., "err_type", ...)` and continue; else one transaction: `LockRow`, then re-read EVERYTHING the selection relied on, because the mail took time: the user is still active (`is_active`), still unmarked, their own stamp is still older than the cutoff, their address is still the one the notice went to, and `HasActiveConnection` is still false; only then `markForDeletion`. `ReleaseInactiveMarks` does the mirror image per listed mark: `LockRow`, `GetState`, and it releases only when the reason is still `inactive` and `MarkedAt` equals the listed value. A listing error is returned (and lands in `DeletionPassResult.Err`), never swallowed. `WipeExpired` passes each selected `MarkedAt` to `Wipe`; a failure logs `slog.Error("deletion: wipe failed", "user_id", ..., "err_type", ...)`. The job runs release, wipe, mark in that order and ends with `slog.Info("deletion: pass done", "released", n, "wiped", n, "failed", n, "marked", n)`. `StartPolling` follows `RateUpdater.StartPolling` (one goroutine, so runs never overlap) with a 2-minute first delay; it always starts (the release pass matters at any setting).
+- [x] **Step 3: Implement.** `cutoff = now - (months*30+1)*24h`, months being the user's own period (Task 23). `MarkInactive` per candidate: skip `Exclude[model.NormalizeEmail(decoded)]`; send; on a send error `slog.Warn("deletion: inactivity notice failed", "user_id", ..., "err_type", ...)` and continue; else one transaction: `LockRow`, then re-read EVERYTHING the selection relied on, because the mail took time: the user is still active (`is_active`), still unmarked, their own stamp is still older than the cutoff, their address is still the one the notice went to, and `HasActiveConnection` is still false; only then `markForDeletion`. `ReleaseInactiveMarks` does the mirror image per listed mark: `LockRow`, `GetState`, and it releases only when the reason is still `inactive` and `MarkedAt` equals the listed value. A listing error is returned (and lands in `DeletionPassResult.Err`), never swallowed. `WipeExpired` passes each selected `MarkedAt` to `Wipe`; a failure logs `slog.Error("deletion: wipe failed", "user_id", ..., "err_type", ...)`. The job runs release, wipe, mark in that order and ends with `slog.Info("deletion: pass done", "released", n, "wiped", n, "failed", n, "marked", n)`. `StartPolling` follows `RateUpdater.StartPolling` (one goroutine, so runs never overlap) with a 2-minute first delay; it always starts (the release pass matters at any setting).
 - [x] **Step 4: Start it** in `cmd/econumo/main.go` next to `rateUpdater.StartPolling(ctx)` from `Built.Users`.
 - [x] **Step 5: Regression plan** (section 12), four items:
 
 ```
-- [x] Inactivity (ECONUMO_INACTIVE_USER_DAYS=1 on a test server, a user idle for 2+ days):
+- [x] Inactivity (ECONUMO_INACTIVE_USER_MONTHS=1 on a test server, a user idle for 32+ days):
       after the daily pass the user gets ONE email, is signed out everywhere, and
       `user:list-pending-deletion` lists them with reason `inactive`.
 - [x] The same with a connected user who signed in today: the idle user is NOT marked.

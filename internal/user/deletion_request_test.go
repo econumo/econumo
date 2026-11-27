@@ -73,7 +73,7 @@ func newSelfDeleteEnvWrapped(t *testing.T, wrap func(appuser.Repository, *testCl
 		store:    userrepo.NewDeletionRepo(db.Engine, db.TX),
 		requests: userrepo.NewDeletionRequestRepo(db.Engine, db.TX),
 	}
-	svc.SetDeletion(e.store, userrepo.NewAuditRepo(db.Engine, db.TX), e.requests, appuser.DeletionConfig{InactiveDays: 365, DeletionDays: 30})
+	svc.SetDeletion(e.store, userrepo.NewAuditRepo(db.Engine, db.TX), e.requests, appuser.DeletionConfig{InactiveMonths: 12, DeletionDays: 30})
 	svc.SetDeletionSender(mailer.NewDeletionSender(e.mail, "noreply@econumo.test", ""))
 	return e
 }

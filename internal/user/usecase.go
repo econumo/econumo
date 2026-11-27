@@ -148,9 +148,9 @@ func (s *Service) SetAISuggestionClearer(c AISuggestionClearer) { s.aiSuggestion
 func (s *Service) SetAppVersion(v string) { s.appVersion = v }
 
 type DeletionConfig struct {
-	InactiveDays int
-	DeletionDays int
-	Exclude      map[string]bool // model.NormalizeEmail-ed addresses
+	InactiveMonths int
+	DeletionDays   int
+	Exclude        map[string]bool // model.NormalizeEmail-ed addresses
 }
 
 // SetDeletion installs the deletion stores. Until it is called the passive
@@ -275,19 +275,26 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 	}
 	cid := currencyID
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})
+	var stored *string
+	if o := u.Option(model.OptionInactivityMonths); o != nil {
+		stored = o.Value
+	}
+	months, choices := model.CurrentInactivity(stored, s.deletionCfg.InactiveMonths)
 
 	return model.CurrentUserResult{
-		Id:           u.ID.String(),
-		Name:         u.Name,
-		Email:        email,
-		Avatar:       u.Avatar,
-		CreatedAt:    datetime.FormatOrEmpty(&u.CreatedAt),
-		Options:      options,
-		Currency:     code,
-		ReportPeriod: u.ReportPeriod(),
-		AccessLevel:  string(u.EffectiveAccessLevel(s.clock.Now())),
-		AccessUntil:  datetime.FormatOrEmpty(u.AccessUntil),
-		HasPassword:  u.HasPassword(),
+		Id:                u.ID.String(),
+		Name:              u.Name,
+		Email:             email,
+		Avatar:            u.Avatar,
+		CreatedAt:         datetime.FormatOrEmpty(&u.CreatedAt),
+		Options:           options,
+		Currency:          code,
+		ReportPeriod:      u.ReportPeriod(),
+		AccessLevel:       string(u.EffectiveAccessLevel(s.clock.Now())),
+		AccessUntil:       datetime.FormatOrEmpty(u.AccessUntil),
+		HasPassword:       u.HasPassword(),
+		InactivityMonths:  months,
+		InactivityChoices: choices,
 	}, nil
 }
 

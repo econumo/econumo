@@ -164,7 +164,9 @@ func (q *Queries) InsertUserDeletionRequestIfGeneration(ctx context.Context, arg
 }
 
 const listInactiveUserCandidates = `-- name: ListInactiveUserCandidates :many
-SELECT u.id, u.email, u.name, u.language FROM users u
+SELECT u.id, u.email, u.name, u.language, u.last_active_at, u.created_at, o.value AS inactivity_months
+FROM users u
+LEFT JOIN users_options o ON o.user_id = u.id AND o.name = 'inactivity_months'
 WHERE u.deletion_marked_at IS NULL AND u.is_active = 1
   AND COALESCE(u.last_active_at, u.created_at) < ?1
   AND NOT EXISTS (
@@ -175,12 +177,17 @@ ORDER BY u.id
 `
 
 type ListInactiveUserCandidatesRow struct {
-	ID       string
-	Email    string
-	Name     string
-	Language string
+	ID               string
+	Email            string
+	Name             string
+	Language         string
+	LastActiveAt     *time.Time
+	CreatedAt        time.Time
+	InactivityMonths *string
 }
 
+// cutoff is the shortest period any account can have: Go applies each
+// candidate's own period (inactivity_months, else the server setting).
 // A user connected to someone still active (and not marked) is kept: the
 // shared data is in use. A literal ?1 rather than sqlc.arg(cutoff): sqlc's
 // sqlite engine leaves a sqlc.arg inside a WHERE NOT EXISTS unrewritten.
@@ -198,6 +205,9 @@ func (q *Queries) ListInactiveUserCandidates(ctx context.Context, lastActiveAt *
 			&i.Email,
 			&i.Name,
 			&i.Language,
+			&i.LastActiveAt,
+			&i.CreatedAt,
+			&i.InactivityMonths,
 		); err != nil {
 			return nil, err
 		}

@@ -57,7 +57,7 @@ func (s *Service) requireDeletionStores() error {
 }
 
 // ReleaseInactiveMarks cancels inactive marks the household rule no longer allows,
-// and all of them when InactiveDays is 0.
+// and all of them when InactiveMonths is 0.
 func (s *Service) ReleaseInactiveMarks(ctx context.Context) (int, error) {
 	if err := s.requireDeletionStores(); err != nil {
 		return 0, err
@@ -173,24 +173,30 @@ func (s *Service) wipeRecovering(ctx context.Context, userID vo.Id, markedAt *ti
 	return s.Wipe(ctx, userID, markedAt)
 }
 
-// MarkInactive emails and marks; nobody when InactiveDays is 0.
+// MarkInactive emails and marks; nobody when InactiveMonths is 0. Each user is
+// judged by their own period; the listing only narrows to those past the
+// shortest one any account can have.
 func (s *Service) MarkInactive(ctx context.Context) (int, error) {
 	if err := s.requireDeletionStores(); err != nil {
 		return 0, err
 	}
-	if s.deletionCfg.InactiveDays == 0 {
+	if s.deletionCfg.InactiveMonths == 0 {
 		return 0, nil
 	}
 	if s.deletionSender == nil {
 		return 0, errors.New("user deletion sender is not wired")
 	}
-	cutoff := s.inactiveCutoff()
-	candidates, err := s.deletion.ListInactiveCandidates(ctx, cutoff)
+	candidates, err := s.deletion.ListInactiveCandidates(ctx, s.inactiveCutoff(1))
 	if err != nil {
 		return 0, err
 	}
 	marked := 0
 	for _, c := range candidates {
+		months := c.InactivityMonths(s.deletionCfg.InactiveMonths)
+		cutoff := s.inactiveCutoff(months)
+		if !c.Stamp().Before(cutoff) {
+			continue
+		}
 		email, err := s.encode.Decode(c.Email)
 		if err != nil {
 			slog.Warn("deletion: inactivity mark failed", "user_id", c.ID.String(), "err_type", failureReason(err))
@@ -199,12 +205,23 @@ func (s *Service) MarkInactive(ctx context.Context) (int, error) {
 		if s.deletionCfg.Exclude[model.NormalizeEmail(email)] {
 			continue
 		}
+		// The listing measured partners against the shortest period; without this
+		// check a user with a longer one would get the notice on every pass and
+		// never be marked.
+		active, err := s.deletion.HasActiveConnection(ctx, c.ID, cutoff)
+		if err != nil {
+			slog.Warn("deletion: inactivity mark failed", "user_id", c.ID.String(), "err_type", failureReason(err))
+			continue
+		}
+		if active {
+			continue
+		}
 		// Nobody is marked without the notice going out.
-		if err := s.deletionSender.SendInactivityNotice(ctx, c.Language, email, c.Name, s.deletionCfg.InactiveDays); err != nil {
+		if err := s.deletionSender.SendInactivityNotice(ctx, c.Language, email, c.Name, months*model.DaysPerInactivityMonth); err != nil {
 			slog.Warn("deletion: inactivity notice failed", "user_id", c.ID.String(), "err_type", failureReason(err))
 			continue
 		}
-		ok, err := s.markIfStillInactive(ctx, c, cutoff)
+		ok, err := s.markIfStillInactive(ctx, c)
 		if err != nil {
 			slog.Warn("deletion: inactivity mark failed", "user_id", c.ID.String(), "err_type", failureReason(err))
 			continue
@@ -217,9 +234,9 @@ func (s *Service) MarkInactive(ctx context.Context) (int, error) {
 }
 
 // markIfStillInactive re-reads, under the row lock, everything the selection
-// relied on: the notice took time, and a user who signed in (or moved to another
-// address) meanwhile must not be marked.
-func (s *Service) markIfStillInactive(ctx context.Context, c model.InactiveCandidate, cutoff time.Time) (bool, error) {
+// relied on: the notice took time, and a user who signed in, moved to another
+// address or changed their period meanwhile must not be marked.
+func (s *Service) markIfStillInactive(ctx context.Context, c model.InactiveCandidate) (bool, error) {
 	marked := false
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if err := s.repo.LockRow(ctx, c.ID); err != nil {
@@ -243,6 +260,7 @@ func (s *Service) markIfStillInactive(ctx context.Context, c model.InactiveCandi
 		if st.LastActiveAt != nil {
 			stamp = *st.LastActiveAt
 		}
+		cutoff := s.inactiveCutoff(u.InactivityMonths(s.deletionCfg.InactiveMonths))
 		if st.MarkedAt != nil || !stamp.Before(cutoff) {
 			return nil
 		}

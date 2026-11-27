@@ -44,7 +44,7 @@ type Config struct {
 	TrialDays                  int      // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
 	EmailVerification          bool     // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int      // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
-	InactiveUserDays           int      // ECONUMO_INACTIVE_USER_DAYS: days without activity before a user is marked for deletion; 0 (default) = never
+	InactiveUserMonths         int      // ECONUMO_INACTIVE_USER_MONTHS: default 30-day months without activity before a user is marked for deletion; 0 (default) = never
 	UserDeletionDays           int      // ECONUMO_USER_DELETION_DAYS: days from the mark to deleting the user's data; 0 (default) = never automatically
 	InactiveUserExclude        []string // ECONUMO_INACTIVE_USER_EXCLUDE: normalized emails the inactivity job never marks
 
@@ -279,22 +279,22 @@ func Load() (Config, error) {
 
 	// (days+1)*24h overflows time.Duration near 106,752 days, and an overflowed
 	// cutoff lands in the future and would mark or delete every user.
-	for _, p := range []struct {
-		key string
-		dst *int
-	}{
-		{"ECONUMO_INACTIVE_USER_DAYS", &c.InactiveUserDays},
-		{"ECONUMO_USER_DELETION_DAYS", &c.UserDeletionDays},
-	} {
-		days, err := getIntStrict(p.key, 0)
-		if err != nil {
-			return Config{}, err
-		}
-		if days > 36500 {
-			return Config{}, fmt.Errorf("%s %d is too large (max 36500 days)", p.key, days)
-		}
-		*p.dst = days
+	deletionDays, err := getIntStrict("ECONUMO_USER_DELETION_DAYS", 0)
+	if err != nil {
+		return Config{}, err
 	}
+	if deletionDays > 36500 {
+		return Config{}, fmt.Errorf("ECONUMO_USER_DELETION_DAYS %d is too large (max 36500 days)", deletionDays)
+	}
+	c.UserDeletionDays = deletionDays
+	inactiveMonths, err := getIntStrict("ECONUMO_INACTIVE_USER_MONTHS", 0)
+	if err != nil {
+		return Config{}, err
+	}
+	if inactiveMonths > 600 {
+		return Config{}, fmt.Errorf("ECONUMO_INACTIVE_USER_MONTHS %d is too large (max 600 months)", inactiveMonths)
+	}
+	c.InactiveUserMonths = inactiveMonths
 	for _, e := range getStringList("ECONUMO_INACTIVE_USER_EXCLUDE", nil) {
 		c.InactiveUserExclude = append(c.InactiveUserExclude, model.NormalizeEmail(e))
 	}

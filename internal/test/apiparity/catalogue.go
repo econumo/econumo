@@ -421,6 +421,10 @@ func init() {
 			{Label: "update-last-seen-version", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "v1.6.0"}},
 			{Label: "err:update-last-seen-version-invalid", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "dev"}},
 			{Label: "update-ai", Method: "POST", Path: "/api/v1/user/update-ai", Auth: "owner", Body: map[string]any{"enabled": false}},
+			{Label: "update-inactivity-period", Method: "POST", Path: "/api/v1/user/update-inactivity-period", Auth: "owner", Body: map[string]any{"months": 6}},
+			{Label: "err:update-inactivity-period-not-a-choice", Method: "POST", Path: "/api/v1/user/update-inactivity-period", Auth: "owner", Body: map[string]any{"months": 5}},
+			{Label: "err:update-inactivity-period-fraction", Method: "POST", Path: "/api/v1/user/update-inactivity-period", Auth: "owner", Body: map[string]any{"months": 6.5}},
+			{Label: "err:update-inactivity-period-missing", Method: "POST", Path: "/api/v1/user/update-inactivity-period", Auth: "owner", Body: map[string]any{}},
 		}
 	}})
 

@@ -27,7 +27,7 @@ func (fixedClock) Now() time.Time { return Today }
 func Build(t testing.TB, db *dbtest.DB) *server.Built {
 	t.Helper()
 	// Inactivity on: with it off the wipe releases every inactive mark instead.
-	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", RateLimitWindow: 15 * time.Minute, InactiveUserDays: 365}
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", RateLimitWindow: 15 * time.Minute, InactiveUserMonths: 12}
 	b, err := server.BuildWithServices(cfg, db.Raw, server.Seams{Clock: fixedClock{}, Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)})
 	if err != nil {
 		t.Fatalf("BuildWithServices: %v", err)

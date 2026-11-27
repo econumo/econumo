@@ -73,6 +73,36 @@ func (q *Queries) GetUserOptions(ctx context.Context, userID string) ([]UsersOpt
 	return items, nil
 }
 
+const insertUserOptionIfMissing = `-- name: InsertUserOptionIfMissing :execrows
+INSERT INTO users_options (id, user_id, name, value, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT (user_id, name) DO NOTHING
+`
+
+type InsertUserOptionIfMissingParams struct {
+	ID        string
+	UserID    string
+	Name      string
+	Value     *string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) InsertUserOptionIfMissing(ctx context.Context, arg InsertUserOptionIfMissingParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertUserOptionIfMissing,
+		arg.ID,
+		arg.UserID,
+		arg.Name,
+		arg.Value,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAffiliateUsers = `-- name: ListAffiliateUsers :many
 SELECT o.user_id, o.value, c.value AS code, o.created_at
 FROM users_options o
@@ -122,6 +152,37 @@ func (q *Queries) ListAffiliateUsers(ctx context.Context, arg ListAffiliateUsers
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLifetimeUserIDsMissingInactivityMonths = `-- name: ListLifetimeUserIDsMissingInactivityMonths :many
+SELECT u.id
+FROM users u
+LEFT JOIN users_options o ON o.user_id = u.id AND o.name = 'inactivity_months'
+WHERE o.user_id IS NULL AND u.access_level = 'full' AND u.access_until IS NULL
+ORDER BY u.id
+`
+
+func (q *Queries) ListLifetimeUserIDsMissingInactivityMonths(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listLifetimeUserIDsMissingInactivityMonths)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

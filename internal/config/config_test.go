@@ -1144,8 +1144,8 @@ func TestLoad_UserDeletionDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.InactiveUserDays != 0 || c.UserDeletionDays != 0 || c.InactiveUserExclude != nil {
-		t.Fatalf("defaults = %d / %d / %#v, want 0 / 0 / nil", c.InactiveUserDays, c.UserDeletionDays, c.InactiveUserExclude)
+	if c.InactiveUserMonths != 0 || c.UserDeletionDays != 0 || c.InactiveUserExclude != nil {
+		t.Fatalf("defaults = %d / %d / %#v, want 0 / 0 / nil", c.InactiveUserMonths, c.UserDeletionDays, c.InactiveUserExclude)
 	}
 	if c.RateLimitRequestUserDeletion != 3 || c.RateLimitConfirmUserDeletion != 5 {
 		t.Fatalf("rate limits = %d / %d, want 3 / 5", c.RateLimitRequestUserDeletion, c.RateLimitConfirmUserDeletion)
@@ -1154,7 +1154,7 @@ func TestLoad_UserDeletionDefaults(t *testing.T) {
 
 func TestLoad_UserDeletionValues(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
-	t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "365")
+	t.Setenv("ECONUMO_INACTIVE_USER_MONTHS", "600")
 	t.Setenv("ECONUMO_USER_DELETION_DAYS", "36500")
 	t.Setenv("ECONUMO_INACTIVE_USER_EXCLUDE", " A@x.test ,b@x.test,")
 	t.Setenv("ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION", "0")
@@ -1163,8 +1163,8 @@ func TestLoad_UserDeletionValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.InactiveUserDays != 365 || c.UserDeletionDays != 36500 {
-		t.Fatalf("days = %d / %d, want 365 / 36500", c.InactiveUserDays, c.UserDeletionDays)
+	if c.InactiveUserMonths != 600 || c.UserDeletionDays != 36500 {
+		t.Fatalf("months / days = %d / %d, want 600 / 36500", c.InactiveUserMonths, c.UserDeletionDays)
 	}
 	if strings.Join(c.InactiveUserExclude, "|") != "a@x.test|b@x.test" || len(c.InactiveUserExclude) != 2 {
 		t.Fatalf("exclude = %#v", c.InactiveUserExclude)
@@ -1176,8 +1176,9 @@ func TestLoad_UserDeletionValues(t *testing.T) {
 
 func TestLoad_UserDeletionBadValuesFailBoot(t *testing.T) {
 	for _, tc := range []struct{ key, bad string }{
-		{"ECONUMO_INACTIVE_USER_DAYS", "-1"},
-		{"ECONUMO_INACTIVE_USER_DAYS", "36501"},
+		{"ECONUMO_INACTIVE_USER_MONTHS", "-1"},
+		{"ECONUMO_INACTIVE_USER_MONTHS", "601"},
+		{"ECONUMO_INACTIVE_USER_MONTHS", "6.5"},
 		{"ECONUMO_USER_DELETION_DAYS", "abc"},
 		{"ECONUMO_USER_DELETION_DAYS", "36501"},
 		{"ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION", "-1"},

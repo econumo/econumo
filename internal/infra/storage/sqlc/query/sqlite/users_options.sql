@@ -38,3 +38,15 @@ LEFT JOIN users_options c ON c.user_id = o.user_id AND c.name = 'affiliate_code'
 WHERE o.name = 'affiliate' AND o.value IS NOT NULL AND o.value <> '' AND (CAST(sqlc.arg(program) AS TEXT) = '' OR o.value = sqlc.arg(program)) AND (o.created_at > sqlc.arg(since) OR (o.created_at = sqlc.arg(since) AND o.user_id > sqlc.arg(after_user_id)))
 ORDER BY o.created_at, o.user_id
 LIMIT sqlc.arg(row_limit);
+
+-- name: ListLifetimeUserIDsMissingInactivityMonths :many
+SELECT u.id
+FROM users u
+LEFT JOIN users_options o ON o.user_id = u.id AND o.name = 'inactivity_months'
+WHERE o.user_id IS NULL AND u.access_level = 'full' AND u.access_until IS NULL
+ORDER BY u.id;
+
+-- name: InsertUserOptionIfMissing :execrows
+INSERT INTO users_options (id, user_id, name, value, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT (user_id, name) DO NOTHING;

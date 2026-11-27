@@ -462,6 +462,52 @@ func TestMigrationSeedAnalyticsOption_PassesConfigValueThrough(t *testing.T) {
 	}
 }
 
+// migration:seed-lifetime-inactivity by hand and through the boot runner: a
+// lifetime account gets 36 months once, a trial account nothing.
+func TestMigrationSeedLifetimeInactivity_CommandAndRunner(t *testing.T) {
+	cliEnv(t)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+
+	insertUser := func(id string, accessUntil any) {
+		t.Helper()
+		if _, err := c.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at, access_until) VALUES (?,?,?,'U','','x','','2026-01-01 00:00:00','2026-01-01 00:00:00',?)`, id, id, id+"@e.test", accessUntil); err != nil {
+			t.Fatalf("insert user: %v", err)
+		}
+	}
+	count := func() int {
+		t.Helper()
+		var n int
+		if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users_options WHERE name = 'inactivity_months' AND value = '36'`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	insertUser(vo.NewId().String(), nil)
+	insertUser(vo.NewId().String(), "2027-01-01 00:00:00")
+
+	if code := Run([]string{"migration:seed-lifetime-inactivity"}); code != 0 {
+		t.Fatalf("exit code %d", code)
+	}
+	if n := count(); n != 1 {
+		t.Fatalf("seeded rows = %d, want 1", n)
+	}
+	if code := Run([]string{"migration:seed-lifetime-inactivity"}); code != 0 || count() != 1 {
+		t.Fatalf("second run: exit %d, rows %d; want 0, 1", code, count())
+	}
+	insertUser(vo.NewId().String(), nil)
+	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:seed-lifetime-inactivity"); err != nil {
+		t.Fatalf("runner: %v", err)
+	}
+	if n := count(); n != 2 {
+		t.Fatalf("seeded rows after runner = %d, want 2", n)
+	}
+}
+
 func TestTokenPurge(t *testing.T) {
 	cliEnv(t)
 	if got := Run([]string{"user:create", "Purge Tester", "purge@example.test", "secretpass"}); got != 0 {
@@ -872,18 +918,18 @@ const releasedMsg = "not deleted: the inactivity mark no longer applies (a conne
 
 func TestUserDelete_InactiveMarkIsReleased(t *testing.T) {
 	cases := []struct {
-		name         string
-		inactiveDays string
-		activePeer   bool
-		cause        string
+		name           string
+		inactiveMonths string
+		activePeer     bool
+		cause          string
 	}{
-		{"active connection", "30", true, "active_connection"},
+		{"active connection", "1", true, "active_connection"},
 		{"inactivity marking off", "", false, "inactivity_off"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			dbPath := cliEnvDB(t)
-			t.Setenv("ECONUMO_INACTIVE_USER_DAYS", tc.inactiveDays)
+			t.Setenv("ECONUMO_INACTIVE_USER_MONTHS", tc.inactiveMonths)
 			raw := deletionTestDB(t, dbPath)
 			f := fixture.New(t, &dbtest.DB{Raw: raw, Engine: "sqlite"})
 			const email = "del-inactive@example.test"

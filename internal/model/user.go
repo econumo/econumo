@@ -33,6 +33,9 @@ const (
 	// OptionLastSeenVersion is the newest release whose "what's new" notice the
 	// user has seen (a vX.Y.Z string); absent for users predating it.
 	OptionLastSeenVersion = "last_seen_version"
+	// OptionInactivityMonths is the user's own inactivity period, in months
+	// (see InactivityMonths); absent = the server default.
+	OptionInactivityMonths = "inactivity_months"
 
 	DefaultCurrency     = "USD"
 	DefaultReportPeriod = "monthly"
@@ -320,6 +323,28 @@ func (u *User) SetAI(enabled bool, id vo.Id, now time.Time) {
 		return
 	}
 	u.Options = append(u.Options, NewUserOption(id, OptionAI, &v, now))
+}
+
+// SetInactivityMonths writes the inactivity period, appending the option row
+// when absent (like SetAnalytics).
+func (u *User) SetInactivityMonths(months int, id vo.Id, now time.Time) {
+	v := strconv.Itoa(months)
+	if o := u.Option(OptionInactivityMonths); o != nil {
+		o.setValue(&v, now)
+		return
+	}
+	u.Options = append(u.Options, NewUserOption(id, OptionInactivityMonths, &v, now))
+}
+
+// InactivityMonths is the user's effective inactivity period. It does not apply
+// the server switch: a serverMonths of 0 means the feature is off, which the
+// callers check.
+func (u *User) InactivityMonths(serverMonths int) int {
+	var value *string
+	if o := u.Option(OptionInactivityMonths); o != nil {
+		value = o.Value
+	}
+	return inactivityMonths(value, serverMonths)
 }
 
 // SetOnboardingProgress stores the step states of an onboarding still in

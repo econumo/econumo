@@ -87,6 +87,8 @@ var ctxKeyAccessLevel ctxKeyAccessLevelType
 // here because withdrawing consent to product analytics is a privacy right,
 // not a paid feature — it must work regardless of access level. update-ai
 // joins it for the same reason: keeping one's data away from the AI provider.
+// update-inactivity-period too: when one's own data is deleted is no paid
+// feature.
 // update-last-seen-version joins it: dismissing the "what's new" notice is
 // no paid feature either, and a 402 would leave it on screen for good.
 // request-user-deletion and confirm-user-deletion join because leaving is a
@@ -127,6 +129,7 @@ var ReadonlyAllowedPaths = map[string]bool{
 	"/api/v1/user/confirm-user-deletion":       true,
 	"/api/v1/user/update-analytics":            true,
 	"/api/v1/user/update-ai":                   true,
+	"/api/v1/user/update-inactivity-period":    true,
 	"/api/v1/user/update-last-seen-version":    true,
 	"/api/v1/oauth/start-link":                 true,
 	"/api/v1/oauth/complete-link":              true,

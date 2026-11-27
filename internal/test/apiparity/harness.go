@@ -147,6 +147,9 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		ImportTipDays:         5,
 		ImportTipTolerancePct: 20,
 		ImportTokenMinLength:  3,
+		// Inactive accounts are deleted, so the current user carries a period and
+		// its choices, and update-inactivity-period has a value to accept.
+		InactiveUserMonths: 12,
 		// Billing configured so create-billing-link pins its SUCCESS shape. The
 		// admin token is the handoff signing key; the assertion it produces is
 		// redacted by handoffRe (its exp is clock-derived).

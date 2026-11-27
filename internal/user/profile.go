@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -113,6 +114,27 @@ func (s *Service) UpdateAI(ctx context.Context, userID vo.Id, req model.UpdateAI
 		return nil, err
 	}
 	return &model.UpdateAIResult{User: cur}, nil
+}
+
+// UpdateInactivityPeriod stores the caller's own inactivity period. Only today's
+// choices are accepted, so nothing is accepted while the server deletes nobody.
+func (s *Service) UpdateInactivityPeriod(ctx context.Context, userID vo.Id, req model.UpdateInactivityPeriodRequest) (*model.UpdateInactivityPeriodResult, error) {
+	months := req.MonthsValue()
+	if !slices.Contains(model.InactivityChoices(s.deletionCfg.InactiveMonths), months) {
+		return nil, model.InvalidInactivityMonths()
+	}
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.SetInactivityMonths(months, s.repo.NextIdentity(), now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateInactivityPeriodResult{User: cur}, nil
 }
 
 // UpdateOnboarding stores the step states of the caller's onboarding and

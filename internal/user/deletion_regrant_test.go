@@ -45,7 +45,7 @@ func newRegrantEnv(t *testing.T, emailVerification bool) *regrantEnv {
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, 14, emailVerification)
 	audit := userrepo.NewAuditRepo(db.Engine, db.TX)
 	svc.SetDeletion(userrepo.NewDeletionRepo(db.Engine, db.TX), audit, userrepo.NewDeletionRequestRepo(db.Engine, db.TX),
-		appuser.DeletionConfig{InactiveDays: 365, DeletionDays: 30})
+		appuser.DeletionConfig{InactiveMonths: 12, DeletionDays: 30})
 	return &regrantEnv{svc: svc, users: users, audit: audit, pwreqs: pwreqs, cap: cap, clk: clk}
 }
 

@@ -151,7 +151,10 @@ func (r *DeletionRepo) ListInactiveCandidates(ctx context.Context, cutoff time.T
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, model.InactiveCandidate{ID: id, Email: row.Email, Name: row.Name, Language: row.Language})
+		out = append(out, model.InactiveCandidate{
+			ID: id, Email: row.Email, Name: row.Name, Language: row.Language,
+			LastActiveAt: utcPtr(row.LastActiveAt), CreatedAt: row.CreatedAt.UTC(), InactivityOption: row.InactivityMonths,
+		})
 	}
 	return out, nil
 }

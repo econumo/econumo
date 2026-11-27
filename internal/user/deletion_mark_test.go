@@ -39,7 +39,7 @@ func newDeletionEnv(t *testing.T) *deletionEnv {
 		audit:    userrepo.NewAuditRepo(db.Engine, db.TX),
 		requests: userrepo.NewDeletionRequestRepo(db.Engine, db.TX),
 	}
-	svc.SetDeletion(e.store, e.audit, e.requests, appuser.DeletionConfig{InactiveDays: 365, DeletionDays: 30})
+	svc.SetDeletion(e.store, e.audit, e.requests, appuser.DeletionConfig{InactiveMonths: 12, DeletionDays: 30})
 	return e
 }
 

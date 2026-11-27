@@ -1248,6 +1248,16 @@ definitions:
         type: boolean
       id:
         type: string
+      inactivityChoices:
+        items:
+          type: integer
+        type: array
+      inactivityMonths:
+        description: |-
+          InactivityMonths is the caller's effective inactivity period, 0 when the
+          server does not delete inactive accounts; InactivityChoices are the periods
+          update-inactivity-period accepts, empty when it does not.
+        type: integer
       name:
         type: string
       options:
@@ -3957,6 +3967,17 @@ definitions:
         type: string
       tagId:
         type: string
+    type: object
+  model.UpdateInactivityPeriodRequest:
+    properties:
+      months:
+        example: 6
+        type: integer
+    type: object
+  model.UpdateInactivityPeriodResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
     type: object
   model.UpdateLabelRequest:
     properties:
@@ -13282,6 +13303,50 @@ paths:
       security:
       - Bearer: []
       summary: Update currency
+      tags:
+      - User
+  /api/v1/user/update-inactivity-period:
+    post:
+      consumes:
+      - application/json
+      description: Sets after how many months without activity the authenticated user's
+        data is deleted. months must be one of the user's inactivityChoices; while
+        the server deletes no inactive accounts every value is refused. Returns the
+        refreshed user.
+      parameters:
+      - description: Update inactivity period request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateInactivityPeriodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateInactivityPeriodResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update inactivity period
       tags:
       - User
   /api/v1/user/update-language:

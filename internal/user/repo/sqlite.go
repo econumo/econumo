@@ -102,3 +102,11 @@ func (sqliteQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend
 func (sqliteQuerier) ListAffiliateUsers(ctx context.Context, db backend.DBTX, program string, since time.Time, afterUserID string, limit int) ([]affiliateRow, error) {
 	return sqlitegen.New(db).ListAffiliateUsers(ctx, sqlitegen.ListAffiliateUsersParams{Program: program, Since: since, AfterUserID: afterUserID, RowLimit: int64(limit)})
 }
+
+func (sqliteQuerier) ListLifetimeUserIDsMissingInactivityMonths(ctx context.Context, db backend.DBTX) ([]string, error) {
+	return sqlitegen.New(db).ListLifetimeUserIDsMissingInactivityMonths(ctx)
+}
+
+func (sqliteQuerier) InsertUserOptionIfMissing(ctx context.Context, db backend.DBTX, p optionIfMissingParams) (int64, error) {
+	return sqlitegen.New(db).InsertUserOptionIfMissing(ctx, p)
+}

@@ -429,7 +429,7 @@ func TestMarkInactive_AuthenticateWaitsAndIsRefused(t *testing.T) {
 		})
 	}}
 	r.one.Users.SetDeletion(store, userrepo.NewAuditRepo(r.db.Engine, r.db.TX),
-		userrepo.NewDeletionRequestRepo(r.db.Engine, r.db.TX), appuser.DeletionConfig{InactiveDays: 365})
+		userrepo.NewDeletionRequestRepo(r.db.Engine, r.db.TX), appuser.DeletionConfig{InactiveMonths: 12})
 	type markResult struct {
 		n   int
 		err error

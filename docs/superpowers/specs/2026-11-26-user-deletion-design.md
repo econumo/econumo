@@ -53,7 +53,7 @@ lifetime-access customer get lifetime access back, once.
 
 | variable | default | meaning |
 |---|---|---|
-| `ECONUMO_INACTIVE_USER_DAYS` | `0` | mark users with no activity for this many days; `0` = off |
+| `ECONUMO_INACTIVE_USER_MONTHS` | `0` | mark users with no activity for this many 30-day months (the default of the per-user period, see Inactivity); `0` = off; at most 600 |
 | `ECONUMO_USER_DELETION_DAYS` | `0` | wipe marked users this many days after the mark; `0` = never automatically (CLI only) |
 | `ECONUMO_INACTIVE_USER_EXCLUDE` | empty | comma-separated emails the inactivity job never marks |
 
@@ -170,8 +170,8 @@ an error for the CLI and impossible from the API (no session survives the mark).
 
 ### 2. Inactivity
 
-- Daily job (below). When `ECONUMO_INACTIVE_USER_DAYS` > 0, every user with
-  `last_active_at` older than that PLUS ONE DAY, not marked, `is_active = 1`, not excluded,
+- Daily job (below). When `ECONUMO_INACTIVE_USER_MONTHS` > 0, every user with
+  `last_active_at` older than their own period (below) PLUS ONE DAY, not marked, `is_active = 1`, not excluded,
   and with no
   ACTIVE connected user is marked with reason `inactive` and receives ONE email: "Under our
   policy we delete the data of users inactive for <period>. If you want to keep your data,
@@ -182,7 +182,7 @@ an error for the CLI and impossible from the API (no session survives the mark).
 - Household rule (agreed 2026-11-26): a user is neither marked nor wiped for inactivity while
   a connected user is active. "Active connection" has one definition, used everywhere below:
   a row in `users_connections` to a user who is NOT marked and whose own `last_active_at` is
-  within `ECONUMO_INACTIVE_USER_DAYS` plus one day. The extra day, here and in the first
+  within the candidate's own period plus one day. The extra day, here and in the first
   bullet, covers the stamp's precision: real use can be up to 24 hours newer than the stamp,
   and both errors must fall on the side of keeping data. A marked partner does not count:
   someone who just asked
@@ -199,7 +199,7 @@ an error for the CLI and impossible from the API (no session survives the mark).
   3. wipe: the same check runs inside the wipe transaction (step 1), for the job,
      `user:purge-deleted` and `user:delete` alike. An `inactive` mark with an active connection
      is cancelled instead of wiped.
-- Inactivity switched off: with `ECONUMO_INACTIVE_USER_DAYS` back at 0 the policy that made
+- Inactivity switched off: with `ECONUMO_INACTIVE_USER_MONTHS` back at 0 the policy that made
   these marks is gone, and "active connection" has no window left to measure. The daily pass
   then releases EVERY `inactive` mark (cause `inactivity_off`), and a wipe refuses an
   `inactive` mark the same way. Other reasons are untouched.
@@ -219,6 +219,36 @@ an error for the CLI and impossible from the API (no session survives the mark).
   the notice again. A second copy of a deletion warning is the harmless direction; a stored
   delivery state to prevent it is not worth a column.
 - Paying users are not exempt.
+
+
+#### Per-user inactivity period (added 2026-11-27)
+
+1. `ECONUMO_INACTIVE_USER_MONTHS` is the switch and the default period, in months; a month
+   is 30 days. 0 (default) deletes no inactive account and offers users nothing. Strict, a
+   whole number from 0 to 600.
+2. User option `inactivity_months`: an integer in a string, not seeded at registration, not
+   server-only. Absent, empty, unparsable or non-positive = the server setting.
+3. Effective period of a user, in months: the option when it holds a positive integer,
+   otherwise the server setting (`model.InactivityMonths`, one place). Days are months * 30.
+4. Choices (`model.InactivityChoices`): half the setting (integer division, left out when 0),
+   the setting, its double; 12 gives 6, 12, 24. A stored value outside today's choices (the
+   seeded 36, or a choice made under an older setting) stays valid on read.
+5. Marking, release and the wipe's re-check use the user's own period. The listing query
+   selects users idle longer than 30 days plus one (the shortest period any account can
+   have) with their option value; Go applies each candidate's period, and checks the
+   household with that period BEFORE the notice so nobody is mailed on every pass. Under the
+   row lock the option is read again. A connected user counts as active when unmarked and
+   active within the CANDIDATE's period, whatever their own. Setting 0 still marks nobody
+   and releases every inactive mark.
+6. The notice keeps its copy; `{days}` is the user's own period in days.
+7. `POST /api/v1/user/update-inactivity-period` `{"months": 6}` accepts only one of today's
+   choices; anything else, a missing or non-integer value, and every value while the setting
+   is 0 is a 400 "This value is not valid." on `months`. On the read-only allowlist. The
+   current user carries `inactivityMonths` (effective, 0 when off) and `inactivityChoices`
+   (`[]` when off).
+8. `migration:seed-lifetime-inactivity` (command step 20261127000001, also runnable by hand)
+   gives every user with `access_level = 'full'` and no `access_until` and no option the value
+   36, once; accounts that become lifetime later start at the default.
 
 ### 3. CLI
 

@@ -485,6 +485,7 @@ type Querier interface {
 	// check read.
 	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
+	InsertUserOptionIfMissing(ctx context.Context, arg InsertUserOptionIfMissingParams) (int64, error)
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	// The replacement keeps the transfer's key on the surviving side; a side
 	// without one gets a top-of-day key from txorder. Either way sort_key is
@@ -611,6 +612,8 @@ type Querier interface {
 	// a shared account): the owner's rules classify them, so applying one of
 	// those rules reaches them too.
 	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, userID string) ([]ImportTransactionLink, error)
+	// cutoff is the shortest period any account can have: Go applies each
+	// candidate's own period (inactivity_months, else the server setting).
 	// A user connected to someone still active (and not marked) is kept: the
 	// shared data is in use. A literal ?1 rather than sqlc.arg(cutoff): sqlc's
 	// sqlite engine leaves a sqlc.arg inside a WHERE NOT EXISTS unrewritten.
@@ -620,6 +623,7 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	ListLifetimeUserIDsMissingInactivityMonths(ctx context.Context) ([]string, error)
 	// User deletion: a custom currency another owner's account, budget, budget
 	// element or debt uses moves to that owner instead of cascading away.
 	ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error)

@@ -509,6 +509,22 @@ func TestUpdateAI(t *testing.T) {
 	}
 }
 
+// The harness deletes no inactive accounts, so nothing is offered and every
+// period is refused.
+func TestUpdateInactivityPeriod_Off(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	_, env := h.do(t, http.MethodGet, "/api/v1/user/get-user-data", token, nil)
+	if !strings.Contains(string(env.raw), `"inactivityMonths":0,"inactivityChoices":[]`) {
+		t.Fatalf("get-user-data: %s", env.raw)
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-inactivity-period", token, map[string]any{"months": 12})
+	if status != http.StatusBadRequest || !strings.Contains(string(env.raw), `"months":["This value is not valid."]`) {
+		t.Fatalf("status = %d, body %s", status, env.raw)
+	}
+}
+
 func TestUpdateLastSeenVersion(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)

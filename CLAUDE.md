@@ -289,7 +289,8 @@ the quick-start subset. Non-obvious points:
   program whose cookie holds a valid code is copied into the write-once, server-only user
   options `affiliate` (program) and `affiliate_code`, only when `ECONUMO_BILLING_URL` is also
   set; billing reads them on the admin listener (`/admin/affiliate-users?since=…`, optional `program=…`).
-- `ECONUMO_INACTIVE_USER_DAYS` (mark idle users, `0` = never), `ECONUMO_USER_DELETION_DAYS`
+- `ECONUMO_INACTIVE_USER_MONTHS` (mark idle users, 30-day months, `0` = never; also the
+  default of the per-user period), `ECONUMO_USER_DELETION_DAYS`
   (wipe this long after the mark, `0` = only `user:delete`), `ECONUMO_INACTIVE_USER_EXCLUDE`.
 - Provider slots `ECONUMO_OAUTH_GOOGLE_*`, `ECONUMO_OAUTH_APPLE_*`, `ECONUMO_OIDC_*` are each
   all-or-nothing. Apple's key is a file path (`_PRIVATE_KEY_FILE`).
@@ -527,6 +528,10 @@ Specs: `2026-11-13-debts-on-elements-design.md` (the current model),
   `user:mark-deleted`; `user:list-pending-deletion` lists them.
 - Household rule: a user connected to an active user is never marked inactive, and an
   inactive mark is released (also re-checked inside the wipe) once a connected user is active.
+- Inactivity period per user: the `inactivity_months` option, else `ECONUMO_INACTIVE_USER_MONTHS`
+  (`model.InactivityMonths`). Choices are half, equal, double the setting
+  (`model.InactivityChoices`, `update-inactivity-period`); a stored value outside them stays
+  valid (lifetime accounts were seeded 36). Partners are measured against the candidate's period.
 - The wipe (daily after `ECONUMO_USER_DELETION_DAYS`, or `user:delete`) is one transaction:
   the global wipe lock, the budget rows in id order, the user row, then the owned accounts.
   Every cross-feature step is a method on the owning feature, sequenced in

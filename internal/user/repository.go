@@ -116,6 +116,14 @@ type Repository interface {
 	// option name; it exists for the analytics-preference backfill.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]vo.Id, error)
 
+	// ListLifetimeUserIDsMissingInactivityMonths: users with full access and no
+	// end date that hold no inactivity_months row, for the one-time seed.
+	ListLifetimeUserIDsMissingInactivityMonths(ctx context.Context) ([]vo.Id, error)
+
+	// InsertOptionIfMissing writes one option row only when the user has none of
+	// that name, and reports whether it did.
+	InsertOptionIfMissing(ctx context.Context, userID vo.Id, o model.UserOption) (bool, error)
+
 	// GetOptions loads just the option rows for a user (used by get-option-list,
 	// which does not need the full aggregate).
 	GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error)
@@ -277,7 +285,8 @@ type DeletionStore interface {
 	TouchLastActive(ctx context.Context, userID vo.Id, now time.Time) error
 	// ListMarked is ordered by marked_at, id.
 	ListMarked(ctx context.Context) ([]model.MarkedUser, error)
-	// cutoff = now - (InactiveUserDays+1) days.
+	// cutoff = now - (30 days + 1); the listing is a prefilter, Go applies each
+	// candidate's own period.
 	ListInactiveCandidates(ctx context.Context, cutoff time.Time) ([]model.InactiveCandidate, error)
 	HasActiveConnection(ctx context.Context, userID vo.Id, cutoff time.Time) (bool, error)
 	DeleteUser(ctx context.Context, userID vo.Id) (int64, error)
