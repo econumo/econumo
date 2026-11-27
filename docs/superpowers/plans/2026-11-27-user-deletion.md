@@ -137,12 +137,12 @@ A bug in the released CLI, found while reviewing this plan: `internal/cli/contai
 - Test: `internal/cli/commands_test.go`
 - Modify: `docs/regression-test-plan.md` (section 12a)
 
-- [ ] **Step 1: Failing test** `TestUserDeactivate_RevokesMCPGrants`: seed a user with an OAuth client, a grant and a live `eco_oat_` token (`fixture.OAuthClient`, `OAuthGrant`, `AccessToken`); `Run([]string{"user:deactivate", email})`; assert `oauth_grants.revoked_at` is set for that grant. The same assertion after `user:change-password`.
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/cli/ -run TestUserDeactivate_RevokesMCPGrants -count=1`
-- [ ] **Step 3: Fix:** `userSvc.SetMCPGrantRevoker(apps)` right after `apps` is built in `newContainerFor`.
-- [ ] **Step 4: Run** `go test ./internal/cli/ -count=1`. PASS.
-- [ ] **Step 5: Regression plan**, section 12a: `- [ ] `user:deactivate <email>` on the server: an MCP client connected as that user can no longer refresh its access.`
-- [ ] **Step 6: Commit** `fix: CLI user:deactivate and user:change-password revoke MCP grants`.
+- [x] **Step 1: Failing test** `TestUserDeactivate_RevokesMCPGrants`: seed a user with an OAuth client, a grant and a live `eco_oat_` token (`fixture.OAuthClient`, `OAuthGrant`, `AccessToken`); `Run([]string{"user:deactivate", email})`; assert `oauth_grants.revoked_at` is set for that grant. The same assertion after `user:change-password`.
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/cli/ -run TestUserDeactivate_RevokesMCPGrants -count=1`
+- [x] **Step 3: Fix:** `userSvc.SetMCPGrantRevoker(apps)` right after `apps` is built in `newContainerFor`.
+- [x] **Step 4: Run** `go test ./internal/cli/ -count=1`. PASS.
+- [x] **Step 5: Regression plan**, section 12a: `- [ ] `user:deactivate <email>` on the server: an MCP client connected as that user can no longer refresh its access.`
+- [x] **Step 6: Commit** `fix: CLI user:deactivate and user:change-password revoke MCP grants`.
 
 ---
 
