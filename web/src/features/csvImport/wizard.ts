@@ -1,10 +1,11 @@
 import type { AccountDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
+import { candidates } from './candidates'
 import type { ColumnProfile } from './columns'
 import type { ParsedFile } from './parse'
 import type { PreparedRow, RowFix, StepId, WizardAnswers } from './prepare'
 
-export const STEP_ORDER: StepId[] = ['file', 'account', 'date', 'amount', 'description', 'extras', 'preview']
+export const STEP_ORDER: StepId[] = ['file', 'account', 'date', 'amount', 'category', 'description', 'payee', 'extras', 'preview']
 
 export interface LoadedWizardState {
   file: ParsedFile
@@ -41,22 +42,33 @@ export function writableAccounts(accounts: AccountDto[], meId: string | undefine
   })
 }
 
-/** columns the Account to Description steps read */
+/** columns every step before Extra details reads */
 export function usedColumns(answers: WizardAnswers): Set<number> {
-  const { account, date, amount, description } = answers
+  const { account, date, amount, description, extras } = answers
   const used = [
     account?.kind === 'column' ? account.column : null,
     date.column,
     ...(amount.mode === 'single' ? [amount.column] : [amount.inColumn, amount.outColumn]),
+    extras.category,
     description,
+    extras.payee,
   ]
   return new Set(used.filter((c) => c !== null))
 }
 
-/** columns the Account to Description steps left free, the ones Extra details offers */
+/** columns the steps before Extra details left free, the ones Extra details offers */
 export function unusedColumns(answers: WizardAnswers, profiles: ColumnProfile[]): ColumnProfile[] {
   const used = usedColumns(answers)
   return profiles.filter((p) => !used.has(p.index) && p.type !== 'empty')
+}
+
+/** Category and Payee are optional: a pick takes its column from Description and from the
+    other details, the last pick wins */
+export function pickDetail(answers: WizardAnswers, role: 'category' | 'payee', column: number | null): Partial<WizardAnswers> {
+  const extras = { ...answers.extras }
+  if (column !== null) for (const r of ['payee', 'category', 'tag', 'labels'] as const) if (extras[r] === column) extras[r] = null
+  extras[role] = column
+  return column !== null && answers.description === column ? { description: null, extras } : { extras }
 }
 
 export function missingAnswer(step: StepId, answers: WizardAnswers): boolean {
@@ -89,8 +101,9 @@ export function firstDistinct<T>(items: T[], pick: (item: T) => string | null, c
 }
 
 /** The step has an answer worth showing as a sentence: a guess, or a choice, that reads real
-    values. Without one the step opens on its list of choices. */
-export function hasGuess(step: StepId, state: Pick<LoadedWizardState, 'answers' | 'rows'>): boolean {
+    values. Without one the step opens on its list of choices. Category and Payee are optional:
+    with nothing in the file that fits, or None picked, "none" is their answer. */
+export function hasGuess(step: StepId, state: Pick<LoadedWizardState, 'answers' | 'rows' | 'profiles' | 'touched'>): boolean {
   const { answers, rows } = state
   switch (step) {
     case 'account':
@@ -101,21 +114,28 @@ export function hasGuess(step: StepId, state: Pick<LoadedWizardState, 'answers' 
       return !missingAnswer('amount', answers) && rows.some((row) => row.amount !== null)
     case 'description':
       return answers.description !== null && rows.some((row) => row.description !== '')
+    case 'category':
+    case 'payee':
+      if (answers.extras[step] !== null) return rows.some((row) => row[step] !== '')
+      return state.touched.has(step) || candidates(step, state.profiles, answers).length === 0
     case 'extras':
-      return (['payee', 'category', 'tag', 'labels'] as const).some((role) => answers.extras[role] !== null)
+      return answers.extras.tag !== null || answers.extras.labels !== null
     default:
       return false
   }
 }
 
-/** a column one of the main steps reads is never also uploaded as an extra detail */
+/** A column Description reads is never also a category or payee, and one any earlier step
+    reads is never also a tag. Category and Payee may share a column with Account, Date or
+    Amount, as Description may share one with Date. */
 export function releaseTakenExtras(answers: WizardAnswers): WizardAnswers {
   const used = usedColumns(answers)
   const extras = { ...answers.extras }
   let changed = false
   for (const role of ['payee', 'category', 'tag', 'labels'] as const) {
     const column = extras[role]
-    if (column !== null && used.has(column)) {
+    if (column === null) continue
+    if (role === 'tag' || role === 'labels' ? used.has(column) : column === answers.description) {
       extras[role] = null
       changed = true
     }

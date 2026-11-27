@@ -414,7 +414,9 @@
         "account": "Cuenta",
         "date": "Fecha",
         "amount": "Importe",
+        "category": "Categoría",
         "description": "Descripción",
+        "payee": "Beneficiario",
         "extras": "Más detalles",
         "preview": "Revisar e importar"
       },
@@ -473,17 +475,32 @@
         "choose_in": "¿Cuál de estos es el dinero que entra?",
         "choose_out": "¿Cuál de estos es el dinero que sale?"
       },
+      "category": {
+        "title": "¿Cómo se clasifican los pagos?",
+        "choose": "¿Cuál de estos es la categoría?",
+        "none": "El archivo no tiene categoría",
+        "none_found": "Tu archivo no tiene categorías. Puedes clasificar las transacciones en categorías más adelante.",
+        "left_out": "Las categorías se omiten. Puedes clasificar las transacciones en categorías más adelante.",
+        "shared_owner_lists": "Las categorías que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlas.",
+        "new": "Se creará {count} categoría nueva | Se crearán {count} categorías nuevas"
+      },
       "description": {
         "none": "El archivo no tiene descripción",
         "title": "¿Para qué fue cada pago?",
         "choose": "¿Cuál de estos dice para qué fue?"
       },
+      "payee": {
+        "title": "¿A quién se pagó o quién te pagó?",
+        "choose": "¿Cuál de estos dice a quién se pagó?",
+        "none": "El archivo no tiene beneficiario",
+        "none_found": "Tu archivo no dice a quién se pagó. Puedes añadir beneficiarios más adelante.",
+        "left_out": "Los beneficiarios se omiten. Puedes añadirlos más adelante.",
+        "shared_owner_lists": "Los beneficiarios que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlos."
+      },
       "extras": {
         "title": "¿Algo más que valga la pena traer?",
         "leave_out": "No traer",
         "role": {
-          "category": "Categoría",
-          "payee": "Beneficiario",
           "tag": "Etiqueta de presupuesto",
           "labels": "Etiquetas de informes"
         },
@@ -491,12 +508,9 @@
         "tab": "Tabulación",
         "newline": "Salto de línea",
         "custom_separator": "Otro",
-        "shared_owner_lists": "Las categorías, beneficiarios y etiquetas que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlos.",
-        "new_categories": "Se creará {count} categoría nueva | Se crearán {count} categorías nuevas",
+        "shared_owner_lists": "Las etiquetas que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlas.",
         "new_labels": "Se creará {count} etiqueta nueva | Se crearán {count} etiquetas nuevas",
         "role_hint": {
-          "payee": "A quién pagaste o quién te pagó",
-          "category": "Comida, alquiler… las que aún no tienes se crean",
           "tag": "Un proyecto o un viaje",
           "labels": "Puede haber varias a la vez"
         },
@@ -551,7 +565,8 @@
         "nothing_extra": "Nada más",
         "check": "{count} para importar · {skipped} fuera | {count} para importar · {skipped} fuera",
         "from_account": "De {name}",
-        "from_accounts": "De {name} y {count} cuenta más | De {name} y {count} cuentas más"
+        "from_accounts": "De {name} y {count} cuenta más | De {name} y {count} cuentas más",
+        "nothing": "Ninguno"
       },
       "from": "de «{name}»",
       "looks_right": "Está bien",

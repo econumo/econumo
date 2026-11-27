@@ -414,7 +414,9 @@
         "account": "Konto",
         "date": "Data",
         "amount": "Kwota",
+        "category": "Kategoria",
         "description": "Opis",
+        "payee": "Odbiorca",
         "extras": "Dodatkowe dane",
         "preview": "Sprawdź i importuj"
       },
@@ -473,17 +475,32 @@
         "choose_in": "Które z nich to wpływy?",
         "choose_out": "Które z nich to wydatki?"
       },
+      "category": {
+        "title": "Jak są pogrupowane płatności?",
+        "choose": "Które z nich to kategoria?",
+        "none": "Plik nie ma kategorii",
+        "none_found": "Twój plik nie ma kategorii. Możesz przypisać transakcje do kategorii później.",
+        "left_out": "Kategorie zostaną pominięte. Możesz przypisać transakcje do kategorii później.",
+        "shared_owner_lists": "Kategorie, których właściciel tego konta jeszcze nie ma, zostaną pominięte: dodać je może tylko właściciel lub administrator.",
+        "new": "Zostanie utworzona {count} nowa kategoria | Zostaną utworzone {count} nowe kategorie | Zostanie utworzonych {count} nowych kategorii"
+      },
       "description": {
         "none": "Plik nie ma opisu",
         "title": "Za co była każda płatność?",
         "choose": "Które z nich mówi, za co była?"
       },
+      "payee": {
+        "title": "Komu zapłacono lub kto zapłacił Tobie?",
+        "choose": "Które z nich mówi, komu zapłacono?",
+        "none": "Plik nie ma odbiorcy",
+        "none_found": "Twój plik nie mówi, komu zapłacono. Możesz dodać odbiorców później.",
+        "left_out": "Odbiorcy zostaną pominięci. Możesz ich dodać później.",
+        "shared_owner_lists": "Odbiorcy, których właściciel tego konta jeszcze nie ma, zostaną pominięci: dodać ich może tylko właściciel lub administrator."
+      },
       "extras": {
         "title": "Coś jeszcze warto przenieść?",
         "leave_out": "Nie przenoś",
         "role": {
-          "category": "Kategoria",
-          "payee": "Odbiorca",
           "tag": "Tag budżetowy",
           "labels": "Tagi raportowe"
         },
@@ -491,12 +508,9 @@
         "tab": "Tabulator",
         "newline": "Nowa linia",
         "custom_separator": "Inny znak",
-        "shared_owner_lists": "Kategorie, odbiorcy i tagi, których właściciel tego konta jeszcze nie ma, zostaną pominięte: dodać je może tylko właściciel lub administrator.",
-        "new_categories": "Zostanie utworzona {count} nowa kategoria | Zostaną utworzone {count} nowe kategorie | Zostanie utworzonych {count} nowych kategorii",
+        "shared_owner_lists": "Tagi, których właściciel tego konta jeszcze nie ma, zostaną pominięte: dodać je może tylko właściciel lub administrator.",
         "new_labels": "Zostanie utworzony {count} nowy tag | Zostaną utworzone {count} nowe tagi | Zostanie utworzonych {count} nowych tagów",
         "role_hint": {
-          "payee": "Komu zapłaciłeś lub kto zapłacił tobie",
-          "category": "Zakupy, czynsz… brakujące zostaną utworzone",
           "tag": "Projekt lub podróż",
           "labels": "Kilka naraz to nie problem"
         },
@@ -551,7 +565,8 @@
         "nothing_extra": "Nic więcej",
         "check": "Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped}",
         "from_account": "Konto {name}",
-        "from_accounts": "{name} i jeszcze {count} konto | {name} i jeszcze {count} konta | {name} i jeszcze {count} kont"
+        "from_accounts": "{name} i jeszcze {count} konto | {name} i jeszcze {count} konta | {name} i jeszcze {count} kont",
+        "nothing": "Brak"
       },
       "from": "z „{name}”",
       "looks_right": "Zgadza się",

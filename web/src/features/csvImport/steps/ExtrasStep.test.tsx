@@ -57,45 +57,44 @@ const optionsOf = (role: string) => within(screen.getByRole('combobox', { name: 
 
 it('offers each detail what the earlier steps left free, values first', () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
-  expect(optionsOf('Payee')).toEqual(['Don’t bring it', 'lunch — from “Memo”', 'Food — from “Group”'])
-  expect(optionsOf('Category')).toEqual(optionsOf('Payee'))
+  expect(optionsOf('Budget tag')).toEqual(['Don’t bring it', 'lunch — from “Memo”', 'Food — from “Group”'])
+  expect(optionsOf('Reporting tags')).toEqual(optionsOf('Budget tag'))
   expect(screen.getByRole('combobox', { name: 'Reporting tags' })).toHaveValue('')
+  expect(screen.queryByRole('combobox', { name: 'Category' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('combobox', { name: 'Payee' })).not.toBeInTheDocument()
+})
+
+it('the category and payee columns are not offered: their own steps read them', () => {
+  renderStep('Date,Amount,Memo,Group,Shop\n2026-01-02,-5,lunch,Food,Cafe\n', { ...noExtras, category: 3, payee: 4 })
+  expect(optionsOf('Budget tag')).toEqual(['Don’t bring it', 'lunch — from “Memo”'])
 })
 
 it('ids and currency codes are not offered as a detail until Show all', async () => {
   renderStep('Date,Amount,Ref,Memo,Cur\n2026-01-02,-5,01a1be03-f8df-7603-b2b1-2c3d4e5f6a7b,lunch,EUR\n')
   const user = userEvent.setup()
-  expect(optionsOf('Payee')).toEqual(['Don’t bring it', 'lunch — from “Memo”'])
+  expect(optionsOf('Budget tag')).toEqual(['Don’t bring it', 'lunch — from “Memo”'])
   await user.click(screen.getByRole('button', { name: 'Show all' }))
-  expect(optionsOf('Payee')).toEqual(['Don’t bring it', expect.stringMatching(/from “Ref”$/), 'lunch — from “Memo”', 'EUR — from “Cur”'])
+  expect(optionsOf('Budget tag')).toEqual(['Don’t bring it', expect.stringMatching(/from “Ref”$/), 'lunch — from “Memo”', 'EUR — from “Cur”'])
   expect(screen.queryByRole('button', { name: 'Show all' })).not.toBeInTheDocument()
 })
 
 it('choosing a column for a detail brings it over', async () => {
   renderStep('Date,Amount,Memo,Group\n2026-01-02,-5,lunch,Food\n')
   const user = userEvent.setup()
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'Food — from “Group”')
-  expect(extrasOf().category).toBe(3)
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'Don’t bring it')
-  expect(extrasOf().category).toBeNull()
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Budget tag' }), 'Food — from “Group”')
+  expect(extrasOf().tag).toBe(3)
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Budget tag' }), 'Don’t bring it')
+  expect(extrasOf().tag).toBeNull()
 })
 
 it('a column belongs to one detail: giving it to a second takes it from the first', async () => {
   renderStep('Date,Amount,One,Two\n2026-01-02,-5,a,b\n')
   const user = userEvent.setup()
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), 'a — from “One”')
-  expect(extrasOf().category).toBe(2)
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Payee' }), 'a — from “One”')
-  expect(extrasOf()).toMatchObject({ payee: 2, category: null })
-  expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('')
-})
-
-it('counts new categories case-insensitively against the owner’s, archived ones included', async () => {
-  renderStep('Date,Amount,Group\n2026-01-02,-5,FOOD\n2026-01-03,-5,old\n2026-01-04,-5,Travel\n2026-01-05,-5,travel\n', {
-    ...noExtras,
-    category: 2,
-  })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Budget tag' }), 'a — from “One”')
+  expect(extrasOf().tag).toBe(2)
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Reporting tags' }), 'a — from “One”')
+  expect(extrasOf()).toMatchObject({ labels: 2, tag: null })
+  expect(screen.getByRole('combobox', { name: 'Budget tag' })).toHaveValue('')
 })
 
 it('counts new labels split by the separator, sharing one name space with tags', async () => {
@@ -114,11 +113,6 @@ it('offers the separator only for a labels column and keeps a custom one', async
   expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
 })
 
-it('a name found only on a row that will be skipped is not counted as created', async () => {
-  renderStep('Date,Amount,Group\n2026-01-02,-5,Travel\nsoon,-5,Garden\n', { ...noExtras, category: 2 })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
-})
-
 it('tags on separate lines of one cell split by New line', async () => {
   renderStep('Date,Amount,Marks\n2026-01-02,-5,"a\nb"\n', { ...noExtras, labels: 2 })
   const user = userEvent.setup()
@@ -128,11 +122,6 @@ it('tags on separate lines of one cell split by New line', async () => {
   expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
 })
 
-it('counts a category within its kind: an income row naming an expense category makes a new one', async () => {
-  renderStep('Date,Amount,Group\n2026-01-02,-5,Food\n2026-01-03,5,food\n', { ...noExtras, category: 2 })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
-})
-
 const sharedAccount = (role: 'admin' | 'user') => ({
   ...fixtureAccounts[0],
   id: 'shared',
@@ -140,16 +129,16 @@ const sharedAccount = (role: 'admin' | 'user') => ({
   sharedAccess: [{ user: fixtureOwner, role, isAccepted: 1 }],
 })
 
-it('into a shared account with a user grant, says new names are left out instead of counting them', async () => {
+it('into a shared account with a user grant, says new tags are left out instead of counting them', async () => {
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('user')] }))
-  renderStep('Date,Amount,Group\n2026-01-02,-5,Gadgets\n', { ...noExtras, category: 2 }, { kind: 'existing', accountId: 'shared' })
-  expect(await screen.findByText(/only the owner or an admin can add them/)).toBeInTheDocument()
+  renderStep('Date,Amount,Marks\n2026-01-02,-5,Gadgets\n', { ...noExtras, labels: 2 }, { kind: 'existing', accountId: 'shared' })
+  expect(await screen.findByText('Tags this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.')).toBeInTheDocument()
   expect(screen.queryByText(/will be created/)).not.toBeInTheDocument()
 })
 
-it('into a shared account with an admin grant, counts the new names as usual', async () => {
+it('into a shared account with an admin grant, counts the new tags as usual', async () => {
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('admin')] }))
-  renderStep('Date,Amount,Group\n2026-01-02,-5,Gadgets\n', { ...noExtras, category: 2 }, { kind: 'existing', accountId: 'shared' })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+  renderStep('Date,Amount,Marks\n2026-01-02,-5,Gadgets\n', { ...noExtras, labels: 2 }, { kind: 'existing', accountId: 'shared' })
+  expect(await screen.findByText('1 new tag will be created')).toBeInTheDocument()
   expect(screen.queryByText(/only the owner or an admin/)).not.toBeInTheDocument()
 })

@@ -282,8 +282,8 @@ const SLOTS: Slot[] = [
   { step: 'amount', role: 'amountIn', get: (a) => (a.amount.mode === 'dual' ? a.amount.inColumn : null), set: (a, c) => (a.amount.inColumn = c) },
   { step: 'amount', role: 'amountOut', get: (a) => (a.amount.mode === 'dual' ? a.amount.outColumn : null), set: (a, c) => (a.amount.outColumn = c) },
   { step: 'description', role: 'description', get: (a) => a.description, set: (a, c) => (a.description = c) },
-  { step: 'extras', role: 'payee', get: (a) => a.extras.payee, set: (a, c) => (a.extras.payee = c) },
-  { step: 'extras', role: 'category', get: (a) => a.extras.category, set: (a, c) => (a.extras.category = c) },
+  { step: 'payee', role: 'payee', get: (a) => a.extras.payee, set: (a, c) => (a.extras.payee = c) },
+  { step: 'category', role: 'category', get: (a) => a.extras.category, set: (a, c) => (a.extras.category = c) },
   { step: 'extras', role: 'tag', get: (a) => a.extras.tag, set: (a, c) => (a.extras.tag = c) },
   { step: 'extras', role: 'labels', get: (a) => a.extras.labels, set: (a, c) => (a.extras.labels = c) },
 ]

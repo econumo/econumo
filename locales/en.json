@@ -414,7 +414,9 @@
         "account": "Account",
         "date": "Date",
         "amount": "Amount",
+        "category": "Category",
         "description": "Description",
+        "payee": "Payee",
         "extras": "Extra details",
         "preview": "Check and import"
       },
@@ -473,17 +475,32 @@
         "choose_in": "Which of these is money in?",
         "choose_out": "Which of these is money out?"
       },
+      "category": {
+        "title": "How are the payments sorted?",
+        "choose": "Which of these is the category?",
+        "none": "The file has no category",
+        "none_found": "Your file has no categories. You can sort transactions into categories later.",
+        "left_out": "Categories are left out. You can sort transactions into categories later.",
+        "shared_owner_lists": "Categories this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.",
+        "new": "{count} new category will be created | {count} new categories will be created"
+      },
       "description": {
         "none": "The file has no description",
         "title": "What was each payment for?",
         "choose": "Which of these says what it was for?"
       },
+      "payee": {
+        "title": "Who was paid, or who paid you?",
+        "choose": "Which of these says who was paid?",
+        "none": "The file has no payee",
+        "none_found": "Your file doesn’t say who was paid. You can add payees later.",
+        "left_out": "Payees are left out. You can add them later.",
+        "shared_owner_lists": "Payees this account’s owner doesn’t have yet are left out: only the owner or an admin can add them."
+      },
       "extras": {
         "title": "Anything else worth bringing along?",
         "leave_out": "Don’t bring it",
         "role": {
-          "category": "Category",
-          "payee": "Payee",
           "tag": "Budget tag",
           "labels": "Reporting tags"
         },
@@ -491,12 +508,9 @@
         "tab": "Tab",
         "newline": "New line",
         "custom_separator": "Something else",
-        "shared_owner_lists": "Categories, payees and tags this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.",
-        "new_categories": "{count} new category will be created | {count} new categories will be created",
+        "shared_owner_lists": "Tags this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.",
         "new_labels": "{count} new tag will be created | {count} new tags will be created",
         "role_hint": {
-          "payee": "Who you paid or who paid you",
-          "category": "Groceries, rent… the ones you don’t have yet are created",
           "tag": "A project or a trip",
           "labels": "Several at once are fine"
         },
@@ -551,7 +565,8 @@
         "nothing_extra": "Nothing extra",
         "check": "{count} to import · {skipped} left out | {count} to import · {skipped} left out",
         "from_account": "From {name}",
-        "from_accounts": "From {name} and {count} more account | From {name} and {count} more accounts"
+        "from_accounts": "From {name} and {count} more account | From {name} and {count} more accounts",
+        "nothing": "None"
       },
       "from": "from “{name}”",
       "looks_right": "Looks right",

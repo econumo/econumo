@@ -37,7 +37,7 @@ export interface WizardAnswers {
 
 export type RowFix = { date?: string; amount?: string } | 'skip'
 
-export type StepId = 'file' | 'account' | 'date' | 'amount' | 'description' | 'extras' | 'preview'
+export type StepId = 'file' | 'account' | 'date' | 'amount' | 'category' | 'description' | 'payee' | 'extras' | 'preview'
 
 export interface PreparedRow {
   // the line of the file the row starts on, header = 1: what the user finds in their editor

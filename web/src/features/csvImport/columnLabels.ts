@@ -12,8 +12,8 @@ const ROLE_KEYS: Record<Role, string> = {
   amountIn: 'transactions.import_wizard.amount.money_in',
   amountOut: 'transactions.import_wizard.amount.money_out',
   description: 'transactions.import_wizard.steps.description',
-  category: 'transactions.import_wizard.extras.role.category',
-  payee: 'transactions.import_wizard.extras.role.payee',
+  category: 'transactions.import_wizard.steps.category',
+  payee: 'transactions.import_wizard.steps.payee',
   tag: 'transactions.import_wizard.extras.role.tag',
   labels: 'transactions.import_wizard.extras.role.labels',
 }

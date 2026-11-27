@@ -69,7 +69,51 @@ it('any step opens from the step list, and Back and Looks right walk the steps i
   expect(screen.getByRole('heading', { name: 'When did each payment happen?' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Looks right' }))
   await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  expect(screen.getByRole('heading', { name: 'How are the payments sorted?' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Looks right' }))
   expect(screen.getByRole('heading', { name: 'What was each payment for?' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  expect(screen.getByRole('heading', { name: 'Who was paid, or who paid you?' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  expect(screen.getByRole('heading', { name: 'Here is what will be added' })).toBeInTheDocument()
+})
+
+it('lists Category between Amount and Description, and Payee after Description', async () => {
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Trip\n2026-01-02,-5.50,Coffee,Rome\n') })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  const titles = screen.getAllByRole('button', { name: /^(Account|Date|Amount|Category|Description|Payee|Extra details|Check and import)/ })
+  const order = ['Account', 'Date', 'Amount', 'Category', 'Description', 'Payee', 'Extra details', 'Check and import']
+  expect(titles.map((b) => b.textContent)).toEqual(order.map((title) => expect.stringMatching(new RegExp(`^\\d*${title}`))))
+})
+
+it('a file with no category or payee answers both calmly with Looks right; they never need attention', async () => {
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(screen.getByRole('button', { name: 'Category' })).toHaveAccessibleDescription('None')
+  expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('None')
+  await user.click(screen.getByRole('button', { name: 'Category' }))
+  expect(screen.getByText('Your file has no categories. You can sort transactions into categories later.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Payee' }))
+  expect(screen.getByText('Your file doesn’t say who was paid. You can add payees later.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+})
+
+it('Category and Payee left as None never block Import', async () => {
+  renderWizard({ initialFile: csv(EXPORT, 'econumo.csv') })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Here is what will be added' })
+  expect(screen.getByRole('button', { name: 'Category' })).toHaveAccessibleDescription('Food · Salary')
+  expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('Cafe')
+  for (const step of ['Category', 'Payee']) {
+    await user.click(screen.getByRole('button', { name: step }))
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    await user.click(screen.getByRole('radio', { name: step === 'Category' ? 'The file has no category' : 'The file has no payee' }))
+    expect(screen.getByRole('button', { name: step })).toHaveAccessibleDescription('None')
+  }
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeEnabled()
 })
 
 it('a guessed step opens on its answer with Looks right in the footer; Change puts the choices in its place and brings Continue back', async () => {
@@ -118,9 +162,16 @@ it('Extra details is left out when every column is already used', async () => {
 })
 
 it('Extra details is offered when the file has a column no step uses', async () => {
-  renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee,Cafe\n') })
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant,Trip\n2026-01-02,-5.50,Coffee,Cafe,Rome\n') })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('button', { name: /^Extra details/ })).toBeInTheDocument()
+})
+
+it('Extra details is left out when Category and Payee read the only columns left', async () => {
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee,Cafe\n') })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('Cafe')
+  expect(screen.queryByRole('button', { name: /^Extra details/ })).not.toBeInTheDocument()
 })
 
 it('marks an unanswered account and a date column that leaves rows unread', async () => {
@@ -172,21 +223,20 @@ it('each step shows its answer in plain words under its name', async () => {
   expect(screen.getByText('2 transactions ready · 0 left out')).toBeInTheDocument()
 })
 
-it('a column given in Extra details carries a “used for payee” tag on Description', async () => {
-  renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee,Cafe\n') })
+it('a column given on the Payee step carries a “used for payee” tag on Description', async () => {
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Note\n2026-01-02,-5.50,Coffee and a long walk home,Cafe\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  await user.click(screen.getByRole('button', { name: 'Extra details' }))
-  await user.click(screen.getByRole('button', { name: 'Change' }))
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Payee' }), 'Cafe — from “Merchant”')
-  expect(screen.getByRole('button', { name: 'Extra details' })).toHaveAccessibleDescription('With payee')
+  await user.click(screen.getByRole('button', { name: /^Payee/ }))
+  await user.click(screen.getByRole('radio', { name: 'Cafe from “Note”' }))
+  expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('Cafe')
   await user.click(screen.getByRole('button', { name: 'Description' }))
   await user.click(screen.getByRole('button', { name: 'Change' }))
   // used elsewhere, so not offered until Show all
-  expect(screen.queryByRole('radio', { name: 'Cafe from “Merchant”' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('radio', { name: 'Cafe from “Note”' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Show all' }))
-  expect(screen.getByRole('radio', { name: 'Cafe from “Merchant”' })).toHaveAccessibleDescription('used for payee')
-  expect(screen.getByRole('radio', { name: 'Coffee from “Details”' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'Cafe from “Note”' })).toHaveAccessibleDescription('used for payee')
+  expect(screen.getByRole('radio', { name: /from “Details”/ })).toBeChecked()
 })
 
 it('an Econumo export goes straight to Check', async () => {
@@ -246,7 +296,7 @@ it('on a phone the step list comes first; a step opens over it and the arrow goe
   expect(screen.queryByRole('heading', { name: 'Which account are these transactions from?' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Amount' }))
   expect(screen.getByRole('heading', { name: 'How much was each payment?' })).toBeInTheDocument()
-  expect(screen.getByText('Step 3 of 5 · Amount')).toBeInTheDocument()
+  expect(screen.getByText('Step 3 of 7 · Amount')).toBeInTheDocument()
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'All steps' }))
   await user.click(screen.getByRole('button', { name: 'Check 2 transactions' }))

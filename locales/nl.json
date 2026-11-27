@@ -414,7 +414,9 @@
         "account": "Rekening",
         "date": "Datum",
         "amount": "Bedrag",
+        "category": "Categorie",
         "description": "Omschrijving",
+        "payee": "Begunstigde",
         "extras": "Extra gegevens",
         "preview": "Controleren en importeren"
       },
@@ -473,17 +475,32 @@
         "choose_in": "Welke hiervan is geld erin?",
         "choose_out": "Welke hiervan is geld eruit?"
       },
+      "category": {
+        "title": "Hoe zijn de betalingen ingedeeld?",
+        "choose": "Welke hiervan is de categorie?",
+        "none": "Het bestand heeft geen categorie",
+        "none_found": "Uw bestand heeft geen categorieën. U kunt de transacties later in categorieën indelen.",
+        "left_out": "Categorieën worden weggelaten. U kunt de transacties later in categorieën indelen.",
+        "shared_owner_lists": "Categorieën die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen.",
+        "new": "{count} nieuwe categorie wordt aangemaakt | {count} nieuwe categorieën worden aangemaakt"
+      },
       "description": {
         "none": "Het bestand heeft geen omschrijving",
         "title": "Waarvoor was elke betaling?",
         "choose": "Welke hiervan zegt waarvoor het was?"
       },
+      "payee": {
+        "title": "Wie is er betaald, of wie heeft u betaald?",
+        "choose": "Welke hiervan zegt wie er betaald is?",
+        "none": "Het bestand heeft geen begunstigde",
+        "none_found": "Uw bestand zegt niet wie er betaald is. U kunt begunstigden later toevoegen.",
+        "left_out": "Begunstigden worden weggelaten. U kunt ze later toevoegen.",
+        "shared_owner_lists": "Begunstigden die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen."
+      },
       "extras": {
         "title": "Wilt u nog iets meenemen?",
         "leave_out": "Niet meenemen",
         "role": {
-          "category": "Categorie",
-          "payee": "Begunstigde",
           "tag": "Budgettag",
           "labels": "Rapportagetags"
         },
@@ -491,12 +508,9 @@
         "tab": "Tab",
         "newline": "Nieuwe regel",
         "custom_separator": "Iets anders",
-        "shared_owner_lists": "Categorieën, begunstigden en tags die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen.",
-        "new_categories": "{count} nieuwe categorie wordt aangemaakt | {count} nieuwe categorieën worden aangemaakt",
+        "shared_owner_lists": "Tags die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen.",
         "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt",
         "role_hint": {
-          "payee": "Wie u betaalde of wie u betaalde",
-          "category": "Boodschappen, huur… ontbrekende worden aangemaakt",
           "tag": "Een project of een reis",
           "labels": "Meerdere tegelijk kan"
         },
@@ -551,7 +565,8 @@
         "nothing_extra": "Verder niets",
         "check": "{count} te importeren · {skipped} weggelaten | {count} te importeren · {skipped} weggelaten",
         "from_account": "Van {name}",
-        "from_accounts": "Van {name} en nog {count} rekening | Van {name} en nog {count} rekeningen"
+        "from_accounts": "Van {name} en nog {count} rekening | Van {name} en nog {count} rekeningen",
+        "nothing": "Geen"
       },
       "from": "uit ‘{name}’",
       "looks_right": "Klopt",

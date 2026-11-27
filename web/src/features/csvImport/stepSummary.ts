@@ -7,6 +7,7 @@ import type { PreparedRow, StepId, WizardAnswers } from './prepare'
 import { firstDistinct, missingAnswer, nameKey } from './wizard'
 
 const SUMMARY_AMOUNTS = 2
+const SUMMARY_NAMES = 2
 
 export interface SummaryContext {
   answers: WizardAnswers
@@ -58,8 +59,14 @@ export function stepSummary(step: Exclude<StepId, 'file'>, ctx: SummaryContext):
       if (answers.description === null) return k('none')
       return firstDistinct(rows, (row) => row.description, 1).values[0] ?? k('none')
     }
+    case 'category':
+    case 'payee': {
+      if (answers.extras[step] === null) return k('nothing')
+      const { values } = firstDistinct(rows, (row) => row[step], SUMMARY_NAMES)
+      return values.length > 0 ? values.join(' · ') : k('nothing')
+    }
     case 'extras': {
-      const roles = (['payee', 'category', 'tag', 'labels'] as const).filter((role) => answers.extras[role] !== null)
+      const roles = (['tag', 'labels'] as const).filter((role) => answers.extras[role] !== null)
       return roles.length > 0 ? k('with', { list: roles.map((role) => inPhrase(roleLabel(role, t), language)).join(', ') }) : k('nothing_extra')
     }
     case 'preview': {

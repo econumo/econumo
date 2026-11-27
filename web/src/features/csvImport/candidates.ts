@@ -9,29 +9,31 @@ const STEP_OF: Record<Role, StepId> = {
   amountIn: 'amount',
   amountOut: 'amount',
   description: 'description',
-  category: 'extras',
-  payee: 'extras',
+  category: 'category',
+  payee: 'payee',
   tag: 'extras',
   labels: 'extras',
 }
 
-// An account name is short and the same on many rows; a sentence or a value on nearly every
-// row on its own is something else. A small file repeats little, so up to three names pass.
-const ACCOUNT_MAX_LENGTH = 40
-const ACCOUNT_MIN_DISTINCT = 3
-const ACCOUNT_ROWS_PER_NAME = 3
+// An account or category name is short and the same on many rows; a sentence or a value on
+// nearly every row on its own is something else. A small file repeats little, so up to three
+// names pass.
+const NAME_MAX_LENGTH = 40
+const NAME_MIN_DISTINCT = 3
+const NAME_ROWS_PER_NAME = 3
 
 const words = (p: ColumnProfile) => p.type === 'text' && !p.internal && !p.codes
+const repeatedNames = (p: ColumnProfile) =>
+  words(p) && p.averageLength <= NAME_MAX_LENGTH && p.distinct <= Math.max(NAME_MIN_DISTINCT, Math.floor(p.filled / NAME_ROWS_PER_NAME))
 
 const fits: Record<Role, (p: ColumnProfile) => boolean> = {
-  account: (p) =>
-    words(p) && p.averageLength <= ACCOUNT_MAX_LENGTH && p.distinct <= Math.max(ACCOUNT_MIN_DISTINCT, Math.floor(p.filled / ACCOUNT_ROWS_PER_NAME)),
+  account: repeatedNames,
   date: (p) => p.type === 'date',
   amount: (p) => p.type === 'number' && !p.internal,
   amountIn: (p) => p.type === 'number' && !p.internal,
   amountOut: (p) => p.type === 'number' && !p.internal,
   description: words,
-  category: words,
+  category: repeatedNames,
   payee: words,
   tag: words,
   labels: words,
@@ -39,6 +41,7 @@ const fits: Record<Role, (p: ColumnProfile) => boolean> = {
 
 const rank: Partial<Record<Role, (a: ColumnProfile, b: ColumnProfile) => number>> = {
   account: (a, b) => a.distinct - b.distinct,
+  category: (a, b) => a.distinct - b.distinct,
   description: (a, b) => b.averageLength - a.averageLength,
 }
 

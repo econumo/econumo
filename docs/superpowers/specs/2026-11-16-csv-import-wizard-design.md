@@ -63,11 +63,12 @@ is done, and an ambiguous date like `03/04/2026` is silently read day-first.
 > all behaviour (guessing, AI, normalisation, fixes, retry, lock) stay.
 >
 > - **Desktop:** a wide dialog split in two. Left: title, the file (name, row count), then a
->   vertical list of steps (Account, Date, Amount, Description, Extra details, Check and
->   import), each with a check mark when answered and its answer in plain words underneath
+>   vertical list of steps (Account, Date, Amount, Category, Description, Payee, Extra
+>   details, Check and import; Category and Payee were split out of Extra details on the
+>   product owner's request, 2026-11-26), each with a check mark when answered and its answer in plain words underneath
 >   ("New: Girokonto · EUR", "Buchungstag · 2 Oct 2026", "Betrag · 1.234,56",
 >   "12 to import · 1 left out"); a footer line "12 transactions ready · 1 left out". Any step
->   can be opened from the list. Right: "Step 2 of 6 · Date", the step's question as a heading,
+>   can be opened from the list. Right: "Step 2 of 8 · Date", the step's question as a heading,
 >   the body, and Back / Continue (Import on the last step).
 > - **Phone:** the step list is the first screen (with "We read your file and filled in what
 >   we could. Tap a step to change it." and a primary "Check N transactions"); tapping a step
@@ -168,24 +169,40 @@ Column cards. Under the cards, the selected column's values are checked:
   no switch is shown. *(My call.)*
 - Decimal comma vs point is detected from the values; if ambiguous, asked with an example.
 
-### 5. Description: "Which column describes each transaction?"
+### 5. Category (optional): "How are the payments sorted?"
+
+Built like Description: the guessed answer first ("Strata · Interest · Car Insurance", from
+“category”), Change opens "Which of these is the category?" with short names that repeat
+(not ids or currency codes), "Show all", the "Already used" group and "The file has no
+category". Optional: with nothing that fits, or None picked, the step answers calmly ("Your
+file has no categories. You can sort transactions into categories later.") with Looks
+right; it never warns and never blocks Import. The "N new categories will be created" note
+and the shared-account "left out" note live here. A pick takes its column from Description
+and from the other details (the last pick wins).
+
+### 6. Description: "Which column describes each transaction?"
 
 Column cards, plus "None". This is the text a bank calls details, reference, merchant.
 
-### 6. Extra details (optional): "Anything else to bring over?"
+### 7. Payee (optional): "Who was paid, or who paid you?"
+
+As Category, offering any text; "Your file doesn’t say who was paid. You can add payees
+later." when nothing fits. The shared-account "left out" note for payees lives here.
+
+### 8. Extra details (optional): "Anything else to bring over?"
 
 For people moving from another app. Lists the columns not used yet, each with sample
-values, and lets the user mark each as Category, Payee, Tag, Labels, or leave it out
+values, and lets the user mark each as Budget tag, Reporting tags, or leave it out
 (default: leave out, unless the guesser recognised it). Labels get the separator choice
 that exists today, in plain words ("Several labels in one cell are separated by…"). Shown
-only when the file has unused columns; otherwise skipped. A "new categories/labels will be
-created: 12" note as today.
+only when the file has unused columns; otherwise skipped. A "new tags will be created: 12"
+note as today.
 
 The old "fixed value for every row" options (one category/payee/tag/labels/date/description
 for the whole file) are dropped from the UI; nobody bringing a bank statement needs them.
 The server still accepts those fields.
 
-### 7. Preview: "Here's what will be imported"
+### 9. Preview: "Here's what will be imported"
 
 - **One transaction at a time**, not a list: a card laid out like the app's transaction
   view (account, date, signed amount in the account's currency, red/green; description;

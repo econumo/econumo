@@ -642,8 +642,8 @@ navigation (single-pane vs sidebar).
 - [ ] Account page in a narrow desktop browser window (phone layout): press and
       hold a row with the mouse for about half a second, then drag; a plain
       click still opens the preview.
-- [ ] CSV import whose Extra details use a column as Category, Payee or Budget
-      tag, naming a new one in different letter cases ("Snacks" on one row,
+- [ ] CSV import whose Category, Payee or Extra details step uses a column as
+      Category, Payee or Budget tag, naming a new one in different letter cases ("Snacks" on one row,
       "snacks" on a later one), creates it once, as first spelled; for a
       category the wizard's note reads "1 new category will be created".
 - [ ] Account page 📱: dropping a row into another day's group moves it to that
@@ -750,9 +750,10 @@ navigation (single-pane vs sidebar).
       CSV, or Getting started's Import step): titled "Import transactions".
       On a desktop it is one wide dialog in two panes: on the left the title
       with ✕, the file (name and "N rows"; before a file "No file yet"), the
-      steps Account, Date, Amount, Description, Extra details, Check and
-      import as a vertical list, and at the bottom "N transactions ready · M
-      left out"; on the right "Step 2 of 6 · Date", the step's question as a
+      steps Account, Date, Amount, Category, Description, Payee, Extra
+      details, Check and import as a vertical list, and at the bottom "N
+      transactions ready · M left out"; on the right "Step 2 of 8 · Date" ("of
+      7" when Extra details is skipped), the step's question as a
       heading, its answers, and Back / Continue (Import on the last step;
       no Back on Account). Your file accepts a .csv picked or dropped; a file
       over 10 MB says "This file is larger than 10 MB", an empty one "This file
@@ -761,13 +762,16 @@ navigation (single-pane vs sidebar).
       banks name their export that way). No step body, question or step-list
       summary uses the words "column", "header", "mapping", "field" or "CSV",
       in any of the 11 languages. Answer first: a step with a guess (Account's
-      per-row option, Date, Amount, Description, Extra details) opens on the
+      per-row option, Date, Amount, Category, Description, Payee, Extra
+      details) opens on the
       guess as a settings-style row (a rounded box): the answer in plain words
       about the money — Date "Nov 3, 2026 · Nov 5, 2026 · Nov 7, 2026 …",
-      Amount "−12.50 € · +2,500.00 € · −4.99 € …" (income green), Description
-      "REWE Markt Berlin · Gehalt November · Spotify …", the per-row account
+      Amount "−12.50 € · +2,500.00 € · −4.99 € …" (income green), Category
+      "Strata · Interest · Car Insurance …", Description "REWE Markt Berlin ·
+      Gehalt November · Spotify …", Payee "WealthSimple · ICBC · IFS Premium
+      …", the per-row account
       "Your file names the account for each transaction", Extra details "We’ll
-      also bring along:" with "Payee: … (from “payee”)" lines — with the
+      also bring along:" with "Budget tag: … (from “tag”)" lines — with the
       file's own name in small grey text under it ("from “Buchungstag”") and a
       quiet "Change" on the right. Under the per-row account's row, one line
       per account ("WS Cash · 572 transactions" and its currency picker or
@@ -788,8 +792,8 @@ navigation (single-pane vs sidebar).
       nothing) opens on its choices; picking one that reads shows the answer
       row. The choices are ONE rounded list with thin lines between rows (no
       grid of cards), on Account's per-row option, Date, Amount ("Which of
-      these is money in?" / "…money out?" one under the other) and
-      Description: each row is a radio led by its first values, written as
+      these is money in?" / "…money out?" one under the other), Category,
+      Description and Payee: each row is a radio led by its first values, written as
       dates or amounts where they read as such ("Nov 3, 2026 · Nov 5, 2026",
       "−12.50 · 2,500.00"; a date whose day and month could swap stays as in
       the file), the file's own name under them in small grey text ("from
@@ -798,8 +802,9 @@ navigation (single-pane vs sidebar).
       first, a "none of these" answer is the list's last row. Only what could
       answer is listed: Account — short text that repeats on many rows (not
       currency codes such as CAD/EUR, not ids, not long free text); Date —
-      dates; Amount — money; Description — text, the longest first; Extra
-      details — text. A part another step already uses is not listed. A quiet
+      dates; Amount — money; Category — short text that repeats (not
+      currency codes, not ids), the fewest different names first;
+      Description — text, the longest first; Payee and Extra details — text. A part another step already uses is not listed. A quiet
       "Show all" under the list adds every other non-empty part, each one
       another step uses with a small grey tag ("used for payee", "used for
       description"); when nothing fits, the whole list shows at once. On an
@@ -811,14 +816,18 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 Step list: once a file is read every step can be opened in any order
       by clicking it. Each step shows its answer in plain words under its name
       ("New: Girokonto · EUR", "From WS Cash and 2 more accounts", "Oct 2,
-      2026", "−12.50 · +2,500.00", "REWE Markt Berlin", "With payee,
-      category", "12 to import · 1 left out"; never a header name) and a
+      2026", "−12.50 · +2,500.00", "Strata · Interest", "REWE Markt Berlin",
+      "WealthSimple · ICBC", "With budget tag", "12 to import · 1 left out";
+      "None" for a Category or Payee left out; never a header name) and a
       green check once answered; the open step is highlighted with its number
       in magenta. A step whose required answer is missing (Account, Date,
       Amount) shows a yellow warning mark instead, and Import stays disabled
-      until those are answered. Rows that will be skipped never put a mark on
+      until those are answered. Category and Payee are optional and never
+      carry a warning or hold Import back. Category and Payee are optional and never
+      carry a warning or hold Import back. Rows that will be skipped never put a mark on
       a step: the step says so in grey with an info icon. Extra details appears
-      only when some column is left unused. On a 390 px phone the list is the
+      only when some column is left unused by the steps above it (Category
+      and Payee included). On a 390 px phone the list is the
       first screen, with "We read your file and filled in what we could. Tap a
       step to change it." and a "Check N transactions" button; tapping a step
       opens it full screen with ← (back to the list), the question and Back /
@@ -861,25 +870,43 @@ navigation (single-pane vs sidebar).
       "used for money in" on the other.
 - [ ] Description: choosing an answer picks it; "The file has no
       description" is the last option and leaves descriptions empty.
-- [ ] Extra details (a file with Category, Payee, Tags columns from another
-      app): recognised headers come preselected and the step opens on "We’ll
-      also bring along:" with one line per detail ("Payee: WealthSimple ·
-      ICBC · IFS Premium (from “payee”)"). Change shows one row
-      per detail (Payee, Category, Budget tag, Reporting tags), each with a
-      one-line hint and a dropdown of the text the main steps left free
-      (ids and currency codes only after "Show all"), written
-      "first values — from “Header”", or "Don’t bring it", and "Done" under
-      them. Giving one to a second detail takes it from the first. On
-      Description, one given here is listed only after "Show all", with
-      "used for payee"; one that ends up on a main step anyway (e.g. by
-      the AI guess) is never also uploaded as an extra detail; Reporting tags
-      asks how several tags are separated (";" by default, ",",
-      "|", Tab, New line, or something else). A note counts the new categories
-      and tags the import will create, from the rows that will be imported
-      only (a name found only on a skipped row is not counted), a category
-      within its kind (an income row naming the expense category "Food" counts
-      a new income "Food"). The imported
-      rows carry exactly those values.
+- [ ] Category and Payee 📱 (an Econumo export, or a file with Category and
+      Payee columns from another app): recognised headers come preselected;
+      Category ("How are the payments sorted?") opens on "Strata · Interest ·
+      Car Insurance …" from “category”, Payee ("Who was paid, or who paid
+      you?") on "WealthSimple · ICBC · IFS Premium …" from “payee”, each with
+      "Looks right". Change shows "Which of these is the category?" / "Which
+      of these says who was paid?", the short list, "Show all", the "Already
+      used" group and "The file has no category" / "The file has no payee";
+      picking None answers "Categories are left out. You can sort
+      transactions into categories later." (Payees likewise) and the step
+      list reads "None". Picking on Category or Payee a part Description or
+      the other detail uses takes it from there. A bank statement with
+      neither (the German `Buchungstag;Betrag;Verwendungszweck` file) answers
+      calmly: "Your file has no categories. You can sort transactions into
+      categories later." and "Your file doesn’t say who was paid. You can add
+      payees later.", with Looks right, no warning mark, and Import enabled.
+      On Description, a part Payee uses is listed only after "Show all", with
+      "used for payee"; one that ends up on Description anyway (e.g. by the
+      AI guess) is never also uploaded as a category or payee. Category
+      counts the new categories the import will create, from the rows that
+      will be imported only (a name found only on a skipped row is not
+      counted), within its kind (an income row naming the expense category
+      "Food" counts a new income "Food"). The imported rows carry exactly
+      those values.
+- [ ] Extra details (a file with Tags and Labels columns from another app):
+      recognised headers come preselected and the step opens on "We’ll also
+      bring along:" with one line per detail ("Reporting tags: Mexico2025 ·
+      #oregon2410 (from “labels”)"). Change shows one row per detail (Budget
+      tag, Reporting tags), each with a one-line hint and a dropdown of the
+      text the earlier steps left free (ids and currency codes only after
+      "Show all"; never the category or payee column), written "first values
+      — from “Header”", or "Don’t bring it", and "Done" under them. Giving
+      one to the other detail takes it from the first. Reporting tags asks
+      how several tags are separated (";" by default, ",", "|", Tab, New
+      line, or something else). A note counts the new tags the import will
+      create, from the rows that will be imported only. The imported rows
+      carry exactly those values.
 - [ ] 📱 Check and import: three tiles, Transactions, Money in (green) and
       Money out (the money tiles are left out when the rows land in accounts
       of two currencies), then "first date to last date" in the UI language's
@@ -924,8 +951,9 @@ navigation (single-pane vs sidebar).
       chosen and Account carries no warning) lists only accounts the user owns
       or holds an accepted admin/user share of (not a guest share, not a
       pending invitation), and rows imported into a shared one land there.
-      With a user (not admin) share, Extra details says categories, payees
-      and tags the owner doesn't have yet are left out, and the rows import
+      With a user (not admin) share, Category, Payee and Extra details each
+      say the categories, payees or tags the owner doesn't have yet are left
+      out, and the rows import
       with the owner's existing ones and without the new ones (nothing is
       added to the owner's lists); with an admin share they are created in
       the owner's lists as for the owner;

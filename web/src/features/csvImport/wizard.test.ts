@@ -1,6 +1,7 @@
 import type { PreparedRow, WizardAnswers } from './prepare'
 import type { AccountDto } from '@/api/dto/account'
-import { firstDistinct, hasGuess, newAccountFolderId, releaseTakenExtras, visibleSteps, writableAccounts } from './wizard'
+import type { ColumnProfile } from './columns'
+import { firstDistinct, hasGuess, newAccountFolderId, pickDetail, releaseTakenExtras, unusedColumns, visibleSteps, writableAccounts } from './wizard'
 
 const answers = (patch: Partial<WizardAnswers>): WizardAnswers => ({
   account: { kind: 'existing', accountId: 'a1' },
@@ -36,7 +37,7 @@ it('a new account goes to the first visible folder, a hidden one only when all a
 it('Extra details stays listed while it is open, even with no free column left', () => {
   const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [], internal: false, filled: 1, distinct: 1, averageLength: 1, codes: false }))
   expect(visibleSteps(answers({}), profiles)).not.toContain('extras')
-  expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'description', 'extras', 'preview'])
+  expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'category', 'description', 'payee', 'extras', 'preview'])
 })
 
 it('offers the accounts the import accepts: mine, or shared with an accepted admin or user grant', () => {
@@ -60,17 +61,55 @@ const row = (patch: Partial<PreparedRow>): PreparedRow => ({
 
 it('a step shows its answer first only when the answer reads real values', () => {
   const rows = [row({})]
-  expect(hasGuess('date', { answers: answers({}), rows })).toBe(true)
-  expect(hasGuess('date', { answers: answers({ date: { column: null, order: 'ymd' } }), rows })).toBe(false)
-  expect(hasGuess('date', { answers: answers({}), rows: [row({ date: null, status: 'skipped', reason: 'no_date' })] })).toBe(false)
-  expect(hasGuess('description', { answers: answers({ description: null }), rows })).toBe(false)
-  expect(hasGuess('account', { answers: answers({}), rows })).toBe(false)
-  expect(hasGuess('account', { answers: answers({ account: { kind: 'column', column: 3, currencies: {} } }), rows: [row({ account: 'Cash' })] })).toBe(true)
-  expect(hasGuess('extras', { answers: answers({}), rows })).toBe(false)
-  expect(hasGuess('extras', { answers: answers({ extras: { payee: 3, category: null, tag: null, labels: null, labelsSeparator: ';' } }), rows })).toBe(true)
+  expect(hasGuess('date', { answers: answers({}), rows, profiles: [], touched: new Set() })).toBe(true)
+  expect(hasGuess('date', { answers: answers({ date: { column: null, order: 'ymd' } }), rows, profiles: [], touched: new Set() })).toBe(false)
+  expect(hasGuess('date', { answers: answers({}), rows: [row({ date: null, status: 'skipped', reason: 'no_date' })], profiles: [], touched: new Set() })).toBe(false)
+  expect(hasGuess('description', { answers: answers({ description: null }), rows, profiles: [], touched: new Set() })).toBe(false)
+  expect(hasGuess('account', { answers: answers({}), rows, profiles: [], touched: new Set() })).toBe(false)
+  expect(hasGuess('account', { answers: answers({ account: { kind: 'column', column: 3, currencies: {} } }), rows: [row({ account: 'Cash' })], profiles: [], touched: new Set() })).toBe(true)
+  expect(hasGuess('extras', { answers: answers({}), rows, profiles: [], touched: new Set() })).toBe(false)
+  expect(hasGuess('extras', { answers: answers({ extras: { payee: 3, category: null, tag: null, labels: null, labelsSeparator: ';' } }), rows, profiles: [], touched: new Set() })).toBe(false)
+  expect(hasGuess('extras', { answers: answers({ extras: { payee: null, category: null, tag: 3, labels: null, labelsSeparator: ';' } }), rows, profiles: [], touched: new Set() })).toBe(true)
 })
 
 it('firstDistinct takes the first few different values and says whether there are more', () => {
   expect(firstDistinct(['a', '', 'a', 'b', 'c'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: false })
   expect(firstDistinct(['a', 'b', 'c', 'd'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: true })
+})
+
+const text = (index: number, over: Partial<ColumnProfile> = {}): ColumnProfile => ({
+  index, name: `c${index}`, type: 'text', negatives: false, samples: ['x'], internal: false, filled: 9, distinct: 2, averageLength: 6, codes: false, ...over,
+})
+
+it('Category and Payee answer "none" when nothing in the file fits or None was picked, and ask while something fits', () => {
+  const rows = [row({})]
+  const fitting = [text(0), text(1), text(2), text(3)]
+  expect(hasGuess('category', { answers: answers({}), rows, profiles: [text(0), text(1), text(2)], touched: new Set() })).toBe(true)
+  expect(hasGuess('category', { answers: answers({}), rows, profiles: fitting, touched: new Set() })).toBe(false)
+  expect(hasGuess('category', { answers: answers({}), rows, profiles: fitting, touched: new Set(['category']) })).toBe(true)
+  expect(hasGuess('payee', { answers: answers({}), rows, profiles: fitting, touched: new Set() })).toBe(false)
+  const withCategory = answers({ extras: { payee: null, category: 3, tag: null, labels: null, labelsSeparator: ';' } })
+  expect(hasGuess('category', { answers: withCategory, rows: [row({ category: 'Food' })], profiles: fitting, touched: new Set() })).toBe(true)
+  expect(hasGuess('category', { answers: withCategory, rows: [row({ category: '' })], profiles: fitting, touched: new Set() })).toBe(false)
+})
+
+it('a Category or Payee pick takes its column from Description and the other details: the last pick wins', () => {
+  const before = answers({ extras: { payee: 3, category: null, tag: 4, labels: null, labelsSeparator: ';' } })
+  expect(pickDetail(before, 'category', 3)).toEqual({ extras: { payee: null, category: 3, tag: 4, labels: null, labelsSeparator: ';' } })
+  expect(pickDetail(before, 'payee', 2)).toEqual({ description: null, extras: { payee: 2, category: null, tag: 4, labels: null, labelsSeparator: ';' } })
+  expect(pickDetail(before, 'payee', null).extras).toEqual({ payee: null, category: null, tag: 4, labels: null, labelsSeparator: ';' })
+  const picked = { ...before, ...pickDetail(before, 'payee', 2) }
+  expect(releaseTakenExtras(picked)).toBe(picked)
+})
+
+it('a category or payee is not released from a date, amount or account column, only from Description', () => {
+  const before = answers({ extras: { payee: 1, category: 0, tag: null, labels: null, labelsSeparator: ';' } })
+  expect(releaseTakenExtras(before)).toBe(before)
+})
+
+it('Extra details offers neither the category nor the payee column, and a tag on either is released', () => {
+  const profiles = [0, 1, 2, 3, 4, 5].map((i) => text(i))
+  const chosen = answers({ extras: { payee: 3, category: 4, tag: 3, labels: 4, labelsSeparator: ';' } })
+  expect(unusedColumns(chosen, profiles).map((p) => p.index)).toEqual([5])
+  expect(releaseTakenExtras(chosen).extras).toEqual({ payee: 3, category: 4, tag: null, labels: null, labelsSeparator: ';' })
 })

@@ -414,7 +414,9 @@
         "account": "Konto",
         "date": "Datum",
         "amount": "Betrag",
+        "category": "Kategorie",
         "description": "Beschreibung",
+        "payee": "Zahlungsempfänger",
         "extras": "Weitere Angaben",
         "preview": "Prüfen und importieren"
       },
@@ -473,17 +475,32 @@
         "choose_in": "Welches davon sind Eingänge?",
         "choose_out": "Welches davon sind Ausgänge?"
       },
+      "category": {
+        "title": "Wie sind die Zahlungen eingeordnet?",
+        "choose": "Welches davon ist die Kategorie?",
+        "none": "Die Datei hat keine Kategorie",
+        "none_found": "Ihre Datei hat keine Kategorien. Sie können die Buchungen später in Kategorien einordnen.",
+        "left_out": "Kategorien werden weggelassen. Sie können die Buchungen später in Kategorien einordnen.",
+        "shared_owner_lists": "Kategorien, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen.",
+        "new": "{count} neue Kategorie wird erstellt | {count} neue Kategorien werden erstellt"
+      },
       "description": {
         "none": "Die Datei hat keine Beschreibung",
         "title": "Wofür war jede Zahlung?",
         "choose": "Welches davon sagt, wofür sie war?"
       },
+      "payee": {
+        "title": "Wer wurde bezahlt, oder wer hat Sie bezahlt?",
+        "choose": "Welches davon sagt, wer bezahlt wurde?",
+        "none": "Die Datei hat keinen Zahlungsempfänger",
+        "none_found": "Ihre Datei sagt nicht, wer bezahlt wurde. Sie können Zahlungsempfänger später hinzufügen.",
+        "left_out": "Zahlungsempfänger werden weggelassen. Sie können sie später hinzufügen.",
+        "shared_owner_lists": "Empfänger, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen."
+      },
       "extras": {
         "title": "Möchten Sie noch etwas mitnehmen?",
         "leave_out": "Nicht übernehmen",
         "role": {
-          "category": "Kategorie",
-          "payee": "Zahlungsempfänger",
           "tag": "Budget-Tag",
           "labels": "Auswertungs-Tags"
         },
@@ -491,12 +508,9 @@
         "tab": "Tabulator",
         "newline": "Zeilenumbruch",
         "custom_separator": "Etwas anderes",
-        "shared_owner_lists": "Kategorien, Empfänger und Tags, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen.",
-        "new_categories": "{count} neue Kategorie wird erstellt | {count} neue Kategorien werden erstellt",
+        "shared_owner_lists": "Tags, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen.",
         "new_labels": "{count} neues Tag wird erstellt | {count} neue Tags werden erstellt",
         "role_hint": {
-          "payee": "Wen Sie bezahlt haben oder wer Sie bezahlt hat",
-          "category": "Lebensmittel, Miete… fehlende werden angelegt",
           "tag": "Ein Projekt oder eine Reise",
           "labels": "Mehrere auf einmal sind möglich"
         },
@@ -551,7 +565,8 @@
         "nothing_extra": "Nichts weiter",
         "check": "{count} zu importieren · {skipped} weggelassen | {count} zu importieren · {skipped} weggelassen",
         "from_account": "Aus {name}",
-        "from_accounts": "Aus {name} und {count} weiteren Konto | Aus {name} und {count} weiteren Konten"
+        "from_accounts": "Aus {name} und {count} weiteren Konto | Aus {name} und {count} weiteren Konten",
+        "nothing": "Keine"
       },
       "from": "aus „{name}“",
       "looks_right": "Stimmt so",

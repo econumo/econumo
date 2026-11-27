@@ -38,6 +38,7 @@ import {
 import { AccountStep } from './steps/AccountStep'
 import { AmountStep } from './steps/AmountStep'
 import { DateStep } from './steps/DateStep'
+import { CategoryStep, PayeeStep } from './steps/DetailStep'
 import { DescriptionStep } from './steps/DescriptionStep'
 import { ExtrasStep } from './steps/ExtrasStep'
 import { FileStep, type FileError } from './steps/FileStep'
@@ -65,7 +66,9 @@ const STEP_BODIES: Record<Exclude<StepId, 'file'>, ComponentType<StepBodyProps>>
   account: AccountStep,
   date: DateStep,
   amount: AmountStep,
+  category: CategoryStep,
   description: DescriptionStep,
+  payee: PayeeStep,
   extras: ExtrasStep,
   preview: PreviewStep,
 }
