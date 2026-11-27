@@ -94,9 +94,10 @@ func (s *Service) ConfirmUserDeletion(ctx context.Context, userID vo.Id, req mod
 		attempt.keep()
 		return nil, invalid
 	}
+	expired := &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 	if r.IsExpired(s.clock.Now()) {
 		attempt.keep()
-		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
+		return nil, expired
 	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
@@ -111,6 +112,11 @@ func (s *Service) ConfirmUserDeletion(ctx context.Context, userID vo.Id, req mod
 		if u.Email != r.Email {
 			return invalid
 		}
+		// Again under the lock: the confirm may have waited behind another
+		// writer of the row while the code ran out.
+		if r.IsExpired(s.clock.Now()) {
+			return expired
+		}
 		taken, cerr := s.deletionRequests.Consume(ctx, r.ID, userID)
 		if cerr != nil {
 			return cerr
@@ -120,7 +126,7 @@ func (s *Service) ConfirmUserDeletion(ctx context.Context, userID vo.Id, req mod
 		}
 		return s.markForDeletion(ctx, userID, model.DeletionReasonSelf)
 	}); err != nil {
-		if errors.Is(err, invalid) {
+		if errors.Is(err, invalid) || errors.Is(err, expired) {
 			attempt.keep()
 		}
 		return nil, err

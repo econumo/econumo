@@ -36,6 +36,13 @@ type selfDeleteEnv struct {
 
 func newSelfDeleteEnv(t *testing.T) *selfDeleteEnv {
 	t.Helper()
+	return newSelfDeleteEnvWrapped(t, nil)
+}
+
+// newSelfDeleteEnvWrapped hands the Service a decorated user repository, so a
+// test can act inside one of its calls.
+func newSelfDeleteEnvWrapped(t *testing.T, wrap func(appuser.Repository, *testClock) appuser.Repository) *selfDeleteEnv {
+	t.Helper()
 	db := dbtest.New(t)
 	clk := &testClock{now: authT0}
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
@@ -46,7 +53,11 @@ func newSelfDeleteEnv(t *testing.T) *selfDeleteEnv {
 		},
 		Window: time.Hour,
 	}, clk)
-	svc := appuser.NewService(userrepo.NewRepo(db.Engine, db.TX), db.TX, auth.NewEncodeService(""), auth.NewPasswordHasher(),
+	var repo appuser.Repository = userrepo.NewRepo(db.Engine, db.TX)
+	if wrap != nil {
+		repo = wrap(repo, clk)
+	}
+	svc := appuser.NewService(repo, db.TX, auth.NewEncodeService(""), auth.NewPasswordHasher(),
 		tokens,
 		server.NewUserCurrencyLookup(currencyrepo.New(db.Engine, db.TX)),
 		server.NewUserBudgetAccess(db.Engine, db.TX),
@@ -304,4 +315,50 @@ func TestConfirmUserDeletion_Refusals(t *testing.T) {
 			t.Fatalf("marked: %+v", st)
 		}
 	})
+}
+
+// expiringLock moves the clock past the code's expiry when the confirm takes
+// the user row lock: the confirm waited behind another writer meanwhile.
+type expiringLock struct {
+	appuser.Repository
+	clk   *testClock
+	armed *bool
+}
+
+func (r expiringLock) LockRow(ctx context.Context, id vo.Id) error {
+	if *r.armed {
+		*r.armed = false
+		r.clk.now = r.clk.now.Add(model.DeletionRequestTTL + time.Second)
+	}
+	return r.Repository.LockRow(ctx, id)
+}
+
+func TestConfirmUserDeletion_CodeExpiresWhileWaitingForTheLock(t *testing.T) {
+	ctx := context.Background()
+	armed := false
+	e := newSelfDeleteEnvWrapped(t, func(inner appuser.Repository, clk *testClock) appuser.Repository {
+		return expiringLock{Repository: inner, clk: clk, armed: &armed}
+	})
+	uid := e.passwordUser(t)
+	e.request(t, uid, selfDeletePassword)
+	code := e.lastCode(t)
+	wrong := "000000"
+	if code == wrong {
+		wrong = "111111"
+	}
+
+	armed = true
+	_, err := e.svc.ConfirmUserDeletion(ctx, uid, model.ConfirmUserDeletionRequest{Code: code})
+	wantValidationCode(t, err, errs.CodeUserVerificationCodeExpired)
+	if st := e.marked(t, uid); st.MarkedAt != nil {
+		t.Fatalf("an expired code marked the user: %+v", st)
+	}
+
+	// the refusal counted as an attempt: four more fill the cap of five
+	for i := 0; i < 4; i++ {
+		_, err := e.svc.ConfirmUserDeletion(ctx, uid, model.ConfirmUserDeletionRequest{Code: wrong})
+		wantValidationCode(t, err, errs.CodeUserVerificationCodeInvalid)
+	}
+	_, err = e.svc.ConfirmUserDeletion(ctx, uid, model.ConfirmUserDeletionRequest{Code: wrong})
+	wantTooMany(t, err)
 }
