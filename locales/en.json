@@ -506,7 +506,7 @@
         "shared_owner_lists": "Payees this account’s owner doesn’t have yet are left out: only the owner or an admin can add them."
       },
       "extras": {
-        "title": "Anything else worth bringing along?",
+        "title": "Does your file have tags?",
         "leave_out": "Don’t bring it",
         "role": {
           "tag": "Budget tag",

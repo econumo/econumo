@@ -506,7 +506,7 @@
         "shared_owner_lists": "Os beneficiários que o titular desta conta ainda não tem são omitidos: só o titular ou um administrador os pode adicionar."
       },
       "extras": {
-        "title": "Mais alguma coisa que valha a pena trazer?",
+        "title": "O seu ficheiro tem etiquetas?",
         "leave_out": "Não trazer",
         "role": {
           "tag": "Etiqueta de orçamento",

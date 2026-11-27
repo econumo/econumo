@@ -506,7 +506,7 @@
         "shared_owner_lists": "Les bénéficiaires que le propriétaire de ce compte n’a pas encore sont ignorés : seul le propriétaire ou un administrateur peut les ajouter."
       },
       "extras": {
-        "title": "Autre chose à reprendre ?",
+        "title": "Votre fichier contient-il des tags ?",
         "leave_out": "Ne pas reprendre",
         "role": {
           "tag": "Tag budgétaire",

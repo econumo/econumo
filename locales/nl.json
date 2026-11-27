@@ -506,7 +506,7 @@
         "shared_owner_lists": "Begunstigden die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen."
       },
       "extras": {
-        "title": "Wilt u nog iets meenemen?",
+        "title": "Bevat uw bestand tags?",
         "leave_out": "Niet meenemen",
         "role": {
           "tag": "Budgettag",

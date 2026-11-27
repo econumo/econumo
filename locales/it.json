@@ -506,7 +506,7 @@
         "shared_owner_lists": "I beneficiari che il proprietario di questo conto non ha ancora vengono tralasciati: solo il proprietario o un amministratore può aggiungerli."
       },
       "extras": {
-        "title": "Altro che valga la pena portare?",
+        "title": "Il tuo file ha dei tag?",
         "leave_out": "Non portare",
         "role": {
           "tag": "Tag di budget",

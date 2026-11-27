@@ -506,7 +506,7 @@
         "shared_owner_lists": "Odbiorcy, których właściciel tego konta jeszcze nie ma, zostaną pominięci: dodać ich może tylko właściciel lub administrator."
       },
       "extras": {
-        "title": "Coś jeszcze warto przenieść?",
+        "title": "Czy Twój plik ma tagi?",
         "leave_out": "Nie przenoś",
         "role": {
           "tag": "Tag budżetowy",

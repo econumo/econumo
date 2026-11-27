@@ -506,7 +506,7 @@
         "shared_owner_lists": "Empfänger, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen."
       },
       "extras": {
-        "title": "Möchten Sie noch etwas mitnehmen?",
+        "title": "Enthält Ihre Datei Tags?",
         "leave_out": "Nicht übernehmen",
         "role": {
           "tag": "Budget-Tag",
