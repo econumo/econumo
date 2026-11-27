@@ -2696,7 +2696,7 @@
     "change_email_notice": {
       "subject": "Запитано зміну email",
       "heading": "Запитано зміну email",
-      "body": "Хтось запитав зміну email на вашому акаунті на {email}.",
+      "body": "Хтось запитав зміну email вашого акаунта на {email}.",
       "note": "Якщо це були не ви, негайно змініть пароль."
     },
     "identity_linked": {

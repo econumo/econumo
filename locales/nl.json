@@ -2677,13 +2677,13 @@
     },
     "reset": {
       "subject": "Bevestigingscode voor het resetten van uw wachtwoord",
-      "heading": "Uw wachtwoord resetten",
+      "heading": "Stel uw wachtwoord opnieuw in",
       "body": "Voer deze code in Econumo in om een nieuw wachtwoord te kiezen.",
       "note": "Als u deze code niet hebt aangevraagd, kunt u dit bericht negeren. Uw wachtwoord blijft ongewijzigd."
     },
     "verify": {
       "subject": "Verificatiecode voor uw e-mailadres",
-      "heading": "Uw e-mailadres verifiëren",
+      "heading": "Bevestig uw e-mailadres",
       "body": "Voer deze code in op het inlogscherm om uw e-mailadres te bevestigen.",
       "note": "Als u geen Econumo-account hebt aangemaakt, kunt u dit bericht negeren."
     },
