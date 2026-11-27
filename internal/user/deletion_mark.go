@@ -92,12 +92,16 @@ func (s *Service) deleteDeletionRequests(ctx context.Context, userID vo.Id) erro
 }
 
 func (s *Service) writeDeletionAudit(ctx context.Context, userID vo.Id, event string, details deletionAuditDetails, now time.Time) error {
+	return s.insertAudit(ctx, userID, event, details, nil, now)
+}
+
+func (s *Service) insertAudit(ctx context.Context, userID vo.Id, event string, details any, emailHash *string, now time.Time) error {
 	raw, err := json.Marshal(details)
 	if err != nil {
 		return err
 	}
 	_, err = s.audit.Insert(ctx, model.UserAuditEvent{
-		ID: vo.NewId(), UserID: userID, Event: event, Details: string(raw), CreatedAt: now,
+		ID: vo.NewId(), UserID: userID, Event: event, EmailHash: emailHash, Details: string(raw), CreatedAt: now,
 	})
 	return err
 }

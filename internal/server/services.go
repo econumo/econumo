@@ -93,12 +93,18 @@ import (
 )
 
 // Built is the wired service graph: the two HTTP edges, the rate updater and
-// the fully wired user service, which the CLI needs for a wipe.
+// the fully wired user service, which the CLI needs for a wipe. Wiper is the
+// one installed on Users; it and the other services are exposed for tests
+// that drive or wrap them.
 type Built struct {
-	API   http.Handler
-	Admin http.Handler
-	Rates *appcurrency.RateUpdater
-	Users *appuser.Service
+	API          http.Handler
+	Admin        http.Handler
+	Rates        *appcurrency.RateUpdater
+	Users        *appuser.Service
+	Wiper        *UserDataWiper
+	Budgets      *appbudget.Service
+	Transactions *apptransaction.Service
+	Debts        *appdebt.Service
 }
 
 // BuildWithServices is the one wiring shared by serve, the CLI and tests.
@@ -509,8 +515,9 @@ func BuildWithServices(cfg config.Config, db *sql.DB, seams Seams) (*Built, erro
 		userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm), userrepo.NewAuditRepo(cfg.DatabaseDriver, txm),
 		userrepo.NewDeletionRequestRepo(cfg.DatabaseDriver, txm), DeletionConfig(cfg),
 	)
-	userSvc.SetDataWiper(NewUserDataWiper(debtSvc, categoryRepo, budgetSvc, accountSvc, transactionSvc,
-		currencyManageSvc, authSrv, importsRepo, idempotencyStore, oauthStates))
+	wiper := NewUserDataWiper(debtSvc, categoryRepo, budgetSvc, accountSvc, transactionSvc,
+		currencyManageSvc, authSrv, importsRepo, idempotencyStore, oauthStates)
+	userSvc.SetDataWiper(wiper)
 
 	authn := NewReadScopeGate(NewTimezoneTrackingAuthenticator(userSvc, userSvc, idempotencyStore), authSrv.Enabled())
 
@@ -601,7 +608,8 @@ func BuildWithServices(cfg config.Config, db *sql.DB, seams Seams) (*Built, erro
 		SPAVersionRef:      version.Ref(),
 		InstanceID:         instanceID,
 	})
-	return &Built{API: api, Admin: adminHandler, Rates: rateUpdater, Users: userSvc}, nil
+	return &Built{API: api, Admin: adminHandler, Rates: rateUpdater, Users: userSvc, Wiper: wiper,
+		Budgets: budgetSvc, Transactions: transactionSvc, Debts: debtSvc}, nil
 }
 
 // DeletionConfig is the user deletion settings from cfg; the CLI shares it.
