@@ -260,6 +260,9 @@ func (s *Service) removeMemberSavingsElements(ctx context.Context, budgetID, mem
 // already established authority.
 func (s *Service) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error {
 	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.lockBudget(txCtx, budgetID); err != nil {
+			return err
+		}
 		if err := s.RemoveMemberKeepPointer(txCtx, budgetID, memberID); err != nil {
 			return err
 		}
@@ -273,16 +276,30 @@ func (s *Service) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) er
 // ClearActiveBudget in ascending user id order: each clear takes a user row
 // lock, and those must come after the budget locks and in one global order.
 func (s *Service) RemoveMemberKeepPointer(ctx context.Context, budgetID, memberID vo.Id) error {
-	b, err := s.loadAggregate(ctx, budgetID)
-	if err != nil {
-		return err
-	}
 	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.lockBudget(txCtx, budgetID); err != nil {
+			return err
+		}
+		b, err := s.loadAggregate(txCtx, budgetID)
+		if err != nil {
+			return err
+		}
 		if err := s.access.DeleteAccess(txCtx, budgetID, memberID); err != nil {
 			return err
 		}
 		return s.removeMemberRecords(txCtx, b, memberID)
 	})
+}
+
+// lockBudget takes the budget's row lock ahead of its access rows. A wipe holds
+// the departing member's user row and wants the access row, while a removal
+// holding the access row wants that user row; with the budget lock first on
+// both, the removal waits instead of closing the cycle.
+func (s *Service) lockBudget(ctx context.Context, budgetID vo.Id) error {
+	if s.debts == nil {
+		return nil
+	}
+	return s.debts.LockBudget(ctx, budgetID)
 }
 
 // ClearActiveBudget clears the user's active-budget pointer when it names the
@@ -323,6 +340,9 @@ func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req model.Revo
 		return nil, gerr
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if lerr := s.lockBudget(txCtx, budgetID); lerr != nil {
+			return lerr
+		}
 		if derr := s.access.DeleteAccess(txCtx, budgetID, invitedID); derr != nil {
 			return derr
 		}
@@ -352,6 +372,9 @@ func (s *Service) DeclineAccess(ctx context.Context, userID vo.Id, req model.Dec
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if lerr := s.lockBudget(txCtx, budgetID); lerr != nil {
+			return lerr
+		}
 		if derr := s.access.DeleteAccess(txCtx, budgetID, userID); derr != nil {
 			return derr
 		}

@@ -25,6 +25,7 @@ type BudgetStore interface {
 	// a read that finds no row takes no lock under READ COMMITTED.
 	InsertIfAbsent(ctx context.Context, b *model.Budget) (bool, error)
 	Delete(ctx context.Context, id vo.Id) error
+	ListOwnedIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 
 	MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error)
 	// AddAccount leaves an existing member (its created_at and flag) untouched.
@@ -55,6 +56,9 @@ type AccessStore interface {
 	GetAccess(ctx context.Context, budgetID, userID vo.Id) (*model.BudgetAccess, error)
 	SaveAccess(ctx context.Context, a *model.BudgetAccess) error
 	DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error
+	// ListMemberIDs returns the budgets the user has an access row on, accepted
+	// or pending.
+	ListMemberIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // FolderStore is the budget-folder persistence surface. Consumed by

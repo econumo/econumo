@@ -521,6 +521,8 @@ type Querier interface {
 	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
+	ListBudgetIDsByAccessUser(ctx context.Context, userID string) ([]string, error)
+	ListBudgetIDsByOwner(ctx context.Context, userID string) ([]string, error)
 	// Every period this element holds a limit for. A merge transfers all of them,
 	// past and future alike, so there is deliberately no period filter.
 	ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]BudgetsElementsLimit, error)

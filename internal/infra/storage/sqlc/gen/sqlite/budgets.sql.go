@@ -782,6 +782,60 @@ func (q *Queries) ListBudgetFolders(ctx context.Context, budgetID string) ([]Bud
 	return items, nil
 }
 
+const listBudgetIDsByAccessUser = `-- name: ListBudgetIDsByAccessUser :many
+SELECT budget_id FROM budgets_access WHERE user_id = ? ORDER BY budget_id
+`
+
+func (q *Queries) ListBudgetIDsByAccessUser(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetIDsByAccessUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var budget_id string
+		if err := rows.Scan(&budget_id); err != nil {
+			return nil, err
+		}
+		items = append(items, budget_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBudgetIDsByOwner = `-- name: ListBudgetIDsByOwner :many
+SELECT id FROM budgets WHERE user_id = ? ORDER BY id
+`
+
+func (q *Queries) ListBudgetIDsByOwner(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetIDsByOwner, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBudgetLimitsByElement = `-- name: ListBudgetLimitsByElement :many
 SELECT id, element_id, period, created_at, updated_at, amount
 FROM budgets_elements_limits WHERE element_id = ?

@@ -20,11 +20,13 @@ type querier interface {
 	UpsertBudget(ctx context.Context, db backend.DBTX, p upBudgetP) error
 	InsertBudgetIfAbsent(ctx context.Context, db backend.DBTX, p insBudgetP) (int64, error)
 	DeleteBudget(ctx context.Context, db backend.DBTX, id string) error
+	ListBudgetIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error)
 
 	ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error)
 	GetBudgetAccess(ctx context.Context, db backend.DBTX, budgetID, userID string) (accessRow, error)
 	UpsertBudgetAccess(ctx context.Context, db backend.DBTX, p upAccessP) error
 	DeleteBudgetAccess(ctx context.Context, db backend.DBTX, budgetID, userID string) error
+	ListBudgetIDsByAccessUser(ctx context.Context, db backend.DBTX, userID string) ([]string, error)
 
 	ListBudgetFolders(ctx context.Context, db backend.DBTX, budgetID string) ([]folderRow, error)
 	GetBudgetFolder(ctx context.Context, db backend.DBTX, id string) (folderRow, error)
@@ -91,6 +93,9 @@ func (sqliteQuerier) InsertBudgetIfAbsent(ctx context.Context, db backend.DBTX, 
 func (sqliteQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteBudget(ctx, id)
 }
+func (sqliteQuerier) ListBudgetIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return sqlitegen.New(db).ListBudgetIDsByOwner(ctx, userID)
+}
 func (sqliteQuerier) ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error) {
 	return sqlitegen.New(db).ListBudgetAccess(ctx, budgetID)
 }
@@ -102,6 +107,9 @@ func (sqliteQuerier) UpsertBudgetAccess(ctx context.Context, db backend.DBTX, p 
 }
 func (sqliteQuerier) DeleteBudgetAccess(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
 	return sqlitegen.New(db).DeleteBudgetAccess(ctx, sqlitegen.DeleteBudgetAccessParams{BudgetID: budgetID, UserID: userID})
+}
+func (sqliteQuerier) ListBudgetIDsByAccessUser(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return sqlitegen.New(db).ListBudgetIDsByAccessUser(ctx, userID)
 }
 func (sqliteQuerier) ListBudgetFolders(ctx context.Context, db backend.DBTX, budgetID string) ([]folderRow, error) {
 	return sqlitegen.New(db).ListBudgetFolders(ctx, budgetID)
@@ -298,6 +306,9 @@ func (pgsqlQuerier) InsertBudgetIfAbsent(ctx context.Context, db backend.DBTX, p
 func (pgsqlQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteBudget(ctx, id)
 }
+func (pgsqlQuerier) ListBudgetIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return pgsqlgen.New(db).ListBudgetIDsByOwner(ctx, userID)
+}
 func (pgsqlQuerier) ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error) {
 	rows, err := pgsqlgen.New(db).ListBudgetAccess(ctx, budgetID)
 	if err != nil {
@@ -318,6 +329,9 @@ func (pgsqlQuerier) UpsertBudgetAccess(ctx context.Context, db backend.DBTX, p u
 }
 func (pgsqlQuerier) DeleteBudgetAccess(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
 	return pgsqlgen.New(db).DeleteBudgetAccess(ctx, pgsqlgen.DeleteBudgetAccessParams{BudgetID: budgetID, UserID: userID})
+}
+func (pgsqlQuerier) ListBudgetIDsByAccessUser(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return pgsqlgen.New(db).ListBudgetIDsByAccessUser(ctx, userID)
 }
 func (pgsqlQuerier) ListBudgetFolders(ctx context.Context, db backend.DBTX, budgetID string) ([]folderRow, error) {
 	rows, err := pgsqlgen.New(db).ListBudgetFolders(ctx, budgetID)
