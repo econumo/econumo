@@ -2692,6 +2692,14 @@
     "identity_unlinked": {
       "subject": "Método de início de sessão removido",
       "body": "Olá {name},\n\nA sua conta {provider} acabou de ser desassociada da sua conta Econumo e já não pode ser usada para iniciar sessão.\n\nSe não foi você, altere a sua palavra-passe e verifique as contas associadas nas Definições.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Os seus dados do Econumo serão eliminados",
+      "body": "Olá, {name},\n\nDe acordo com a nossa política, eliminamos os dados dos utilizadores inativos há {days} dias. Se pretende manter os seus dados, inicie sessão."
+    },
+    "delete_data": {
+      "subject": "Confirme a eliminação dos seus dados",
+      "body": "Olá, {name},\n\nUtilize este código para confirmar que pretende eliminar os seus dados do Econumo: {code}\n\nO código expira dentro de 10 minutos. Se não fez este pedido, altere a sua palavra-passe."
     }
   }
 }

@@ -2692,6 +2692,14 @@
     "identity_unlinked": {
       "subject": "已移除登录方式",
       "body": "您好，{name}：\n\n您的 {provider} 账户刚刚已与您的 Econumo 账户解除关联，现在无法再用于登录。\n\n如果这不是您本人的操作，请修改密码并在设置中检查已关联的账户。\n\n--\nEconumo — 一起管理财务。\n"
+    },
+    "inactivity_notice": {
+      "subject": "您的 Econumo 数据即将被删除",
+      "body": "您好，{name}：\n\n根据我们的政策，我们会删除连续 {days} 天未活跃的用户的数据。如果您想保留数据，请登录。"
+    },
+    "delete_data": {
+      "subject": "确认删除您的数据",
+      "body": "您好，{name}：\n\n请使用此验证码确认您要删除您的 Econumo 数据：{code}\n\n验证码将在 10 分钟后失效。如果这不是您本人的操作，请修改密码。"
     }
   }
 }

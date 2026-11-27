@@ -2692,6 +2692,14 @@
     "identity_unlinked": {
       "subject": "Anmeldemethode entfernt",
       "body": "Hallo {name},\n\nDie Verknüpfung Ihres {provider}-Kontos mit Ihrem Econumo-Konto wurde soeben aufgehoben und kann nicht mehr zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, ändern Sie Ihr Passwort und prüfen Sie die verknüpften Konten in den Einstellungen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Ihre Econumo-Daten sind zur Löschung vorgemerkt",
+      "body": "Hallo {name},\n\nGemäß unserer Richtlinie löschen wir die Daten von Nutzern, die {days} Tage lang inaktiv waren. Wenn Sie Ihre Daten behalten möchten, melden Sie sich an."
+    },
+    "delete_data": {
+      "subject": "Löschen Ihrer Daten bestätigen",
+      "body": "Hallo {name},\n\nVerwenden Sie diesen Code, um zu bestätigen, dass Sie Ihre Econumo-Daten löschen möchten: {code}\n\nDer Code ist 10 Minuten gültig. Falls Sie dies nicht angefordert haben, ändern Sie Ihr Passwort."
     }
   }
 }

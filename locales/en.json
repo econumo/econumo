@@ -2692,6 +2692,14 @@
     "identity_unlinked": {
       "subject": "A sign-in method was removed",
       "body": "Hi {name},\n\nYour {provider} account was just unlinked from your Econumo account and can no longer be used to sign in.\n\nIf this wasn't you, change your password and review the linked accounts in Settings.\n\n--\nEconumo — Manage money. Together.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Your Econumo data is scheduled for deletion",
+      "body": "Hi {name},\n\nUnder our policy we delete the data of users inactive for {days} days. If you want to keep your data, sign in."
+    },
+    "delete_data": {
+      "subject": "Confirm deleting your data",
+      "body": "Hi {name},\n\nUse this code to confirm that you want to delete your Econumo data: {code}\n\nThe code expires in 10 minutes. If you did not request this, change your password."
     }
   }
 }

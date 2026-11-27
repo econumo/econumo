@@ -2692,6 +2692,14 @@
     "identity_unlinked": {
       "subject": "Usunięto metodę logowania",
       "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Twoje dane w Econumo zostaną usunięte",
+      "body": "Witaj, {name}!\n\nZgodnie z naszymi zasadami usuwamy dane użytkowników nieaktywnych przez {days} dni. Jeśli chcesz zachować swoje dane, zaloguj się."
+    },
+    "delete_data": {
+      "subject": "Potwierdź usunięcie danych",
+      "body": "Witaj, {name}!\n\nUżyj tego kodu, aby potwierdzić, że chcesz usunąć swoje dane w Econumo: {code}\n\nKod jest ważny przez 10 minut. Jeśli ta prośba nie pochodzi od Ciebie, zmień hasło."
     }
   }
 }

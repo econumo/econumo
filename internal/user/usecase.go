@@ -60,6 +60,7 @@ type Service struct {
 	audit                 AuditLog
 	deletionRequests      DeletionRequests
 	deletionCfg           DeletionConfig
+	deletionSender        *mailer.DeletionSender
 	wiper                 DataWiper
 }
 
@@ -162,6 +163,8 @@ func (s *Service) SetDeletion(store DeletionStore, audit AuditLog, requests Dele
 	s.deletionRequests = requests
 	s.deletionCfg = cfg
 }
+
+func (s *Service) SetDeletionSender(sender *mailer.DeletionSender) { s.deletionSender = sender }
 
 // SetDataWiper installs the other features' part of a wipe. nil leaves the
 // wipe unwired, which the wipe reports as an error.

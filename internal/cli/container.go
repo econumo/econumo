@@ -142,6 +142,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm), userrepo.NewAuditRepo(cfg.DatabaseDriver, txm),
 		userrepo.NewDeletionRequestRepo(cfg.DatabaseDriver, txm), server.DeletionConfig(cfg),
 	)
+	userSvc.SetDeletionSender(mailer.NewDeletionSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo))
 
 	return &container{
 		db:       db,

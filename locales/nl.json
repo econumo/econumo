@@ -2692,6 +2692,14 @@
     "identity_unlinked": {
       "subject": "Aanmeldmethode verwijderd",
       "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Uw Econumo-gegevens staan gepland voor verwijdering",
+      "body": "Hallo {name},\n\nVolgens ons beleid verwijderen we de gegevens van gebruikers die {days} dagen inactief zijn geweest. Als u uw gegevens wilt behouden, log dan in."
+    },
+    "delete_data": {
+      "subject": "Bevestig het verwijderen van uw gegevens",
+      "body": "Hallo {name},\n\nGebruik deze code om te bevestigen dat u uw Econumo-gegevens wilt verwijderen: {code}\n\nDe code verloopt over 10 minuten. Als u dit niet hebt aangevraagd, wijzig dan uw wachtwoord."
     }
   }
 }

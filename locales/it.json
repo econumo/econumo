@@ -2692,6 +2692,14 @@
     "identity_unlinked": {
       "subject": "Metodo di accesso rimosso",
       "body": "Ciao {name},\n\nIl tuo account {provider} è stato appena scollegato dal tuo account Econumo e non può più essere usato per accedere.\n\nSe non sei stato tu, cambia la tua password e controlla gli account collegati nelle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+    },
+    "inactivity_notice": {
+      "subject": "I tuoi dati Econumo verranno eliminati",
+      "body": "Ciao {name},\n\nSecondo la nostra politica, eliminiamo i dati degli utenti inattivi da {days} giorni. Se vuoi conservare i tuoi dati, accedi."
+    },
+    "delete_data": {
+      "subject": "Conferma l'eliminazione dei tuoi dati",
+      "body": "Ciao {name},\n\nUsa questo codice per confermare che vuoi eliminare i tuoi dati Econumo: {code}\n\nIl codice scade tra 10 minuti. Se non hai richiesto questa operazione, cambia la tua password."
     }
   }
 }

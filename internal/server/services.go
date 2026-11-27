@@ -515,6 +515,7 @@ func BuildWithServices(cfg config.Config, db *sql.DB, seams Seams) (*Built, erro
 		userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm), userrepo.NewAuditRepo(cfg.DatabaseDriver, txm),
 		userrepo.NewDeletionRequestRepo(cfg.DatabaseDriver, txm), DeletionConfig(cfg),
 	)
+	userSvc.SetDeletionSender(mailer.NewDeletionSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo))
 	wiper := NewUserDataWiper(debtSvc, categoryRepo, budgetSvc, accountSvc, transactionSvc,
 		currencyManageSvc, authSrv, importsRepo, idempotencyStore, oauthStates)
 	userSvc.SetDataWiper(wiper)
