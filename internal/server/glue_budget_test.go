@@ -6,6 +6,8 @@ package server_test
 
 import (
 	"context"
+	"database/sql"
+	"slices"
 	"testing"
 	"time"
 
@@ -230,5 +232,119 @@ func TestBudgetRecurringSource_ListsSourceAndRecipientWithLabels(t *testing.T) {
 	got, err := src.CanEdit(ctx, vo.MustParseId(owner), vo.MustParseId("0197d000-0000-7000-8000-0000000000ff"))
 	if err != nil || got {
 		t.Errorf("CanEdit(missing account) = %v, %v; want false, nil", got, err)
+	}
+}
+
+type glueUserRow struct{ password, email, updatedAt string }
+
+func glueRowOf(t *testing.T, db *dbtest.DB, uid vo.Id) glueUserRow {
+	t.Helper()
+	var r glueUserRow
+	if err := db.Raw.QueryRowContext(context.Background(), db.Rebind(`SELECT password, email, updated_at FROM users WHERE id = ?`), uid.String()).
+		Scan(&r.password, &r.email, &r.updatedAt); err != nil {
+		t.Fatalf("read users row: %v", err)
+	}
+	return r
+}
+
+func glueBudgetOption(t *testing.T, db *dbtest.DB, uid vo.Id) *string {
+	t.Helper()
+	var v sql.NullString
+	if err := db.Raw.QueryRowContext(context.Background(), db.Rebind(`SELECT value FROM users_options WHERE user_id = ? AND name = ?`), uid.String(), model.OptionBudget).
+		Scan(&v); err != nil {
+		t.Fatalf("read budget option: %v", err)
+	}
+	if !v.Valid {
+		return nil
+	}
+	return &v.String
+}
+
+func TestBudgetUserLookup_ClearActiveBudget_WritesOnlyTheOption(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	uid := vo.MustParseId(f.User(fixture.User{Name: "Member"}))
+	budgetID := vo.NewId()
+	pointer := budgetID.String()
+	f.Option(uid.String(), model.OptionBudget, &pointer)
+	lookup := server.NewBudgetUserLookup(userrepo.NewRepo(db.Engine, db.TX), clock.New())
+	ctx := context.Background()
+
+	before := glueRowOf(t, db, uid)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error {
+		return lookup.ClearActiveBudget(ctx, uid, vo.NewId())
+	}); err != nil {
+		t.Fatalf("ClearActiveBudget (another budget): %v", err)
+	}
+	if got := glueBudgetOption(t, db, uid); got == nil || *got != pointer {
+		t.Fatalf("clearing another budget changed the option to %v", got)
+	}
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error {
+		return lookup.ClearActiveBudget(ctx, uid, budgetID)
+	}); err != nil {
+		t.Fatalf("ClearActiveBudget: %v", err)
+	}
+	if got := glueBudgetOption(t, db, uid); got != nil {
+		t.Errorf("budget option = %q, want NULL", *got)
+	}
+	if after := glueRowOf(t, db, uid); after != before {
+		t.Errorf("ClearActiveBudget rewrote the users row: before %+v, after %+v", before, after)
+	}
+}
+
+func TestBudgetUserLookup_ClearActiveBudget_MissingUserIsNotAnError(t *testing.T) {
+	db := dbtest.New(t)
+	lookup := server.NewBudgetUserLookup(userrepo.NewRepo(db.Engine, db.TX), clock.New())
+	if err := db.TX.WithTx(context.Background(), func(ctx context.Context) error {
+		return lookup.ClearActiveBudget(ctx, vo.NewId(), vo.NewId())
+	}); err != nil {
+		t.Errorf("ClearActiveBudget on a missing user: %v", err)
+	}
+}
+
+type recordingBudgetUserRepo struct {
+	*userrepo.Repo
+	calls []string
+}
+
+func (r *recordingBudgetUserRepo) LockRow(ctx context.Context, userID vo.Id) error {
+	r.calls = append(r.calls, "LockRow")
+	return r.Repo.LockRow(ctx, userID)
+}
+
+func (r *recordingBudgetUserRepo) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
+	r.calls = append(r.calls, "GetByID")
+	return r.Repo.GetByID(ctx, id)
+}
+
+func (r *recordingBudgetUserRepo) Save(ctx context.Context, u *model.User) error {
+	r.calls = append(r.calls, "Save")
+	return r.Repo.Save(ctx, u)
+}
+
+func (r *recordingBudgetUserRepo) ClearOptionIfValue(ctx context.Context, userID vo.Id, name, value string, now time.Time) (int64, error) {
+	r.calls = append(r.calls, "ClearOptionIfValue")
+	return r.Repo.ClearOptionIfValue(ctx, userID, name, value, now)
+}
+
+// A profile update that read the old pointer saves every option it read, so
+// the clear must wait for the member's row lock or that save writes it back.
+func TestBudgetUserLookup_ClearActiveBudget_LocksTheUserRowFirst(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	uid := vo.MustParseId(f.User(fixture.User{Name: "Member"}))
+	budgetID := vo.NewId()
+	pointer := budgetID.String()
+	f.Option(uid.String(), model.OptionBudget, &pointer)
+	repo := &recordingBudgetUserRepo{Repo: userrepo.NewRepo(db.Engine, db.TX)}
+	lookup := server.NewBudgetUserLookup(repo, clock.New())
+
+	if err := db.TX.WithTx(context.Background(), func(ctx context.Context) error {
+		return lookup.ClearActiveBudget(ctx, uid, budgetID)
+	}); err != nil {
+		t.Fatalf("ClearActiveBudget: %v", err)
+	}
+	if want := []string{"LockRow", "ClearOptionIfValue"}; !slices.Equal(repo.calls, want) {
+		t.Errorf("calls = %v, want %v", repo.calls, want)
 	}
 }

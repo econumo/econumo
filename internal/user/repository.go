@@ -99,6 +99,11 @@ type Repository interface {
 	// not scale to a boot-time sweep over every user).
 	UpsertOption(ctx context.Context, userID vo.Id, o model.UserOption) error
 
+	// ClearOptionIfValue sets one option to NULL only while it still holds
+	// value, writing neither the user row nor any other option, and reports
+	// the rows changed. A missing user or option changes nothing.
+	ClearOptionIfValue(ctx context.Context, userID vo.Id, name, value string, now time.Time) (int64, error)
+
 	// UpdateLanguage persists the user's last selected UI language. Kept out of
 	// Save/UpsertUser so profile mutations cannot clobber it.
 	UpdateLanguage(ctx context.Context, id vo.Id, language string) error

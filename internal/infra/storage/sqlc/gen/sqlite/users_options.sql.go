@@ -10,6 +10,30 @@ import (
 	"time"
 )
 
+const clearUserOptionIfValue = `-- name: ClearUserOptionIfValue :execrows
+UPDATE users_options SET value = NULL, updated_at = ? WHERE user_id = ? AND name = ? AND value = ?
+`
+
+type ClearUserOptionIfValueParams struct {
+	UpdatedAt time.Time
+	UserID    string
+	Name      string
+	Value     *string
+}
+
+func (q *Queries) ClearUserOptionIfValue(ctx context.Context, arg ClearUserOptionIfValueParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, clearUserOptionIfValue,
+		arg.UpdatedAt,
+		arg.UserID,
+		arg.Name,
+		arg.Value,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getUserOptions = `-- name: GetUserOptions :many
 SELECT id, user_id, name, value, created_at, updated_at
 FROM users_options

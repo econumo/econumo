@@ -16,6 +16,7 @@ type Querier interface {
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error)
+	ClearUserOptionIfValue(ctx context.Context, arg ClearUserOptionIfValueParams) (int64, error)
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
