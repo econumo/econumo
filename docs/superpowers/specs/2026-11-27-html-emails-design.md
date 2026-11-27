@@ -54,9 +54,15 @@ nothing is downloaded.
 - `emails.common.greeting` ("Hi {name},"), `emails.common.greeting_anonymous` ("Hi,")
   for an empty name, `emails.common.tagline`, `emails.common.open_app`.
 - Per email: `subject`, `heading`, `body` (message only, no greeting or signature),
-  `note` (may be absent for an email with nothing to add). `{code}` is no longer in the
-  body; the template shows it.
-- All 11 catalogues updated; `EmailKeys` and the i18n guard follow.
+  `note`. Every email has all four keys (all six have a natural note: "if this wasn't
+  you ..."), so the every-catalogue-carries-every-key guard needs no exception.
+  `{code}` is no longer in the body; the template shows it under a
+  `emails.common.code_label` caption.
+- All 11 catalogues updated in each catalogue's existing register (de Sie, nl u,
+  fr vous, pt European); `EmailKeys` and the i18n guard follow.
+- Every catalogue or user string (name, provider, email) is inserted as text through
+  `html/template` escaping; a `\n\n` in a body splits it into paragraphs. No catalogue
+  string carries markup.
 
 **Two parts, one source.** Each sender builds one `Content` value (subject, heading,
 greeting, body, code, note, app URL); the mailer renders both the HTML and the
@@ -78,6 +84,16 @@ the lesson from the campaign email. The layout declares `color-scheme: light`.
 `WithAppLink` goes away: the app URL becomes a field of the content, rendered as the
 footer button and the last plain-text line, so the behaviour without `ECONUMO_URL`
 (no link) is unchanged.
+
+**Logo asset**: the campaign's badge (`econumo` wordmark, yellow loops, 552x121 PNG,
+8 KB), committed as `internal/infra/mailer/templates/logo.png`, shown at 150x33.
+
+**Who reads today's text**: only people (console output in the regression plan) and the
+mailer's own tests; no e2e helper scrapes the code. The plain text still carries the
+code on its own line, so the console flow in the regression plan is unchanged.
+
+Mock reviewed with the user: reset-code email, desktop and phone
+(`/tmp/bfmail/mock/reset.html` during design).
 
 ## Testing
 
