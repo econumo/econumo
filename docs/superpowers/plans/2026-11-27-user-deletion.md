@@ -527,7 +527,7 @@ func (s *Service) DeleteOwned(ctx context.Context, userID vo.Id) error
 
 - Produces (repo): `ListOwnedIDs(ctx, userID vo.Id) ([]vo.Id, error)`, `ListMemberIDs(ctx, userID vo.Id) ([]vo.Id, error)` (budget ids from `budgets_access` rows of the user, accepted or pending).
 
-- [ ] **Step 1: Failing tests.** Fixture: U owns budget BU (member P, whose `budget` option points at BU, with an element of P's category); P owns BP (member U with an element of U's category, a limit on it, U's account as a member account, U's category inside one of BP's envelopes); a third user T also a member of BP.
+- [x] **Step 1: Failing tests.** Fixture: U owns budget BU (member P, whose `budget` option points at BU, with an element of P's category); P owns BP (member U with an element of U's category, a limit on it, U's account as a member account, U's category inside one of BP's envelopes); a third user T also a member of BP.
 
 ```go
 // WipeBudgetIDs(U) == sorted {BU, BP}
@@ -540,9 +540,9 @@ func (s *Service) DeleteOwned(ctx context.Context, userID vo.Id) error
 //   LockBudget before DeleteAccess
 ```
 
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/budget/ -run TestWipe -count=1`
-- [ ] **Step 3: Add the two queries** (`ListBudgetIDsByOwner`, `ListBudgetIDsByAccessUser`, both `ORDER BY` id), regenerate, extend `BudgetStore`/`AccessStore` and the repo, implement the three methods.
-- [ ] **Step 4: Run, see PASS. Commit.**
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/budget/ -run TestWipe -count=1`
+- [x] **Step 3: Add the two queries** (`ListBudgetIDsByOwner`, `ListBudgetIDsByAccessUser`, both `ORDER BY` id), regenerate, extend `BudgetStore`/`AccessStore` and the repo, implement the three methods.
+- [x] **Step 4: Run, see PASS. Commit.**
 
 ### Task 9: account
 
