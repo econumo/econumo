@@ -10,16 +10,18 @@ interface ColumnChoicesProps {
   label: string
   selected: number | null
   onSelect: (column: number | null) => void
-  /** the parts of the file that could answer, most likely first; with none, the whole file is listed */
+  /** the parts of the file that could answer, most likely first; the rest follow under a divider */
   candidates: number[]
   /** what another step uses a part of the file for, shown as a small tag */
   tags?: Record<number, string>
   /** offers "none of these" as an answer */
   noneLabel?: string
   /** said above the list when nothing in the file fits and the whole file is listed */
-  nothingFitsNote: string
+  nothingFitsNote?: string
   /** said above the list when exactly one part fits and there is no "none of these" */
-  onlyOneNote: string
+  onlyOneNote?: string
+  /** an optional answer: with nothing that fits, "none of these" is the whole list */
+  noneWhenNothingFits?: boolean
 }
 
 const rowClass = (selected: boolean) =>
@@ -41,17 +43,17 @@ function Dot({ on }: { on: boolean }) {
  * file's own name for it is a grey caption. An answer is a button, not a native radio: picking
  * the one already chosen is an answer too ("yes, that one"), and arrow keys must not pick.
  */
-export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, nothingFitsNote, onlyOneNote }: ColumnChoicesProps) {
+export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, nothingFitsNote, onlyOneNote, noneWhenNothingFits = false }: ColumnChoicesProps) {
   const { t, i18n } = useTranslation()
   const name = useId()
   const filled = profiles.filter((p) => p.type !== 'empty' || p.index === selected).map((p) => p.index)
   const likely = [...(selected === null ? [] : [selected]), ...candidates.filter((c) => c !== selected)]
-  const nothingFits = candidates.length === 0
-  const shown = nothingFits ? [...likely, ...filled.filter((c) => !likely.includes(c))] : likely
-  // when the whole file is listed, parts another step already reads go last under their own heading
-  const grouped = nothingFits ? shown.filter((c) => c !== selected && tags[c]) : []
-  const main = shown.filter((c) => !grouped.includes(c))
-  const note = nothingFits ? nothingFitsNote : likely.length === 1 && !noneLabel ? onlyOneNote : null
+  const rest = filled.filter((c) => !likely.includes(c))
+  const nothingFits = candidates.length === 0 && !noneWhenNothingFits
+  // an optional answer with nothing that fits is just "none of these"
+  const main = nothingFits ? [...likely, ...rest] : likely
+  const others = nothingFits || (candidates.length === 0 && noneWhenNothingFits) ? [] : rest
+  const note = nothingFits ? nothingFitsNote : main.length === 1 && others.length === 0 && !noneLabel ? onlyOneNote : null
 
   const renderRow = (index: number) => {
     const p = profiles[index]
@@ -118,12 +120,12 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
             <span className="text-sm">{noneLabel}</span>
           </button>
         ) : null}
-        {grouped.length > 0 ? (
+        {others.length > 0 ? (
           <>
             <div role="presentation" aria-hidden className="bg-econumo-card/40 px-4 py-1.5 text-xs text-muted-foreground">
-              {t('transactions.import_wizard.already_used')}
+              {t('transactions.import_wizard.other_parts')}
             </div>
-            {grouped.map(renderRow)}
+            {others.map(renderRow)}
           </>
         ) : null}
       </div>

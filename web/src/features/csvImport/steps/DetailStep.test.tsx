@@ -85,11 +85,13 @@ it('a guessed category answers with its values and where they come from; Change 
   expect(screen.getByRole('radio', { name: 'Strata · Interest from “Group”' })).toBeChecked()
 })
 
-it('only short names that repeat are offered as the category; free text is not listed', async () => {
+it('short names that repeat come first as the category; free text follows under Other parts of your file', async () => {
   renderStep({ step: 'category', text: GROUPS, extras: { ...noExtras, category: 3 } })
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Change' }))
-  expect(screen.queryByRole('radio', { name: /from “Memo”/ })).not.toBeInTheDocument()
+  expect(screen.getAllByRole('radio')[0]).toHaveAccessibleName(/from “Group”/)
+  expect(screen.getByText('Other parts of your file')).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: /from “Memo”/ })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Show all' })).not.toBeInTheDocument()
 })
 
@@ -126,11 +128,11 @@ it('a file with no categories answers so calmly; Change lists the whole file', a
   expect(screen.getByRole('radio', { name: /from “Date”/ })).toHaveAccessibleDescription('used for date')
 })
 
-it('a column Description reads is under Already used; picking it takes it from Description', async () => {
-  renderStep({ step: 'category', text: 'Date,Amount,Memo\n2026-01-02,-5,Food\n2026-01-03,-5,Food\n', description: 2 })
+it('a column Description reads is under Other parts of your file; picking it takes it from Description', async () => {
+  renderStep({ step: 'category', text: 'Date,Amount,Memo,Shop\n2026-01-02,-5,Food,Cafe\n2026-01-03,-5,Food,Cafe\n', description: 2 })
   const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: 'Change' }))
-  expect(screen.getByText('Already used')).toBeInTheDocument()
+  expect(screen.getByText('Other parts of your file')).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'Food from “Memo”' })).toHaveAccessibleDescription('used for description')
   await user.click(screen.getByRole('radio', { name: 'Food from “Memo”' }))
   expect(answersOf()).toMatchObject({ category: 2, description: null })
   expect(screen.getByText('Food')).toBeInTheDocument()

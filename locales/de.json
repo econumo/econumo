@@ -563,7 +563,7 @@
       "all_steps": "Alle Schritte",
       "column_empty": "leer",
       "column_reference": "Eine lange Referenznummer",
-      "already_used": "Bereits verwendet",
+      "other_parts": "Weitere Teile Ihrer Datei",
       "nothing_fits": {
         "date": "Nichts in Ihrer Datei sieht nach einem Datum aus, deshalb sehen Sie hier alles.",
         "amount": "Nichts in Ihrer Datei sieht nach einem Betrag aus, deshalb sehen Sie hier alles.",
@@ -571,7 +571,6 @@
         "category": "Nichts in Ihrer Datei sieht nach einer Kategorie aus, deshalb sehen Sie hier alles.",
         "description": "Nichts in Ihrer Datei sieht nach einer Beschreibung aus, deshalb sehen Sie hier alles.",
         "payee": "Nichts in Ihrer Datei sieht nach einem Empfänger aus, deshalb sehen Sie hier alles.",
-        "currency": "Nichts in Ihrer Datei sieht nach einem Währungscode aus, deshalb sehen Sie hier alles.",
         "tags": "Nichts in Ihrer Datei sieht nach einem Tag oder einem Label aus, deshalb sehen Sie hier alles."
       },
       "only_one": {
@@ -581,7 +580,6 @@
         "category": "Dies ist der einzige Teil Ihrer Datei, der nach einer Kategorie aussieht.",
         "description": "Dies ist der einzige Teil Ihrer Datei, der nach einer Beschreibung aussieht.",
         "payee": "Dies ist der einzige Teil Ihrer Datei, der nach einem Empfänger aussieht.",
-        "currency": "Dies ist der einzige Teil Ihrer Datei, der nach einem Währungscode aussieht.",
         "tags": "Dies ist der einzige Teil Ihrer Datei, der nach einem Tag oder einem Label aussieht."
       },
       "now_used": "verwendet für {role}",

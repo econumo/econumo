@@ -563,7 +563,7 @@
       "all_steps": "Tutti i passi",
       "column_empty": "vuota",
       "column_reference": "Un lungo numero di riferimento",
-      "already_used": "Già in uso",
+      "other_parts": "Altre parti del file",
       "nothing_fits": {
         "date": "Niente nel file somiglia a una data, quindi ecco tutto.",
         "amount": "Niente nel file somiglia a un importo, quindi ecco tutto.",
@@ -571,7 +571,6 @@
         "category": "Niente nel file somiglia a una categoria, quindi ecco tutto.",
         "description": "Niente nel file somiglia a una descrizione, quindi ecco tutto.",
         "payee": "Niente nel file somiglia a un beneficiario, quindi ecco tutto.",
-        "currency": "Niente nel file somiglia a un codice valuta, quindi ecco tutto.",
         "tags": "Niente nel file somiglia a un tag o un'etichetta, quindi ecco tutto."
       },
       "only_one": {
@@ -581,7 +580,6 @@
         "category": "Questa è l'unica parte del file che somiglia a una categoria.",
         "description": "Questa è l'unica parte del file che somiglia a una descrizione.",
         "payee": "Questa è l'unica parte del file che somiglia a un beneficiario.",
-        "currency": "Questa è l'unica parte del file che somiglia a un codice valuta.",
         "tags": "Questa è l'unica parte del file che somiglia a un tag o un'etichetta."
       },
       "now_used": "usato per {role}",

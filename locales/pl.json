@@ -563,7 +563,7 @@
       "all_steps": "Wszystkie kroki",
       "column_empty": "pusta",
       "column_reference": "Długi numer referencyjny",
-      "already_used": "Już używane",
+      "other_parts": "Pozostałe części pliku",
       "nothing_fits": {
         "date": "Nic w pliku nie wygląda jak data, więc oto wszystko.",
         "amount": "Nic w pliku nie wygląda jak kwota, więc oto wszystko.",
@@ -571,7 +571,6 @@
         "category": "Nic w pliku nie wygląda jak kategoria, więc oto wszystko.",
         "description": "Nic w pliku nie wygląda jak opis, więc oto wszystko.",
         "payee": "Nic w pliku nie wygląda jak odbiorca, więc oto wszystko.",
-        "currency": "Nic w pliku nie wygląda jak kod waluty, więc oto wszystko.",
         "tags": "Nic w pliku nie wygląda jak tag lub etykieta, więc oto wszystko."
       },
       "only_one": {
@@ -581,7 +580,6 @@
         "category": "To jedyna część pliku, która wygląda jak kategoria.",
         "description": "To jedyna część pliku, która wygląda jak opis.",
         "payee": "To jedyna część pliku, która wygląda jak odbiorca.",
-        "currency": "To jedyna część pliku, która wygląda jak kod waluty.",
         "tags": "To jedyna część pliku, która wygląda jak tag lub etykieta."
       },
       "now_used": "używane jako: {role}",

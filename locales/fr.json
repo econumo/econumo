@@ -563,7 +563,7 @@
       "all_steps": "Toutes les étapes",
       "column_empty": "vide",
       "column_reference": "Un long numéro de référence",
-      "already_used": "Déjà utilisés",
+      "other_parts": "Autres parties de votre fichier",
       "nothing_fits": {
         "date": "Rien dans votre fichier ne ressemble à une date, voici donc tout.",
         "amount": "Rien dans votre fichier ne ressemble à un montant, voici donc tout.",
@@ -571,7 +571,6 @@
         "category": "Rien dans votre fichier ne ressemble à une catégorie, voici donc tout.",
         "description": "Rien dans votre fichier ne ressemble à une description, voici donc tout.",
         "payee": "Rien dans votre fichier ne ressemble à un bénéficiaire, voici donc tout.",
-        "currency": "Rien dans votre fichier ne ressemble à un code de devise, voici donc tout.",
         "tags": "Rien dans votre fichier ne ressemble à un tag ou une étiquette, voici donc tout."
       },
       "only_one": {
@@ -581,7 +580,6 @@
         "category": "C'est la seule partie de votre fichier qui ressemble à une catégorie.",
         "description": "C'est la seule partie de votre fichier qui ressemble à une description.",
         "payee": "C'est la seule partie de votre fichier qui ressemble à un bénéficiaire.",
-        "currency": "C'est la seule partie de votre fichier qui ressemble à un code de devise.",
         "tags": "C'est la seule partie de votre fichier qui ressemble à un tag ou une étiquette."
       },
       "now_used": "utilisé pour : {role}",
