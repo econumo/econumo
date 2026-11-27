@@ -564,7 +564,26 @@
       "column_empty": "leeg",
       "column_reference": "Een lang referentienummer",
       "already_used": "Al in gebruik",
-      "show_all": "Alles tonen",
+      "nothing_fits": {
+        "date": "Niets in uw bestand lijkt op een datum, dus hier is alles.",
+        "amount": "Niets in uw bestand lijkt op een bedrag, dus hier is alles.",
+        "account": "Niets in uw bestand lijkt op een rekeningnaam, dus hier is alles.",
+        "category": "Niets in uw bestand lijkt op een categorie, dus hier is alles.",
+        "description": "Niets in uw bestand lijkt op een omschrijving, dus hier is alles.",
+        "payee": "Niets in uw bestand lijkt op een begunstigde, dus hier is alles.",
+        "currency": "Niets in uw bestand lijkt op een valutacode, dus hier is alles.",
+        "tags": "Niets in uw bestand lijkt op een tag of een label, dus hier is alles."
+      },
+      "only_one": {
+        "date": "Dit is het enige deel van uw bestand dat op een datum lijkt.",
+        "amount": "Dit is het enige deel van uw bestand dat op een bedrag lijkt.",
+        "account": "Dit is het enige deel van uw bestand dat op een rekeningnaam lijkt.",
+        "category": "Dit is het enige deel van uw bestand dat op een categorie lijkt.",
+        "description": "Dit is het enige deel van uw bestand dat op een omschrijving lijkt.",
+        "payee": "Dit is het enige deel van uw bestand dat op een begunstigde lijkt.",
+        "currency": "Dit is het enige deel van uw bestand dat op een valutacode lijkt.",
+        "tags": "Dit is het enige deel van uw bestand dat op een tag of een label lijkt."
+      },
       "now_used": "gebruikt voor {role}",
       "summary": {
         "not_chosen": "Niet gekozen",

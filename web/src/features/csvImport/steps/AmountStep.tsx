@@ -99,6 +99,8 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices, 
                 closeChoices()
               }}
               candidates={candidates('amount', state.profiles, state.answers)}
+              nothingFitsNote={t('transactions.import_wizard.nothing_fits.amount')}
+              onlyOneNote={t('transactions.import_wizard.only_one.amount')}
               tags={columnTags(state.answers, t, i18n.language, ['amount'])}
             />
           ) : (
@@ -109,6 +111,8 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices, 
                 selected={amount.inColumn}
                 onSelect={(inColumn) => pickSide('in', { inColumn })}
                 candidates={candidates('amountIn', state.profiles, state.answers)}
+                nothingFitsNote={t('transactions.import_wizard.nothing_fits.amount')}
+                onlyOneNote={t('transactions.import_wizard.only_one.amount')}
                 tags={columnTags(state.answers, t, i18n.language, ['amountIn'])}
                 noneLabel={t('transactions.import_wizard.amount.none_in')}
               />
@@ -118,6 +122,8 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices, 
                 selected={amount.outColumn}
                 onSelect={(outColumn) => pickSide('out', { outColumn })}
                 candidates={candidates('amountOut', state.profiles, state.answers)}
+                nothingFitsNote={t('transactions.import_wizard.nothing_fits.amount')}
+                onlyOneNote={t('transactions.import_wizard.only_one.amount')}
                 tags={columnTags(state.answers, t, i18n.language, ['amountOut'])}
                 noneLabel={t('transactions.import_wizard.amount.none_out')}
               />

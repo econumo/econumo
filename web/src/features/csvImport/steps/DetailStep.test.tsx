@@ -85,13 +85,19 @@ it('a guessed category answers with its values and where they come from; Change 
   expect(screen.getByRole('radio', { name: 'Strata · Interest from “Group”' })).toBeChecked()
 })
 
-it('only short names that repeat are offered as the category; free text waits behind Show all', async () => {
+it('only short names that repeat are offered as the category; free text is not listed', async () => {
   renderStep({ step: 'category', text: GROUPS, extras: { ...noExtras, category: 3 } })
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Change' }))
   expect(screen.queryByRole('radio', { name: /from “Memo”/ })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Show all' }))
-  expect(screen.getByRole('radio', { name: /from “Memo”/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Show all' })).not.toBeInTheDocument()
+})
+
+it('with nothing that looks like a category, the whole file is listed under a note', async () => {
+  renderStep({ step: 'category', text: 'Date,Amount,Memo\n2026-01-02,-5,Lunch at the corner cafe\n2026-01-03,-5,Car insurance for November\n', description: 2 })
+  await userEvent.click(screen.getByRole('button', { name: 'Change' }))
+  expect(screen.getByText('Nothing in your file looks like a category, so here is everything.')).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: /from “Date”/ })).toBeInTheDocument()
 })
 
 it('picking None leaves categories out and says so calmly', async () => {

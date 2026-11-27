@@ -815,13 +815,16 @@ navigation (single-pane vs sidebar).
       currency codes such as CAD/EUR, not ids, not long free text); Date —
       dates; Amount — money; Category — short text that repeats (not
       currency codes, not ids), the fewest different names first;
-      Description — text, the longest first; Payee and Tags — text. A part another step already uses is not listed. A quiet
-      "Show all" under the list adds every other non-empty part, each one
-      another step uses with a small grey tag ("used for payee", "used for
-      description"); when nothing fits, the whole list shows at once. On an
-      Econumo export, Change on the Account step lists only "WS Cash · …
+      Description — text, the longest first; Payee and Tags — text. A part another step already uses is not listed, and there is
+      no "Show all". With exactly one candidate and no None, a muted line
+      says so ("This is the only part of your file that looks like a
+      date."). When nothing fits, a muted line says so ("Nothing in your
+      file looks like a date, so here is everything.") and every non-empty
+      part is listed, those another step uses last under "Already used"
+      with a small grey tag ("used for payee", "used for description"). On
+      an Econumo export, Change on the Account step lists only "WS Cash · …
       from “account_name”" (not account_currency, transaction_id, category,
-      description, payee) until "Show all". No table, no dropdowns of bare
+      description, payee). No table, no dropdowns of bare
       header names. Change fires `appTransactionImportChangeAnswer` with the
       step.
 - [ ] 📱 Step list: once a file is read every step can be opened in any order
@@ -890,13 +893,14 @@ navigation (single-pane vs sidebar).
       Car Insurance …" from “category”, Payee ("Who was paid, or who paid
       you?") on "WealthSimple · ICBC · IFS Premium …" from “payee”, each with
       Continue. Change shows "Which of these is the category?" / "Which
-      of these says who was paid?", the short list, "Show all", the "Already
-      used" group and "The file has no category" / "The file has no payee";
+      of these says who was paid?", the short list (with nothing that fits,
+      the whole file under a note, with the "Already used" group) and "The
+      file has no category" / "The file has no payee";
       picking None answers "Categories are left out. You can sort
       transactions into categories later." (Payees likewise) and the step
       list reads "None". One part of the file has one role, on every
-      step: picking a part another step uses (from "Show all") takes it from
-      there, the last pick wins; picking the amount as the category leaves
+      step: picking a part another step uses (listed when nothing else
+      fits the question) takes it from there, the last pick wins; picking the amount as the category leaves
       Amount with a warning mark and Import disabled until it is answered
       again, picking the date as the description marks Date, and picking
       the description as the date leaves Description at "No description". The guess and the AI never give a category or payee a
@@ -905,8 +909,8 @@ navigation (single-pane vs sidebar).
       calmly: "Your file has no categories. You can sort transactions into
       categories later." and "Your file doesn’t say who was paid. You can add
       payees later.", with Continue, no warning mark, and Import enabled.
-      On Description, a part Payee uses is listed only after "Show all", with
-      "used for payee"; one that ends up on Description anyway (e.g. by the
+      On Description, a part Payee uses is listed only when nothing else
+      fits Description, under "Already used" with "used for payee"; one that ends up on Description anyway (e.g. by the
       AI guess) is never also uploaded as a category or payee. Category
       counts the new categories the import will create, from the rows that
       will be imported only (a name found only on a skipped row is not
@@ -918,8 +922,8 @@ navigation (single-pane vs sidebar).
       bring along:" with one line per detail ("Reporting tags: Mexico2025 ·
       #oregon2410 (from “labels”)"). Change shows one row per detail (Budget
       tag, Reporting tags), each with a one-line hint and a dropdown of the
-      text the earlier steps left free (ids and currency codes only after
-      "Show all"; never the category or payee column), written "first values
+      text the earlier steps left free (ids and currency codes only when nothing
+      else fits, under a note; never the category or payee column), written "first values
       — from “Header”", or "Don’t bring it", and "Done" under them. Giving
       one to the other detail takes it from the first. Reporting tags asks
       how several tags are separated (";" by default, ",", "|", Tab, New
@@ -988,7 +992,7 @@ navigation (single-pane vs sidebar).
       file holding three-letter codes is guessed ("Your file says each
       account's currency", "from “account_currency”"); its Change asks "Which
       of these is the currency?" (only parts holding codes, the account's own
-      not among them; Show all with the Already used group) plus "My file has
+      not among them; with none, the whole file under a note, with the Already used group) plus "My file has
       no currency". With none, or after picking that, the row reads "New
       accounts will be in [USD ▾]" (a small currency picker, the user's
       currency first) with "Your file doesn't say which currency" under it.
@@ -1020,8 +1024,7 @@ navigation (single-pane vs sidebar).
       straight to Check, with "Accounts in your file" listing each account (on
       the Account step: "Your file names the account for each transaction"
       with "WS Cash · N transactions", and the step list reads "From WS Cash
-      and N more accounts"; transaction_id never shows among the choices
-      until "Show all"); the currency row reads "Your file says each
+      and N more accounts"; transaction_id never shows among the choices); the currency row reads "Your file says each
       account's currency" from “account_currency”, and a new account reads
       "New account · CAD" (CAD stays CAD when the instance has CAD, also for
       a user whose currency is USD; otherwise "New account · USD" with "The

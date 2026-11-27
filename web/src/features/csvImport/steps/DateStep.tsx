@@ -54,6 +54,8 @@ export function DateStep({ state, setAnswers, choosing, change, closeChoices }: 
             closeChoices()
           }}
           candidates={candidates('date', state.profiles, state.answers)}
+          nothingFitsNote={t('transactions.import_wizard.nothing_fits.date')}
+          onlyOneNote={t('transactions.import_wizard.only_one.date')}
           tags={columnTags(state.answers, t, i18n.language, ['date'])}
         />
       ) : (

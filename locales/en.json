@@ -564,7 +564,26 @@
       "column_empty": "empty",
       "column_reference": "A long reference number",
       "already_used": "Already used",
-      "show_all": "Show all",
+      "nothing_fits": {
+        "date": "Nothing in your file looks like a date, so here is everything.",
+        "amount": "Nothing in your file looks like an amount, so here is everything.",
+        "account": "Nothing in your file looks like an account name, so here is everything.",
+        "category": "Nothing in your file looks like a category, so here is everything.",
+        "description": "Nothing in your file looks like a description, so here is everything.",
+        "payee": "Nothing in your file looks like a payee, so here is everything.",
+        "currency": "Nothing in your file looks like a currency code, so here is everything.",
+        "tags": "Nothing in your file looks like a tag or a label, so here is everything."
+      },
+      "only_one": {
+        "date": "This is the only part of your file that looks like a date.",
+        "amount": "This is the only part of your file that looks like an amount.",
+        "account": "This is the only part of your file that looks like an account name.",
+        "category": "This is the only part of your file that looks like a category.",
+        "description": "This is the only part of your file that looks like a description.",
+        "payee": "This is the only part of your file that looks like a payee.",
+        "currency": "This is the only part of your file that looks like a currency code.",
+        "tags": "This is the only part of your file that looks like a tag or a label."
+      },
       "now_used": "used for {role}",
       "summary": {
         "not_chosen": "Not chosen",

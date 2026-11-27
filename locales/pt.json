@@ -564,7 +564,26 @@
       "column_empty": "vazia",
       "column_reference": "Um número de referência longo",
       "already_used": "Já utilizados",
-      "show_all": "Mostrar tudo",
+      "nothing_fits": {
+        "date": "Nada no seu ficheiro se parece com uma data, por isso aqui está tudo.",
+        "amount": "Nada no seu ficheiro se parece com um montante, por isso aqui está tudo.",
+        "account": "Nada no seu ficheiro se parece com um nome de conta, por isso aqui está tudo.",
+        "category": "Nada no seu ficheiro se parece com uma categoria, por isso aqui está tudo.",
+        "description": "Nada no seu ficheiro se parece com uma descrição, por isso aqui está tudo.",
+        "payee": "Nada no seu ficheiro se parece com um beneficiário, por isso aqui está tudo.",
+        "currency": "Nada no seu ficheiro se parece com um código de moeda, por isso aqui está tudo.",
+        "tags": "Nada no seu ficheiro se parece com uma etiqueta, por isso aqui está tudo."
+      },
+      "only_one": {
+        "date": "Esta é a única parte do seu ficheiro que se parece com uma data.",
+        "amount": "Esta é a única parte do seu ficheiro que se parece com um montante.",
+        "account": "Esta é a única parte do seu ficheiro que se parece com um nome de conta.",
+        "category": "Esta é a única parte do seu ficheiro que se parece com uma categoria.",
+        "description": "Esta é a única parte do seu ficheiro que se parece com uma descrição.",
+        "payee": "Esta é a única parte do seu ficheiro que se parece com um beneficiário.",
+        "currency": "Esta é a única parte do seu ficheiro que se parece com um código de moeda.",
+        "tags": "Esta é a única parte do seu ficheiro que se parece com uma etiqueta."
+      },
       "now_used": "usado para {role}",
       "summary": {
         "not_chosen": "Por escolher",

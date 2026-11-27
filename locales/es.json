@@ -564,7 +564,26 @@
       "column_empty": "vacía",
       "column_reference": "Un número de referencia largo",
       "already_used": "Ya en uso",
-      "show_all": "Mostrar todo",
+      "nothing_fits": {
+        "date": "Nada en el archivo parece una fecha, así que aquí está todo.",
+        "amount": "Nada en el archivo parece un importe, así que aquí está todo.",
+        "account": "Nada en el archivo parece un nombre de cuenta, así que aquí está todo.",
+        "category": "Nada en el archivo parece una categoría, así que aquí está todo.",
+        "description": "Nada en el archivo parece una descripción, así que aquí está todo.",
+        "payee": "Nada en el archivo parece un beneficiario, así que aquí está todo.",
+        "currency": "Nada en el archivo parece un código de moneda, así que aquí está todo.",
+        "tags": "Nada en el archivo parece una etiqueta, así que aquí está todo."
+      },
+      "only_one": {
+        "date": "Esta es la única parte del archivo que parece una fecha.",
+        "amount": "Esta es la única parte del archivo que parece un importe.",
+        "account": "Esta es la única parte del archivo que parece un nombre de cuenta.",
+        "category": "Esta es la única parte del archivo que parece una categoría.",
+        "description": "Esta es la única parte del archivo que parece una descripción.",
+        "payee": "Esta es la única parte del archivo que parece un beneficiario.",
+        "currency": "Esta es la única parte del archivo que parece un código de moneda.",
+        "tags": "Esta es la única parte del archivo que parece una etiqueta."
+      },
       "now_used": "usado para {role}",
       "summary": {
         "not_chosen": "Sin elegir",

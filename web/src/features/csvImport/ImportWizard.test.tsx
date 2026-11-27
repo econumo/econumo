@@ -101,37 +101,32 @@ it('a file with no category or payee answers both calmly; they never need attent
 })
 
 it('picking the amount as the category moves it: Amount loses it and needs an answer, Import waits', async () => {
-  renderWizard({ initialFile: csv(EXPORT, 'econumo.csv') })
+  renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
-  await screen.findByRole('heading', { name: 'Here is what will be added' })
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: 'Category' }))
   await user.click(screen.getByRole('button', { name: 'Change' }))
-  await user.click(screen.getByRole('button', { name: 'Show all' }))
-  await user.click(screen.getByRole('radio', { name: /from “amount”/ }))
+  await user.click(screen.getByRole('radio', { name: /from “Amount”/ }))
   expect(screen.getByRole('button', { name: /^Amount.*needs your attention/ })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /^Category/ })).toHaveAccessibleDescription('-4.5 · 1000')
+  expect(screen.getByRole('button', { name: /^Category/ })).toHaveAccessibleDescription('-5.50 · 100.00')
   await user.click(screen.getByRole('button', { name: /^Check/ }))
   expect(screen.getByRole('button', { name: /^Import/ })).toBeDisabled()
 })
 
 it('picking the date as the description moves it: Date loses it and needs an answer', async () => {
-  renderWizard({ initialFile: csv(BANK) })
+  renderWizard({ initialFile: csv('Booking date,Amount\n2026-01-02,-5.50\n2026-01-03,100.00\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  await user.click(screen.getByRole('button', { name: 'Description' }))
-  await user.click(screen.getByRole('button', { name: 'Change' }))
-  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  await user.click(screen.getByRole('button', { name: /^Description/ }))
   await user.click(screen.getByRole('radio', { name: /from “Booking date”/ }))
   expect(screen.getByRole('button', { name: /^Date.*needs your attention/ })).toBeInTheDocument()
 })
 
 it('picking the description as the date moves it: Description is left empty', async () => {
-  renderWizard({ initialFile: csv(BANK) })
+  renderWizard({ initialFile: csv('When,Amount,Details\nsoon,-5.50,Coffee\nlater,100.00,Salary\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  await user.click(screen.getByRole('button', { name: 'Date' }))
-  await user.click(screen.getByRole('button', { name: 'Change' }))
-  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  await user.click(screen.getByRole('button', { name: /^Date/ }))
   await user.click(screen.getByRole('radio', { name: /from “Details”/ }))
   expect(screen.getByRole('button', { name: /^Description/ })).toHaveAccessibleDescription('No description')
 })
@@ -329,19 +324,15 @@ it('each step shows its answer in plain words under its name', async () => {
 })
 
 it('a column given on the Payee step carries a “used for payee” tag on Description', async () => {
-  renderWizard({ initialFile: csv('Booking date,Amount,Details,Note\n2026-01-02,-5.50,Coffee and a long walk home,Cafe\n') })
+  renderWizard({ initialFile: csv('Booking date,Amount,Note\n2026-01-02,-5.50,Cafe\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Payee/ }))
   await user.click(screen.getByRole('radio', { name: 'Cafe from “Note”' }))
   expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('Cafe')
   await user.click(screen.getByRole('button', { name: 'Description' }))
-  await user.click(screen.getByRole('button', { name: 'Change' }))
-  // used elsewhere, so not offered until Show all
-  expect(screen.queryByRole('radio', { name: 'Cafe from “Note”' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  // nothing else looks like a description, so the whole file is listed, with what each part is used for
   expect(screen.getByRole('radio', { name: 'Cafe from “Note”' })).toHaveAccessibleDescription('used for payee')
-  expect(screen.getByRole('radio', { name: /from “Details”/ })).toBeChecked()
 })
 
 it('an Econumo export goes straight to Check', async () => {

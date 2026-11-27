@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { displaySamples, fromName } from './columnLabels'
@@ -10,14 +10,16 @@ interface ColumnChoicesProps {
   label: string
   selected: number | null
   onSelect: (column: number | null) => void
-  /** the parts of the file that could answer, most likely first; the rest wait behind "Show all" */
+  /** the parts of the file that could answer, most likely first; with none, the whole file is listed */
   candidates: number[]
   /** what another step uses a part of the file for, shown as a small tag */
   tags?: Record<number, string>
   /** offers "none of these" as an answer */
   noneLabel?: string
-  /** with nothing that fits, "none of these" is the likely answer: the rest still waits behind "Show all" */
-  noneWhenNothingFits?: boolean
+  /** said above the list when nothing in the file fits and the whole file is listed */
+  nothingFitsNote: string
+  /** said above the list when exactly one part fits and there is no "none of these" */
+  onlyOneNote: string
 }
 
 const rowClass = (selected: boolean) =>
@@ -39,19 +41,17 @@ function Dot({ on }: { on: boolean }) {
  * file's own name for it is a grey caption. An answer is a button, not a native radio: picking
  * the one already chosen is an answer too ("yes, that one"), and arrow keys must not pick.
  */
-export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, noneWhenNothingFits = false }: ColumnChoicesProps) {
+export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, nothingFitsNote, onlyOneNote }: ColumnChoicesProps) {
   const { t, i18n } = useTranslation()
   const name = useId()
-  const [showAll, setShowAll] = useState(false)
   const filled = profiles.filter((p) => p.type !== 'empty' || p.index === selected).map((p) => p.index)
   const likely = [...(selected === null ? [] : [selected]), ...candidates.filter((c) => c !== selected)]
-  // with nothing that fits, the whole file is the list straight away
-  const all = showAll || (candidates.length === 0 && !noneWhenNothingFits)
-  const shown = all ? [...likely, ...filled.filter((c) => !likely.includes(c))] : likely
-  const hidden = filled.filter((c) => !shown.includes(c)).length
-  // in the full list, parts another step already reads go last under their own heading
-  const grouped = all ? shown.filter((c) => c !== selected && tags[c]) : []
+  const nothingFits = candidates.length === 0
+  const shown = nothingFits ? [...likely, ...filled.filter((c) => !likely.includes(c))] : likely
+  // when the whole file is listed, parts another step already reads go last under their own heading
+  const grouped = nothingFits ? shown.filter((c) => c !== selected && tags[c]) : []
   const main = shown.filter((c) => !grouped.includes(c))
+  const note = nothingFits ? nothingFitsNote : likely.length === 1 && !noneLabel ? onlyOneNote : null
 
   const renderRow = (index: number) => {
     const p = profiles[index]
@@ -103,6 +103,7 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm">{label}</p>
+      {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
       <div role="radiogroup" aria-label={label} className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border">
         {main.map(renderRow)}
         {noneLabel ? (
@@ -126,11 +127,6 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
           </>
         ) : null}
       </div>
-      {hidden > 0 ? (
-        <button type="button" className="self-start text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={() => setShowAll(true)}>
-          {t('transactions.import_wizard.show_all')}
-        </button>
-      ) : null}
     </div>
   )
 }

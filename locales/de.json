@@ -564,7 +564,26 @@
       "column_empty": "leer",
       "column_reference": "Eine lange Referenznummer",
       "already_used": "Bereits verwendet",
-      "show_all": "Alle anzeigen",
+      "nothing_fits": {
+        "date": "Nichts in Ihrer Datei sieht nach einem Datum aus, deshalb sehen Sie hier alles.",
+        "amount": "Nichts in Ihrer Datei sieht nach einem Betrag aus, deshalb sehen Sie hier alles.",
+        "account": "Nichts in Ihrer Datei sieht nach einem Kontonamen aus, deshalb sehen Sie hier alles.",
+        "category": "Nichts in Ihrer Datei sieht nach einer Kategorie aus, deshalb sehen Sie hier alles.",
+        "description": "Nichts in Ihrer Datei sieht nach einer Beschreibung aus, deshalb sehen Sie hier alles.",
+        "payee": "Nichts in Ihrer Datei sieht nach einem Empfänger aus, deshalb sehen Sie hier alles.",
+        "currency": "Nichts in Ihrer Datei sieht nach einem Währungscode aus, deshalb sehen Sie hier alles.",
+        "tags": "Nichts in Ihrer Datei sieht nach einem Tag oder einem Label aus, deshalb sehen Sie hier alles."
+      },
+      "only_one": {
+        "date": "Dies ist der einzige Teil Ihrer Datei, der nach einem Datum aussieht.",
+        "amount": "Dies ist der einzige Teil Ihrer Datei, der nach einem Betrag aussieht.",
+        "account": "Dies ist der einzige Teil Ihrer Datei, der nach einem Kontonamen aussieht.",
+        "category": "Dies ist der einzige Teil Ihrer Datei, der nach einer Kategorie aussieht.",
+        "description": "Dies ist der einzige Teil Ihrer Datei, der nach einer Beschreibung aussieht.",
+        "payee": "Dies ist der einzige Teil Ihrer Datei, der nach einem Empfänger aussieht.",
+        "currency": "Dies ist der einzige Teil Ihrer Datei, der nach einem Währungscode aussieht.",
+        "tags": "Dies ist der einzige Teil Ihrer Datei, der nach einem Tag oder einem Label aussieht."
+      },
       "now_used": "verwendet für {role}",
       "summary": {
         "not_chosen": "Nicht gewählt",

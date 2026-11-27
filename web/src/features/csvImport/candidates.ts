@@ -48,7 +48,7 @@ const rank: Partial<Record<Role, (a: ColumnProfile, b: ColumnProfile) => number>
 }
 
 /** The parts of the file that could answer `role`, most likely first. A part another step
-    already reads is not one of them: it stays reachable behind "Show all", with its tag. */
+    already reads is not one of them. */
 export function candidates(role: Role, profiles: ColumnProfile[], answers: WizardAnswers): number[] {
   const step = STEP_OF[role]
   const elsewhere = new Set(columnRoles(answers).filter(([r]) => STEP_OF[r] !== step).map(([, column]) => column))

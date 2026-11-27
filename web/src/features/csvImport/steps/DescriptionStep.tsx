@@ -23,6 +23,8 @@ export function DescriptionStep({ state, setAnswers, choosing, change, closeChoi
             closeChoices()
           }}
           candidates={candidates('description', state.profiles, state.answers)}
+          nothingFitsNote={t('transactions.import_wizard.nothing_fits.description')}
+          onlyOneNote={t('transactions.import_wizard.only_one.description')}
           tags={columnTags(state.answers, t, i18n.language, ['description'])}
           noneLabel={t('transactions.import_wizard.description.none')}
         />

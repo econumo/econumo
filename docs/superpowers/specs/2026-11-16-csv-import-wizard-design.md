@@ -181,8 +181,10 @@ Column cards. Under the cards, the selected column's values are checked:
 
 Built like Description: the guessed answer first ("Strata · Interest · Car Insurance", from
 “category”), Change opens "Which of these is the category?" with short names that repeat
-(not ids or currency codes), "Show all", the "Already used" group and "The file has no
-category". Optional: with nothing that fits, or None picked, the step answers calmly ("Your
+(not ids or currency codes) and "The file has no category"; with nothing that fits, a muted
+note ("Nothing in your file looks like a category, so here is everything.") and the whole file
+with the "Already used" group; with exactly one candidate and no None, a muted note says so.
+There is no "Show all". Optional: with nothing that fits, or None picked, the step answers calmly ("Your
 file has no categories. You can sort transactions into categories later.") with Looks
 right; it never warns and never blocks Import. The "N new categories will be created" note
 and the shared-account "left out" note live here. One column has one role on every step: a

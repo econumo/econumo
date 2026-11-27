@@ -108,7 +108,8 @@ function CurrencyAnswer({ state, account, onChange }: { state: StepBodyProps['st
         candidates={candidates('currency', state.profiles, state.answers).filter((c) => c !== account.column)}
         tags={columnTags(state.answers, t, i18n.language, ['currency'])}
         noneLabel={t('transactions.import_wizard.account.currency_none')}
-        noneWhenNothingFits
+        nothingFitsNote={t('transactions.import_wizard.nothing_fits.currency')}
+        onlyOneNote={t('transactions.import_wizard.only_one.currency')}
       />
     )
   }
@@ -366,6 +367,8 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
               selected={account?.kind === 'column' ? account.column : null}
               onSelect={chooseColumn}
               candidates={candidates('account', state.profiles, state.answers)}
+              nothingFitsNote={t('transactions.import_wizard.nothing_fits.account')}
+              onlyOneNote={t('transactions.import_wizard.only_one.account')}
               tags={columnTags(state.answers, t, i18n.language, ['account'])}
             />
           ) : account?.kind === 'column' ? (

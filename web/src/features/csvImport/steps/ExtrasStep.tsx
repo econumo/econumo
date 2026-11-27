@@ -25,7 +25,6 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
   const { data: labels = [] } = useLabels()
   const customId = useId()
   const { extras, account } = state.answers
-  const [showAll, setShowAll] = useState(false)
   const [custom, setCustom] = useState(() => (SEPARATORS.includes(extras.labelsSeparator) ? '' : extras.labelsSeparator))
   const separator = extras.labelsSeparator || DEFAULT_SEPARATOR
 
@@ -43,8 +42,7 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
   // the earlier steps' columns are never offered; a column belongs to one role, so giving it to another takes it from the first
   const offered = unusedColumns(state.answers, state.profiles)
   const likely = new Set(candidates('tag', state.profiles, state.answers))
-  const hiddenCount = offered.filter((p) => !likely.has(p.index)).length
-  const choicesFor = (role: Role) => (showAll || likely.size === 0 ? offered : offered.filter((p) => likely.has(p.index) || p.index === extras[role]))
+  const choicesFor = (role: Role) => (likely.size === 0 ? offered : offered.filter((p) => likely.has(p.index) || p.index === extras[role]))
   const assign = (role: Role, column: number | null) => {
     const next = { ...extras }
     for (const r of ROLES) if (column !== null && next[r] === column) next[r] = null
@@ -68,6 +66,7 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
     <div className="flex flex-col gap-5">
       {open ? (
         <div className="flex flex-col gap-2">
+          {likely.size === 0 ? <p className="text-xs text-muted-foreground">{t('transactions.import_wizard.nothing_fits.tags')}</p> : null}
           <div className="divide-y divide-border rounded-xl border border-border">
             {ROLES.map((role) => {
               const label = t(`transactions.import_wizard.extras.role.${role}`)
@@ -94,14 +93,7 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
               )
             })}
           </div>
-          <div className="flex items-start justify-between gap-3">
-            {!showAll && likely.size > 0 && hiddenCount > 0 ? (
-              <button type="button" className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={() => setShowAll(true)}>
-                {t('transactions.import_wizard.show_all')}
-              </button>
-            ) : (
-              <span />
-            )}
+          <div className="flex items-start justify-end gap-3">
             {guessed ? <ChoicesDone onDone={closeChoices} /> : null}
           </div>
         </div>

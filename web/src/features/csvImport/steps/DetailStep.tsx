@@ -30,6 +30,8 @@ function DetailStep({ role, state, setAnswers, choosing, change, closeChoices, n
             closeChoices()
           }}
           candidates={likely}
+          nothingFitsNote={t(`transactions.import_wizard.nothing_fits.${role}`)}
+          onlyOneNote={t(`transactions.import_wizard.only_one.${role}`)}
           tags={columnTags(state.answers, t, i18n.language, [role])}
           noneLabel={k('none')}
         />
