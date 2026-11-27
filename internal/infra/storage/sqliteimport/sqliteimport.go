@@ -164,11 +164,13 @@ func Import(ctx context.Context, src, dst *sql.DB, force bool) (Report, error) {
 	}
 
 	if !force {
-		var users int64
-		if err := dst.QueryRowContext(ctx, `SELECT count(*) FROM users`).Scan(&users); err != nil {
-			return Report{}, fmt.Errorf("sqliteimport: count users: %w", err)
+		// The copy truncates every table: audit rows alone (lifetime
+		// entitlements, deletions billing has not polled) make a target non-empty.
+		var occupied bool
+		if err := dst.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM users) OR EXISTS (SELECT 1 FROM users_audit)`).Scan(&occupied); err != nil {
+			return Report{}, fmt.Errorf("sqliteimport: check target is empty: %w", err)
 		}
-		if users > 0 {
+		if occupied {
 			return Report{}, ErrTargetNotEmpty
 		}
 	}

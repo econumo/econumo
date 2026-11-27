@@ -1137,3 +1137,61 @@ func TestLoad_Affiliates(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_UserDeletionDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.InactiveUserDays != 0 || c.UserDeletionDays != 0 || c.InactiveUserExclude != nil {
+		t.Fatalf("defaults = %d / %d / %#v, want 0 / 0 / nil", c.InactiveUserDays, c.UserDeletionDays, c.InactiveUserExclude)
+	}
+	if c.RateLimitRequestUserDeletion != 3 || c.RateLimitConfirmUserDeletion != 5 {
+		t.Fatalf("rate limits = %d / %d, want 3 / 5", c.RateLimitRequestUserDeletion, c.RateLimitConfirmUserDeletion)
+	}
+}
+
+func TestLoad_UserDeletionValues(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "365")
+	t.Setenv("ECONUMO_USER_DELETION_DAYS", "36500")
+	t.Setenv("ECONUMO_INACTIVE_USER_EXCLUDE", " A@x.test ,b@x.test,")
+	t.Setenv("ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION", "9")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.InactiveUserDays != 365 || c.UserDeletionDays != 36500 {
+		t.Fatalf("days = %d / %d, want 365 / 36500", c.InactiveUserDays, c.UserDeletionDays)
+	}
+	if strings.Join(c.InactiveUserExclude, "|") != "a@x.test|b@x.test" || len(c.InactiveUserExclude) != 2 {
+		t.Fatalf("exclude = %#v", c.InactiveUserExclude)
+	}
+	if c.RateLimitRequestUserDeletion != 0 || c.RateLimitConfirmUserDeletion != 9 {
+		t.Fatalf("rate limits = %d / %d, want 0 / 9", c.RateLimitRequestUserDeletion, c.RateLimitConfirmUserDeletion)
+	}
+}
+
+func TestLoad_UserDeletionBadValuesFailBoot(t *testing.T) {
+	for _, tc := range []struct{ key, bad string }{
+		{"ECONUMO_INACTIVE_USER_DAYS", "-1"},
+		{"ECONUMO_INACTIVE_USER_DAYS", "36501"},
+		{"ECONUMO_USER_DELETION_DAYS", "abc"},
+		{"ECONUMO_USER_DELETION_DAYS", "36501"},
+		{"ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION", "-1"},
+	} {
+		t.Run(tc.key+"="+tc.bad, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv(tc.key, tc.bad)
+			_, err := Load()
+			if err == nil {
+				t.Fatalf("Load() with %s=%q succeeded, want boot error", tc.key, tc.bad)
+			}
+			if !strings.Contains(err.Error(), tc.key) {
+				t.Fatalf("error %q does not name %s", err, tc.key)
+			}
+		})
+	}
+}

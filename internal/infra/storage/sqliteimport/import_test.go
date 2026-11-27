@@ -120,6 +120,23 @@ func TestImport_AbortsWhenTargetHasUsersWithoutForce(t *testing.T) {
 	}
 }
 
+// The import truncates every table, so a target holding only audit rows (lifetime
+// entitlements, deletions billing has not polled yet) is not empty.
+func TestImport_AbortsWhenTargetHasOnlyAuditRowsWithoutForce(t *testing.T) {
+	ctx := context.Background()
+	src := dbtest.NewSQLite(t)
+	dst := dbtest.NewPostgres(t)
+	seedSource(t, src)
+
+	dst.Exec(t, dst.Rebind(`INSERT INTO users_audit (id, user_id, event, email_hash, created_at) VALUES (?,?,?,?,?)`),
+		"0190a0aa-0000-7000-8000-0000000000f1", "0190a0aa-0000-7000-8000-0000000000f2", "deleted",
+		"0000000000000000000000000000000000000000000000000000000000000000", "2026-07-23 10:00:00")
+
+	if _, err := sqliteimport.Import(ctx, src.Raw, dst.Raw, false); !errors.Is(err, sqliteimport.ErrTargetNotEmpty) {
+		t.Fatalf("expected ErrTargetNotEmpty, got %v", err)
+	}
+}
+
 func TestImport_AbortsOnSchemaVersionMismatch(t *testing.T) {
 	ctx := context.Background()
 	src := dbtest.NewSQLite(t)

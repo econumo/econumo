@@ -41,9 +41,12 @@ type Config struct {
 	// one path: the CLI reads it to seed the one-time
 	// migration:seed-analytics-option backfill for users predating the option.
 	Analytics                  bool
-	TrialDays                  int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
-	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
-	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
+	TrialDays                  int      // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
+	EmailVerification          bool     // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
+	CurrencyUpdateIntervalDays int      // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
+	InactiveUserDays           int      // ECONUMO_INACTIVE_USER_DAYS: days without activity before a user is marked for deletion; 0 (default) = never
+	UserDeletionDays           int      // ECONUMO_USER_DELETION_DAYS: days from the mark to deleting the user's data; 0 (default) = never automatically
+	InactiveUserExclude        []string // ECONUMO_INACTIVE_USER_EXCLUDE: normalized emails the inactivity job never marks
 
 	// SimpleFINDisabled is ECONUMO_IMPORT_SIMPLEFIN (default true) inverted, so a
 	// zero Config in tests keeps SimpleFIN on. Apple Wallet import, import
@@ -88,23 +91,25 @@ type Config struct {
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
-	RateLimitLogin              int            // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
-	RateLimitReset              int            // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
-	RateLimitRemind             int            // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
-	RateLimitRegister           int            // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
-	RateLimitAccept             int            // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
-	RateLimitVerifyEmail        int            // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
-	RateLimitConfirmEmail       int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
-	RateLimitRequestEmailChange int            // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
-	RateLimitConfirmEmailChange int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
-	RateLimitIngest             int            // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
-	RateLimitClaimSetupToken    int            // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
-	RateLimitSync               int            // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
-	RateLimitPreviewRule        int            // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
-	RateLimitWindow             time.Duration  // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitIP                 int            // ECONUMO_RATE_LIMIT_IP: per-endpoint cap per minute per client IP
-	ClientIPHeader              string         // ECONUMO_CLIENT_IP_HEADER: header trusted proxies put the client IP in
-	ClientIPTrustedProxies      []netip.Prefix // ECONUMO_CLIENT_IP_TRUSTED_PROXIES: peers whose header is believed
+	RateLimitLogin               int            // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset               int            // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind              int            // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister            int            // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept              int            // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitVerifyEmail         int            // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
+	RateLimitConfirmEmail        int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
+	RateLimitRequestEmailChange  int            // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
+	RateLimitConfirmEmailChange  int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
+	RateLimitIngest              int            // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
+	RateLimitClaimSetupToken     int            // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
+	RateLimitSync                int            // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
+	RateLimitPreviewRule         int            // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
+	RateLimitRequestUserDeletion int            // ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION: account-deletion code sends per user (every send counts)
+	RateLimitConfirmUserDeletion int            // ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION: failed account-deletion confirmations per user
+	RateLimitWindow              time.Duration  // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitIP                  int            // ECONUMO_RATE_LIMIT_IP: per-endpoint cap per minute per client IP
+	ClientIPHeader               string         // ECONUMO_CLIENT_IP_HEADER: header trusted proxies put the client IP in
+	ClientIPTrustedProxies       []netip.Prefix // ECONUMO_CLIENT_IP_TRUSTED_PROXIES: peers whose header is believed
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend;
@@ -272,6 +277,28 @@ func Load() (Config, error) {
 	}
 	c.CurrencyUpdateIntervalDays = interval
 
+	// (days+1)*24h overflows time.Duration near 106,752 days, and an overflowed
+	// cutoff lands in the future and would mark or delete every user.
+	for _, p := range []struct {
+		key string
+		dst *int
+	}{
+		{"ECONUMO_INACTIVE_USER_DAYS", &c.InactiveUserDays},
+		{"ECONUMO_USER_DELETION_DAYS", &c.UserDeletionDays},
+	} {
+		days, err := getIntStrict(p.key, 0)
+		if err != nil {
+			return Config{}, err
+		}
+		if days > 36500 {
+			return Config{}, fmt.Errorf("%s %d is too large (max 36500 days)", p.key, days)
+		}
+		*p.dst = days
+	}
+	for _, e := range getStringList("ECONUMO_INACTIVE_USER_EXCLUDE", nil) {
+		c.InactiveUserExclude = append(c.InactiveUserExclude, model.NormalizeEmail(e))
+	}
+
 	// Matcher thresholds are guesses until real bank data has been through
 	// them, so they are tunable — but a typo must fail at boot, not silently
 	// change what counts as a duplicate.
@@ -413,6 +440,8 @@ func Load() (Config, error) {
 		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
 		{&c.RateLimitPreviewRule, "ECONUMO_RATE_LIMIT_PREVIEW_RULE", 120},
 		{&c.RateLimitIP, "ECONUMO_RATE_LIMIT_IP", 60},
+		{&c.RateLimitRequestUserDeletion, "ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION", 3},
+		{&c.RateLimitConfirmUserDeletion, "ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION", 5},
 	} {
 		n, err := getIntStrict(p.key, p.def)
 		if err != nil {
