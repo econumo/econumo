@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -29,38 +30,48 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 		return nil, err
 	}
 
-	// Resolve the owner of every account referenced by a grant once.
+	// Resolve the owner of every account referenced by a grant once. An account
+	// a wipe removed since the listing has no entry and is skipped below.
 	owners := map[string]vo.Id{}
-	resolveOwner := func(accountID vo.Id) (vo.Id, error) {
-		key := accountID.String()
-		if o, ok := owners[key]; ok {
-			return o, nil
-		}
-		o, oerr := s.access.AccountOwner(ctx, accountID)
-		if oerr != nil {
-			return vo.Id{}, oerr
-		}
-		owners[key] = o
-		return o, nil
-	}
 	for _, a := range append(append([]*model.AccountAccess{}, received...), issued...) {
-		if _, oerr := resolveOwner(a.AccountID); oerr != nil {
+		key := a.AccountID.String()
+		if _, ok := owners[key]; ok {
+			continue
+		}
+		o, oerr := s.access.AccountOwner(ctx, a.AccountID)
+		if _, gone := errs.AsNotFound(oerr); gone {
+			continue
+		}
+		if oerr != nil {
 			return nil, oerr
 		}
+		owners[key] = o
 	}
 
 	result := &model.GetConnectionListResult{Items: []model.ConnectionResult{}}
 	for _, cu := range connected {
+		// A user wiped since the listing drops out rather than failing the list.
 		owner, oerr := s.users.GetOwner(ctx, cu.String())
+		if _, gone := errs.AsNotFound(oerr); gone {
+			continue
+		}
 		if oerr != nil {
 			return nil, oerr
 		}
+		markedAt, merr := s.users.DeletionMarkedAt(ctx, cu.String())
+		if _, gone := errs.AsNotFound(merr); gone {
+			continue
+		}
+		if merr != nil {
+			return nil, merr
+		}
 		conn := model.ConnectionResult{
-			User:           model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
-			SharedAccounts: []model.AccountAccessResult{},
-			AccessLevel:    string(model.EffectiveAccessLevel(owner.AccessLevel, owner.AccessUntil, s.clock.Now())),
-			AccessUntil:    datetime.FormatOrEmpty(owner.AccessUntil),
-			CreatedAt:      createdAtOrEmpty(owner.CreatedAt),
+			User:             model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
+			SharedAccounts:   []model.AccountAccessResult{},
+			AccessLevel:      string(model.EffectiveAccessLevel(owner.AccessLevel, owner.AccessUntil, s.clock.Now())),
+			AccessUntil:      datetime.FormatOrEmpty(owner.AccessUntil),
+			CreatedAt:        createdAtOrEmpty(owner.CreatedAt),
+			DeletionMarkedAt: datetime.FormatOrEmpty(markedAt),
 		}
 
 		// Dedup by account id, preserving discovery order (received first, then
@@ -69,8 +80,8 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 		order := []string{}
 		byID := map[string]model.AccountAccessResult{}
 		add := func(a *model.AccountAccess) {
-			accOwner := owners[a.AccountID.String()]
-			if !accOwner.Equal(cu) && !accOwner.Equal(userID) {
+			accOwner, known := owners[a.AccountID.String()]
+			if !known || (!accOwner.Equal(cu) && !accOwner.Equal(userID)) {
 				return
 			}
 			key := a.AccountID.String()

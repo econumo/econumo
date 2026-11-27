@@ -31,8 +31,13 @@ export interface AccountPositionChange {
   position: number
 }
 
+// No parameters: it is passed as a queryFn, which hands it the query context.
 export async function getAccountList(): Promise<AccountDto[]> {
-  const response = await api.get<Envelope<{ items: AccountDto[] }>>(apiUrl('/api/v1/account/get-account-list'))
+  return getAccountListWithin()
+}
+
+export async function getAccountListWithin(timeout?: number): Promise<AccountDto[]> {
+  const response = await api.get<Envelope<{ items: AccountDto[] }>>(apiUrl('/api/v1/account/get-account-list'), { timeout })
   return response.data.data.items
 }
 

@@ -131,3 +131,28 @@ func TestMaybePurgeRemovesOnlyOlderThanNinetyDays(t *testing.T) {
 		t.Error("purge did not run after 10 minutes")
 	}
 }
+
+func TestDeleteByUser(t *testing.T) {
+	s, _, _ := newStore(t)
+	ctx := context.Background()
+	gone, kept := vo.NewId(), vo.NewId()
+	for _, k := range []string{"a", "b"} {
+		if err := s.Insert(ctx, gone, k, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Insert(ctx, kept, "a", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteByUser(ctx, gone); err != nil {
+		t.Fatalf("DeleteByUser: %v", err)
+	}
+	for _, k := range []string{"a", "b"} {
+		if _, found, err := s.Find(ctx, gone, k); err != nil || found {
+			t.Errorf("deleted user's key %q: found=%v err=%v", k, found, err)
+		}
+	}
+	if _, found, err := s.Find(ctx, kept, "a"); err != nil || !found {
+		t.Errorf("other user's key: found=%v err=%v", found, err)
+	}
+}

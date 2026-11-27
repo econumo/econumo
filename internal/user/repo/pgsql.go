@@ -76,6 +76,10 @@ func (pgsqlQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p opt
 	return pgsqlgen.New(db).UpsertUserOption(ctx, pgsqlgen.UpsertUserOptionParams(p))
 }
 
+func (pgsqlQuerier) ClearUserOptionIfValue(ctx context.Context, db backend.DBTX, p clearOptionParams) (int64, error) {
+	return pgsqlgen.New(db).ClearUserOptionIfValue(ctx, pgsqlgen.ClearUserOptionIfValueParams(p))
+}
+
 func (pgsqlQuerier) UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error {
 	return pgsqlgen.New(db).UpdateUserLanguage(ctx, pgsqlgen.UpdateUserLanguageParams(p))
 }

@@ -1,4 +1,4 @@
-import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getVersionRef, getCacheBuster, getBillingUrl, mcpUrl } from './config'
+import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getVersionRef, getCacheBuster, getBillingUrl, getUserDeletionDays, mcpUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -35,6 +35,16 @@ describe('flags', () => {
     expect(getBillingUrl()).toBe('')
     window.econumoConfig = { BILLING_URL: 'https://pay.example.test/cloud/' }
     expect(getBillingUrl()).toBe('https://pay.example.test/cloud/')
+  })
+
+  it('returns the deletion period, 0 when unset or not a positive whole number', () => {
+    expect(getUserDeletionDays()).toBe(0)
+    window.econumoConfig = { USER_DELETION_DAYS: 30 }
+    expect(getUserDeletionDays()).toBe(30)
+    window.econumoConfig = { USER_DELETION_DAYS: -1 }
+    expect(getUserDeletionDays()).toBe(0)
+    window.econumoConfig = { USER_DELETION_DAYS: 1.5 }
+    expect(getUserDeletionDays()).toBe(0)
   })
 
   it('returns the MCP URL, empty when unset', () => {

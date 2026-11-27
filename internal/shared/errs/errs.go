@@ -201,3 +201,13 @@ func AsPaymentRequired(err error) (*PaymentRequiredError, bool) {
 	}
 	return nil, false
 }
+
+// Sentinel is a fixed, comparable error whose name a log may carry: its
+// message is meant for people, the name for an operator's log line, which never
+// carries error messages.
+type Sentinel struct{ name, msg string }
+
+func NewSentinel(name, msg string) *Sentinel { return &Sentinel{name: name, msg: msg} }
+
+func (e *Sentinel) Error() string        { return e.msg }
+func (e *Sentinel) SentinelName() string { return e.name }

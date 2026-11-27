@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Choisissez un dossier pour ce compte",
       "general_folder_hint": "General (sera créé)",
-      "decline_question": "Refuser l’accès à « {name} » ?"
+      "decline_question": "Refuser l’accès à « {name} » ?",
+      "scheduled_for_deletion": "La suppression des données de {name} est programmée. Les comptes et budgets que cette personne partage avec vous disparaîtront, et les virements avec ses comptes deviendront des corrections."
     },
     "sync": {
       "failed": "Échec de la synchronisation de {source}",
@@ -1114,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Supprimer mes données",
+      "header": "Supprimer mes données",
+      "explain": {
+        "what": "Cela supprime vos comptes avec leurs transactions, vos budgets, catégories, bénéficiaires, tags et paramètres.",
+        "shared": "Les personnes avec qui vous partagez perdent les comptes et budgets que vous partagez avec elles. Elles conservent leurs propres données : les transactions que vous avez saisies dans leurs comptes restent, avec leurs descriptions, et les virements entre vos comptes et les leurs restent sous forme de corrections qui gardent la description.",
+        "cancel": "Vous reconnecter avant la suppression de vos données annule la suppression.",
+        "subscription": "Votre abonnement n’est pas annulé immédiatement. Pour éviter de nouveaux prélèvements, annulez-le d’abord dans la facturation.",
+        "billing_link": "Ouvrir la facturation"
+      },
+      "form": {
+        "password": { "label": "Mot de passe" },
+        "submit": { "label": "Envoyer le code de confirmation" }
+      },
+      "confirm": {
+        "information": "Nous avons envoyé un code de confirmation à votre adresse e-mail.",
+        "pending_writes": "Certaines de vos modifications attendent encore d’être envoyées. Attendez qu’elles soient envoyées avant de supprimer vos données.",
+        "action": "Supprimer mes données",
+        "export": {
+          "done": "Vos transactions ont été téléchargées. Le fichier contient les transactions de vos comptes actuels. Les comptes que vous avez supprimés auparavant n’y figurent pas.",
+          "failed": "Le téléchargement de vos transactions a échoué.",
+          "retry": "Relancer le téléchargement",
+          "none": "Vous n’avez aucun compte à vous à exporter."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Nom",
@@ -1288,6 +1315,10 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Vos données seront supprimées dans {count} jour. Connectez-vous avant pour les conserver. | Vos données seront supprimées dans {count} jours. Connectez-vous avant pour les conserver.",
+      "deletion_scheduled_manual": "Vos données seront supprimées après un examen manuel de votre demande. Connectez-vous avant pour les conserver."
+    },
     "sign_in_failed": {
       "header": "Échec de la connexion",
       "information": "Vérifiez votre e-mail et votre mot de passe, puis réessayez. Si le problème persiste, contactez l’assistance."
@@ -2663,7 +2694,9 @@
       "verification_code_invalid": "Le code de confirmation n’est pas valide.",
       "verification_code_expired": "Le code a expiré.",
       "email_unchanged": "Le nouvel e-mail est identique à votre e-mail actuel.",
-      "password_login_disabled": "La connexion par mot de passe est désactivée"
+      "password_login_disabled": "La connexion par mot de passe est désactivée",
+      "deletion_already_marked": "Cet utilisateur est déjà marqué pour suppression.",
+      "deletion_not_marked": "Cet utilisateur n'est pas marqué pour suppression."
     }
   },
   "emails": {
@@ -2690,6 +2723,14 @@
     "identity_unlinked": {
       "subject": "Méthode de connexion supprimée",
       "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être dissocié de votre compte Econumo et ne peut plus servir à vous connecter.\n\nSi ce n’était pas vous, changez votre mot de passe et vérifiez les comptes associés dans les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Vos données Econumo vont être supprimées",
+      "body": "Bonjour {name},\n\nConformément à notre politique, nous supprimons les données des utilisateurs inactifs depuis {days} jours. Si vous souhaitez conserver vos données, connectez-vous."
+    },
+    "delete_data": {
+      "subject": "Confirmez la suppression de vos données",
+      "body": "Bonjour {name},\n\nUtilisez ce code pour confirmer que vous souhaitez supprimer vos données Econumo : {code}\n\nLe code expire dans 10 minutes. Si vous n’êtes pas à l’origine de cette demande, changez votre mot de passe."
     }
   }
 }

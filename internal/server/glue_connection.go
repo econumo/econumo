@@ -5,6 +5,9 @@ package server
 
 import (
 	"context"
+	"slices"
+	"strings"
+
 	appconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -43,9 +46,11 @@ type connectionBudgetRepoPort interface {
 }
 
 // budgetMemberRemover is the budget-service slice the revoker needs: drop a
-// member's access AND their seeded records (elements, limits, envelope links).
+// member's access AND their seeded records (elements, limits, envelope links),
+// and separately clear their active-budget pointer.
 type budgetMemberRemover interface {
-	RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error
+	RemoveMemberKeepPointer(ctx context.Context, budgetID, memberID vo.Id) error
+	ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 }
 
 // ConnectionBudgetRevoker drops budget-sharing between two users in both
@@ -66,36 +71,73 @@ func NewConnectionBudgetRevoker(budgets connectionBudgetRepoPort, remover budget
 }
 
 // RevokeBetween removes any budget-access grants shared between users a and b:
-// for each budget A owns where B has access, revoke B; and symmetrically for
-// budgets B owns where A has access.
+// B from every budget A owns, and A from every budget B owns. Budgets owned by
+// anyone else are left alone even when both are members. The removals of both
+// directions run in one pass ordered by budget id, the order in which budget
+// locks are taken everywhere. The members' active-budget pointers are cleared
+// only afterwards, in ascending user id order: each clear takes a user row
+// lock, and user locks come after budget locks and in one global order, as in
+// DeleteBudget.
 func (r *ConnectionBudgetRevoker) RevokeBetween(ctx context.Context, a, b vo.Id) error {
-	if err := r.revokeDirection(ctx, a, b); err != nil {
-		return err
-	}
-	return r.revokeDirection(ctx, b, a)
-}
-
-// revokeDirection: for each budget in `owner`'s list where `other` holds
-// access, remove that membership (access row + the member's seeded records).
-// ListForUser returns owned + accessible budgets.
-func (r *ConnectionBudgetRevoker) revokeDirection(ctx context.Context, owner, other vo.Id) error {
-	budgets, err := r.budgets.ListForUser(ctx, owner)
+	removals, err := r.collectRemovals(ctx, a, b)
 	if err != nil {
 		return err
 	}
+	more, err := r.collectRemovals(ctx, b, a)
+	if err != nil {
+		return err
+	}
+	removals = append(removals, more...)
+	slices.SortFunc(removals, func(x, y budgetRemoval) int {
+		return strings.Compare(x.budgetID.String(), y.budgetID.String())
+	})
+	for _, rm := range removals {
+		if err := r.remover.RemoveMemberKeepPointer(ctx, rm.budgetID, rm.memberID); err != nil {
+			return err
+		}
+	}
+	slices.SortFunc(removals, func(x, y budgetRemoval) int {
+		if c := strings.Compare(x.memberID.String(), y.memberID.String()); c != 0 {
+			return c
+		}
+		return strings.Compare(x.budgetID.String(), y.budgetID.String())
+	})
+	for _, rm := range removals {
+		if err := r.remover.ClearActiveBudget(ctx, rm.memberID, rm.budgetID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type budgetRemoval struct {
+	budgetID vo.Id
+	memberID vo.Id
+}
+
+// collectRemovals lists the budgets `owner` owns where `other` holds access.
+// ListForUser also returns budgets shared with `owner`; those belong to a
+// third user and are skipped.
+func (r *ConnectionBudgetRevoker) collectRemovals(ctx context.Context, owner, other vo.Id) ([]budgetRemoval, error) {
+	budgets, err := r.budgets.ListForUser(ctx, owner)
+	if err != nil {
+		return nil, err
+	}
+	var removals []budgetRemoval
 	for _, bud := range budgets {
-		access, aerr := r.budgets.ListAccess(ctx, bud.ID)
-		if aerr != nil {
-			return aerr
+		if !bud.UserID.Equal(owner) {
+			continue
+		}
+		access, err := r.budgets.ListAccess(ctx, bud.ID)
+		if err != nil {
+			return nil, err
 		}
 		for _, acc := range access {
 			if acc.UserID.Equal(other) {
-				if derr := r.remover.RemoveMember(ctx, bud.ID, other); derr != nil {
-					return derr
-				}
+				removals = append(removals, budgetRemoval{budgetID: bud.ID, memberID: other})
 				break
 			}
 		}
 	}
-	return nil
+	return removals, nil
 }

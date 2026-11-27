@@ -105,9 +105,11 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.Acce
 }
 
 // DeleteConnection disconnects the requesting user from a connected user: it
-// revokes every account-access grant shared between them (both directions, via
-// the account feature's port), drops any budget access between them (both
-// directions), and removes the symmetric users_connections link.
+// drops any budget access between them (both directions), then revokes every
+// account-access grant shared between them (both directions, via the account
+// feature's port), and removes the symmetric users_connections link. Budgets
+// go first because their locks come before account rows everywhere, the user
+// wipe included; the other order can deadlock with a wipe on PostgreSQL.
 func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req model.DeleteConnectionRequest) (*model.DeleteConnectionResult, error) {
 	connectedID, err := parseID("id", req.Id)
 	if err != nil {
@@ -118,14 +120,14 @@ func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req model.
 	}
 
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		if s.accountAccess != nil {
-			if aerr := s.accountAccess.RevokeAccessBetween(txCtx, userID, connectedID); aerr != nil {
-				return aerr
-			}
-		}
 		if s.budgetAccess != nil {
 			if berr := s.budgetAccess.RevokeBetween(txCtx, userID, connectedID); berr != nil {
 				return berr
+			}
+		}
+		if s.accountAccess != nil {
+			if aerr := s.accountAccess.RevokeAccessBetween(txCtx, userID, connectedID); aerr != nil {
+				return aerr
 			}
 		}
 		return s.access.DeleteConnection(txCtx, userID, connectedID)

@@ -175,24 +175,41 @@ func (s *Service) UpdateLanguage(ctx context.Context, userID vo.Id, req model.Up
 }
 
 // UpdateBudget sets the user's default budget option to the given budget id and
-// returns the refreshed current user. The budget must already exist
-// (existence-only, no ownership/access check); a miss maps to the "Plan not
-// found" validation error (HTTP 400). The id format is validated tier-1
-// (NotBlank + Uuid).
+// returns the refreshed current user. The caller must have access to the
+// budget (checked under the user row lock); a budget they cannot access, or a
+// missing one, maps to the "Plan not found" validation error (HTTP 400). The id
+// format is validated tier-1 (NotBlank + Uuid).
 func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateActiveBudgetRequest) (*model.UpdateActiveBudgetResult, error) {
-	hasAccess, err := s.budgets.HasAccess(ctx, userID, req.Value)
-	if err != nil {
-		return nil, err
-	}
-	if !hasAccess {
-		// NewNotFound renders "Plan not found" verbatim at HTTP 400; the errors
-		// {} vs [] shape is a pre-existing cross-cutting envelope divergence, not
-		// specific to this endpoint. A budget the caller can't access is
-		// indistinguishable from a missing one — a foreign id can't be stashed.
-		return nil, errs.NewNotFound("Plan not found")
-	}
-	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
-		u.UpdateBudget(req.Value, now)
+	var u *model.User
+	// The access check runs under the row lock, on the transaction's context: a
+	// revoke clears the pointer under the same lock, so a check made before it
+	// could otherwise save a budget the user just lost. Not inside mutate: its
+	// callback has no context, and a check on the outer one would wait for the
+	// connection this transaction holds (SQLite has only one).
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.LockRow(ctx, userID); err != nil {
+			return err
+		}
+		hasAccess, err := s.budgets.HasAccess(ctx, userID, req.Value)
+		if err != nil {
+			return err
+		}
+		if !hasAccess {
+			// NewNotFound renders "Plan not found" verbatim at HTTP 400; the errors
+			// {} vs [] shape is a pre-existing cross-cutting envelope divergence, not
+			// specific to this endpoint. A budget the caller can't access is
+			// indistinguishable from a missing one — a foreign id can't be stashed.
+			return errs.NewNotFound("Plan not found")
+		}
+		loaded, err := s.repo.GetByID(ctx, userID)
+		if err != nil {
+			return err
+		}
+		loaded.UpdateBudget(req.Value, s.clock.Now())
+		if err := s.repo.Save(ctx, loaded); err != nil {
+			return err
+		}
+		u = loaded
 		return nil
 	})
 	if err != nil {

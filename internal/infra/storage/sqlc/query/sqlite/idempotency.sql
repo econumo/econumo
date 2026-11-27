@@ -16,3 +16,6 @@ DELETE FROM idempotency_keys WHERE user_id = ? AND idempotency_key = ?
 -- name: PurgeIdempotencyKeys :exec
 DELETE FROM idempotency_keys WHERE created_at < ?
 ;
+
+-- name: DeleteIdempotencyKeysByUser :exec
+DELETE FROM idempotency_keys WHERE user_id = ?;

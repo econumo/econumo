@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Choose a folder for this account",
       "general_folder_hint": "General (will be created)",
-      "decline_question": "Decline access to \"{name}\"?"
+      "decline_question": "Decline access to \"{name}\"?",
+      "scheduled_for_deletion": "{name}'s data is scheduled for deletion. The accounts and budgets they share with you will disappear, and transfers with their accounts will become corrections."
     },
     "sync": {
       "failed": "{source} sync failed",
@@ -1114,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Delete my data",
+      "header": "Delete my data",
+      "explain": {
+        "what": "This deletes your accounts with their transactions, your budgets, categories, payees, tags and settings.",
+        "shared": "People you share with lose the accounts and budgets you share with them. They keep their own data: transactions you entered in their accounts stay, with their descriptions, and transfers between your accounts and theirs stay as corrections that keep the description.",
+        "cancel": "Signing in again before your data is deleted cancels the deletion.",
+        "subscription": "Your subscription is not cancelled right away. To stop further charges, cancel it in billing first.",
+        "billing_link": "Open billing"
+      },
+      "form": {
+        "password": { "label": "Password" },
+        "submit": { "label": "Send confirmation code" }
+      },
+      "confirm": {
+        "information": "We sent a confirmation code to your email.",
+        "pending_writes": "Some of your changes are still waiting to be sent. Wait until they are sent before you delete your data.",
+        "action": "Delete my data",
+        "export": {
+          "done": "Your transactions were downloaded. The file contains the transactions of your current accounts. Accounts you deleted earlier are not in it.",
+          "failed": "The download of your transactions failed.",
+          "retry": "Try the download again",
+          "none": "You have no accounts of your own to export."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Name",
@@ -1288,6 +1315,10 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Your data will be deleted in {count} day. Sign in before then to keep it. | Your data will be deleted in {count} days. Sign in before then to keep it.",
+      "deletion_scheduled_manual": "Your data will be deleted after a manual review of your request. Sign in before then to keep it."
+    },
     "sign_in_failed": {
       "header": "Sign-in failed",
       "information": "Check your email and password and try again. If the problem persists, contact support."
@@ -2663,7 +2694,9 @@
       "verification_code_invalid": "The confirmation code is not valid.",
       "verification_code_expired": "The code is expired",
       "email_unchanged": "The new email is the same as your current email.",
-      "password_login_disabled": "Password sign-in is disabled"
+      "password_login_disabled": "Password sign-in is disabled",
+      "deletion_already_marked": "This user is already marked for deletion.",
+      "deletion_not_marked": "This user is not marked for deletion."
     }
   },
   "emails": {
@@ -2690,6 +2723,14 @@
     "identity_unlinked": {
       "subject": "A sign-in method was removed",
       "body": "Hi {name},\n\nYour {provider} account was just unlinked from your Econumo account and can no longer be used to sign in.\n\nIf this wasn't you, change your password and review the linked accounts in Settings.\n\n--\nEconumo — Manage money. Together.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Your Econumo data is scheduled for deletion",
+      "body": "Hi {name},\n\nUnder our policy we delete the data of users inactive for {days} days. If you want to keep your data, sign in."
+    },
+    "delete_data": {
+      "subject": "Confirm deleting your data",
+      "body": "Hi {name},\n\nUse this code to confirm that you want to delete your Econumo data: {code}\n\nThe code expires in 10 minutes. If you did not request this, change your password."
     }
   }
 }

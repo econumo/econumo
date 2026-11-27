@@ -13,6 +13,9 @@ ON CONFLICT (user_id, name) DO UPDATE SET
     value      = excluded.value,
     updated_at = excluded.updated_at;
 
+-- name: ClearUserOptionIfValue :execrows
+UPDATE users_options SET value = NULL, updated_at = ? WHERE user_id = ? AND name = ? AND value = ?;
+
 -- name: ListUserIDsMissingOption :many
 -- Ordered by id so the backfill is deterministic across engines and reruns.
 -- A LEFT JOIN + IS NULL, not NOT EXISTS: sqlc's sqlite parser fails to detect

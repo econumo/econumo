@@ -42,6 +42,9 @@ type AdminUserView struct {
 	EffectiveAccessLevel string `json:"effectiveAccessLevel"`
 	Affiliate            string `json:"affiliate"`
 	AffiliateCode        string `json:"affiliateCode"`
+	// DeletionMarkedAt is "" for an unmarked user; DeletionReason is then "" too.
+	DeletionMarkedAt string `json:"deletionMarkedAt"`
+	DeletionReason   string `json:"deletionReason"`
 }
 
 type AdminUserContextResult struct {
@@ -56,4 +59,14 @@ type AdminAffiliateUser struct {
 	Affiliate     string `json:"affiliate"`
 	AffiliateCode string `json:"affiliateCode"`
 	CreatedAt     string `json:"createdAt"`
+}
+
+// AdminDeletedUser is one wiped user: Id is the users_audit row id (the
+// poller's cursor), DeletedAt the wipe time in the frozen datetime layout.
+type AdminDeletedUser struct {
+	Id             string `json:"id"`
+	UserId         string `json:"userId"`
+	DeletedAt      string `json:"deletedAt"`
+	Reason         string `json:"reason"`
+	LifetimeAccess bool   `json:"lifetimeAccess"`
 }

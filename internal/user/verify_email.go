@@ -111,7 +111,11 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		if taken != 1 {
 			return invalid
 		}
-		u.MarkEmailVerified(s.clock.Now())
+		now := s.clock.Now()
+		if err := s.regrantOnFirstProof(ctx, u, now); err != nil {
+			return err
+		}
+		u.MarkEmailVerified(now)
 		return s.repo.Save(ctx, u)
 	}); err != nil {
 		return nil, err

@@ -141,3 +141,6 @@ ORDER BY client_id, created_at, id;
 -- name: RevokeClientOAuthGrants :many
 UPDATE oauth_grants SET revoked_at = $1 WHERE client_id = $2 AND revoked_at IS NULL
 RETURNING id;
+
+-- name: ListOAuthClientIDsByOwner :many
+SELECT id FROM oauth_clients WHERE owner_user_id = $1 ORDER BY id;

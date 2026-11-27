@@ -42,6 +42,7 @@ type container struct {
 	loader   *currencyrepo.Loader
 	account  *appaccount.Service
 	apps     *appauthserver.Service
+	full     *appuser.Service
 }
 
 // newContainer loads config, opens the database, and wires the container's
@@ -136,6 +137,12 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 
 	// The CLI never serves /oauth/register, so no rate limiter.
 	apps := appauthserver.NewService(authserverrepo.NewRepo(cfg.DatabaseDriver, txm), userSvc, txm, clk, nil, cfg.AppURL)
+	userSvc.SetMCPGrantRevoker(apps)
+	userSvc.SetDeletion(
+		userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm), userrepo.NewAuditRepo(cfg.DatabaseDriver, txm),
+		userrepo.NewDeletionRequestRepo(cfg.DatabaseDriver, txm), server.DeletionConfig(cfg),
+	)
+	userSvc.SetDeletionSender(mailer.NewDeletionSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo))
 
 	return &container{
 		db:       db,
@@ -147,6 +154,20 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		account:  accountSvc,
 		apps:     apps,
 	}
+}
+
+// fullUser is the user service wired like the server's, data wiper included,
+// built on first use: only a wipe needs the whole service graph.
+func (c *container) fullUser() (*appuser.Service, error) {
+	if c.full != nil {
+		return c.full, nil
+	}
+	built, err := server.BuildWithServices(c.cfg, c.db, server.Seams{})
+	if err != nil {
+		return nil, err
+	}
+	c.full = built.Users
+	return c.full, nil
 }
 
 // Close releases the database connection this container opened. A no-op for a

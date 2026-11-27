@@ -61,4 +61,45 @@ type Repository interface {
 	// ImportedTransactionIDs reports which of the given transactions carry at
 	// least one live import link (the list endpoint's isImported flag).
 	ImportedTransactionIDs(ctx context.Context, ids []vo.Id) (map[string]bool, error)
+
+	// BumpAccountsLosingReferences queues a revision bump for every account
+	// whose rows the deletion cascade of userID will change (the user's
+	// categories, payees, tags, labels, import sources and recurring templates).
+	BumpAccountsLosingReferences(ctx context.Context, userID vo.Id) error
+
+	// ReassignAuthorInForeignAccounts makes each row userID wrote into an
+	// account it does not own authored by that account's owner.
+	ReassignAuthorInForeignAccounts(ctx context.Context, userID vo.Id) error
+
+	// ListCrossOwnerTransfers lists the transfers with exactly one side on
+	// userID's accounts.
+	ListCrossOwnerTransfers(ctx context.Context, userID vo.Id) ([]CrossOwnerTransfer, error)
+
+	// ReplaceTransferWithCorrection deletes t and inserts c on the surviving
+	// side; a nil c only deletes. The surviving account's revision moves.
+	ReplaceTransferWithCorrection(ctx context.Context, t CrossOwnerTransfer, c *WipeCorrection) error
+}
+
+// CrossOwnerTransfer is a transfer between a deleted user's account and
+// someone else's.
+type CrossOwnerTransfer struct {
+	ID, SourceAccountID, RecipientAccountID vo.Id
+	SourceOwnerID, RecipientOwnerID         vo.Id
+	Amount                                  string
+	AmountRecipient                         *string
+	Description                             string
+	SpentAt                                 time.Time
+	SortKey                                 string
+	RecipientSortKey                        *string
+}
+
+// WipeCorrection replaces a CrossOwnerTransfer on its surviving side.
+type WipeCorrection struct {
+	ID, AuthorID, AccountID vo.Id
+	Type                    model.TransactionType
+	Amount                  string
+	Description             string
+	SpentAt                 time.Time
+	SortKey                 string
+	CreatedAt               time.Time
 }

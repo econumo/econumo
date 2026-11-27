@@ -154,6 +154,10 @@ func (pgsqlQuerier) DeleteOAuthClient(ctx context.Context, db backend.DBTX, id s
 	return pgsqlgen.New(db).DeleteOAuthClient(ctx, id)
 }
 
+func (pgsqlQuerier) ListOAuthClientIDsByOwner(ctx context.Context, db backend.DBTX, ownerUserID *string) ([]string, error) {
+	return pgsqlgen.New(db).ListOAuthClientIDsByOwner(ctx, ownerUserID)
+}
+
 func (pgsqlQuerier) ListOAuthClientGrants(ctx context.Context, db backend.DBTX, clientID string) ([]grantRow, error) {
 	rows, err := pgsqlgen.New(db).ListOAuthClientGrants(ctx, clientID)
 	if err != nil {

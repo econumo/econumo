@@ -4,13 +4,34 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"os"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	appuser "github.com/econumo/econumo/internal/user"
 )
+
+// reportPurge prints the pass summary and one line per failed wipe: the user
+// id, the logged classification and, as user:delete does, the error itself,
+// which goes to the operator's console only, never to a log.
+func reportPurge(out, errOut io.Writer, res appuser.DeletionPassResult) error {
+	fmt.Fprintf(out, "released %d, deleted %d\n", res.Released, res.Wiped)
+	for _, f := range res.Failed {
+		fmt.Fprintf(errOut, "failed %s: %s: %v\n", f.UserID.String(), f.ErrType, f.Err)
+	}
+	if res.Err != nil {
+		return res.Err
+	}
+	if len(res.Failed) > 0 {
+		return fmt.Errorf("%d wipe(s) failed", len(res.Failed))
+	}
+	return nil
+}
 
 // userCommands returns the user-management subcommands.
 func userCommands() []command {
@@ -189,6 +210,81 @@ func userCommands() []command {
 				fmt.Printf("Access until:    %s\n", until)
 				fmt.Printf("Effective:       %s\n", effective)
 				return nil
+			},
+		},
+		{
+			name:    "user:mark-deleted",
+			summary: "Mark a user for deletion: user:mark-deleted <email>",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) != 1 {
+					return usageErr("user:mark-deleted <email>")
+				}
+				email := strings.TrimSpace(args[0])
+				if err := c.user.AdminMarkDeleted(ctx, email); err != nil {
+					return err
+				}
+				fmt.Printf("User %s marked for deletion\n", email)
+				return nil
+			},
+		},
+		{
+			name:    "user:list-pending-deletion",
+			summary: "List users marked for deletion: user:list-pending-deletion",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) != 0 {
+					return usageErr("user:list-pending-deletion")
+				}
+				pending, err := c.user.ListPendingDeletion(ctx)
+				if err != nil {
+					return err
+				}
+				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+				fmt.Fprintln(w, "ID\tEMAIL\tREASON\tMARKED\tAUTO-WIPE")
+				for _, p := range pending {
+					wipeAt := "manual"
+					if p.WipeAt != nil {
+						wipeAt = formatTime(*p.WipeAt)
+					}
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", p.ID, p.Email, p.Reason, formatTime(p.MarkedAt), wipeAt)
+				}
+				return w.Flush()
+			},
+		},
+		{
+			name:    "user:delete",
+			summary: "Delete a marked user now: user:delete <email>",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) != 1 {
+					return usageErr("user:delete <email>")
+				}
+				svc, err := c.fullUser()
+				if err != nil {
+					return err
+				}
+				email := strings.TrimSpace(args[0])
+				outcome, err := svc.AdminDelete(ctx, email)
+				if err != nil {
+					return err
+				}
+				if outcome == appuser.WipeReleased {
+					return errors.New("not deleted: the inactivity mark no longer applies (a connected user is active, or inactivity marking is off); the mark was removed")
+				}
+				fmt.Printf("User %s deleted\n", email)
+				return nil
+			},
+		},
+		{
+			name:    "user:purge-deleted",
+			summary: "Release and delete marked users whose time has come: user:purge-deleted",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) != 0 {
+					return usageErr("user:purge-deleted")
+				}
+				svc, err := c.fullUser()
+				if err != nil {
+					return err
+				}
+				return reportPurge(os.Stdout, os.Stderr, svc.PurgeDeleted(ctx))
 			},
 		},
 		{

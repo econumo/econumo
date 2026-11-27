@@ -41,6 +41,9 @@ type querier interface {
 	ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error)
 	DeleteTransactionLabels(ctx context.Context, db backend.DBTX, transactionID string) error
 	InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error
+	ReassignAuthorInForeignAccounts(ctx context.Context, db backend.DBTX, userID string) error
+	ListCrossOwnerTransfers(ctx context.Context, db backend.DBTX, userID string) ([]crossOwnerRow, error)
+	InsertWipeCorrection(ctx context.Context, db backend.DBTX, p wipeCorrectionRow) error
 }
 
 // ExportAccountRow is one accessible account (own + shared) with its currency

@@ -28,6 +28,8 @@ type Repository interface {
 	// ShareLockClient takes a lock that conflicts only with LockClient (errs.NotFound when absent).
 	ShareLockClient(ctx context.Context, id vo.Id) error
 	DeleteClient(ctx context.Context, id vo.Id) (int64, error)
+	// ListClientIDsByOwner lists the user apps the user owns, in id order.
+	ListClientIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 
 	InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) error
 	ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) // DELETE ... RETURNING; errs.NotFound when absent

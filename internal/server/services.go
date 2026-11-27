@@ -1,0 +1,628 @@
+package server
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"net/http"
+
+	appaccount "github.com/econumo/econumo/internal/account"
+	handleraccount "github.com/econumo/econumo/internal/account/api"
+	accountmcp "github.com/econumo/econumo/internal/account/mcp"
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appadmin "github.com/econumo/econumo/internal/admin"
+	handleradmin "github.com/econumo/econumo/internal/admin/api"
+	appauthserver "github.com/econumo/econumo/internal/authserver"
+	handlerauthserver "github.com/econumo/econumo/internal/authserver/api"
+	"github.com/econumo/econumo/internal/authserver/oauthhttp"
+	authserverrepo "github.com/econumo/econumo/internal/authserver/repo"
+	appbudget "github.com/econumo/econumo/internal/budget"
+	handlerbudget "github.com/econumo/econumo/internal/budget/api"
+	budgetmcp "github.com/econumo/econumo/internal/budget/mcp"
+	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	appcategory "github.com/econumo/econumo/internal/category"
+	handlercategory "github.com/econumo/econumo/internal/category/api"
+	categorymcp "github.com/econumo/econumo/internal/category/mcp"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
+	"github.com/econumo/econumo/internal/config"
+	appconnection "github.com/econumo/econumo/internal/connection"
+	handlerconnection "github.com/econumo/econumo/internal/connection/api"
+	connectionmcp "github.com/econumo/econumo/internal/connection/mcp"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	appcurrency "github.com/econumo/econumo/internal/currency"
+	handlercurrency "github.com/econumo/econumo/internal/currency/api"
+	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	appdebt "github.com/econumo/econumo/internal/debt"
+	handlerdebt "github.com/econumo/econumo/internal/debt/api"
+	debtrepo "github.com/econumo/econumo/internal/debt/repo"
+	appimports "github.com/econumo/econumo/internal/imports"
+	handlerimports "github.com/econumo/econumo/internal/imports/api"
+	"github.com/econumo/econumo/internal/imports/applewallet"
+	importsrepo "github.com/econumo/econumo/internal/imports/repo"
+	"github.com/econumo/econumo/internal/imports/simplefin"
+	"github.com/econumo/econumo/internal/infra/ai"
+	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/infra/handoff"
+	"github.com/econumo/econumo/internal/infra/i18n"
+	"github.com/econumo/econumo/internal/infra/idempotency"
+	"github.com/econumo/econumo/internal/infra/instance"
+	"github.com/econumo/econumo/internal/infra/mailer"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	"github.com/econumo/econumo/internal/infra/ratelimit"
+	"github.com/econumo/econumo/internal/infra/storage/backend"
+	applabel "github.com/econumo/econumo/internal/label"
+	handlerlabel "github.com/econumo/econumo/internal/label/api"
+	labelmcp "github.com/econumo/econumo/internal/label/mcp"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
+	"github.com/econumo/econumo/internal/model"
+	appoauth "github.com/econumo/econumo/internal/oauth"
+	handleroauth "github.com/econumo/econumo/internal/oauth/api"
+	oauthrepo "github.com/econumo/econumo/internal/oauth/repo"
+	apponboarding "github.com/econumo/econumo/internal/onboarding"
+	handleronboarding "github.com/econumo/econumo/internal/onboarding/api"
+	apppayee "github.com/econumo/econumo/internal/payee"
+	handlerpayee "github.com/econumo/econumo/internal/payee/api"
+	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
+	apprecurring "github.com/econumo/econumo/internal/recurring"
+	handlerrecurring "github.com/econumo/econumo/internal/recurring/api"
+	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
+	appsystem "github.com/econumo/econumo/internal/system"
+	handlersystem "github.com/econumo/econumo/internal/system/api"
+	apptag "github.com/econumo/econumo/internal/tag"
+	handlertag "github.com/econumo/econumo/internal/tag/api"
+	tagmcp "github.com/econumo/econumo/internal/tag/mcp"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
+	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
+	transactionmcp "github.com/econumo/econumo/internal/transaction/mcp"
+	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
+	appuser "github.com/econumo/econumo/internal/user"
+	handleruser "github.com/econumo/econumo/internal/user/api"
+	usermcp "github.com/econumo/econumo/internal/user/mcp"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
+	"github.com/econumo/econumo/internal/version"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	webmcp "github.com/econumo/econumo/internal/web/mcp"
+	"github.com/econumo/econumo/internal/web/middleware"
+	"github.com/econumo/econumo/internal/web/router"
+	"github.com/econumo/econumo/web"
+)
+
+// Built is the wired service graph: the two HTTP edges, the rate updater and
+// the fully wired user service, which the CLI needs for a wipe. Wiper is the
+// one installed on Users; it and the other services are exposed for tests
+// that drive or wrap them.
+type Built struct {
+	API          http.Handler
+	Admin        http.Handler
+	Rates        *appcurrency.RateUpdater
+	Users        *appuser.Service
+	Wiper        *UserDataWiper
+	Budgets      *appbudget.Service
+	Transactions *apptransaction.Service
+	Debts        *appdebt.Service
+}
+
+// BuildWithServices is the one wiring shared by serve, the CLI and tests.
+// It starts no goroutine and registers nothing global, so a process may build
+// it more than once.
+func BuildWithServices(cfg config.Config, db *sql.DB, seams Seams) (*Built, error) {
+	clk := seams.Clock
+	if clk == nil {
+		clk = clock.New()
+	}
+	avatars := seams.Avatars
+	if avatars == nil {
+		avatars = appuser.NewRandomAvatarPicker()
+	}
+	txm := backend.NewTxManager(db)
+
+	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
+	// looked up by its normalized form). The salt is consumed only by the data:remove-salt
+	// migration, so a still-salted database must be migrated before its users can log in.
+	encodeSvc := auth.NewEncodeService("")
+	hasher := auth.NewPasswordHasher()
+
+	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
+	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
+	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
+
+	// The base currency is resolved exactly once: every stored rate is
+	// denominated "X per 1 base unit", so consumers get the resolved row, not
+	// a code to re-look-up. A bad code refuses to boot instead of failing at
+	// runtime as lookup errors.
+	baseID, err := currencyLookup.GetIDByCode(context.Background(), cfg.CurrencyBase)
+	if err != nil {
+		return nil, fmt.Errorf("ECONUMO_CURRENCY_BASE=%q does not match any global currency; add it first with currency:add", cfg.CurrencyBase)
+	}
+	base := model.BaseCurrency{ID: baseID, Code: cfg.CurrencyBase}
+
+	budgetAccess := NewUserBudgetAccess(cfg.DatabaseDriver, txm)
+
+	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
+	emailVerificationRepo := userrepo.NewEmailVerificationRepo(cfg.DatabaseDriver, txm)
+	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
+	mailTransport := seams.Mailer
+	if mailTransport == nil {
+		mailTransport = MailTransport(cfg)
+	}
+	if cfg.AppURL != "" {
+		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
+	}
+	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	identityMailer := mailer.NewIdentitySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	limiterLimits := map[string]int{
+		appuser.RateScopeLogin:               cfg.RateLimitLogin,
+		appuser.RateScopeReset:               cfg.RateLimitReset,
+		appuser.RateScopeRemind:              cfg.RateLimitRemind,
+		appuser.RateScopeRegister:            cfg.RateLimitRegister,
+		appuser.RateScopeVerifyEmail:         cfg.RateLimitVerifyEmail,
+		appuser.RateScopeConfirmEmail:        cfg.RateLimitConfirmEmail,
+		appuser.RateScopeRequestEmailChange:  cfg.RateLimitRequestEmailChange,
+		appuser.RateScopeConfirmEmailChange:  cfg.RateLimitConfirmEmailChange,
+		appuser.RateScopeRequestUserDeletion: cfg.RateLimitRequestUserDeletion,
+		appuser.RateScopeConfirmUserDeletion: cfg.RateLimitConfirmUserDeletion,
+		appconnection.RateScopeAcceptInvite:  cfg.RateLimitAccept,
+		appimports.RateScopeIngest:           cfg.RateLimitIngest,
+		appimports.RateScopeClaimSetupToken:  cfg.RateLimitClaimSetupToken,
+		appimports.RateScopeSync:             cfg.RateLimitSync,
+		appimports.RateScopePreviewRule:      cfg.RateLimitPreviewRule,
+		// A background AI round trip per import batch; the job is skipped over the cap.
+		appimports.RateScopeSuggest: 30,
+		// Each onboarding classification is a paid AI round trip; Day 0 needs a handful.
+		apponboarding.RateScopeClassify: 20,
+		// The new category and account forms ask while the user types (after a
+		// pause, and only for names not answered before); 60 covers a long Day 0.
+		apponboarding.RateScopeSuggestIcon: 60,
+		// One icon review per CSV import, apart from the savings job's allowance.
+		apponboarding.RateScopeIcons: 20,
+		// No per-key cap: the caller of start-login/start-link is anonymous
+		// until the provider answers. The per-IP per-minute cap applies.
+		appoauth.RateScopeOAuthStart: 0,
+		// No per-key cap: dynamic client registration is anonymous. Only
+		// the per-IP per-minute cap applies.
+		appauthserver.RateScopeRegister: 0,
+	}
+	limiterIPExempt := map[string]bool{
+		// One user's own limit could fill the cap for a household behind one IP, and
+		// their effects stay inside the caller's account.
+		appimports.RateScopeIngest:         true,
+		appimports.RateScopePreviewRule:    true,
+		appimports.RateScopeSuggest:        true,
+		apponboarding.RateScopeClassify:    true,
+		apponboarding.RateScopeIcons:       true,
+		apponboarding.RateScopeSuggestIcon: true,
+	}
+	// Ceilings per email address across all client IPs, above the per-address-and-IP
+	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays
+	// close to the plain limit; the others can afford one that takes many IPs to reach.
+	for scope, factor := range map[string]int{
+		appuser.RateScopeLogin:        10,
+		appuser.RateScopeRemind:       10,
+		appuser.RateScopeRegister:     10,
+		appuser.RateScopeVerifyEmail:  10,
+		appuser.RateScopeReset:        2,
+		appuser.RateScopeConfirmEmail: 2,
+	} {
+		for _, suffix := range []string{appuser.EmailCeilingScopeSuffix, appuser.UnknownEmailCeilingScopeSuffix} {
+			limiterLimits[scope+suffix] = factor * limiterLimits[scope]
+			limiterIPExempt[scope+suffix] = true // allowEmailAttempt counts it under its base scope
+		}
+	}
+	authLimiter := ratelimit.New(ratelimit.Config{
+		Limits: limiterLimits,
+		Window: cfg.RateLimitWindow,
+		IP:     cfg.RateLimitIP,
+		// Guess counters a spray of invented keys must not evict. Their keys are real
+		// accounts only: user ids, and addresses via countUnknownEmailAttempt.
+		Pinned: map[string]bool{
+			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: true,
+			appuser.RateScopeConfirmEmailChange:                             true,
+			appuser.RateScopeConfirmUserDeletion:                            true,
+			appconnection.RateScopeAcceptInvite:                             true,
+		},
+		IPExempt: limiterIPExempt,
+	}, clk)
+	userSvc := appuser.NewService(
+		userRepo, txm, encodeSvc, hasher, accessTokens, NewUserCurrencyLookup(currencyLookup), budgetAccess,
+		passwordReqRepo, resetMailer, emailVerificationRepo, verifyMailer,
+		emailChangeRepo, changeMailer,
+		avatars, clk, authLimiter, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
+	)
+	if cfg.PasswordLoginDisabled {
+		userSvc.DisablePasswordLogin()
+	}
+	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
+	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
+	billingAccessSvc, err := newBillingAccessService(cfg, userRepo, connectionrepo.NewRepo(cfg.DatabaseDriver, txm), clk, seams.BillingHTTPClient)
+	if err != nil {
+		return nil, err
+	}
+	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc, billingAccessSvc)
+
+	oauthProviders := seams.OAuthProviders
+	if oauthProviders == nil {
+		oauthProviders, err = appoauth.ProvidersFromConfig(cfg, seams.OAuthHTTPClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+	oauthStates := oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm)
+	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
+		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthStates,
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration)
+	if cfg.PasswordLoginDisabled {
+		oauthSvc.DisablePasswordLogin()
+	}
+	userSvc.SetAppVersion(version.Version)
+	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
+	userSvc.SetOAuthReclaimer(NewOAuthReclaimer(oauthSvc))
+	userSvc.SetIdentityEmailLister(NewIdentityEmailLister(oauthSvc))
+	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityMailer, oauthSvc))
+	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
+
+	authSrv := appauthserver.NewService(authserverrepo.NewRepo(cfg.DatabaseDriver, txm), userSvc, txm, clk, authLimiter, cfg.AppURL)
+	userSvc.SetMCPGrantRevoker(authSrv)
+	if cfg.AppURL != "" && !authSrv.Enabled() {
+		slog.Warn("mcp oauth disabled: ECONUMO_URL must be an https origin with no path (plain http only on a loopback host)")
+	}
+
+	// Shared-account access resolver (account owner + connected-user grant role),
+	// used by the category/tag create-for-account paths.
+	accountAccessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(cfg.DatabaseDriver, txm))
+
+	// budgetRepo is built here rather than beside budgetSvc below because the
+	// classification services take a merger over it; budgetSvc itself still needs
+	// the later dependencies.
+	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
+	classificationMerger := classificationBudgetMerger{svc: appbudget.NewMergeService(budgetRepo, budgetRepo, budgetRepo, clk)}
+
+	categoryRepo := categoryrepo.NewRepo(cfg.DatabaseDriver, txm)
+	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo, accountAccessResolver, classificationMerger)
+	categoryReadSvc := appcategory.NewReadService(categoryReadRepo)
+	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc)
+
+	// Shared operation guard built here, reused by payee/account/transaction.
+	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
+	tagRepo := tagrepo.NewRepo(cfg.DatabaseDriver, txm)
+	tagReadRepo := tagrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo, accountAccessResolver, classificationMerger)
+	tagReadSvc := apptag.NewReadService(tagReadRepo)
+	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc)
+
+	labelRepo := labelrepo.NewRepo(cfg.DatabaseDriver, txm)
+	labelReadRepo := labelrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	labelSvc := applabel.NewService(labelRepo, txm, opGuard, clk, labelReadRepo, accountAccessResolver)
+	labelReadSvc := applabel.NewReadService(labelReadRepo)
+	labelHandlers := handlerlabel.NewHandlers(labelSvc, labelReadSvc)
+
+	// Both classification kinds share one user-facing name namespace.
+	WireClassificationNames(tagSvc, labelSvc)
+
+	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
+	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo, accountAccessResolver)
+	payeeReadSvc := apppayee.NewReadService(payeeReadRepo)
+	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc)
+
+	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo, base)
+	currencyManageRepo := currencyrepo.NewManageRepo(cfg.DatabaseDriver, txm)
+	currencyManageSvc := appcurrency.NewManageService(currencyManageRepo, txm, opGuard, clk,
+		NewCurrencyProfileCurrency(userRepo), base)
+	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, currencyManageSvc)
+
+	// In-process exchange-rate updater. Enabled only when a cadence is set AND an
+	// OER token is present; serve starts its poller (Build's third return),
+	// BuildAPI and tests discard it (a disabled updater never polls).
+	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
+	// An admin MAY change the base; old rate rows stay untouched and inert
+	// (they carry their own base_currency_id). This WARN is the only
+	// acknowledgment of such a change.
+	if latestBase, ok, lbErr := currencyWriteRepo.LatestRateBase(context.Background()); lbErr == nil && ok && latestBase != base.ID {
+		slog.Warn("stored rates were written against a different base currency; conversions will use only rates written against the current base",
+			"configured_base", base.Code, "stored_base_currency_id", latestBase)
+	}
+	currencyWriteSvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
+	rateLoader := currencyrepo.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
+	rateUpdaterEnabled := cfg.CurrencyUpdateIntervalDays > 0 && cfg.OpenExchangeRatesToken != ""
+	if cfg.CurrencyUpdateIntervalDays > 0 && cfg.OpenExchangeRatesToken == "" {
+		slog.Warn("ECONUMO_CURRENCY_UPDATE_INTERVAL is set but OPEN_EXCHANGE_RATES_TOKEN is empty; in-process rate updates are disabled")
+	}
+	rateUpdater := appcurrency.NewRateUpdater(
+		rateUpdaterEnabled, cfg.CurrencyUpdateIntervalDays, cfg.CurrencyBase,
+		rateLoader, currencyWriteSvc, clk,
+	)
+
+	updates := seams.Updates
+	if updates == nil {
+		updates = appsystem.NewService(false, appsystem.DefaultFeedURL)
+	}
+	systemHandlers := handlersystem.NewHandlers(updates)
+
+	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
+	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
+	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
+	userOwnerLookup := NewUserOwnerLookup(userRepo)
+
+	// Account service is built before connection: delete-connection's unwind
+	// needs it (via ConnectionAccountAccessRevoker), and account is otherwise
+	// self-sufficient — it no longer references connection.
+	accountAccessRepo := accountrepo.NewAccessRepo(cfg.DatabaseDriver, txm)
+	accountSvc := appaccount.NewService(
+		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, accountAccessResolver, txm, opGuard, clk,
+	)
+	// One completion client shared by every feature that declares a Completer
+	// port; nil (no ECONUMO_AI_DSN) leaves those features without AI.
+	var aiClient *ai.Client
+	if cfg.AIEnabled {
+		aiCfg := ai.Config{Dialect: cfg.AIDialect, Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, JSONSchema: cfg.AIJSON}
+		if cfg.AIDialect == config.AIDialectEconumo {
+			// An econumo AI gateway: each call carries a short-lived
+			// token naming the user, signed with the admin token both sides share.
+			aiSigner := handoff.NewSigner(cfg.AdminToken)
+			aiCfg.Sign = func(uid string) (string, error) { return aiSigner.SignAI(uid, clk.Now()) }
+		}
+		aiClient = ai.New(aiCfg)
+	}
+	accountHandlers := handleraccount.NewHandlers(accountSvc)
+
+	// Budget service is built before connection: delete-connection's unwind
+	// removes budget memberships (access + seeded records) via RemoveMember.
+	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, base.ID)
+	convertor := appcurrency.NewConvertor(rateProvider)
+	budgetSvc := appbudget.NewService(
+		budgetRepo, budgetReadRepo, convertor, rateProvider,
+		NewBudgetUserLookup(userRepo, clk),
+		NewBudgetAccountLookup(accountRepo),
+		NewBudgetCurrencyLookup(currencyLookup),
+		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
+		accountAccessResolver,
+		opGuard,
+		txm, clk,
+	)
+	shiftedRates := rateProvider.Windowed()
+	budgetSvc.SetShiftedPeriodRates(appcurrency.NewConvertor(shiftedRates), shiftedRates)
+	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
+
+	onboardingSvc := apponboarding.NewService(budgetSvc, NewOnboardingAccountReader(accountRepo, accountCurrencyLookup), NewOnboardingUserFacts(userRepo, clk))
+	onboardingSvc.SetSteps(apponboarding.Steps{
+		Tx: txm, Ops: opGuard, Clock: clk,
+		Users:      userSvc,
+		Categories: NewOnboardingCategories(categorySvc, categoryReadSvc),
+		Accounts:   NewOnboardingAccounts(accountSvc, accountRepo, accountCurrencyLookup, clk),
+		Currencies: NewOnboardingCurrencies(currencyManageSvc, accountCurrencyLookup),
+		Budgets:    budgetSvc,
+	})
+	if seams.OnboardingCompleter != nil {
+		onboardingSvc.SetAdvisor(seams.OnboardingCompleter, authLimiter)
+	} else if aiClient != nil {
+		onboardingSvc.SetAdvisor(aiClient, authLimiter)
+	}
+	if seams.OnboardingRunner != nil {
+		onboardingSvc.SetRunner(seams.OnboardingRunner)
+	}
+	if seams.OnboardingScheduler != nil {
+		onboardingSvc.SetScheduler(seams.OnboardingScheduler)
+	}
+	onboardingHandlers := handleronboarding.NewHandlers(onboardingSvc)
+
+	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
+	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
+	connectionBudgetRevoker := NewConnectionBudgetRevoker(budgetRepo, budgetSvc)
+	connectionSvc := appconnection.NewService(
+		connectionRepo, connectionInviteRepo,
+		NewConnectionUserLookup(userRepo, userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm)),
+		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, authLimiter, txm, clk,
+	)
+
+	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
+
+	// The budget's transaction rows join category/payee/tag only; reporting
+	// labels are many-per-transaction and come from this batch lookup. Wired
+	// here because transactionRepo is built after the budget service.
+	budgetSvc.SetTransactionLabels(transactionRepo)
+
+	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo), NewTransactionLabelNameLookup(labelRepo))
+	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
+	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)
+	txImportTags := NewTransactionImportTags(tagSvc, tagRepo)
+	txImportPayees := NewTransactionImportPayees(payeeSvc, payeeRepo)
+	txImportLabels := NewTransactionImportLabels(labelSvc, labelRepo)
+	txImportLookup := transactionrepo.NewImportLookup(
+		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags, txImportLabels,
+		transactionRepo,
+	)
+	// One label-ownership adapter, reused across every feature that validates
+	// labelIds against the label repository (same pattern as userOwnerLookup
+	// above): transaction and recurring both just want "who owns this label".
+	labelOwnership := NewTransactionLabelOwnership(labelRepo)
+	transactionSvc := apptransaction.NewService(
+		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup,
+		labelOwnership, NewTransactionAccountZeroer(accountSvc), txm, opGuard, clk,
+	)
+	transactionSvc.SetImportIconReviewer(onboardingSvc)
+	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
+
+	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)
+	importsSvc := appimports.NewService(
+		importsRepo,
+		NewImportsAccountReader(accountSvc, accountAccessResolver, currencyLookup),
+		NewImportsCurrencyConverter(currencyLookup, rateProvider, convertor),
+		NewImportsTransactionWriter(transactionSvc),
+		NewImportsTransactionLister(transactionRepo),
+		NewImportsClassificationLister(txImportCategories.CategoriesByOwner, txImportPayees.PayeesByOwner, txImportTags.TagsByOwner, txImportLabels.LabelsByOwner),
+		authLimiter, txm, clk,
+		appimports.MatcherConfig{
+			MatchDays:       cfg.ImportMatchDays,
+			TipDays:         cfg.ImportTipDays,
+			TipTolerancePct: cfg.ImportTipTolerancePct,
+			TokenMinLength:  cfg.ImportTokenMinLength,
+		},
+	)
+	if cfg.SimpleFINDisabled {
+		importsSvc.DisableProvider(model.ImportProviderSimpleFIN)
+	}
+	importsSvc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
+	importsSvc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
+	if seams.ImportProviders == nil {
+		importsSvc.RegisterProvider(model.ImportProviderSimpleFIN, simplefin.New(simplefin.Options{AllowPrivateHosts: cfg.ImportAllowPrivateHosts}))
+	}
+	for name, p := range seams.ImportProviders {
+		importsSvc.RegisterProvider(name, p)
+	}
+	// The completion client is injected here, never imported by the feature:
+	// internal/imports declares the Completer interface and nothing more.
+	if seams.ImportsCompleter != nil {
+		importsSvc.SetSuggester(seams.ImportsCompleter, NewImportsOwnerFacts(userRepo, clk))
+	} else if aiClient != nil {
+		importsSvc.SetSuggester(aiClient, NewImportsOwnerFacts(userRepo, clk))
+	}
+	if seams.ImportsJobRunner != nil {
+		importsSvc.SetJobRunner(seams.ImportsJobRunner)
+	}
+	userSvc.SetAISuggestionClearer(importsSvc)
+	importsHandlers := handlerimports.NewHandlers(importsSvc)
+
+	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txImportCategories, txm, opGuard, clk)
+	budgetSvc.SetRecurring(NewBudgetRecurringSource(recurringRepo, accountSvc, accountAccessResolver))
+	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
+
+	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
+
+	debtSvc := appdebt.NewService(
+		debtrepo.NewRepo(cfg.DatabaseDriver, txm), txm, clk,
+		NewDebtCategories(categoryRepo),
+		NewDebtRates(rateProvider, convertor),
+		NewDebtUsers(userRepo),
+	)
+	categorySvc.SetDebtUsage(NewDebtUsage(debtSvc))
+	budgetSvc.SetDebts(debtSvc)
+	debtSvc.SetBudgets(NewDebtBudgets(budgetSvc))
+	debtSvc.SetElements(NewDebtElements(budgetSvc))
+	debtHandlers := handlerdebt.NewHandlers(debtSvc)
+
+	idempotencyStore := idempotency.NewStore(cfg.DatabaseDriver, txm, clk)
+	userSvc.SetDeletion(
+		userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm), userrepo.NewAuditRepo(cfg.DatabaseDriver, txm),
+		userrepo.NewDeletionRequestRepo(cfg.DatabaseDriver, txm), DeletionConfig(cfg),
+	)
+	userSvc.SetDeletionSender(mailer.NewDeletionSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo))
+	wiper := NewUserDataWiper(debtSvc, categoryRepo, budgetSvc, accountSvc, transactionSvc,
+		currencyManageSvc, authSrv, importsRepo, idempotencyStore, oauthStates)
+	userSvc.SetDataWiper(wiper)
+
+	authn := NewReadScopeGate(NewTimezoneTrackingAuthenticator(userSvc, userSvc, idempotencyStore), authSrv.Enabled())
+
+	// Disabled means unrouted: with SimpleFIN off its credential and sync
+	// routes 404.
+	importsAPI := handlerimports.RegisterAPI(importsHandlers, authn, handlerimports.Providers{
+		SimpleFIN: !cfg.SimpleFINDisabled,
+	})
+
+	registerAPI := router.Compose(
+		handleruser.RegisterAPI(userHandlers, authn),
+		handleroauth.RegisterAPI(oauthHandlers, authn),
+		handlerauthserver.RegisterAPI(handlerauthserver.NewHandlers(authSrv), authn),
+		handlercategory.RegisterAPI(categoryHandlers, authn),
+		handlertag.RegisterAPI(tagHandlers, authn),
+		handlerlabel.RegisterAPI(labelHandlers, authn),
+		handlerpayee.RegisterAPI(payeeHandlers, authn),
+		handlercurrency.RegisterAPI(currencyHandlers, authn),
+		handleraccount.RegisterAPI(accountHandlers, authn),
+		handlertransaction.RegisterAPI(transactionHandlers, authn),
+		handlerrecurring.RegisterAPI(recurringHandlers, authn),
+		handlerconnection.RegisterAPI(connectionHandlers, authn),
+		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handlerdebt.RegisterAPI(debtHandlers, authn),
+		handleronboarding.RegisterAPI(onboardingHandlers, authn),
+		handlerbudget.RegisterReportAPI(budgetHandlers, authn),
+		importsAPI,
+		handlersystem.RegisterAPI(systemHandlers, authn),
+		apidoc.RegisterAPI(),
+	)
+
+	adminSvc := appadmin.NewService(NewAdminUserAccess(userSvc), connectionRepo, userRepo,
+		userrepo.NewAuditRepo(cfg.DatabaseDriver, txm), userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm), clk)
+	adminMux := http.NewServeMux()
+	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc))(adminMux)
+	// No CORS (never browser-reached) and no timezone/language (nothing here is
+	// user-facing; datetimes are frozen UTC).
+	adminHandler := middleware.Chain(
+		middleware.RequestID,
+		middleware.AccessLog,
+		middleware.Recover,
+		middleware.AdminAuth(cfg.AdminToken),
+	)(adminMux)
+
+	mcpRegister := webmcp.Compose(
+		categorymcp.Register(categoryReadSvc, categorySvc),
+		tagmcp.Register(tagReadSvc, tagSvc),
+		payeemcp.Register(payeeReadSvc, payeeSvc),
+		accountmcp.Register(accountSvc),
+		currencymcp.Register(currencyReadSvc),
+		budgetmcp.Register(budgetSvc),
+		usermcp.Register(userReadSvc),
+		connectionmcp.Register(connectionSvc),
+		transactionmcp.Register(transactionSvc),
+		labelmcp.Register(labelReadSvc, labelSvc),
+	)
+	mcpHandler := middleware.Chain(
+		middleware.AuthWith(authn, middleware.AuthOptions{Challenge: oauthhttp.Challenge(authSrv), AllowMCPScope: authSrv.Enabled()}),
+		timezoneFallback(userSvc),
+	)(webmcp.NewHandler(mcpRegister))
+
+	// The SPA is always embedded in the binary. The served econumo-config.js
+	// reports the running binary's version as VERSION; ECONUMO_VERSION only
+	// relabels what the UI DISPLAYS (VERSION_LABEL, handy for demo/staging
+	// environments), so a relabelled instance still reports its real version
+	// to analytics and the update check.
+	spaFS, _ := web.DistFS()
+	// Failure here must not stop the server: analytics are not load-bearing.
+	instanceID, err := instance.ID(context.Background(), db)
+	if err != nil {
+		slog.Warn("instance id unavailable", "err", err)
+		instanceID = ""
+	}
+	mcpURL := ""
+	if authSrv.Enabled() {
+		mcpURL = authSrv.ResourceURL()
+	}
+	api := router.New(router.Deps{
+		Cfg:                cfg,
+		MCPURL:             mcpURL,
+		DB:                 pinger{db},
+		RegisterAPI:        registerAPI,
+		SupportedLanguages: i18n.Supported,
+		MCP:                mcpHandler,
+		OAuthServer:        oauthhttp.Handler(authSrv),
+		SPA:                spaFS,
+		SPAVersion:         version.Version,
+		SPAVersionLabel:    cfg.Version,
+		SPAVersionRef:      version.Ref(),
+		InstanceID:         instanceID,
+	})
+	return &Built{API: api, Admin: adminHandler, Rates: rateUpdater, Users: userSvc, Wiper: wiper,
+		Budgets: budgetSvc, Transactions: transactionSvc, Debts: debtSvc}, nil
+}
+
+// DeletionConfig is the user deletion settings from cfg; the CLI shares it.
+func DeletionConfig(cfg config.Config) appuser.DeletionConfig {
+	exclude := make(map[string]bool, len(cfg.InactiveUserExclude))
+	for _, email := range cfg.InactiveUserExclude {
+		exclude[email] = true
+	}
+	return appuser.DeletionConfig{InactiveDays: cfg.InactiveUserDays, DeletionDays: cfg.UserDeletionDays, Exclude: exclude}
+}

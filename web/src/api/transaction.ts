@@ -67,10 +67,11 @@ export async function importTransactionList(
 }
 
 // raw CSV, not the JSON envelope; a single comma-joined accountId param
-export async function exportTransactionList(accountIds: Id[]): Promise<Blob> {
+export async function exportTransactionList(accountIds: Id[], opts?: { timeout?: number }): Promise<Blob> {
   const response = await api.get<Blob>(apiUrl('/api/v1/transaction/export-transaction-list'), {
     params: { accountId: accountIds.join(',') },
     responseType: 'blob',
+    timeout: opts?.timeout,
   })
   return response.data
 }

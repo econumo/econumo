@@ -59,6 +59,10 @@ func (sqliteQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p op
 	return sqlitegen.New(db).UpsertUserOption(ctx, p)
 }
 
+func (sqliteQuerier) ClearUserOptionIfValue(ctx context.Context, db backend.DBTX, p clearOptionParams) (int64, error) {
+	return sqlitegen.New(db).ClearUserOptionIfValue(ctx, p)
+}
+
 func (sqliteQuerier) UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error {
 	return sqlitegen.New(db).UpdateUserLanguage(ctx, p)
 }

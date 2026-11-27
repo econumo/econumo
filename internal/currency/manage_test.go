@@ -127,6 +127,18 @@ func (f *fakeManageRepo) ShowGlobalCurrencies(ctx context.Context, userID string
 	return nil
 }
 
+func (f *fakeManageRepo) ListCustomCurrenciesByOwner(ctx context.Context, userID string) ([]model.CurrencyRecord, error) {
+	return nil, nil
+}
+
+func (f *fakeManageRepo) FirstForeignOwner(ctx context.Context, currencyID, userID string) (string, bool, error) {
+	return "", false, nil
+}
+
+func (f *fakeManageRepo) MoveCurrency(ctx context.Context, id, userID string, deleted bool) error {
+	return nil
+}
+
 var _ appcurrency.ManageModel = (*fakeManageRepo)(nil)
 
 type fakeProfileCurrency struct{ id string }

@@ -555,6 +555,19 @@ type User struct {
 	AccessUntil           *time.Time
 	EmailVerified         bool
 	CredentialsGeneration int64
+	DeletionMarkedAt      *time.Time
+	DeletionReason        string
+	LastActiveAt          *time.Time
+}
+
+type UsersAudit struct {
+	ID        string
+	UserID    string
+	Event     string
+	EmailHash *string
+	RefID     *string
+	Details   string
+	CreatedAt time.Time
 }
 
 type UsersConnection struct {
@@ -566,6 +579,15 @@ type UsersConnectionsInvite struct {
 	UserID    string
 	Code      *string
 	ExpiredAt *time.Time
+}
+
+type UsersDeletionRequest struct {
+	ID        string
+	UserID    string
+	Email     string
+	Code      string
+	CreatedAt time.Time
+	ExpiredAt time.Time
 }
 
 type UsersEmailChangeRequest struct {

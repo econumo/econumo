@@ -47,7 +47,14 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, pr
 		}
 		var ierr error
 		n, ierr = s.tokens.InsertIfGeneration(ctx, t, generation)
-		return ierr
+		if ierr != nil || n != 1 {
+			return ierr
+		}
+		// A sign-in is the owner coming back: it cancels a pending deletion.
+		if cerr := s.cancelMarkOnSession(ctx, userID, now); cerr != nil {
+			return cerr
+		}
+		return s.stampActive(ctx, userID, now)
 	}); err != nil {
 		return "", err
 	}

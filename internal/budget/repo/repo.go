@@ -110,6 +110,14 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudget(ctx, r.db(ctx), id.String())
 }
 
+func (r *Repo) ListOwnedIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	rows, err := r.q.ListBudgetIDsByOwner(ctx, r.db(ctx), userID.String())
+	if err != nil {
+		return nil, err
+	}
+	return parseIDs(rows)
+}
+
 func (r *Repo) MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error) {
 	rows, err := r.q.ListBudgetAccounts(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
@@ -185,6 +193,14 @@ func (r *Repo) SaveAccess(ctx context.Context, a *model.BudgetAccess) error {
 
 func (r *Repo) DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error {
 	return r.q.DeleteBudgetAccess(ctx, r.db(ctx), budgetID.String(), userID.String())
+}
+
+func (r *Repo) ListMemberIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	rows, err := r.q.ListBudgetIDsByAccessUser(ctx, r.db(ctx), userID.String())
+	if err != nil {
+		return nil, err
+	}
+	return parseIDs(rows)
 }
 
 func (r *Repo) ListFolders(ctx context.Context, budgetID vo.Id) ([]*model.BudgetFolder, error) {

@@ -19,7 +19,7 @@ import (
 func (s *Service) ProvisionExternalUser(ctx context.Context, name, email string) (*model.User, error) {
 	return s.persistNewUser(ctx, name, email, func(id vo.Id, encryptedEmail, avatar string, now time.Time) *model.User {
 		return model.NewPasswordlessUser(id, encryptedEmail, name, avatar, now)
-	}, true, false)
+	}, true, false, true)
 }
 
 // CreateExternalSession mints the session an oauth handoff buys. generation is

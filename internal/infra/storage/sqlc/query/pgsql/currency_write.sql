@@ -136,5 +136,23 @@ DELETE FROM users_hidden_currencies
 WHERE users_hidden_currencies.user_id = $1
   AND currency_id IN (SELECT c.id FROM currencies c WHERE c.user_id IS NULL);
 
--- Profile defaults holding this currency id, for the archive guard (a
--- default must stay pickable).
+-- User deletion: see the sqlite variant.
+-- name: ListLiveAndDeletedCustomCurrencyIDsByOwner :many
+SELECT id, code, is_deleted FROM currencies WHERE user_id = $1 ORDER BY id;
+
+-- name: FirstForeignOwnerOfCurrency :one
+SELECT o.owner FROM (
+    SELECT a.user_id AS owner FROM accounts a WHERE a.currency_id = sqlc.arg(currency_id)::uuid
+    UNION
+    SELECT b.user_id AS owner FROM budgets b WHERE b.currency_id = sqlc.arg(currency_id)::uuid
+    UNION
+    SELECT b.user_id AS owner FROM budgets_elements e JOIN budgets b ON b.id = e.budget_id WHERE e.currency_id = sqlc.arg(currency_id)::uuid
+    UNION
+    SELECT b.user_id AS owner FROM debts d JOIN budgets b ON b.id = d.budget_id WHERE d.currency_id = sqlc.arg(currency_id)::uuid
+) o
+WHERE o.owner <> sqlc.arg(user_id)::uuid
+ORDER BY o.owner
+LIMIT 1;
+
+-- name: MoveCurrency :exec
+UPDATE currencies SET user_id = sqlc.arg(user_id), is_deleted = sqlc.arg(is_deleted) WHERE id = sqlc.arg(id);

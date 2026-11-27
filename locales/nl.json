@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Kies een map voor deze rekening",
       "general_folder_hint": "General (wordt aangemaakt)",
-      "decline_question": "Toegang tot “{name}” weigeren?"
+      "decline_question": "Toegang tot “{name}” weigeren?",
+      "scheduled_for_deletion": "De verwijdering van de gegevens van {name} is gepland. De rekeningen en budgetten die deze persoon met u deelt, verdwijnen, en overboekingen met diens rekeningen worden correcties."
     },
     "sync": {
       "failed": "Synchronisatie van {source} mislukt",
@@ -1114,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Mijn gegevens verwijderen",
+      "header": "Mijn gegevens verwijderen",
+      "explain": {
+        "what": "Hiermee worden uw rekeningen met hun transacties, uw budgetten, categorieën, begunstigden, tags en instellingen verwijderd.",
+        "shared": "Mensen met wie u deelt, verliezen de rekeningen en budgetten die u met hen deelt. Hun eigen gegevens houden ze: transacties die u in hun rekeningen hebt ingevoerd, blijven staan met hun omschrijvingen, en overboekingen tussen uw rekeningen en die van hen blijven staan als correcties die de omschrijving behouden.",
+        "cancel": "Als u opnieuw inlogt voordat uw gegevens zijn verwijderd, wordt de verwijdering geannuleerd.",
+        "subscription": "Uw abonnement wordt niet meteen opgezegd. Zeg het eerst op in de facturering om verdere kosten te voorkomen.",
+        "billing_link": "Facturering openen"
+      },
+      "form": {
+        "password": { "label": "Wachtwoord" },
+        "submit": { "label": "Bevestigingscode verzenden" }
+      },
+      "confirm": {
+        "information": "We hebben een bevestigingscode naar uw e-mailadres gestuurd.",
+        "pending_writes": "Sommige van uw wijzigingen wachten nog om verzonden te worden. Wacht tot ze verzonden zijn voordat u uw gegevens verwijdert.",
+        "action": "Mijn gegevens verwijderen",
+        "export": {
+          "done": "Uw transacties zijn gedownload. Het bestand bevat de transacties van uw huidige rekeningen. Rekeningen die u eerder hebt verwijderd, staan er niet in.",
+          "failed": "Het downloaden van uw transacties is mislukt.",
+          "retry": "Download opnieuw proberen",
+          "none": "U hebt geen eigen rekeningen om te exporteren."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Naam",
@@ -1288,6 +1315,10 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Uw gegevens worden over {count} dag verwijderd. Log daarvoor in om ze te behouden. | Uw gegevens worden over {count} dagen verwijderd. Log daarvoor in om ze te behouden.",
+      "deletion_scheduled_manual": "Uw gegevens worden verwijderd na een handmatige beoordeling van uw verzoek. Log daarvoor in om ze te behouden."
+    },
     "sign_in_failed": {
       "header": "Inloggen mislukt",
       "information": "Controleer uw e-mailadres en wachtwoord en probeer het opnieuw. Neem contact op met de klantenservice als het probleem aanhoudt."
@@ -2663,7 +2694,9 @@
       "verification_code_invalid": "De bevestigingscode is ongeldig.",
       "verification_code_expired": "De code is verlopen.",
       "email_unchanged": "Het nieuwe e-mailadres is hetzelfde als uw huidige e-mailadres.",
-      "password_login_disabled": "Inloggen met een wachtwoord is uitgeschakeld"
+      "password_login_disabled": "Inloggen met een wachtwoord is uitgeschakeld",
+      "deletion_already_marked": "Deze gebruiker is al gemarkeerd voor verwijdering.",
+      "deletion_not_marked": "Deze gebruiker is niet gemarkeerd voor verwijdering."
     }
   },
   "emails": {
@@ -2690,6 +2723,14 @@
     "identity_unlinked": {
       "subject": "Aanmeldmethode verwijderd",
       "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Uw Econumo-gegevens staan gepland voor verwijdering",
+      "body": "Hallo {name},\n\nVolgens ons beleid verwijderen we de gegevens van gebruikers die {days} dagen inactief zijn geweest. Als u uw gegevens wilt behouden, log dan in."
+    },
+    "delete_data": {
+      "subject": "Bevestig het verwijderen van uw gegevens",
+      "body": "Hallo {name},\n\nGebruik deze code om te bevestigen dat u uw Econumo-gegevens wilt verwijderen: {code}\n\nDe code verloopt over 10 minuten. Als u dit niet hebt aangevraagd, wijzig dan uw wachtwoord."
     }
   }
 }

@@ -269,6 +269,51 @@ func TestUserRepo_ListUserIDsMissingOption(t *testing.T) {
 	}
 }
 
+func TestUserRepo_ClearOptionIfValue_ClearsOnlyAMatchingValue(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	budgetID := vo.NewId().String()
+	opt := model.ReconstituteUserOption(vo.MustParseId(optID), model.OptionBudget, &budgetID, fixedTime, fixedTime)
+	u := newTestUser(vo.MustParseId(userA), "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, []model.UserOption{opt})
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	later := fixedTime.Add(time.Hour)
+
+	n, err := repo.ClearOptionIfValue(ctx, u.ID, model.OptionBudget, "other", later)
+	if err != nil {
+		t.Fatalf("ClearOptionIfValue (other): %v", err)
+	}
+	if n != 0 {
+		t.Errorf("a different value cleared %d rows, want 0", n)
+	}
+	opts, err := repo.GetOptions(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetOptions: %v", err)
+	}
+	if len(opts) != 1 || opts[0].Value == nil || *opts[0].Value != budgetID {
+		t.Fatalf("a non-matching clear changed the option: %+v", opts)
+	}
+
+	n, err = repo.ClearOptionIfValue(ctx, u.ID, model.OptionBudget, budgetID, later)
+	if err != nil {
+		t.Fatalf("ClearOptionIfValue: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("the matching value cleared %d rows, want 1", n)
+	}
+	opts, err = repo.GetOptions(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetOptions: %v", err)
+	}
+	if len(opts) != 1 || opts[0].Value != nil {
+		t.Fatalf("option after clear = %+v, want value NULL", opts)
+	}
+	if !opts[0].UpdatedAt.Equal(later) {
+		t.Errorf("updated_at = %v, want %v", opts[0].UpdatedAt, later)
+	}
+}
+
 func TestUserRepo_GetOptions(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()

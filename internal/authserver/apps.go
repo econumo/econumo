@@ -16,7 +16,7 @@ var (
 	ErrAppAlreadyGlobal = errors.New("the app is already global")
 	ErrAppPublic        = errors.New("the app is public: it has no secret to rotate")
 	ErrAppNameRequired  = errors.New("name is required")
-	ErrAppBusy          = errors.New("the app keeps getting new connections; try again")
+	ErrAppBusy          = errs.NewSentinel("authserver.ErrAppBusy", "the app keeps getting new connections; try again")
 )
 
 func appNotFound() error { return errs.NewNotFound("OAuth app not found") }
@@ -233,7 +233,7 @@ func (s *Service) DisconnectApp(ctx context.Context, id vo.Id, userID *vo.Id) (i
 	for range deleteAppAttempts {
 		revoked, more, err := s.disconnectApp(ctx, id, users, userID)
 		if !errors.Is(err, errGrantUsersChanged) {
-			return revoked, err
+			return revoked, publicAppErr(err)
 		}
 		users = addGrantUsers(users, more)
 	}
@@ -296,11 +296,22 @@ func (s *Service) lockUsersAndClient(ctx context.Context, id vo.Id, users []vo.I
 	}
 	if err := s.repo.LockClient(ctx, id); err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
-			return appNotFound()
+			return errAppGone
 		}
 		return err
 	}
 	return nil
+}
+
+// errAppGone is the client lock finding no client row; the public operations
+// report it as appNotFound through publicAppErr.
+var errAppGone = errors.New("the app is gone")
+
+func publicAppErr(err error) error {
+	if errors.Is(err, errAppGone) {
+		return appNotFound()
+	}
+	return err
 }
 
 func hasUnlockedUser(grants []model.OAuthGrant, users []vo.Id) bool {
@@ -319,6 +330,8 @@ const deleteAppAttempts = 5
 
 var errGrantUsersChanged = errors.New("grants for unlocked users appeared")
 
+var errAppOwnerChanged = errors.New("the app no longer belongs to the user")
+
 // DeleteApp revokes every grant and its access tokens, then deletes the client.
 // The client row lock closes the race with a concurrent code exchange: its
 // grant INSERT either commits before the lock and is revoked here, or fails its
@@ -330,13 +343,21 @@ var errGrantUsersChanged = errors.New("grants for unlocked users appeared")
 // held without inverting that order, so the attempt rolls back and starts over
 // with that user locked too.
 func (s *Service) DeleteApp(ctx context.Context, id vo.Id) (int, error) {
+	n, err := s.deleteAppWithRetries(ctx, id, nil)
+	return n, publicAppErr(err)
+}
+
+// deleteAppWithRetries deletes only while the app is still expectedOwner's
+// when that is set, returning errAppOwnerChanged otherwise, and errAppGone
+// when the client row no longer exists.
+func (s *Service) deleteAppWithRetries(ctx context.Context, id vo.Id, expectedOwner *vo.Id) (int, error) {
 	grants, err := s.repo.ListClientGrants(ctx, id)
 	if err != nil {
 		return 0, err
 	}
 	users := addGrantUsers(nil, grants)
 	for range deleteAppAttempts {
-		revoked, more, err := s.deleteApp(ctx, id, users)
+		revoked, more, err := s.deleteApp(ctx, id, users, expectedOwner)
 		if !errors.Is(err, errGrantUsersChanged) {
 			return revoked, err
 		}
@@ -357,13 +378,22 @@ func addGrantUsers(users []vo.Id, grants []model.OAuthGrant) []vo.Id {
 
 // deleteApp returns errGrantUsersChanged with the grants read under the client
 // lock when one of them belongs to a user outside users.
-func (s *Service) deleteApp(ctx context.Context, id vo.Id, users []vo.Id) (int, []model.OAuthGrant, error) {
+func (s *Service) deleteApp(ctx context.Context, id vo.Id, users []vo.Id, expectedOwner *vo.Id) (int, []model.OAuthGrant, error) {
 	revoked := 0
 	var current []model.OAuthGrant
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		revoked, current = 0, nil
 		if err := s.lockUsersAndClient(ctx, id, users); err != nil {
 			return err
+		}
+		if expectedOwner != nil {
+			c, err := s.getApp(ctx, id)
+			if err != nil {
+				return err
+			}
+			if c.OwnerUserID == nil || !c.OwnerUserID.Equal(*expectedOwner) {
+				return errAppOwnerChanged
+			}
 		}
 		now := s.clock.Now()
 		var err error

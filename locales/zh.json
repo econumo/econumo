@@ -711,7 +711,8 @@
       "budget": "预算",
       "choose_folder": "为此账户选择文件夹",
       "general_folder_hint": "General（将自动创建）",
-      "decline_question": "拒绝“{name}”的访问权限吗？"
+      "decline_question": "拒绝“{name}”的访问权限吗？",
+      "scheduled_for_deletion": "{name} 的数据已计划删除。其与您共享的账户和预算将会消失，与其账户之间的转账将变为调整记录。"
     },
     "sync": {
       "failed": "{source} 同步失败",
@@ -1114,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "删除我的数据",
+      "header": "删除我的数据",
+      "explain": {
+        "what": "这将删除您的账户及其交易、预算、分类、收款人、标签和设置。",
+        "shared": "与您共享的人将失去您与其共享的账户和预算。他们会保留自己的数据：您在他们账户中录入的交易及其描述会保留，您与他们账户之间的转账会作为保留描述的调整记录保留。",
+        "cancel": "在数据删除前重新登录即可取消删除。",
+        "subscription": "订阅不会立即取消。为避免继续扣费，请先在账单中取消订阅。",
+        "billing_link": "打开账单"
+      },
+      "form": {
+        "password": { "label": "密码" },
+        "submit": { "label": "发送验证码" }
+      },
+      "confirm": {
+        "information": "我们已将验证码发送至您的邮箱。",
+        "pending_writes": "您的部分更改仍在等待发送。请等它们发送完成后再删除数据。",
+        "action": "删除我的数据",
+        "export": {
+          "done": "您的交易已下载。文件包含您当前账户的交易，不包含您之前删除的账户。",
+          "failed": "交易下载失败。",
+          "retry": "重新下载",
+          "none": "您没有可导出的自有账户。"
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "姓名",
@@ -1288,6 +1315,10 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "您的数据将在 {count} 天后删除。在此之前登录即可保留数据。",
+      "deletion_scheduled_manual": "您的数据将在人工审核您的请求后删除。在此之前登录即可保留数据。"
+    },
     "sign_in_failed": {
       "header": "登录失败",
       "information": "请检查您的邮箱和密码后重试。如果问题仍然存在，请联系客服。"
@@ -2663,7 +2694,9 @@
       "verification_code_invalid": "验证码不正确。",
       "verification_code_expired": "验证码已过期。",
       "email_unchanged": "新邮箱与当前邮箱相同。",
-      "password_login_disabled": "密码登录已停用"
+      "password_login_disabled": "密码登录已停用",
+      "deletion_already_marked": "该用户已被标记为待删除。",
+      "deletion_not_marked": "该用户未被标记为待删除。"
     }
   },
   "emails": {
@@ -2690,6 +2723,14 @@
     "identity_unlinked": {
       "subject": "已移除登录方式",
       "body": "您好，{name}：\n\n您的 {provider} 账户刚刚已与您的 Econumo 账户解除关联，现在无法再用于登录。\n\n如果这不是您本人的操作，请修改密码并在设置中检查已关联的账户。\n\n--\nEconumo — 一起管理财务。\n"
+    },
+    "inactivity_notice": {
+      "subject": "您的 Econumo 数据即将被删除",
+      "body": "您好，{name}：\n\n根据我们的政策，我们会删除连续 {days} 天未活跃的用户的数据。如果您想保留数据，请登录。"
+    },
+    "delete_data": {
+      "subject": "确认删除您的数据",
+      "body": "您好，{name}：\n\n请使用此验证码确认您要删除您的 Econumo 数据：{code}\n\n验证码将在 10 分钟后失效。如果这不是您本人的操作，请修改密码。"
     }
   }
 }

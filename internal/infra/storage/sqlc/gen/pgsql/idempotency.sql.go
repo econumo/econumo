@@ -24,6 +24,15 @@ func (q *Queries) DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotenc
 	return err
 }
 
+const deleteIdempotencyKeysByUser = `-- name: DeleteIdempotencyKeysByUser :exec
+DELETE FROM idempotency_keys WHERE user_id = $1
+`
+
+func (q *Queries) DeleteIdempotencyKeysByUser(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteIdempotencyKeysByUser, userID)
+	return err
+}
+
 const getIdempotencyKey = `-- name: GetIdempotencyKey :one
 SELECT resource_id
 FROM idempotency_keys

@@ -52,6 +52,7 @@ type querier interface {
 	ListAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) ([]accountRow, error)
 	ListDeletedAccounts(ctx context.Context, db backend.DBTX) ([]accountRow, error)
 	ListAccountIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error)
+	LockAccountsByOwner(ctx context.Context, db backend.DBTX, userID string) error
 	CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error
@@ -137,6 +138,11 @@ func (r *Repo) ListIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error
 		out = append(out, id)
 	}
 	return out, nil
+}
+
+// LockByOwner locks every account row the user owns, in id order.
+func (r *Repo) LockByOwner(ctx context.Context, userID vo.Id) error {
+	return r.q.LockAccountsByOwner(ctx, r.db(ctx), userID.String())
 }
 
 // ListAvailable returns the user's non-deleted accounts.

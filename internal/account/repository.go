@@ -36,6 +36,14 @@ type AccountStore interface {
 	// not per-user).
 	ListDeleted(ctx context.Context) ([]*model.Account, error)
 
+	// ListIDsByOwner returns every account the user owns, soft-deleted ones
+	// included.
+	ListIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+
+	// LockByOwner locks every account row the user owns, in id order (FOR
+	// UPDATE on PostgreSQL, nothing on SQLite).
+	LockByOwner(ctx context.Context, userID vo.Id) error
+
 	// CountAvailable returns how many non-deleted accounts the user has (seeds a
 	// new account's position when no options rows exist).
 	CountAvailable(ctx context.Context, userID vo.Id) (int, error)

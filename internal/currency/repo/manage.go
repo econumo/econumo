@@ -27,6 +27,9 @@ type (
 	hideP                  = sqlitegen.InsertHiddenCurrencyParams
 	unhideP                = sqlitegen.DeleteHiddenCurrencyParams
 	hideAllP               = sqlitegen.HideGlobalCurrenciesParams
+	customByOwnerRow       = sqlitegen.ListLiveAndDeletedCustomCurrencyIDsByOwnerRow
+	firstForeignOwnerP     = sqlitegen.FirstForeignOwnerOfCurrencyParams
+	moveCurrencyP          = sqlitegen.MoveCurrencyParams
 )
 
 // manageQuerier is the engine-agnostic manage surface, in the canonical types.
@@ -48,6 +51,9 @@ type manageQuerier interface {
 	DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error
 	HideGlobalCurrencies(ctx context.Context, db backend.DBTX, p hideAllP) error
 	ShowGlobalCurrencies(ctx context.Context, db backend.DBTX, userID string) error
+	ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]customByOwnerRow, error)
+	FirstForeignOwnerOfCurrency(ctx context.Context, db backend.DBTX, p firstForeignOwnerP) (string, error)
+	MoveCurrency(ctx context.Context, db backend.DBTX, p moveCurrencyP) error
 }
 
 // ManageRepo implements the currency feature's write-side port for per-user
@@ -186,6 +192,33 @@ func (r *ManageRepo) ShowCurrency(ctx context.Context, userID, currencyID string
 	})
 }
 
+func (r *ManageRepo) ListCustomCurrenciesByOwner(ctx context.Context, userID string) ([]model.CurrencyRecord, error) {
+	rows, err := r.q.ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx, r.db(ctx), userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.CurrencyRecord, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, model.CurrencyRecord{ID: row.ID, Code: row.Code, IsDeleted: row.IsDeleted})
+	}
+	return out, nil
+}
+
+func (r *ManageRepo) FirstForeignOwner(ctx context.Context, currencyID, userID string) (string, bool, error) {
+	owner, err := r.q.FirstForeignOwnerOfCurrency(ctx, r.db(ctx), firstForeignOwnerP{CurrencyID: currencyID, UserID: userID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return owner, true, nil
+}
+
+func (r *ManageRepo) MoveCurrency(ctx context.Context, id, userID string, deleted bool) error {
+	return r.q.MoveCurrency(ctx, r.db(ctx), moveCurrencyP{UserID: &userID, IsDeleted: deleted, ID: id})
+}
+
 // sqliteManageQuerier is the native passthrough (canonical types ARE sqlite's).
 type sqliteManageQuerier struct{}
 
@@ -244,6 +277,18 @@ func (sqliteManageQuerier) ShowGlobalCurrencies(ctx context.Context, db backend.
 	return sqlitegen.New(db).ShowGlobalCurrencies(ctx, userID)
 }
 
+func (sqliteManageQuerier) ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]customByOwnerRow, error) {
+	return sqlitegen.New(db).ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx, &userID)
+}
+
+func (sqliteManageQuerier) FirstForeignOwnerOfCurrency(ctx context.Context, db backend.DBTX, p firstForeignOwnerP) (string, error) {
+	return sqlitegen.New(db).FirstForeignOwnerOfCurrency(ctx, p)
+}
+
+func (sqliteManageQuerier) MoveCurrency(ctx context.Context, db backend.DBTX, p moveCurrencyP) error {
+	return sqlitegen.New(db).MoveCurrency(ctx, p)
+}
+
 // pgsqlManageQuerier is the thin conversion shim: whole-struct casts where the
 // generated types are field-identical, field-copy where they diverge.
 type pgsqlManageQuerier struct{}
@@ -297,4 +342,24 @@ func (pgsqlManageQuerier) HideGlobalCurrencies(ctx context.Context, db backend.D
 
 func (pgsqlManageQuerier) ShowGlobalCurrencies(ctx context.Context, db backend.DBTX, userID string) error {
 	return pgsqlgen.New(db).ShowGlobalCurrencies(ctx, userID)
+}
+
+func (pgsqlManageQuerier) ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]customByOwnerRow, error) {
+	rows, err := pgsqlgen.New(db).ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx, &userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]customByOwnerRow, len(rows))
+	for i, row := range rows {
+		out[i] = customByOwnerRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlManageQuerier) FirstForeignOwnerOfCurrency(ctx context.Context, db backend.DBTX, p firstForeignOwnerP) (string, error) {
+	return pgsqlgen.New(db).FirstForeignOwnerOfCurrency(ctx, pgsqlgen.FirstForeignOwnerOfCurrencyParams(p))
+}
+
+func (pgsqlManageQuerier) MoveCurrency(ctx context.Context, db backend.DBTX, p moveCurrencyP) error {
+	return pgsqlgen.New(db).MoveCurrency(ctx, pgsqlgen.MoveCurrencyParams(p))
 }

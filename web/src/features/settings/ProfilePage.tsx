@@ -292,6 +292,13 @@ export function ProfilePage() {
             <ChevronRight className="size-4 text-muted-foreground" />
           </Link>
         ) : null}
+        <Link
+          to={RouterPage.SETTINGS_DELETE_DATA}
+          className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3.5 text-sm text-destructive hover:bg-destructive/10"
+        >
+          {t('user.delete_data.menu_item')}
+          <ChevronRight className="size-4" />
+        </Link>
       </div>
 
 

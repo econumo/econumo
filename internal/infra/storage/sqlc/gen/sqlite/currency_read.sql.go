@@ -321,6 +321,18 @@ WHERE c.user_id IS NULL
        JOIN budgets_access ba ON ba.budget_id = be.budget_id
        WHERE ba.user_id = ? AND be.currency_id IS NOT NULL
    )
+   OR c.id IN (SELECT a.currency_id FROM accounts a WHERE a.user_id = ?)
+   OR c.id IN (SELECT b.currency_id FROM budgets b WHERE b.user_id = ?)
+   OR c.id IN (
+       SELECT be.currency_id FROM budgets_elements be
+       JOIN budgets b ON b.id = be.budget_id
+       WHERE b.user_id = ? AND be.currency_id IS NOT NULL
+   )
+   OR c.id IN (
+       SELECT d.currency_id FROM debts d
+       JOIN budgets b ON b.id = d.budget_id
+       WHERE b.user_id = ?
+   )
 ORDER BY c.code ASC, c.id ASC
 `
 
@@ -329,6 +341,10 @@ type GetUserCurrencyListViewParams struct {
 	UserID_2 string
 	UserID_3 string
 	UserID_4 string
+	UserID_5 string
+	UserID_6 string
+	UserID_7 string
+	UserID_8 string
 }
 
 type GetUserCurrencyListViewRow struct {
@@ -350,13 +366,19 @@ type GetUserCurrencyListViewRow struct {
 // Per-user visible currencies: all globals, the user's own customs (archived
 // included, the settings page needs them), and foreign customs reachable via
 // accounts or budgets shared to the user (budget currency and element
-// currencies). Codes can repeat across owners, so id breaks ties.
+// currencies), and foreign customs the user's own account, budget, element or
+// debt references (a currency moved away by a user deletion). Codes can repeat
+// across owners, so id breaks ties.
 func (q *Queries) GetUserCurrencyListView(ctx context.Context, arg GetUserCurrencyListViewParams) ([]GetUserCurrencyListViewRow, error) {
 	rows, err := q.db.QueryContext(ctx, getUserCurrencyListView,
 		arg.UserID,
 		arg.UserID_2,
 		arg.UserID_3,
 		arg.UserID_4,
+		arg.UserID_5,
+		arg.UserID_6,
+		arg.UserID_7,
+		arg.UserID_8,
 	)
 	if err != nil {
 		return nil, err

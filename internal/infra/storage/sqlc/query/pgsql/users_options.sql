@@ -13,6 +13,9 @@ ON CONFLICT (user_id, name) DO UPDATE SET
     value      = excluded.value,
     updated_at = excluded.updated_at;
 
+-- name: ClearUserOptionIfValue :execrows
+UPDATE users_options SET value = NULL, updated_at = $1 WHERE user_id = $2 AND name = $3 AND value = $4;
+
 -- name: ListUserIDsMissingOption :many
 -- Ordered by id so the backfill is deterministic across engines and reruns.
 -- Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across

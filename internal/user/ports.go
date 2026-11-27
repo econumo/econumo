@@ -95,6 +95,9 @@ const (
 	// not a cap: it records the last change-email code send per user for the
 	// resend cooldown. It carries no configured limit.
 	RateScopeEmailChangeSent = "email-change-sent"
+
+	RateScopeRequestUserDeletion = "request-user-deletion"
+	RateScopeConfirmUserDeletion = "confirm-user-deletion"
 )
 
 // OAuthReclaimer is the oauth feature's side of an account reclaim. Completing
@@ -143,4 +146,12 @@ type LogoutURLBuilder interface {
 	// EndSessionURL returns the IdP end-session URL for a session minted through
 	// provider with the given ID token, or "" when the provider supports none.
 	EndSessionURL(ctx context.Context, provider, idToken string) (string, error)
+}
+
+// DataWiper is everything a wipe does outside the user feature.
+type DataWiper interface {
+	// LockBudgets locks, in id order, every budget the wipe will touch. First in the transaction.
+	LockBudgets(ctx context.Context, userID vo.Id) error
+	// Erase runs after the user row is locked and leaves only the users row to delete.
+	Erase(ctx context.Context, userID vo.Id) error
 }

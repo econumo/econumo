@@ -16,9 +16,18 @@ type Querier interface {
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error)
+	// Clearing other users' import links that point at a deleted user's entities.
+	// The four applied_* columns have no foreign key; the user's own links go
+	// with the import_sources cascade.
+	ClearImportLinkAppliedCategoryOfUser(ctx context.Context, userID string) error
+	ClearImportLinkAppliedPayeeOfUser(ctx context.Context, userID string) error
+	ClearImportLinkAppliedRuleOfUser(ctx context.Context, userID string) error
+	ClearImportLinkAppliedTagOfUser(ctx context.Context, userID string) error
+	ClearUserOptionIfValue(ctx context.Context, arg ClearUserOptionIfValueParams) (int64, error)
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
+	ConsumeUserDeletionRequest(ctx context.Context, arg ConsumeUserDeletionRequestParams) (int64, error)
 	// See the sqlite sibling: the confirm path consumes its own evidence row.
 	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
 	// See the sqlite sibling: the confirmation's evidence and its consumption are
@@ -66,6 +75,7 @@ type Querier interface {
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
+	DeleteIdempotencyKeysByUser(ctx context.Context, userID string) error
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteImportAccountLink(ctx context.Context, id string) error
 	DeleteImportCredentialKey(ctx context.Context, userID string) error
@@ -95,6 +105,8 @@ type Querier interface {
 	// Link rows between a transaction and its reporting labels. See the sqlite
 	// variant for documentation.
 	DeleteTransactionLabels(ctx context.Context, transactionID string) error
+	DeleteUserByID(ctx context.Context, id string) (int64, error)
+	DeleteUserDeletionRequestsByUser(ctx context.Context, userID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserEmailChangeRequestsByUser(ctx context.Context, userID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
@@ -103,6 +115,7 @@ type Querier interface {
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (bool, error)
+	FirstForeignOwnerOfCurrency(ctx context.Context, arg FirstForeignOwnerOfCurrencyParams) (string, error)
 	// Joins users for access_level/access_until; see the sqlite sibling for why
 	// provider/id_token are deliberately omitted here.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
@@ -259,9 +272,14 @@ type Querier interface {
 	// Per-user visible currencies: all globals, the user's own customs (archived
 	// included, the settings page needs them), and foreign customs reachable via
 	// accounts or budgets shared to the user (budget currency and element
-	// currencies). Codes can repeat across owners, so id breaks ties. $1 is
-	// reused for all four user-id positions so the generated param stays single.
+	// currencies), and foreign customs the user's own account, budget, element or
+	// debt references (a currency moved away by a user deletion). Codes can repeat
+	// across owners, so id breaks ties. $1 is reused for every user-id position so
+	// the generated param stays single.
 	GetUserCurrencyListView(ctx context.Context, userID *string) ([]GetUserCurrencyListViewRow, error)
+	GetUserDeletionRequestByUser(ctx context.Context, userID string) (UsersDeletionRequest, error)
+	// See the sqlite sibling for the flow.
+	GetUserDeletionState(ctx context.Context, id string) (GetUserDeletionStateRow, error)
 	GetUserEmailChangeRequestByUser(ctx context.Context, userID string) (UsersEmailChangeRequest, error)
 	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
 	GetUserIDByExactEmail(ctx context.Context, email string) (string, error)
@@ -336,12 +354,15 @@ type Querier interface {
 	InsertRecurringLabel(ctx context.Context, arg InsertRecurringLabelParams) error
 	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertUserAudit(ctx context.Context, arg InsertUserAuditParams) (int64, error)
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
+	InsertUserDeletionRequestIfGeneration(ctx context.Context, arg InsertUserDeletionRequestIfGenerationParams) (int64, error)
 	// See the sqlite sibling: the pending grant is fenced on the generation the
 	// password check read.
 	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
+	InsertWipeCorrection(ctx context.Context, arg InsertWipeCorrectionParams) error
 	// The one write that touches recurring_id on an existing row: an explicit
 	// "make recurring from this transaction" link. UpsertTransaction deliberately
 	// never updates the column, so the link needs its own statement.
@@ -376,12 +397,15 @@ type Querier interface {
 	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
+	ListBudgetIDsByAccessUser(ctx context.Context, userID string) ([]string, error)
+	ListBudgetIDsByOwner(ctx context.Context, userID string) ([]string, error)
 	ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]ListBudgetLimitsByElementRow, error)
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]ListBudgetLimitsForPeriodRow, error)
 	ListBudgetLimitsFrom(ctx context.Context, arg ListBudgetLimitsFromParams) ([]ListBudgetLimitsFromRow, error)
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
+	ListCrossOwnerTransfers(ctx context.Context, userID string) ([]ListCrossOwnerTransfersRow, error)
 	// Write-side queries for the currency module: the CLI admin commands
 	// (app:add-currency) and the rate loader
 	// (app:update-currency-rates). Kept separate from currencies.sql (the user-module
@@ -424,12 +448,17 @@ type Querier interface {
 	// a shared account): the owner's rules classify them, so applying one of
 	// those rules reaches them too.
 	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, userID string) ([]ImportTransactionLink, error)
+	ListInactiveUserCandidates(ctx context.Context, cutoff *time.Time) ([]ListInactiveUserCandidatesRow, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	// User deletion: see the sqlite variant.
+	ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error)
+	ListMarkedUsers(ctx context.Context) ([]ListMarkedUsersRow, error)
 	ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error)
+	ListOAuthClientIDsByOwner(ctx context.Context, ownerUserID *string) ([]string, error)
 	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
 	ListOpenImportSuggestionLinksByUser(ctx context.Context, userID string) ([]ImportSuggestionLink, error)
 	ListOpenImportSuggestionsByUser(ctx context.Context, userID string) ([]ImportSuggestion, error)
@@ -455,12 +484,19 @@ type Querier interface {
 	// too, their history still counts), a budget, a budget element, or a user's
 	// display currency. The rate-gap check looks at these only.
 	ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, error)
+	ListUserAuditByEmailHash(ctx context.Context, emailHash *string) ([]UsersAudit, error)
+	ListUserAuditByEvent(ctx context.Context, arg ListUserAuditByEventParams) ([]UsersAudit, error)
 	ListUserEmailsOldestFirst(ctx context.Context) ([]ListUserEmailsOldestFirstRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	ListWipeConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
+	// Taken by the user wipe: FOR UPDATE conflicts with the FOR KEY SHARE that an
+	// insert referencing the account takes, so no write lands on an account while
+	// its owner is being deleted. Id order keeps concurrent lockers deadlock-free.
+	LockAccountsByOwner(ctx context.Context, userID string) ([]string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
 	// debts attached to the category are deleted or moved: FOR UPDATE conflicts
 	// with the FOR KEY SHARE a debt create takes on the row, so the delete or
@@ -469,6 +505,7 @@ type Querier interface {
 	// NO KEY UPDATE leaves the KEY SHARE of child inserts (budget rows, debts)
 	// unblocked.
 	LockDebtBudget(ctx context.Context, id string) (string, error)
+	LockDeletionWipes(ctx context.Context) error
 	LockImportSuggestion(ctx context.Context, id string) (int64, error)
 	// The merge target's lock. The target is kept, so it needs no FOR UPDATE, and
 	// FOR NO KEY UPDATE lets the FOR KEY SHARE of a foreign key check pass: a
@@ -494,9 +531,16 @@ type Querier interface {
 	// row belonging to this user. The adapter maps no-rows to success: a missing
 	// user must keep succeeding silently.
 	LockUserRow(ctx context.Context, id string) (string, error)
+	// FOR UPDATE, unlike LockUserRow's FOR NO KEY UPDATE, also conflicts with the
+	// FOR KEY SHARE every FK check against this row takes, so no row referencing
+	// the user can be inserted while the wipe holds it. The adapter maps no-rows to
+	// success, as LockUserRow does.
+	LockUserRowForWipe(ctx context.Context, id string) (string, error)
 	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	MarkUserForDeletion(ctx context.Context, arg MarkUserForDeletionParams) (int64, error)
+	MoveCurrency(ctx context.Context, arg MoveCurrencyParams) error
 	MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
@@ -504,6 +548,9 @@ type Querier interface {
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
 	PurgeIdempotencyKeys(ctx context.Context, createdAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
+	// What a deleted user leaves in other people's accounts (PostgreSQL: $N
+	// placeholders). See the sqlite variant.
+	ReassignAuthorInForeignAccounts(ctx context.Context, userID string) error
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
 	// across modules that take a client-supplied operation id).
 	ReassignCategoryRecurring(ctx context.Context, arg ReassignCategoryRecurringParams) error
@@ -558,6 +605,8 @@ type Querier interface {
 	// See the sqlite sibling.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	TouchOpenImportSuggestion(ctx context.Context, arg TouchOpenImportSuggestionParams) (int64, error)
+	TouchUserLastActive(ctx context.Context, arg TouchUserLastActiveParams) error
+	UnmarkUserDeletion(ctx context.Context, id string) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	// A correction of the loan's facts rewrites the origin (a debt's first
@@ -616,6 +665,7 @@ type Querier interface {
 	UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error
 	UpsertUserOption(ctx context.Context, arg UpsertUserOptionParams) error
+	UserHasActiveConnection(ctx context.Context, arg UserHasActiveConnectionParams) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

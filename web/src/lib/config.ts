@@ -18,6 +18,7 @@ export interface EconumoConfig {
   IMPORT_SIMPLEFIN?: boolean
   FEEDBACK?: boolean
   BILLING_URL?: string
+  USER_DELETION_DAYS?: number
   MCP_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
@@ -150,6 +151,13 @@ export function getVersionLabel(): string {
 // econumo-config.js (server truth); '' means billing UI is disabled.
 export function getBillingUrl(): string {
   return window.econumoConfig?.BILLING_URL || ''
+}
+
+// Days from a deletion request to the data being deleted; 0 means an operator
+// deletes by hand, so there is no date to promise.
+export function getUserDeletionDays(): number {
+  const days = window.econumoConfig?.USER_DELETION_DAYS
+  return typeof days === 'number' && Number.isInteger(days) && days > 0 ? days : 0
 }
 
 // The server merges MCP_URL unconditionally (server truth): the address MCP

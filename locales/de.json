@@ -711,7 +711,8 @@
       "budget": "Budget",
       "choose_folder": "Wählen Sie einen Ordner für dieses Konto",
       "general_folder_hint": "General (wird erstellt)",
-      "decline_question": "Zugriff auf „{name}“ ablehnen?"
+      "decline_question": "Zugriff auf „{name}“ ablehnen?",
+      "scheduled_for_deletion": "Die Löschung der Daten von {name} ist geplant. Die Konten und Budgets, die diese Person mit Ihnen teilt, verschwinden, und Überweisungen mit ihren Konten werden zu Korrekturen."
     },
     "sync": {
       "failed": "{source}-Synchronisierung fehlgeschlagen",
@@ -1114,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Meine Daten löschen",
+      "header": "Meine Daten löschen",
+      "explain": {
+        "what": "Dadurch werden Ihre Konten mit ihren Transaktionen, Ihre Budgets, Kategorien, Zahlungsempfänger, Tags und Einstellungen gelöscht.",
+        "shared": "Personen, mit denen Sie teilen, verlieren die Konten und Budgets, die Sie mit ihnen teilen. Ihre eigenen Daten behalten sie: Transaktionen, die Sie in ihren Konten erfasst haben, bleiben mit ihren Beschreibungen erhalten, und Überweisungen zwischen Ihren und ihren Konten bleiben als Korrekturen mit der Beschreibung erhalten.",
+        "cancel": "Wenn Sie sich vor dem Löschen Ihrer Daten erneut anmelden, wird die Löschung abgebrochen.",
+        "subscription": "Ihr Abonnement wird nicht sofort gekündigt. Um weitere Abbuchungen zu vermeiden, kündigen Sie es zuerst in der Abrechnung.",
+        "billing_link": "Abrechnung öffnen"
+      },
+      "form": {
+        "password": { "label": "Passwort" },
+        "submit": { "label": "Bestätigungscode senden" }
+      },
+      "confirm": {
+        "information": "Wir haben einen Bestätigungscode an Ihre E-Mail-Adresse gesendet.",
+        "pending_writes": "Einige Ihrer Änderungen warten noch darauf, gesendet zu werden. Warten Sie, bis sie gesendet sind, bevor Sie Ihre Daten löschen.",
+        "action": "Meine Daten löschen",
+        "export": {
+          "done": "Ihre Transaktionen wurden heruntergeladen. Die Datei enthält die Transaktionen Ihrer aktuellen Konten. Früher gelöschte Konten sind nicht enthalten.",
+          "failed": "Der Download Ihrer Transaktionen ist fehlgeschlagen.",
+          "retry": "Download erneut versuchen",
+          "none": "Sie haben keine eigenen Konten zum Exportieren."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Name",
@@ -1288,6 +1315,10 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Ihre Daten werden in {count} Tag gelöscht. Melden Sie sich vorher an, um sie zu behalten. | Ihre Daten werden in {count} Tagen gelöscht. Melden Sie sich vorher an, um sie zu behalten.",
+      "deletion_scheduled_manual": "Ihre Daten werden nach einer manuellen Prüfung Ihrer Anfrage gelöscht. Melden Sie sich vorher an, um sie zu behalten."
+    },
     "sign_in_failed": {
       "header": "Anmeldung fehlgeschlagen",
       "information": "Prüfen Sie Ihre E-Mail-Adresse und Ihr Passwort und versuchen Sie es erneut. Wenn das Problem weiterhin besteht, kontaktieren Sie den Support."
@@ -2663,7 +2694,9 @@
       "verification_code_invalid": "Der Bestätigungscode ist ungültig.",
       "verification_code_expired": "Der Code ist abgelaufen",
       "email_unchanged": "Die neue E-Mail-Adresse ist mit Ihrer aktuellen identisch.",
-      "password_login_disabled": "Die Anmeldung mit Passwort ist deaktiviert"
+      "password_login_disabled": "Die Anmeldung mit Passwort ist deaktiviert",
+      "deletion_already_marked": "Dieser Benutzer ist bereits zur Löschung vorgemerkt.",
+      "deletion_not_marked": "Dieser Benutzer ist nicht zur Löschung vorgemerkt."
     }
   },
   "emails": {
@@ -2690,6 +2723,14 @@
     "identity_unlinked": {
       "subject": "Anmeldemethode entfernt",
       "body": "Hallo {name},\n\nDie Verknüpfung Ihres {provider}-Kontos mit Ihrem Econumo-Konto wurde soeben aufgehoben und kann nicht mehr zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, ändern Sie Ihr Passwort und prüfen Sie die verknüpften Konten in den Einstellungen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Ihre Econumo-Daten sind zur Löschung vorgemerkt",
+      "body": "Hallo {name},\n\nGemäß unserer Richtlinie löschen wir die Daten von Nutzern, die {days} Tage lang inaktiv waren. Wenn Sie Ihre Daten behalten möchten, melden Sie sich an."
+    },
+    "delete_data": {
+      "subject": "Löschen Ihrer Daten bestätigen",
+      "body": "Hallo {name},\n\nVerwenden Sie diesen Code, um zu bestätigen, dass Sie Ihre Econumo-Daten löschen möchten: {code}\n\nDer Code ist 10 Minuten gültig. Falls Sie dies nicht angefordert haben, ändern Sie Ihr Passwort."
     }
   }
 }

@@ -100,6 +100,9 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentToken
 		if err := s.emailChangeRequests.DeleteByUser(ctx, userID); err != nil {
 			return err
 		}
+		if err := s.deleteDeletionRequests(ctx, userID); err != nil {
+			return err
+		}
 		return s.revokeTokens(ctx, userID, currentTokenID, now, model.TokenKindSession)
 	}); err != nil {
 		return nil, err
@@ -259,6 +262,9 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 			return &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
+		if rerr := s.regrantOnFirstProof(ctx, u, s.clock.Now()); rerr != nil {
+			return rerr
+		}
 		// Completing a reset proves mailbox ownership, so it also satisfies the
 		// email-verification gate.
 		u.MarkEmailVerified(s.clock.Now())

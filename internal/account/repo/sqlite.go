@@ -127,6 +127,10 @@ func (sqliteQuerier) ListAccountIDsByOwner(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).ListAccountIDsByOwner(ctx, userID)
 }
 
+// SQLite has no row-level lock modes; its single writer already serializes
+// the wipe against any write on the user's accounts.
+func (sqliteQuerier) LockAccountsByOwner(context.Context, backend.DBTX, string) error { return nil }
+
 func (sqliteQuerier) ReplaceAccountIcon(ctx context.Context, db backend.DBTX, p replaceIconP) (int64, error) {
 	return sqlitegen.New(db).ReplaceAccountIcon(ctx, p)
 }

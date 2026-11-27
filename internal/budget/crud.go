@@ -3,6 +3,8 @@ package budget
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -146,12 +148,11 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.Dele
 			return derr
 		}
 		// Every participant whose active-budget option points here would keep
-		// requesting a budget that now 404s.
-		if cerr := s.users.ClearActiveBudget(txCtx, b.budget.UserID, budgetID); cerr != nil {
-			return cerr
-		}
-		for _, a := range b.access {
-			if cerr := s.users.ClearActiveBudget(txCtx, a.UserID, budgetID); cerr != nil {
+		// requesting a budget that now 404s. Each clear takes that user's row
+		// lock, so they go in ascending id order: two deletions sharing members
+		// must not lock them in opposite orders.
+		for _, memberID := range participantsByID(b) {
+			if cerr := s.users.ClearActiveBudget(txCtx, memberID, budgetID); cerr != nil {
 				return cerr
 			}
 		}
@@ -160,6 +161,16 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.Dele
 		return nil, err
 	}
 	return &model.DeleteBudgetResult{}, nil
+}
+
+func participantsByID(b *budgetAggregate) []vo.Id {
+	ids := make([]vo.Id, 0, len(b.access)+1)
+	ids = append(ids, b.budget.UserID)
+	for _, a := range b.access {
+		ids = append(ids, a.UserID)
+	}
+	slices.SortFunc(ids, func(x, y vo.Id) int { return strings.Compare(x.String(), y.String()) })
+	return slices.CompactFunc(ids, func(x, y vo.Id) bool { return x.String() == y.String() })
 }
 
 // ResetBudget clears all element limits and comments and resets the start month (owner|admin).

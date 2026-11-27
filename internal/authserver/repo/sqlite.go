@@ -132,6 +132,10 @@ func (sqliteQuerier) DeleteOAuthClient(ctx context.Context, db backend.DBTX, id 
 	return sqlitegen.New(db).DeleteOAuthClient(ctx, id)
 }
 
+func (sqliteQuerier) ListOAuthClientIDsByOwner(ctx context.Context, db backend.DBTX, ownerUserID *string) ([]string, error) {
+	return sqlitegen.New(db).ListOAuthClientIDsByOwner(ctx, ownerUserID)
+}
+
 func (sqliteQuerier) ListOAuthClientGrants(ctx context.Context, db backend.DBTX, clientID string) ([]grantRow, error) {
 	return sqlitegen.New(db).ListOAuthClientGrants(ctx, clientID)
 }

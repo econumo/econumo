@@ -74,9 +74,28 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 			return eerr
 		}
 		u.UpdateEmail(encryptedEmail, s.clock.Now())
-		return s.repo.Save(ctx, u)
+		if serr := s.repo.Save(ctx, u); serr != nil {
+			return serr
+		}
+		return s.deleteOutstandingCodes(ctx, u.ID)
 	})
 	return err
+}
+
+// deleteOutstandingCodes drops every code sent to the user's address: codes
+// are stored by user id, so after an operator's email change one delivered to
+// the old mailbox would otherwise still prove the new one.
+func (s *Service) deleteOutstandingCodes(ctx context.Context, userID vo.Id) error {
+	if err := s.emailVerifications.DeleteByUser(ctx, userID); err != nil {
+		return err
+	}
+	if err := s.passwordRequests.DeleteByUser(ctx, userID); err != nil {
+		return err
+	}
+	if err := s.emailChangeRequests.DeleteByUser(ctx, userID); err != nil {
+		return err
+	}
+	return s.deleteDeletionRequests(ctx, userID)
 }
 
 // AdminChangePassword sets a user's password, rehashed with the current
@@ -144,7 +163,16 @@ func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 // the ECONUMO_EMAIL_VERIFICATION gate) and drops any pending code.
 func (s *Service) AdminVerifyEmail(ctx context.Context, email string) error {
 	_, err := s.mutateByEmail(ctx, email, func(ctx context.Context, u *model.User) error {
-		u.MarkEmailVerified(s.clock.Now())
+		now := s.clock.Now()
+		plain, derr := s.encode.Decode(u.Email)
+		if derr != nil {
+			return derr
+		}
+		// The operator vouches for the mailbox whatever the flag says.
+		if _, rerr := s.regrantLifetime(ctx, u, plain, now); rerr != nil {
+			return rerr
+		}
+		u.MarkEmailVerified(now)
 		if err := s.repo.Save(ctx, u); err != nil {
 			return err
 		}

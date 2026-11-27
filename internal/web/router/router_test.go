@@ -209,8 +209,9 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 		SPA:    os.DirFS(dir),
 		MCPURL: "https://econumo.example.test/mcp",
 		Cfg: config.Config{
-			AllowCustomAPI: &allowCustom,
-			BillingURL:     "https://pay.example.test/cloud/",
+			AllowCustomAPI:   &allowCustom,
+			BillingURL:       "https://pay.example.test/cloud/",
+			UserDeletionDays: 30,
 		},
 	})
 	srv := httptest.NewServer(h)
@@ -223,7 +224,7 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	// the dist file), so every key is present: the ones explicitly set above,
 	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
 	// INSTANCE_ID, VERSION, VERSION_LABEL, VERSION_REF, IMPORT_MATCHER).
-	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","FEEDBACK":true,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":true,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null,"VERSION_REF":""};`
+	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","FEEDBACK":true,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":true,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","PASSWORD_LOGIN":true,"USER_DELETION_DAYS":30,"VERSION":null,"VERSION_LABEL":null,"VERSION_REF":""};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}

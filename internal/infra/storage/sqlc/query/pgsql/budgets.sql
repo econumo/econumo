@@ -32,6 +32,9 @@ ON CONFLICT (id) DO NOTHING;
 -- name: DeleteBudget :exec
 DELETE FROM budgets WHERE id = $1;
 
+-- name: ListBudgetIDsByOwner :many
+SELECT id FROM budgets WHERE user_id = $1 ORDER BY id;
+
 -- name: ListBudgetAccess :many
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
 FROM budgets_access WHERE budget_id = $1;
@@ -50,6 +53,9 @@ ON CONFLICT (budget_id, user_id) DO UPDATE SET
 
 -- name: DeleteBudgetAccess :exec
 DELETE FROM budgets_access WHERE budget_id = $1 AND user_id = $2;
+
+-- name: ListBudgetIDsByAccessUser :many
+SELECT budget_id FROM budgets_access WHERE user_id = $1 ORDER BY budget_id;
 
 -- name: ListBudgetFolders :many
 SELECT id, budget_id, name, created_at, updated_at, sort_key, side

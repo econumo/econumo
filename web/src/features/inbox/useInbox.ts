@@ -1,11 +1,13 @@
 import { isAxiosError } from 'axios'
 import type { AccountDto } from '@/api/dto/account'
+import type { ConnectionDto } from '@/api/dto/connection'
 import { useUnavailableOffline } from '@/lib/offlineQuery'
 import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto, ImportSuggestionDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { Id } from '@/api/types'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { usePendingInvites, type PendingInvite } from '@/features/connections/pendingInvites'
+import { useConnections } from '@/features/connections/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useImportQueue, useImportSources, useImportSuggestions } from '@/features/imports/queries'
 import { useRecurring } from '@/features/recurring/queries'
@@ -21,6 +23,8 @@ export interface Inbox {
   /** templates due today or earlier on an account I can post to, oldest first */
   dueRecurring: RecurringDto[]
   invites: PendingInvite[]
+  /** connected users marked for deletion; never counted: nothing to act on, and it can stay for weeks */
+  markedConnections: ConnectionDto[]
   syncProblems: ImportSourceDto[]
   failed: ImportFailedEventDto[]
   queued: ImportQueuedEventDto[]
@@ -57,6 +61,11 @@ export function isDueRecurring(rt: RecurringDto, accounts: AccountDto[] | undefi
   return !!account && canWriteToAccount(account, meId)
 }
 
+// truthiness, not !== '': a list cached from (or served by) a build without the field must not mark everyone
+export function isMarkedForDeletion(connection: ConnectionDto): boolean {
+  return !!connection.deletionMarkedAt
+}
+
 export function formatInboxCount(count: number): string {
   return count > 99 ? '99+' : String(count)
 }
@@ -65,6 +74,8 @@ export function useInbox(): Inbox {
   const failedWrites = useFailedWrites()
   const storedQueueSettled = useStoredQueueSettled()
   const { invites } = usePendingInvites()
+  const { data: connections } = useConnections()
+  const markedConnections = (connections ?? []).filter(isMarkedForDeletion)
   const queue = useImportQueue()
   const sources = useImportSources()
   const suggestionList = useImportSuggestions()
@@ -96,6 +107,7 @@ export function useInbox(): Inbox {
     failedWrites,
     dueRecurring,
     invites,
+    markedConnections,
     syncProblems,
     failed,
     queued,

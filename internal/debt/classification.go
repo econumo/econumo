@@ -2,9 +2,9 @@ package debt
 
 import (
 	"context"
-	"errors"
 	"slices"
 
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -12,7 +12,7 @@ import (
 // after Prepare read them, so its budget is not locked. Taking that lock
 // after the category row would invert the order every debt write keeps; the
 // delete or merge fails instead (a 5xx, so clients retry it).
-var ErrDebtsChangedConcurrently = errors.New("debt: a debt on the category changed meanwhile; try again")
+var ErrDebtsChangedConcurrently = errs.NewSentinel("debt.ErrDebtsChangedConcurrently", "debt: a debt on the category changed meanwhile; try again")
 
 // A category's owner may delete or merge it whatever their access to the
 // debts attached to it (a former participant, a guest): the debts follow,

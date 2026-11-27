@@ -336,7 +336,7 @@ export function planHandler(plan: unknown = fixtureWirePlan) {
 }
 
 export const fixtureConnections: ConnectionDto[] = [
-  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, accessLevel: 'full', accessUntil: '', createdAt: '', sharedAccounts: [] },
+  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, accessLevel: 'full', accessUntil: '', createdAt: '', deletionMarkedAt: '', sharedAccounts: [] },
 ]
 
 const envelope = (data: unknown) => HttpResponse.json({ success: true, message: '', data })

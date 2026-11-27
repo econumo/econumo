@@ -16,6 +16,8 @@ export interface ConnectionDto {
   accessUntil: string
   /** register date, "YYYY-MM-DD HH:mm:ss" UTC; '' = unknown */
   createdAt: string
+  /** when the connected user was marked for deletion, "YYYY-MM-DD HH:mm:ss" UTC; '' = not marked */
+  deletionMarkedAt: string
   sharedAccounts: SharedAccountRefDto[]
 }
 

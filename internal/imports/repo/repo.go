@@ -121,6 +121,10 @@ type querier interface {
 	DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error
 	ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
+	ClearImportLinkAppliedCategoryOfUser(ctx context.Context, db backend.DBTX, userID string) error
+	ClearImportLinkAppliedPayeeOfUser(ctx context.Context, db backend.DBTX, userID string) error
+	ClearImportLinkAppliedTagOfUser(ctx context.Context, db backend.DBTX, userID string) error
+	ClearImportLinkAppliedRuleOfUser(ctx context.Context, db backend.DBTX, userID string) error
 }
 
 type Repo struct {

@@ -53,6 +53,9 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if folderID != nil && !b.hasFolder(*folderID) {
 		return nil, accessDenied()
 	}
+	if err := s.ensureEnvelopeCurrency(ctx, b, userID, curID); err != nil {
+		return nil, err
+	}
 	if err := s.validateEnvelopeCategories(ctx, b, envType.IsIncomeSide(), req.Categories); err != nil {
 		return nil, err
 	}
@@ -105,6 +108,16 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	}
 	// The new envelope lands at the front of its group, so its dense index is 0.
 	return &model.CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, 0, false, envType, children)}, nil
+}
+
+// ensureEnvelopeCurrency lets any writer pick the budget's own currency: it may
+// be another user's custom currency (the owner's, or one a wipe moved), which
+// EnsureUsable refuses to anyone but its owner.
+func (s *Service) ensureEnvelopeCurrency(ctx context.Context, b *budgetAggregate, userID, curID vo.Id) error {
+	if b.budget.CurrencyID.Equal(curID) {
+		return nil
+	}
+	return s.currency.EnsureUsable(ctx, userID.String(), curID.String())
 }
 
 // UpdateEnvelope updates an envelope's name/icon/archived + categories (canUpdate).
@@ -171,6 +184,11 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 		}
 		el, eerr := s.elements.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
+			if el.CurrencyID == nil || !el.CurrencyID.Equal(curID) {
+				if cerr := s.ensureEnvelopeCurrency(txCtx, b, userID, curID); cerr != nil {
+					return cerr
+				}
+			}
 			el.UpdateCurrency(&curID, now)
 			if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 				return serr

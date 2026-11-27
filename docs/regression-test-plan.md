@@ -236,6 +236,10 @@ navigation (single-pane vs sidebar).
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that
       backend.
+- [ ] A deleted account that had full access with no end date: registering
+      again with the same email and confirming the address gives full access
+      with no end date again; a second new account on that address later does
+      not.
 
 ## 3. Onboarding (fresh user)
 
@@ -1775,6 +1779,12 @@ and on tablet/phone only with a hardware keyboard.
       categories;
       transactions of member categories aggregate under the envelope; edit
       membership; delete envelope returns categories to top level.
+- [ ] Envelope in a shared budget whose currency is the owner's custom
+      currency: the partner (a member with the `user` role) creates an envelope
+      keeping the dialog's default currency (the budget's) and it is saved in
+      that currency; editing another envelope to the budget's currency also
+      saves. Picking the owner's custom currency for an envelope is refused
+      only when it is not the budget's currency.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the
       category (tagged-spend accounting rule).
 - [ ] 📱 **Plan grid header and window** (desktop and tablet): there is
@@ -3125,6 +3135,11 @@ User C sees none of it.
       after repeated bad codes (429 toast).
 - [ ] Delete the connection (confirm) → shared grants are revoked on both
       sides.
+- [ ] Three users: A and B are both members of C's budget. A removes the connection with B: B stays a member of C's budget with their categories and plans.
+- [ ] 📱 A connected user is marked for deletion (user:mark-deleted): the
+      partner's Inbox shows "<name>'s data is scheduled for deletion..." under
+      Sharing without changing the Inbox badge count; it disappears when that
+      user signs in.
 
 **Account sharing**
 - [ ] A shares an account with B (`guest`, then upgrade to `user`, `admin`):
@@ -3411,6 +3426,48 @@ User C sees none of it.
 - [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot
       ("Dot 1" ... "Dot 9"); Enter or Space picks it (a single tap does the
       same), Clear and Done appear, and Done submits once 4 dots are picked.
+- [ ] Inactivity (ECONUMO_INACTIVE_USER_DAYS=1 on a test server, a user idle for
+      2+ days): after the daily pass the user gets ONE email, is signed out
+      everywhere, and `user:list-pending-deletion` lists them with reason
+      `inactive`.
+- [ ] The same with a connected user who signed in today: the idle user is NOT
+      marked.
+- [ ] Two connected users both marked inactive; one signs in: after the next
+      daily pass the other is no longer in `user:list-pending-deletion`.
+- [ ] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the
+      daily pass; with the setting at 0 they stay until `user:delete`.
+- [ ] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →
+      the CSV of your transactions downloads → Delete my data → the sign-in page says in how
+      many days the data will be deleted (the server's ECONUMO_USER_DELETION_DAYS, "in 1 day"
+      for 1).
+      Every other device is signed out; signing in again cancels the deletion and nothing is lost.
+- [ ] Delete my data with ECONUMO_USER_DELETION_DAYS=0 (the default): the sign-in page says the
+      data will be deleted after a manual review of the request, with no number of days.
+- [ ] Delete my data with ECONUMO_BILLING_URL set: the first step says the subscription is not
+      cancelled right away and links to billing; without the setting that sentence is absent.
+- [ ] Delete my data, passwordless account (provider sign-in only): no password is asked.
+- [ ] Delete my data: a wrong code is refused; the page stays on the code step.
+- [ ] Delete my data, session revoked meanwhile: reach the code step, revoke this session
+      from the Sessions list on another device, then enter the code
+      and press Delete my data: the sign-in page says the session expired (not that the data
+      will be deleted), signing in again shows the account unmarked, and changes refused
+      earlier are still listed under "Not saved" in the Inbox.
+- [ ] Delete my data with the confirm answered 502 (a proxy in front, server stopped right
+      after the request): the page shows the error and stays; any later refused request within
+      10 minutes signs this browser out to "Your data will be deleted…" (the mark may have
+      committed). A wrong code (400) drops that state: a later expired session reads as expired.
+- [ ] 📱 Delete my data, code step: "Delete my data" stays disabled until the CSV download
+      has finished (or failed, with the failure message and "Try the download again"), and
+      while changes made offline are waiting to be sent no download starts and the button
+      says why; once they are sent the download runs and the button enables. Changes listed
+      under "Not saved" do not block it.
+- [ ] Delete my data with the account list failing to load (block
+      `get-account-list` in the browser's dev tools): the code step shows the download
+      failure and "Try the download again"; "Delete my data" is enabled; unblocking and
+      pressing the retry downloads the CSV.
+- [ ] `user:delete <email>` after the above: the partner's shared accounts and budgets are gone,
+      transfers with them show as "Original transaction deleted: ..." on the same dates, and the
+      partner's balances are unchanged.
 
 ## 12a. Connected apps (MCP OAuth)
 
@@ -3550,6 +3607,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       their next tool call still works.
 - [ ] `user:deactivate` for the account makes every connected app's next call
       fail.
+- [ ] `user:deactivate <email>` on the server: an MCP client connected as that user can no longer refresh its access.
 
 ## 13. Cross-cutting & platform
 

@@ -711,7 +711,8 @@
       "budget": "Orçamento",
       "choose_folder": "Escolha uma pasta para esta conta",
       "general_folder_hint": "General (será criada)",
-      "decline_question": "Recusar o acesso a “{name}”?"
+      "decline_question": "Recusar o acesso a “{name}”?",
+      "scheduled_for_deletion": "A eliminação dos dados de {name} está agendada. As contas e os orçamentos que essa pessoa partilha consigo vão desaparecer, e as transferências com as contas dela passarão a ser correções."
     },
     "sync": {
       "failed": "Falha ao sincronizar {source}",
@@ -1114,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Eliminar os meus dados",
+      "header": "Eliminar os meus dados",
+      "explain": {
+        "what": "Isto elimina as suas contas com as respetivas transações, os seus orçamentos, categorias, beneficiários, etiquetas e definições.",
+        "shared": "As pessoas com quem partilha perdem as contas e os orçamentos que partilha com elas. Mantêm os seus próprios dados: as transações que introduziu nas contas delas ficam, com as respetivas descrições, e as transferências entre as suas contas e as delas ficam como correções que mantêm a descrição.",
+        "cancel": "Iniciar sessão novamente antes de os seus dados serem eliminados cancela a eliminação.",
+        "subscription": "A sua subscrição não é cancelada de imediato. Para evitar novas cobranças, cancele-a primeiro na faturação.",
+        "billing_link": "Abrir faturação"
+      },
+      "form": {
+        "password": { "label": "Palavra-passe" },
+        "submit": { "label": "Enviar código de confirmação" }
+      },
+      "confirm": {
+        "information": "Enviámos um código de confirmação para o seu email.",
+        "pending_writes": "Algumas das suas alterações ainda estão à espera de ser enviadas. Aguarde até serem enviadas antes de eliminar os seus dados.",
+        "action": "Eliminar os meus dados",
+        "export": {
+          "done": "As suas transações foram transferidas. O ficheiro contém as transações das suas contas atuais. As contas que eliminou anteriormente não estão incluídas.",
+          "failed": "Não foi possível transferir as suas transações.",
+          "retry": "Tentar transferir novamente",
+          "none": "Não tem contas suas para exportar."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Nome",
@@ -1288,6 +1315,10 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Os seus dados serão eliminados dentro de {count} dia. Inicie sessão antes disso para os manter. | Os seus dados serão eliminados dentro de {count} dias. Inicie sessão antes disso para os manter.",
+      "deletion_scheduled_manual": "Os seus dados serão eliminados após uma análise manual do seu pedido. Inicie sessão antes disso para os manter."
+    },
     "sign_in_failed": {
       "header": "Falha ao iniciar sessão",
       "information": "Verifique o email e a palavra-passe e tente novamente. Se o problema persistir, contacte o suporte."
@@ -2663,7 +2694,9 @@
       "verification_code_invalid": "O código de confirmação não é válido.",
       "verification_code_expired": "O código expirou.",
       "email_unchanged": "O novo email é igual ao atual.",
-      "password_login_disabled": "O início de sessão com palavra-passe está desativado"
+      "password_login_disabled": "O início de sessão com palavra-passe está desativado",
+      "deletion_already_marked": "Este utilizador já está marcado para eliminação.",
+      "deletion_not_marked": "Este utilizador não está marcado para eliminação."
     }
   },
   "emails": {
@@ -2690,6 +2723,14 @@
     "identity_unlinked": {
       "subject": "Método de início de sessão removido",
       "body": "Olá {name},\n\nA sua conta {provider} acabou de ser desassociada da sua conta Econumo e já não pode ser usada para iniciar sessão.\n\nSe não foi você, altere a sua palavra-passe e verifique as contas associadas nas Definições.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Os seus dados do Econumo serão eliminados",
+      "body": "Olá, {name},\n\nDe acordo com a nossa política, eliminamos os dados dos utilizadores inativos há {days} dias. Se pretende manter os seus dados, inicie sessão."
+    },
+    "delete_data": {
+      "subject": "Confirme a eliminação dos seus dados",
+      "body": "Olá, {name},\n\nUtilize este código para confirmar que pretende eliminar os seus dados do Econumo: {code}\n\nO código expira dentro de 10 minutos. Se não fez este pedido, altere a sua palavra-passe."
     }
   }
 }

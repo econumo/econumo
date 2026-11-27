@@ -6,6 +6,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"time"
+
 	appbudget "github.com/econumo/econumo/internal/budget"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/model"
@@ -240,6 +242,8 @@ type budgetUserRepo interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
 	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
 	Save(ctx context.Context, u *model.User) error
+	LockRow(ctx context.Context, userID vo.Id) error
+	ClearOptionIfValue(ctx context.Context, userID vo.Id, name, value string, now time.Time) (int64, error)
 }
 
 // BudgetUserLookup adapts the user repository to budget.UserLookup.
@@ -296,14 +300,13 @@ func (l *BudgetUserLookup) SetActiveBudget(ctx context.Context, userID, budgetID
 }
 
 // ClearActiveBudget clears the user's active-budget option when it points at
-// the given budget.
+// the given budget, in the caller's transaction. The row lock comes first: a
+// profile update saves every option it read, so one that read the old pointer
+// before this clear committed would otherwise write it back.
 func (l *BudgetUserLookup) ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error {
-	u, err := l.users.GetByID(ctx, userID)
-	if err != nil {
+	if err := l.users.LockRow(ctx, userID); err != nil {
 		return err
 	}
-	if !u.ClearBudget(budgetID.String(), l.clock.Now()) {
-		return nil
-	}
-	return l.users.Save(ctx, u)
+	_, err := l.users.ClearOptionIfValue(ctx, userID, model.OptionBudget, budgetID.String(), l.clock.Now())
+	return err
 }

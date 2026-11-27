@@ -711,7 +711,8 @@
       "budget": "Budżet",
       "choose_folder": "Wybierz folder dla tego konta",
       "general_folder_hint": "General (zostanie utworzony)",
-      "decline_question": "Odrzucić dostęp do „{name}”?"
+      "decline_question": "Odrzucić dostęp do „{name}”?",
+      "scheduled_for_deletion": "Usunięcie danych użytkownika {name} zostało zaplanowane. Konta i budżety, które ta osoba Ci udostępnia, znikną, a przelewy z kontami tej osoby staną się korektami."
     },
     "sync": {
       "failed": "Synchronizacja {source} nie powiodła się",
@@ -1114,6 +1115,32 @@
         }
       }
     },
+    "delete_data": {
+      "menu_item": "Usuń moje dane",
+      "header": "Usuń moje dane",
+      "explain": {
+        "what": "Spowoduje to usunięcie Twoich kont wraz z transakcjami, budżetów, kategorii, odbiorców, tagów i ustawień.",
+        "shared": "Osoby, którym udostępniasz dane, tracą konta i budżety, które im udostępniasz. Zachowują własne dane: transakcje, które wprowadzono w ich kontach, pozostają wraz z opisami, a przelewy między Twoimi kontami a ich kontami pozostają jako korekty z zachowanym opisem.",
+        "cancel": "Ponowne zalogowanie się przed usunięciem danych anuluje usunięcie.",
+        "subscription": "Subskrypcja nie jest anulowana od razu. Aby uniknąć kolejnych opłat, najpierw anuluj ją w płatnościach.",
+        "billing_link": "Otwórz płatności"
+      },
+      "form": {
+        "password": { "label": "Hasło" },
+        "submit": { "label": "Wyślij kod potwierdzający" }
+      },
+      "confirm": {
+        "information": "Wysłaliśmy kod potwierdzający na Twój adres e-mail.",
+        "pending_writes": "Niektóre Twoje zmiany wciąż czekają na wysłanie. Poczekaj, aż zostaną wysłane, zanim usuniesz dane.",
+        "action": "Usuń moje dane",
+        "export": {
+          "done": "Twoje transakcje zostały pobrane. Plik zawiera transakcje z Twoich obecnych kont. Kont usuniętych wcześniej w nim nie ma.",
+          "failed": "Nie udało się pobrać Twoich transakcji.",
+          "retry": "Spróbuj pobrać ponownie",
+          "none": "Nie masz własnych kont do wyeksportowania."
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Imię",
@@ -1288,6 +1315,10 @@
     }
   },
   "auth": {
+    "login": {
+      "deletion_scheduled": "Twoje dane zostaną usunięte za {count} dzień. Zaloguj się wcześniej, aby je zachować. | Twoje dane zostaną usunięte za {count} dni. Zaloguj się wcześniej, aby je zachować. | Twoje dane zostaną usunięte za {count} dni. Zaloguj się wcześniej, aby je zachować.",
+      "deletion_scheduled_manual": "Twoje dane zostaną usunięte po ręcznym sprawdzeniu zgłoszenia. Zaloguj się wcześniej, aby je zachować."
+    },
     "sign_in_failed": {
       "header": "Nie udało się zalogować",
       "information": "Sprawdź adres e-mail i hasło, a następnie spróbuj ponownie. Jeśli problem się powtarza, skontaktuj się z pomocą techniczną."
@@ -2663,7 +2694,9 @@
       "verification_code_invalid": "Nieprawidłowy kod potwierdzający.",
       "verification_code_expired": "Kod wygasł.",
       "email_unchanged": "Nowy adres e-mail jest taki sam jak obecny.",
-      "password_login_disabled": "Logowanie hasłem jest wyłączone"
+      "password_login_disabled": "Logowanie hasłem jest wyłączone",
+      "deletion_already_marked": "Ten użytkownik jest już oznaczony do usunięcia.",
+      "deletion_not_marked": "Ten użytkownik nie jest oznaczony do usunięcia."
     }
   },
   "emails": {
@@ -2690,6 +2723,14 @@
     "identity_unlinked": {
       "subject": "Usunięto metodę logowania",
       "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+    },
+    "inactivity_notice": {
+      "subject": "Twoje dane w Econumo zostaną usunięte",
+      "body": "Witaj, {name}!\n\nZgodnie z naszymi zasadami usuwamy dane użytkowników nieaktywnych przez {days} dni. Jeśli chcesz zachować swoje dane, zaloguj się."
+    },
+    "delete_data": {
+      "subject": "Potwierdź usunięcie danych",
+      "body": "Witaj, {name}!\n\nUżyj tego kodu, aby potwierdzić, że chcesz usunąć swoje dane w Econumo: {code}\n\nKod jest ważny przez 10 minut. Jeśli ta prośba nie pochodzi od Ciebie, zmień hasło."
     }
   }
 }

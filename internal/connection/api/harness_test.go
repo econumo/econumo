@@ -127,7 +127,7 @@ func newHarness(t *testing.T) *harness {
 	svc := appconnection.NewService(
 		connectionrepo.NewRepo("sqlite", txm),
 		connectionrepo.NewInviteRepo("sqlite", txm),
-		userOwnerLookup,
+		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm), userrepo.NewDeletionRepo("sqlite", txm)),
 		server.NewConnectionAccountAccessRevoker(accountSvc),
 		server.NewConnectionBudgetRevoker(budgetRepo, budgetSvc),
 		limiter, txm, clock.New(),

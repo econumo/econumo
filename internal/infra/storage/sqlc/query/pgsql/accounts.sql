@@ -63,6 +63,12 @@ ON CONFLICT (account_id, user_id) DO UPDATE SET
 -- Every account the user owns, soft-deleted ones included (the reports).
 SELECT id FROM accounts WHERE user_id = $1 ORDER BY id;
 
+-- name: LockAccountsByOwner :many
+-- Taken by the user wipe: FOR UPDATE conflicts with the FOR KEY SHARE that an
+-- insert referencing the account takes, so no write lands on an account while
+-- its owner is being deleted. Id order keeps concurrent lockers deadlock-free.
+SELECT id FROM accounts WHERE user_id = $1 ORDER BY id FOR UPDATE;
+
 -- name: ReplaceAccountIcon :execrows
 -- A compare-and-set on the icon of a live account: one whose icon changed since
 -- it was read, or that was deleted, is left alone and nothing is written.

@@ -1,13 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router'
 import { logout } from '@/api/user'
-import { clearPendingWrites } from '@/features/pendingWrites/store'
-import { resetAnalyticsIdentity } from '@/lib/analytics'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { clearPersistedQueryCache } from '@/lib/queryPersist'
-import { hasToken, removeToken } from '@/lib/storage'
-import { clearConfig } from '@/features/appLock/config'
+import { hasToken } from '@/lib/storage'
 import { RouterPage } from '@/app/router-pages'
+import { signOutLocally } from './localSignOut'
 
 export function LogoutPage() {
   // Latches the effect body to a single run so a re-render cannot slip in a
@@ -27,13 +24,7 @@ export function LogoutPage() {
       return
     }
     started.current = true
-    const signOutLocally = () => {
-      removeToken()
-      if (!keepAppLock) {
-        clearConfig()
-      }
-    }
-    const clearLocalData = () => Promise.all([clearPersistedQueryCache(), keepQueue ? undefined : clearPendingWrites()])
+    const opts = { keepPendingWrites: keepQueue, keepAppLock }
     const run = async () => {
       let logoutUrl = ''
       if (hasToken()) {
@@ -43,10 +34,8 @@ export function LogoutPage() {
         }
         // the tail flush rides the visibilitychange beacon across the redirect
         trackEvent(METRICS.USER_LOGOUT)
-        // must run after the logout event above, so it still carries the outgoing identity
-        resetAnalyticsIdentity()
-        signOutLocally()
-        await clearLocalData()
+        // must run after the logout event above, so the event still carries the outgoing identity
+        await signOutLocally(opts)
         // A provider that publishes no end-session endpoint (Google, Apple)
         // yields no url, so the local logout above is the whole exit.
         if (logoutUrl) {
@@ -54,8 +43,7 @@ export function LogoutPage() {
           return
         }
       } else {
-        signOutLocally()
-        await clearLocalData()
+        await signOutLocally(opts)
       }
       window.location.assign(RouterPage.LOGIN)
     }

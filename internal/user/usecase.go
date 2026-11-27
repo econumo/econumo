@@ -56,6 +56,12 @@ type Service struct {
 	aiSuggestions         AISuggestionClearer
 	mcpGrants             MCPGrantRevoker
 	appVersion            string
+	deletion              DeletionStore
+	audit                 AuditLog
+	deletionRequests      DeletionRequests
+	deletionCfg           DeletionConfig
+	deletionSender        *mailer.DeletionSender
+	wiper                 DataWiper
 }
 
 func NewService(
@@ -141,6 +147,29 @@ func (s *Service) SetAISuggestionClearer(c AISuggestionClearer) { s.aiSuggestion
 
 func (s *Service) SetAppVersion(v string) { s.appVersion = v }
 
+type DeletionConfig struct {
+	InactiveDays int
+	DeletionDays int
+	Exclude      map[string]bool // model.NormalizeEmail-ed addresses
+}
+
+// SetDeletion installs the deletion stores. Until it is called the passive
+// hooks (the activity stamp, the cancel on sign-in, the deletion-code sweep)
+// are no-ops, which keeps unrelated tests untouched, while an explicit mark
+// fails with an error rather than reporting a success it did not perform.
+func (s *Service) SetDeletion(store DeletionStore, audit AuditLog, requests DeletionRequests, cfg DeletionConfig) {
+	s.deletion = store
+	s.audit = audit
+	s.deletionRequests = requests
+	s.deletionCfg = cfg
+}
+
+func (s *Service) SetDeletionSender(sender *mailer.DeletionSender) { s.deletionSender = sender }
+
+// SetDataWiper installs the other features' part of a wipe. nil leaves the
+// wipe unwired, which the wipe reports as an error.
+func (s *Service) SetDataWiper(w DataWiper) { s.wiper = w }
+
 // Logout revokes the presenting session. The "test" literal is a frozen wire
 // constant clients depend on (see LogoutResult).
 func (s *Service) Logout(ctx context.Context, tokenID vo.Id) (*model.LogoutResult, error) {
@@ -181,9 +210,10 @@ func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *model.Use
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		// The lock comes before the read, because the write below is the WHOLE
 		// aggregate: a row read before a reclaim committed would otherwise be
-		// saved back over it, restoring the password it just replaced. The users
-		// row is the first lock every path takes (the reclaim included), so
-		// these serialize and cannot deadlock.
+		// saved back over it, restoring the password it just replaced. Paths
+		// that lock several rows take budget rows first, then user rows,
+		// ascending by id within each pass (the reclaim takes this one row
+		// only).
 		if err := s.repo.LockRow(ctx, userID); err != nil {
 			return err
 		}
