@@ -704,7 +704,7 @@ func (r *importsrepo.Repo) ClearAppliedRefsToUser(ctx context.Context, userID vo
 func (s *idempotency.Store) DeleteByUser(ctx context.Context, userID vo.Id) error
 ```
 
-- [ ] **Step 1: Failing tests.**
+- [x] **Step 1: Failing tests.**
 
 ```go
 // authserver: U owns app A; U and T both hold grants on A, T has a live eco_oat_ token
@@ -718,9 +718,9 @@ func (s *idempotency.Store) DeleteByUser(ctx context.Context, userID vo.Id) erro
 // idempotency: two keys of U and one of P -> only P's is left.
 ```
 
-- [ ] **Step 2: Run, see FAIL.**
-- [ ] **Step 3: Implement.** `ListOAuthClientIDsByOwner` (`ORDER BY id`), then per id the existing delete path with one addition: after the client lock is taken, re-read the client and skip it when `owner_user_id` is no longer the user (an operator's `app:make-global` in between). Give `deleteApp` an optional expected owner rather than duplicating its locking. Four `UPDATE import_transaction_links SET applied_x_id = NULL WHERE applied_x_id IN (SELECT id FROM <table> WHERE user_id = ?) AND source_id NOT IN (SELECT id FROM import_sources WHERE user_id = ?)` statements (`categories`, `payees`, `tags`, `import_rules`); the user's own links go with the cascade and are left alone, as the test requires. `DeleteIdempotencyKeysByUser`.
-- [ ] **Step 4: Run, PASS. Commit.**
+- [x] **Step 2: Run, see FAIL.**
+- [x] **Step 3: Implement.** `ListOAuthClientIDsByOwner` (`ORDER BY id`), then per id the existing delete path with one addition: after the client lock is taken, re-read the client and skip it when `owner_user_id` is no longer the user (an operator's `app:make-global` in between). Give `deleteApp` an optional expected owner rather than duplicating its locking. Four `UPDATE import_transaction_links SET applied_x_id = NULL WHERE applied_x_id IN (SELECT id FROM <table> WHERE user_id = ?) AND source_id NOT IN (SELECT id FROM import_sources WHERE user_id = ?)` statements (`categories`, `payees`, `tags`, `import_rules`); the user's own links go with the cascade and are left alone, as the test requires. `DeleteIdempotencyKeysByUser`.
+- [x] **Step 4: Run, PASS. Commit.**
 
 ---
 
