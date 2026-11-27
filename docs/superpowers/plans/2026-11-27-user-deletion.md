@@ -652,7 +652,7 @@ type WipeCorrection struct { // passed by pointer: a NULL amount_recipient leg g
 **Interfaces:**
 - Produces: `func (s *ManageService) MoveSharedCustomCurrencies(ctx context.Context, userID vo.Id) error`.
 
-- [ ] **Step 1: Failing tests.**
+- [x] **Step 1: Failing tests.**
 
 ```go
 // TestMove_ToTheOnlyForeignOwner: U's custom "PTS" is the currency of P's budget.
@@ -669,9 +669,26 @@ type WipeCorrection struct { // passed by pointer: a NULL amount_recipient leg g
 //   same for a currency referenced by an element, a debt, and an account T owns.
 ```
 
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/currency/... -run 'TestMove|TestCurrencyList_Owned' -count=1`
-- [ ] **Step 3: Implement.** Queries: `ListLiveAndDeletedCustomCurrencyIDsByOwner`, `FirstForeignOwnerOfCurrency :one` (one statement: `SELECT owner FROM (accounts.user_id UNION budgets.user_id UNION owner of the budget of budgets_elements UNION owner of the budget of debts, each filtered on currency_id) o WHERE owner <> ? ORDER BY owner LIMIT 1`; PostgreSQL 17 has no `MIN(uuid)`; no row = nobody else uses it), `MoveCurrency` (`UPDATE currencies SET user_id = ?, is_deleted = ? WHERE id = ?`), and the existing `OwnerCurrencyCodeExists` for the collision. Extend `GetUserCurrencyListView` with four more `OR c.id IN (...)` arms keyed on the caller owning the account / budget / budget of the element / budget of the debt.
-- [ ] **Step 4: Run, PASS, on sqlite AND with the PostgreSQL command** (the owner query is the engine-sensitive one); **run `go test ./internal/test/apiparity/ -count=1`** (the list query changed; goldens must not move). **Commit.**
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/currency/... -run 'TestMove|TestCurrencyList_Owned' -count=1`
+- [x] **Step 3: Implement.** Queries: `ListLiveAndDeletedCustomCurrencyIDsByOwner`, `FirstForeignOwnerOfCurrency :one` (one statement: `SELECT owner FROM (accounts.user_id UNION budgets.user_id UNION owner of the budget of budgets_elements UNION owner of the budget of debts, each filtered on currency_id) o WHERE owner <> ? ORDER BY owner LIMIT 1`; PostgreSQL 17 has no `MIN(uuid)`; no row = nobody else uses it), `MoveCurrency` (`UPDATE currencies SET user_id = ?, is_deleted = ? WHERE id = ?`), and the existing `OwnerCurrencyCodeExists` for the collision. Extend `GetUserCurrencyListView` with four more `OR c.id IN (...)` arms keyed on the caller owning the account / budget / budget of the element / budget of the debt.
+- [x] **Step 4: Run, PASS, on sqlite AND with the PostgreSQL command** (the owner query is the engine-sensitive one); **run `go test ./internal/test/apiparity/ -count=1`** (the list query changed; goldens must not move). **Commit.**
+
+### Task 11b: envelopes accept only a usable currency
+
+Found by the automated security review of Task 11. `CreateEnvelope` and `UpdateEnvelope` (`internal/budget/envelopes.go`) take a `currencyId` and never call `EnsureUsable`, unlike `ChangeElementCurrency`, `CreateBudget` and `UpdateBudget`. A caller can therefore attach ANY existing currency id, including another user's custom currency, to an envelope in their own budget. Task 11 made that matter: the currency list now shows a currency an element of the caller's own budget references, and the wipe moves such a currency to the referencing owner.
+
+**Files:**
+- Modify: `internal/budget/envelopes.go`
+- Test: `internal/budget/envelopes_test.go` (or the existing envelope test file)
+
+**Interfaces:**
+- Consumes: the budget service's existing `s.currency.EnsureUsable(ctx, userID, currencyID string) error`.
+
+- [ ] **Step 1: Failing tests.** `TestCreateEnvelope_RefusesAForeignCustomCurrency`: user P creates an envelope in P's budget with the id of a custom currency owned by another user U -> the same validation error `ChangeElementCurrency` returns for that case (field `currencyId`, code `errs.CodeCurrencyNotAvailable`), no envelope row written. `TestUpdateEnvelope_RefusesAForeignCustomCurrency`: changing an existing envelope's currency to U's custom currency is refused the same way; updating the envelope's NAME while it already carries a currency the caller could not pick today (seeded directly) still succeeds, because the check runs only when the currency changes. A global currency and the caller's own custom currency are accepted in both.
+- [ ] **Step 2: Run, see FAIL.** `go test ./internal/budget/ -run 'Envelope_Refuses' -count=1`
+- [ ] **Step 3: Implement:** in `CreateEnvelope` always, and in `UpdateEnvelope` only when the requested currency differs from the element's current one, call `s.currency.EnsureUsable` with the CALLER's id, as `ChangeElementCurrency` in `internal/budget/accounts.go` does.
+- [ ] **Step 4: Run** `go test ./internal/budget/... ./internal/test/apiparity/ ./internal/test/mcpparity/ -count=1` (goldens must not move). PASS.
+- [ ] **Step 5: Commit** `fix: Envelopes accept only a currency the caller may use`.
 
 ### Task 12: authserver, imports, idempotency
 
