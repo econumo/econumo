@@ -761,7 +761,7 @@ func NewUserDataWiper(...) *UserDataWiper // consumer-side interfaces, one per f
 var ErrWipeSetChanged = errors.New("wipe: the set of budgets changed while locking")
 ```
 
-- [ ] **Step 1: Failing test** `TestUserDataWiper_Order` with recording fakes for each consumer interface:
+- [x] **Step 1: Failing test** `TestUserDataWiper_Order` with recording fakes for each consumer interface:
 
 ```go
 // LockBudgets: budgets = sorted distinct union of budget.WipeBudgetIDs(U) and
@@ -778,9 +778,9 @@ var ErrWipeSetChanged = errors.New("wipe: the set of budgets changed while locki
 //   the set and locking it) it returns server.ErrWipeSetChanged before changing anything
 ```
 
-- [ ] **Step 2: Run, see FAIL.**
-- [ ] **Step 3: Implement** `UserDataWiper`; move the body of `Build` into `BuildWithServices` (`Build` returns its first three fields); in it, after every service exists, call `userSvc.SetDeletion(userrepo.NewDeletionRepo(...), userrepo.NewAuditRepo(...), userrepo.NewDeletionRequestRepo(...), appuser.DeletionConfig{...from cfg})` and `userSvc.SetDataWiper(NewUserDataWiper(...))`. In `internal/cli/container.go` call the same `SetDeletion` (no wiper) and add `func (c *container) fullUser() (*appuser.Service, error)` that lazily runs `server.BuildWithServices(c.cfg, c.db, server.Seams{})` and returns `.Users`.
-- [ ] **Step 4: Run** `go test ./internal/server/ ./internal/cli/ -count=1` and `go test ./internal/test/archtest/ -count=1`. PASS. **Commit.**
+- [x] **Step 2: Run, see FAIL.**
+- [x] **Step 3: Implement** `UserDataWiper`; move the body of `Build` into `BuildWithServices` (`Build` returns its first three fields); in it, after every service exists, call `userSvc.SetDeletion(userrepo.NewDeletionRepo(...), userrepo.NewAuditRepo(...), userrepo.NewDeletionRequestRepo(...), appuser.DeletionConfig{...from cfg})` and `userSvc.SetDataWiper(NewUserDataWiper(...))`. In `internal/cli/container.go` call the same `SetDeletion` (no wiper) and add `func (c *container) fullUser() (*appuser.Service, error)` that lazily runs `server.BuildWithServices(c.cfg, c.db, server.Seams{})` and returns `.Users`.
+- [x] **Step 4: Run** `go test ./internal/server/ ./internal/cli/ -count=1` and `go test ./internal/test/archtest/ -count=1`. PASS. **Commit.**
 
 ### Task 14: the wipe use case and its fixture test
 
