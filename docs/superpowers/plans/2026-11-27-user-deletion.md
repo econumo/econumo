@@ -1117,7 +1117,7 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
   - `confirm.export.none`: `You have no accounts of your own to export.`
   - `done.text`: `Your data will be deleted within a month. Sign in before then to keep it.` (shown on the login page, key `auth.login.deletion_scheduled`)
 
-- [ ] **Step 1: Failing tests** (`DeleteDataPage.test.tsx`, msw as in `ChangeEmailPage.test.tsx`):
+- [x] **Step 1: Failing tests** (`DeleteDataPage.test.tsx`, msw as in `ChangeEmailPage.test.tsx`):
 
 ```tsx
 // password user: submitting without a password shows "Required field"; with one, POSTs
@@ -1147,26 +1147,26 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 // the billing link is rendered only when window.econumoConfig.BILLING_URL is set
 ```
 
-- [ ] **Step 2: Run, FAIL.** `cd web && pnpm test src/features/settings/DeleteDataPage.test.tsx`
-- [ ] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase is shown AND the account list has loaded; no resend button (requesting again from the first phase replaces the code). On a successful confirm the page does not wait for a click: it awaits `signOutLocally()` and then `window.location.assign('/login?reason=deletion-scheduled')`; the server has already revoked the session, and a closed tab must not leave the cached data behind. `LoginPage.tsx` renders the done text for that reason next to its existing `reason=expired` notice. There is no `done` phase on the page. Two guards around the confirm: (1) it is disabled while the offline write queue is not empty (the hook the sync indicator in `ApplicationLayout.tsx` reads): sign-out clears that queue and the CSV holds server rows only, so unsent changes would be lost even if the user later cancels by signing in; (2) the page stores the current time under `localStorage['econumo.deletionCleanup']` before sending the confirm and removes it on a refused confirm and after a completed clean-up; the 401 interceptor in `web/src/api/client.ts` checks it and, when it is younger than 10 minutes (the code's lifetime; a mark cannot commit later than that), runs `signOutLocally()` and goes to `/login?reason=deletion-scheduled` instead of its usual token-only handling, so a tab that died between the server's commit and the response still gets its local data cleared. An older flag is removed and ignored, which is what keeps an ordinary expired session, months later, from being mistaken for a deletion. Other requests' successes do not clear it: a request that authenticated before the mark can still succeed after it.
-- [ ] **Step 4: Run** the test file, `pnpm test src/lib/metrics-coverage.test.ts src/lib/offline-coverage.test.ts src/lib/offline-notice-coverage.test.ts`, `pnpm lint`, `pnpm exec tsc -b`. PASS.
-- [ ] **Step 5: i18n** in all 11 catalogues; `go test ./internal/test/i18ntest/ -count=1`.
-- [ ] **Step 6: Regression plan** (section 12):
+- [x] **Step 2: Run, FAIL.** `cd web && pnpm test src/features/settings/DeleteDataPage.test.tsx`
+- [x] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase is shown AND the account list has loaded; no resend button (requesting again from the first phase replaces the code). On a successful confirm the page does not wait for a click: it awaits `signOutLocally()` and then `window.location.assign('/login?reason=deletion-scheduled')`; the server has already revoked the session, and a closed tab must not leave the cached data behind. `LoginPage.tsx` renders the done text for that reason next to its existing `reason=expired` notice. There is no `done` phase on the page. Two guards around the confirm: (1) it is disabled while the offline write queue is not empty (the hook the sync indicator in `ApplicationLayout.tsx` reads): sign-out clears that queue and the CSV holds server rows only, so unsent changes would be lost even if the user later cancels by signing in; (2) the page stores the current time under `localStorage['econumo.deletionCleanup']` before sending the confirm and removes it on a refused confirm and after a completed clean-up; the 401 interceptor in `web/src/api/client.ts` checks it and, when it is younger than 10 minutes (the code's lifetime; a mark cannot commit later than that), runs `signOutLocally()` and goes to `/login?reason=deletion-scheduled` instead of its usual token-only handling, so a tab that died between the server's commit and the response still gets its local data cleared. An older flag is removed and ignored, which is what keeps an ordinary expired session, months later, from being mistaken for a deletion. Other requests' successes do not clear it: a request that authenticated before the mark can still succeed after it.
+- [x] **Step 4: Run** the test file, `pnpm test src/lib/metrics-coverage.test.ts src/lib/offline-coverage.test.ts src/lib/offline-notice-coverage.test.ts`, `pnpm lint`, `pnpm exec tsc -b`. PASS.
+- [x] **Step 5: i18n** in all 11 catalogues; `go test ./internal/test/i18ntest/ -count=1`.
+- [x] **Step 6: Regression plan** (section 12):
 
 ```
-- [ ] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →
+- [x] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →
       the CSV of your transactions downloads → Delete my data → the sign-in page says the data
       will be deleted.
       Every other device is signed out; signing in again cancels the deletion and nothing is lost.
-- [ ] Delete my data, passwordless account (provider sign-in only): no password is asked.
-- [ ] Delete my data: a wrong code is refused; the page stays on the code step.
-- [ ] `user:delete <email>` after the above: the partner's shared accounts and budgets are gone,
+- [x] Delete my data, passwordless account (provider sign-in only): no password is asked.
+- [x] Delete my data: a wrong code is refused; the page stays on the code step.
+- [x] `user:delete <email>` after the above: the partner's shared accounts and budgets are gone,
       transfers with them show as "Original transaction deleted: ..." on the same dates, and the
       partner's balances are unchanged.
 ```
 
-- [ ] **Step 7: `CLAUDE.md`.** Add a "User deletion" bullet list under Domain behaviours (mark then wipe; the three ways to mark; the household rule; the wipe's lock order and that every cross-feature step is a method on the owning feature sequenced in `glue_user_wipe.go`; `users_audit`; the schema guard `internal/test/wipeguard`), the three env vars under Configuration, and the two routes to the read-only allowlist sentence. Keep it under 20 lines.
-- [ ] **Step 8: Commit.**
+- [x] **Step 7: `CLAUDE.md`.** Add a "User deletion" bullet list under Domain behaviours (mark then wipe; the three ways to mark; the household rule; the wipe's lock order and that every cross-feature step is a method on the owning feature sequenced in `glue_user_wipe.go`; `users_audit`; the schema guard `internal/test/wipeguard`), the three env vars under Configuration, and the two routes to the read-only allowlist sentence. Keep it under 20 lines.
+- [x] **Step 8: Commit.**
 
 ---
 
