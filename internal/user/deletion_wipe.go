@@ -195,7 +195,10 @@ func (s *Service) inactiveMarkStillAllowed(ctx context.Context, userID vo.Id) (b
 		return false, nil
 	}
 	active, err := s.deletion.HasActiveConnection(ctx, userID, s.inactiveCutoff())
-	return !active, err
+	if err != nil {
+		return false, err
+	}
+	return !active, nil
 }
 
 // inactiveCutoff: the stamp has day precision, so the extra day keeps both
