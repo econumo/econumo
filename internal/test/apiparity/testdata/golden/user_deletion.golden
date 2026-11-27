@@ -1,0 +1,15 @@
+== err:request-user-deletion-wrong-password POST /api/v1/user/request-user-deletion [owner] -> 400
+{"success":false,"message":"Password is not correct","code":400,"errors":{}}
+
+== request-user-deletion POST /api/v1/user/request-user-deletion [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:confirm-user-deletion-bad-code POST /api/v1/user/confirm-user-deletion [owner] -> 400
+{"success":false,"message":"The confirmation code is not valid.","code":400,"errors":{}}
+
+== err:confirm-user-deletion-blank-code POST /api/v1/user/confirm-user-deletion [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"code":["This value should not be blank."]}}
+
+== readonly:request-user-deletion POST /api/v1/user/request-user-deletion [readonly] -> 200
+{"success":true,"message":"","data":{}}
+

@@ -95,6 +95,9 @@ const (
 	// not a cap: it records the last change-email code send per user for the
 	// resend cooldown. It carries no configured limit.
 	RateScopeEmailChangeSent = "email-change-sent"
+
+	RateScopeRequestUserDeletion = "request-user-deletion"
+	RateScopeConfirmUserDeletion = "confirm-user-deletion"
 )
 
 // OAuthReclaimer is the oauth feature's side of an account reclaim. Completing

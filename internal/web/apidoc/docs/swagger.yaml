@@ -694,6 +694,13 @@ definitions:
     type: object
   model.ConfirmEmailResult:
     type: object
+  model.ConfirmUserDeletionRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  model.ConfirmUserDeletionResult:
+    type: object
   model.ConnectedAppResult:
     properties:
       clientName:
@@ -3185,6 +3192,13 @@ definitions:
         type: string
     type: object
   model.RequestEmailChangeResult:
+    type: object
+  model.RequestUserDeletionRequest:
+    properties:
+      password:
+        type: string
+    type: object
+  model.RequestUserDeletionResult:
     type: object
   model.ResendEmailChangeCodeResult:
     type: object
@@ -12275,6 +12289,53 @@ paths:
       summary: Confirm an email change
       tags:
       - User
+  /api/v1/user/confirm-user-deletion:
+    post:
+      consumes:
+      - application/json
+      description: Confirms the deletion with the emailed code and marks the user
+        for deletion, which signs them out everywhere. Signing in again before the
+        wipe cancels it. Returns an empty success envelope.
+      parameters:
+      - description: Confirm user deletion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ConfirmUserDeletionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ConfirmUserDeletionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Confirm deleting the user's data
+      tags:
+      - User
   /api/v1/user/create-billing-link:
     post:
       consumes:
@@ -12714,6 +12775,53 @@ paths:
       security:
       - Bearer: []
       summary: Request an email change
+      tags:
+      - User
+  /api/v1/user/request-user-deletion:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the password (an empty one for a user without a password,
+        or when password sign-in is disabled on the server) and emails a code that
+        confirms the deletion. Returns an empty success envelope.
+      parameters:
+      - description: Request user deletion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RequestUserDeletionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RequestUserDeletionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Request deleting the user's data
       tags:
       - User
   /api/v1/user/resend-email-change-code:
