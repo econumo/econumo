@@ -90,3 +90,46 @@ func TestUpdateEnvelope_RefusesAForeignCustomCurrency(t *testing.T) {
 		t.Fatalf("renaming an envelope that keeps its currency: %v", err)
 	}
 }
+
+// memberOfBudgetInOwnersCustomCurrency moves the harness budget to the owner's
+// custom currency and returns a member with write access to it.
+func (h *debtHarness) memberOfBudgetInOwnersCustomCurrency(t *testing.T) (vo.Id, string) {
+	t.Helper()
+	custom := h.ownCustomCurrency(t)
+	if _, err := h.tdb.Raw.ExecContext(h.ctx, h.tdb.Rebind("UPDATE budgets SET currency_id = ? WHERE id = ?"), custom, h.budgetID); err != nil {
+		t.Fatal(err)
+	}
+	member := h.f.User(fixture.User{Name: "Member", Email: "member@envelope-currency.test"})
+	h.f.BudgetAccess(h.budgetID, member, 1, true)
+	return vo.MustParseId(member), custom
+}
+
+func TestCreateEnvelope_MemberMayUseTheBudgetsOwnCurrency(t *testing.T) {
+	h := newDebtHarness(t)
+	member, custom := h.memberOfBudgetInOwnersCustomCurrency(t)
+
+	id := vo.NewId().String()
+	if _, err := h.svc.CreateEnvelope(h.ctx, member, model.CreateEnvelopeRequest{
+		BudgetId: h.budgetID, Id: id, Name: "Housing", Icon: "home", CurrencyId: custom,
+	}); err != nil {
+		t.Fatalf("CreateEnvelope in the budget's currency: %v", err)
+	}
+	if got := h.elementCurrency(t, id); got != custom {
+		t.Errorf("element currency = %s, want %s", got, custom)
+	}
+}
+
+func TestUpdateEnvelope_MemberMayMoveToTheBudgetsOwnCurrency(t *testing.T) {
+	h := newDebtHarness(t)
+	housing := h.envelope(t, "Housing")
+	member, custom := h.memberOfBudgetInOwnersCustomCurrency(t)
+
+	if _, err := h.svc.UpdateEnvelope(h.ctx, member, model.UpdateEnvelopeRequest{
+		BudgetId: h.budgetID, Id: housing, Name: "Housing", Icon: "home", CurrencyId: custom,
+	}); err != nil {
+		t.Fatalf("UpdateEnvelope to the budget's currency: %v", err)
+	}
+	if got := h.elementCurrency(t, housing); got != custom {
+		t.Errorf("element currency = %s, want %s", got, custom)
+	}
+}
