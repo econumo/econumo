@@ -24,8 +24,8 @@ lifetime-access customer get lifetime access back, once.
 - Lifetime access survives deletion: registering again with the same email grants it again,
   one time per deletion and only to someone who proved the mailbox.
 - Billing can learn about wiped users by polling, and cancel subscriptions on its side.
-- Inactivity marking is off by default; specific users can be excluded; a user whose household
-  is still active is never marked for inactivity.
+- Inactivity marking is off by default; specific users can be excluded; a user connected
+  to an active user is never marked or wiped for inactivity.
 - A wipe either completes or changes nothing, and a wipe that cannot complete is visible to the
   operator.
 
@@ -92,7 +92,7 @@ Events now:
 | event | details | `email_hash` |
 |---|---|---|
 | `deletion_marked` | `{"reason": "self_initiated" \| "inactive" \| "cli"}` | NULL |
-| `deletion_cancelled` | `{"reason": <the mark's reason>}` (sign-in removed the mark) | NULL |
+| `deletion_cancelled` | `{"reason": <the mark's reason>, "cause": "sign_in" \| "active_connection"}` | NULL |
 | `deleted` | `{"reason": <the mark's reason>, "lifetimeAccess": true \| false}` | set only when `lifetimeAccess` is true |
 | `lifetime_regranted` | `{"fromUserId": <the wiped user's id>}`; `user_id` is the NEW user | set |
 
@@ -141,10 +141,27 @@ an error for the CLI and impossible from the API (no session survives the mark).
   ACTIVE connected user is marked with reason `inactive` and receives ONE email: "Under our
   policy we delete the data of users inactive for <period>. If you want to keep your data,
   sign in." (11 catalogues; period rendered from the setting; includes `ECONUMO_URL` when set).
-- Household rule: a user connected (`users_connections`) to anyone whose own `last_active_at`
-  is within the threshold is skipped. The owner of a budget or account may never sign in while
-  their partner uses that data every day; inactivity is a property of the household, not of
-  one login. When everyone in a household is inactive, each member is marked and emailed.
+- Household rule (agreed 2026-11-26): a user is neither marked nor wiped for inactivity while
+  a connected user is active. "Active connection" has one definition, used everywhere below:
+  a row in `users_connections` to a user who is NOT marked and whose own `last_active_at` is
+  within `ECONUMO_INACTIVE_USER_DAYS`. A marked partner does not count: someone who just asked
+  for their own deletion must not keep the other alive. Direct connections only, shared data
+  or not. The owner of a budget or account may never sign in while their partner uses that
+  data every day; inactivity is a property of the household, not of one login.
+- The rule guards three moments, because a household can change after the mark:
+  1. marking: the job skips a user with an active connection;
+  2. release: every daily pass cancels `inactive` marks of users who now have an active
+     connection (`deletion_cancelled`, cause `active_connection`, no email). Typical case:
+     both partners were marked, one signed in. This step runs whatever
+     `ECONUMO_USER_DELETION_DAYS` is, so the pending list and the partner's Inbox row stay
+     true when wipes are manual;
+  3. wipe: the same check runs inside the wipe transaction (step 1), for the job,
+     `user:purge-deleted` and `user:delete` alike. An `inactive` mark with an active connection
+     is cancelled instead of wiped.
+- When everyone in a household is inactive, each member is marked and emailed. If the household
+  goes quiet again after a release, its members are marked and emailed again.
+- The rule is about the `inactive` reason only. A user who asked for deletion themselves is
+  wiped whatever their partners do, and so is a user marked from the CLI.
 - A failed send logs a WARN and leaves the user unmarked, to retry on the next pass; nobody is
   marked without the notice going out. The console transport counts as sent.
 - Paying users are not exempt.
@@ -155,13 +172,18 @@ an error for the CLI and impossible from the API (no session survives the mark).
 user:mark-deleted <email>         # mark with reason cli; no email
 user:list-pending-deletion        # marked users: id, email, reason, marked at, auto-wipe date (or "manual")
 user:delete <email>               # wipe now; refuses a user who is not marked
-user:purge-deleted                # one pass of the wipe job, by hand
+user:purge-deleted                # one pass of the release + wipe job, by hand
 ```
+
+`user:delete` on an `inactive` mark that the household rule cancels says so ("not deleted: a
+connected user is active; the mark was removed") and exits non-zero. An operator who wants
+that user gone anyway runs `user:mark-deleted` (reason `cli`, outside the rule) and then
+`user:delete`: the override is a deliberate second command, not a flag.
 
 `user:delete` prints why a wipe failed and exits non-zero. `user:purge-deleted` continues past
 a failed user, prints one line per failure (user id and the reason) and exits non-zero when any
-failed. With `ECONUMO_USER_DELETION_DAYS=0` these two commands are the only way a wipe runs, so
-their exit code is how a stuck wipe is noticed.
+failed. With `ECONUMO_USER_DELETION_DAYS=0` nothing is wiped by age, so `user:delete` is the
+only way a wipe runs and its exit code is how a stuck wipe is noticed.
 
 ## Activity and cancelling a mark
 
@@ -182,9 +204,10 @@ PostgreSQL it waits behind a holder of that lock, which is correct.
 
 Session creation (`createSession`, the one place sessions are minted: password login, provider
 handoff, login after a password reset) clears `deletion_marked_at` and `deletion_reason` on a
-marked user and writes `deletion_cancelled`, inside the row lock it already takes. No sign-in
-flow is listed by hand, so a flow added later cancels the mark too. Tokens revoked at marking
-are not restored. Data was never touched.
+marked user and writes `deletion_cancelled` (cause `sign_in`), inside the row lock it already
+takes. No sign-in flow is listed by hand, so a flow added later cancels the mark too. The
+other way a mark goes is the household rule (cause `active_connection`, see Inactivity).
+Either way tokens revoked at marking are not restored, and data was never touched.
 
 ## What connected users see while a user is marked
 
@@ -226,6 +249,8 @@ user stays marked for the next pass or the next `user:delete`.
 ### Steps
 
 1. Take the locks above; re-check the user is still marked (a sign-in may have cancelled it).
+   For reason `inactive`, check the household rule here, under the lock: with an active
+   connection the mark is cancelled, the transaction commits that and nothing else.
 2. Read `lifetimeAccess` = `access_level = full AND access_until IS NULL`, and the email.
 3. Unwind sharing, selected by ACCESS ROWS, not by `users_connections` (an access row without a
    connection must not survive as an orphan):
@@ -406,9 +431,13 @@ refused-token path clears IndexedDB and the persisted query cache.
 ## Daily job
 
 In-process like `currency/rateupdater`, started by `serve`: shortly after boot, then every 24 h,
-single-flight. Order: wipe expired marks, then inactivity marking. Each user is independent; a
-failed inactivity mark logs a WARN with the user id (never the email) and continues, a failed
-wipe logs an ERROR (see "When a wipe fails"). `user:purge-deleted` runs the wipe step only.
+single-flight. Order: release `inactive` marks the household rule no longer allows, wipe
+expired marks (skipped when `ECONUMO_USER_DELETION_DAYS` is 0), then inactivity marking. The
+release runs first so a partner who came back saves the other before any wipe is tried. Each
+user is independent; a failed release or inactivity mark logs a WARN with the user id (never
+the email) and continues, a failed wipe logs an ERROR (see "When a wipe fails").
+`user:purge-deleted` runs the release and the wipe step by hand, with the same age rule: at 0
+it releases and wipes nobody.
 
 ## Rules this change must follow
 
@@ -445,9 +474,12 @@ comment rules.
   on the `deleted` row.
 - **Email hash**: only on lifetime rows (chosen) vs on every event (a deleted free user would
   stay testable against an address list forever, for no feature).
-- **Inactivity and households**: skip a user connected to an active user (chosen; one join) vs
-  counting other users' writes into the user's accounts and budgets as activity (an activity
-  write on every partner write) vs marking anyway and relying on the Inbox notice.
+- **Inactivity and households**: never mark or wipe a user connected to an active user
+  (chosen; one join, checked at marking, daily and inside the wipe) vs counting only partners
+  who share an account or budget (more precise, a larger query, and wrong on the unsafe side
+  when a share is missed) vs counting other users' writes into the user's accounts and budgets
+  as activity (an activity write on every partner write) vs marking anyway and relying on the
+  Inbox notice (the partner can only watch).
 - **Subscription cancel**: billing polls `deleted-users` (chosen) vs Econumo calling billing.
 - **Scheduling**: in-process daily job + CLI (chosen) vs host cron; the image has no cron.
 
@@ -461,8 +493,10 @@ comment rules.
 - Recurring templates the user made on partners' accounts are deleted with the user, and so
   are partners' templates that transfer into the user's accounts.
 - Correction description is English, like the existing account-deleted correction.
-- NEW: inactivity never marks a user who is connected to an active user. Alternative: only
-  partners who actually share an account or budget count.
+- AGREED 2026-11-26: a user connected to an active user is neither marked nor wiped for
+  inactivity. Mine, on top of that: a marked partner does not count as active; direct
+  connections only (A-B-C with only C active protects B, not A); `user:delete` obeys the rule
+  too, and the operator's override is `user:mark-deleted` first.
 - NEW: connected users see an Inbox row while a user is marked, without a date. It tells a
   partner that the user asked for deletion. Alternative: no notice at all.
 - NEW: the email hash is kept only for deleted lifetime customers.
