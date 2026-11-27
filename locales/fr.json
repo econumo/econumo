@@ -1118,7 +1118,7 @@
     "inactivity": {
       "menu_item": "Supprimer mon compte en cas d’inactivité",
       "header": "Supprimer mon compte en cas d’inactivité",
-      "information": "Si vous n’utilisez pas Econumo pendant cette durée, nous vous envoyons un e-mail, puis nous supprimons vos données. Vous connecter les conserve.",
+      "information": "Si vous n’utilisez pas Econumo pendant cette durée, nous vous envoyons un e-mail, puis nous supprimons vos données. Il suffit de vous connecter pour les conserver.",
       "months": "{count} mois | {count} mois"
     },
     "delete_data": {

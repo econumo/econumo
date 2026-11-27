@@ -1118,7 +1118,7 @@
     "inactivity": {
       "menu_item": "Usuń moje konto po okresie bezczynności",
       "header": "Usuń moje konto po okresie bezczynności",
-      "information": "Jeśli nie korzystasz z Econumo przez ten czas, wyślemy Ci e-mail, a potem usuniemy Twoje dane. Zalogowanie się je zachowuje.",
+      "information": "Jeśli nie korzystasz z Econumo przez ten czas, wyślemy Ci e-mail, a potem usuniemy Twoje dane. Jeśli się zalogujesz, zostaną zachowane.",
       "months": "{count} miesiąc | {count} miesiące | {count} miesięcy"
     },
     "delete_data": {

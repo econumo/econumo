@@ -1118,7 +1118,7 @@
     "inactivity": {
       "menu_item": "Konto bei Inaktivität löschen",
       "header": "Konto bei Inaktivität löschen",
-      "information": "Wenn Sie Econumo so lange nicht nutzen, senden wir Ihnen eine E-Mail und löschen dann Ihre Daten. Eine Anmeldung bewahrt sie.",
+      "information": "Wenn Sie Econumo so lange nicht nutzen, senden wir Ihnen eine E-Mail und löschen dann Ihre Daten. Wenn Sie sich anmelden, bleiben sie erhalten.",
       "months": "{count} Monat | {count} Monate"
     },
     "delete_data": {

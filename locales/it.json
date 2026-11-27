@@ -1118,7 +1118,7 @@
     "inactivity": {
       "menu_item": "Elimina il mio account se inattivo",
       "header": "Elimina il mio account se inattivo",
-      "information": "Se non usi Econumo per questo periodo, ti inviamo un'email e poi eliminiamo i tuoi dati. Accedere li mantiene.",
+      "information": "Se non usi Econumo per questo periodo, ti inviamo un'email e poi eliminiamo i tuoi dati. Se accedi, vengono mantenuti.",
       "months": "{count} mese | {count} mesi"
     },
     "delete_data": {

@@ -1118,7 +1118,7 @@
     "inactivity": {
       "menu_item": "Eliminar a minha conta quando inativa",
       "header": "Eliminar a minha conta quando inativa",
-      "information": "Se não utilizar o Econumo durante este tempo, enviamos-lhe um email e depois eliminamos os seus dados. Iniciar sessão mantém-nos.",
+      "information": "Se não utilizar o Econumo durante este tempo, enviamos-lhe um email e depois eliminamos os seus dados. Se iniciar sessão, os dados são mantidos.",
       "months": "{count} mês | {count} meses"
     },
     "delete_data": {

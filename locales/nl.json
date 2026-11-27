@@ -1118,7 +1118,7 @@
     "inactivity": {
       "menu_item": "Mijn account verwijderen bij inactiviteit",
       "header": "Mijn account verwijderen bij inactiviteit",
-      "information": "Als u Econumo zo lang niet gebruikt, sturen we u een e-mail en verwijderen we daarna uw gegevens. Inloggen houdt ze bewaard.",
+      "information": "Als u Econumo zo lang niet gebruikt, sturen we u een e-mail en verwijderen we daarna uw gegevens. Als u inlogt, blijven ze bewaard.",
       "months": "{count} maand | {count} maanden"
     },
     "delete_data": {
