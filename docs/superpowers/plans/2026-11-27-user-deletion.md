@@ -501,10 +501,10 @@ Every method in this phase runs on the caller's transaction context (a nested `W
 - Consumes: existing `(*Service).LockBudget(ctx, budgetID vo.Id) error`, `(*Service).ReleaseCategory(ctx, id vo.Id) error`, `repo.ListByElement`.
 - Produces: `func (s *Service) BudgetIDsOfCategories(ctx context.Context, ids ...vo.Id) ([]vo.Id, error)` (distinct, sorted by id) and `func (s *Service) HoldsBudgetLock(ctx context.Context, budgetID vo.Id) bool` (the repo's existing check, exported for Task 13).
 
-- [ ] **Step 1: Failing test** `TestBudgetIDsOfCategories`: two categories with debts in budgets B2 and B1 (one debt paid off, one active) and a third category without debts -> returns `[B1, B2]` sorted; no categories -> empty slice, nil error. Second test `TestReleaseCategory_AfterExplicitLocks`: inside one `WithTx`, `LockBudget` on each id returned, then `ReleaseCategory(cat)` deletes the debts and returns nil (this is the sequence the wipe uses).
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/debt/ -run 'TestBudgetIDsOfCategories|TestReleaseCategory_AfterExplicitLocks' -count=1`
-- [ ] **Step 3: Implement** from the lookup `LockForCategories` already does, without locking.
-- [ ] **Step 4: Run, see PASS. Commit.**
+- [x] **Step 1: Failing test** `TestBudgetIDsOfCategories`: two categories with debts in budgets B2 and B1 (one debt paid off, one active) and a third category without debts -> returns `[B1, B2]` sorted; no categories -> empty slice, nil error. Second test `TestReleaseCategory_AfterExplicitLocks`: inside one `WithTx`, `LockBudget` on each id returned, then `ReleaseCategory(cat)` deletes the debts and returns nil (this is the sequence the wipe uses).
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/debt/ -run 'TestBudgetIDsOfCategories|TestReleaseCategory_AfterExplicitLocks' -count=1`
+- [x] **Step 3: Implement** from the lookup `LockForCategories` already does, without locking.
+- [x] **Step 4: Run, see PASS. Commit.**
 
 ### Task 8: budget
 
