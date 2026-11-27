@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -19,10 +18,11 @@ func (s *Service) DeleteAppsOwnedBy(ctx context.Context, userID vo.Id) error {
 	}
 	for _, id := range ids {
 		if _, err := s.deleteAppWithRetries(ctx, id, &userID); err != nil {
-			if errors.Is(err, errAppOwnerChanged) {
-				continue
-			}
-			if _, ok := errs.AsNotFound(err); ok {
+			// Only an app that is no longer the user's, or no longer exists, is
+			// skipped. Any other error, a grantee's missing user row included, fails the
+			// wipe: skipping the app would let the user-row cascade delete it
+			// without revoking the other grantees' access tokens.
+			if errors.Is(err, errAppOwnerChanged) || errors.Is(err, errAppGone) {
 				continue
 			}
 			return err

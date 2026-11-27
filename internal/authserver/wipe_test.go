@@ -19,11 +19,19 @@ import (
 // grant's tokens writes access_tokens.revoked_at.
 func newWipeService(t *testing.T, wrap func(Repository) Repository) (*Service, *dbtest.DB) {
 	t.Helper()
+	return newWipeServiceWith(t, wrap, nil)
+}
+
+func newWipeServiceWith(t *testing.T, wrap func(Repository) Repository, wrapCreds func(Credentials) Credentials) (*Service, *dbtest.DB) {
+	t.Helper()
 	db := dbtest.New(t)
 	clock := &fixedClock{t: time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)}
-	creds := appuser.NewService(userrepo.NewRepo(db.Engine, db.TX), db.TX, nil, nil,
+	var creds Credentials = appuser.NewService(userrepo.NewRepo(db.Engine, db.TX), db.TX, nil, nil,
 		userrepo.NewAccessTokenRepo(db.Engine, db.TX), nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		clock, nil, false, 0, false)
+	if wrapCreds != nil {
+		creds = wrapCreds(creds)
+	}
 	var repo Repository = authrepo.NewRepo(db.Engine, db.TX)
 	if wrap != nil {
 		repo = wrap(repo)
@@ -182,5 +190,98 @@ func TestDeleteAppsOwnedBy_SkipsAnAppMadeGlobalMeanwhile(t *testing.T) {
 	}
 	if clientExists(t, s, stillOwned) {
 		t.Error("the user's other app must still be deleted")
+	}
+}
+
+// vanishingOwnedRepo deletes one listed app right after the owner's apps are
+// listed, as an operator's app:delete landing before the wipe's lock.
+type vanishingOwnedRepo struct {
+	Repository
+	target vo.Id
+}
+
+func (r vanishingOwnedRepo) ListClientIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	ids, err := r.Repository.ListClientIDsByOwner(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := r.Repository.DeleteClient(ctx, r.target); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+func TestDeleteAppsOwnedBy_SkipsAnAppDeletedMeanwhile(t *testing.T) {
+	target := vo.NewId()
+	s, db := newWipeService(t, func(r Repository) Repository { return vanishingOwnedRepo{Repository: r, target: target} })
+	w := &wipeWorld{f: fixture.New(t, db), db: db}
+	gone := newUser(t, db, fixture.User{Email: "gone@example.test"}).String()
+	other := newUser(t, db, fixture.User{Email: "other@example.test"}).String()
+
+	w.f.OAuthClient(fixture.OAuthClient{ID: target.String(), Name: "App", RedirectURIs: []string{appCallback}, OwnerUserID: gone})
+	w.grant(t, other, target.String())
+	stillOwned := w.app(gone, false)
+	otherGrant := w.grant(t, other, stillOwned)
+	otherToken := w.token(t, other, otherGrant)
+
+	if err := s.DeleteAppsOwnedBy(ctx, vo.MustParseId(gone)); err != nil {
+		t.Fatalf("DeleteAppsOwnedBy: %v", err)
+	}
+	if clientExists(t, s, target.String()) {
+		t.Fatal("the hook did not delete the app")
+	}
+	if clientExists(t, s, stillOwned) {
+		t.Error("the user's other app must still be deleted")
+	}
+	if !tokenRevoked(t, db, otherToken) {
+		t.Error("another user's token on the user's other app is still live")
+	}
+}
+
+// missingUserCreds reports one user's row as gone when it is locked, as a
+// grantee deleted between the grants being read and the lock.
+type missingUserCreds struct {
+	Credentials
+	missing vo.Id
+}
+
+func (c missingUserCreds) LockForOAuth(ctx context.Context, userID vo.Id) (int64, error) {
+	if userID.Equal(c.missing) {
+		return 0, errs.NewNotFound("User not found")
+	}
+	return c.Credentials.LockForOAuth(ctx, userID)
+}
+
+func TestDeleteAppsOwnedBy_FailsWhenAGranteeIsMissing(t *testing.T) {
+	missing := vo.NewId()
+	s, db := newWipeServiceWith(t, nil, func(c Credentials) Credentials { return missingUserCreds{Credentials: c, missing: missing} })
+	w := &wipeWorld{f: fixture.New(t, db), db: db}
+	gone := newUser(t, db, fixture.User{Email: "gone@example.test"}).String()
+	other := newUser(t, db, fixture.User{Email: "other@example.test"}).String()
+	newUser(t, db, fixture.User{ID: missing.String(), Email: "missing@example.test"})
+
+	owned := w.app(gone, false)
+	goneGrant := w.grant(t, gone, owned)
+	otherGrant := w.grant(t, other, owned)
+	otherToken := w.token(t, other, otherGrant)
+	missingGrant := w.grant(t, missing.String(), owned)
+
+	err := s.DeleteAppsOwnedBy(ctx, vo.MustParseId(gone))
+	if err == nil {
+		t.Fatal("DeleteAppsOwnedBy skipped the app; a missing grantee must fail the wipe")
+	}
+	if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("err = %v, want the grantee's NotFound", err)
+	}
+	if !clientExists(t, s, owned) {
+		t.Fatal("the app was deleted")
+	}
+	for _, g := range []string{goneGrant, otherGrant, missingGrant} {
+		if grantRevoked(t, db, g) {
+			t.Errorf("grant %s was revoked by a failed delete", g)
+		}
+	}
+	if tokenRevoked(t, db, otherToken) {
+		t.Error("a token was revoked by a failed delete")
 	}
 }
