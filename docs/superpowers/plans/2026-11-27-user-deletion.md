@@ -906,8 +906,8 @@ func (s *user.Service) SetDeletionSender(sender *mailer.DeletionSender)
   - `emails.delete_data.subject`: `Confirm deleting your data`
   - `emails.delete_data.body`: `Hi {name},\n\nUse this code to confirm that you want to delete your Econumo data: {code}\n\nThe code expires in 10 minutes. If you did not request this, change your password.`
 
-- [ ] **Step 1: Failing test:** with a recording `Mailer`, `SendInactivityNotice(ctx, "de", ...)` sends the German subject, the body contains the name and `365`; the app link wrapper (`mailer.WithAppLink`) appends the URL when set. `SendDeletionCode` body contains the code.
-- [ ] **Step 2: Run, FAIL. Step 3: implement, add the four keys to `EmailKeys` and all 11 catalogues. Step 4:** `go test ./internal/infra/mailer/ ./internal/test/i18ntest/ -count=1`. PASS. **Commit.**
+- [x] **Step 1: Failing test:** with a recording `Mailer`, `SendInactivityNotice(ctx, "de", ...)` sends the German subject, the body contains the name and `365`; the app link wrapper (`mailer.WithAppLink`) appends the URL when set. `SendDeletionCode` body contains the code.
+- [x] **Step 2: Run, FAIL. Step 3: implement, add the four keys to `EmailKeys` and all 11 catalogues. Step 4:** `go test ./internal/infra/mailer/ ./internal/test/i18ntest/ -count=1`. PASS. **Commit.**
 
 ### Task 17: release, wipe and mark passes; the job
 
