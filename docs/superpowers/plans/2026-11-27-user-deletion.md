@@ -997,7 +997,7 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 - Consumes: `AdminMarkDeleted`, `Wipe`, `PurgeDeleted`, `fullUser()`.
 - Produces (`internal/user`): `func (s *Service) ListPendingDeletion(ctx context.Context) ([]model.PendingDeletion, error)` with `model.PendingDeletion{ID string; Email string; Reason string; MarkedAt time.Time; WipeAt *time.Time}` (`WipeAt` nil when `DeletionDays` is 0), and `func (s *Service) AdminDelete(ctx context.Context, email string) (WipeOutcome, error)` (`CodeUserDeletionNotMarked` for an unmarked user).
 
-- [ ] **Step 1: Failing tests** in `commands_test.go` (pattern of the existing `Run([]string{...})` tests, capturing stdout):
+- [x] **Step 1: Failing tests** in `commands_test.go` (pattern of the existing `Run([]string{...})` tests, capturing stdout):
 
 ```go
 // user:mark-deleted a@x.test -> 0, "User a@x.test marked for deletion"; again -> 1
@@ -1006,12 +1006,12 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 // user:delete a@x.test -> 0, "User a@x.test deleted"; the row is gone
 // user:delete unmarked@x.test -> 1, stderr names "not marked"
 // user:delete on an inactive mark with an active connection -> 1,
-//   "not deleted: a connected user is active; the mark was removed"
+//   "not deleted: the inactivity mark no longer applies (a connected user is active, or inactivity marking is off); the mark was removed"
 // user:purge-deleted -> 0 with "released N, deleted N"; 1 when any wipe failed, one line per
 //   failure "failed <user id>: <error type>"; 1 as well when the pass itself errored (Err set)
 ```
 
-- [ ] **Step 2: Run, FAIL. Step 3: implement** the four commands (summaries: `Mark a user for deletion: user:mark-deleted <email>`, `List users marked for deletion: user:list-pending-deletion`, `Delete a marked user now: user:delete <email>`, `Release and delete marked users whose time has come: user:purge-deleted`); `user:delete` and `user:purge-deleted` use `c.fullUser()`. **Step 4: run** `go test ./internal/cli/ -count=1`, PASS. **Step 5:** add the four names to the `user:` line of the CLI block in `CLAUDE.md`. **Commit.**
+- [x] **Step 2: Run, FAIL. Step 3: implement** the four commands (summaries: `Mark a user for deletion: user:mark-deleted <email>`, `List users marked for deletion: user:list-pending-deletion`, `Delete a marked user now: user:delete <email>`, `Release and delete marked users whose time has come: user:purge-deleted`); `user:delete` and `user:purge-deleted` use `c.fullUser()`. **Step 4: run** `go test ./internal/cli/ -count=1`, PASS. **Step 5:** add the four names to the `user:` line of the CLI block in `CLAUDE.md`. **Commit.**
 
 ### Task 19: admin listener
 
