@@ -71,10 +71,11 @@ themselves or the CLI.
 | `deletion_reason TEXT NOT NULL DEFAULT ''` | `self_initiated`, `inactive` or `cli` while marked |
 | `last_active_at DATETIME NULL` | last credential mint or token use, to the day |
 
-`last_active_at` backfill: the newest `access_tokens.last_used_at` when it is within the last 30
-days, else the migration time. Expired and revoked tokens are purged by `token:purge`, so old
-token rows are no evidence of inactivity; on the day this ships nobody is closer to being marked
-than a full threshold. A new user gets `last_active_at = created_at`, so an account that was
+`last_active_at` backfill: the migration time, for every existing user. Token rows are no
+evidence either way (expired and revoked ones are purged by `token:purge`), and any older
+stamp would break the promise that on the day this ships nobody is closer to being marked
+than a full threshold: with a 7-day threshold, a token last used 20 days ago would mark its
+user on the first pass. A new user gets `last_active_at = created_at`, so an account that was
 registered and never signed in ages from its registration; the job reads
 `COALESCE(last_active_at, created_at)`.
 
@@ -92,9 +93,9 @@ Events now:
 | event | details | `email_hash` |
 |---|---|---|
 | `deletion_marked` | `{"reason": "self_initiated" \| "inactive" \| "cli"}` | NULL |
-| `deletion_cancelled` | `{"reason": <the mark's reason>, "cause": "sign_in" \| "active_connection"}` | NULL |
+| `deletion_cancelled` | `{"reason": <the mark's reason>, "cause": "sign_in" \| "active_connection" \| "inactivity_off"}` | NULL |
 | `deleted` | `{"reason": <the mark's reason>, "lifetimeAccess": true \| false}` | set only when `lifetimeAccess` is true |
-| `lifetime_regranted` | `{"fromUserId": <the wiped user's id>}`; `user_id` is the NEW user | set |
+| `lifetime_regranted` | `{"fromUserId": <the wiped user's id>, "deletedEventId": <id of the `deleted` row it consumes>}`; `user_id` is the NEW user | set |
 
 `email_hash` = lowercase hex SHA-256 of `model.NormalizeEmail(address)`. It is stored only where
 the re-grant needs it: a user who was not a lifetime customer leaves no trace of their address.
@@ -106,8 +107,12 @@ self-hosted servers.
 ## Marking
 
 All three paths: under the user row lock, set `deletion_marked_at = now`, `deletion_reason`,
-bump `credentials_generation`, revoke every session, PAT and OAuth grant, write a
-`deletion_marked` audit row. The bump is what `AdminDeactivate` does for the same reason: a
+bump `credentials_generation`, revoke every access token of all three kinds (session, PAT,
+OAuth) AND every OAuth grant, write a `deletion_marked` audit row. Both sweeps are needed, as
+in `AdminDeactivate`: `Authenticate` reads the `access_tokens` row, not the grant, so revoking
+only the grant would stop refreshes while an issued OAuth bearer kept working for up to an
+hour. A test presents the old bearer right after the mark and expects the frozen 401. The
+generation bump is also what `AdminDeactivate` does, for this reason: a
 password login, a provider handoff or an OAuth code exchange that read its evidence before the
 mark must not be able to mint a credential after it (the inserts are conditional on the
 generation). The invariant: a marked user has no live credential, and the only mint that can
@@ -133,18 +138,25 @@ an error for the CLI and impossible from the API (no session survives the mark).
   will be deleted within a month. Sign in before then to keep it." -> local sign-out.
   Offline-disabled via `useOnline`. Analytics event on confirm.
 - The CSV download failing does not block deletion, but the UI says so and offers a retry.
+- The existing export lists live accounts only (`ListExportAccountsForUser` skips deleted
+  ones). The dialog says so in plain words: "The file contains the transactions of your
+  current accounts. Accounts you deleted earlier are not in it."
 
 ### 2. Inactivity
 
 - Daily job (below). When `ECONUMO_INACTIVE_USER_DAYS` > 0, every user with
-  `last_active_at` older than that, not marked, `is_active = 1`, not excluded, and with no
+  `last_active_at` older than that PLUS ONE DAY, not marked, `is_active = 1`, not excluded,
+  and with no
   ACTIVE connected user is marked with reason `inactive` and receives ONE email: "Under our
   policy we delete the data of users inactive for <period>. If you want to keep your data,
   sign in." (11 catalogues; period rendered from the setting; includes `ECONUMO_URL` when set).
 - Household rule (agreed 2026-11-26): a user is neither marked nor wiped for inactivity while
   a connected user is active. "Active connection" has one definition, used everywhere below:
   a row in `users_connections` to a user who is NOT marked and whose own `last_active_at` is
-  within `ECONUMO_INACTIVE_USER_DAYS`. A marked partner does not count: someone who just asked
+  within `ECONUMO_INACTIVE_USER_DAYS` plus one day. The extra day, here and in the first
+  bullet, covers the stamp's precision: real use can be up to 24 hours newer than the stamp,
+  and both errors must fall on the side of keeping data. A marked partner does not count:
+  someone who just asked
   for their own deletion must not keep the other alive. Direct connections only, shared data
   or not. The owner of a budget or account may never sign in while their partner uses that
   data every day; inactivity is a property of the household, not of one login.
@@ -158,6 +170,10 @@ an error for the CLI and impossible from the API (no session survives the mark).
   3. wipe: the same check runs inside the wipe transaction (step 1), for the job,
      `user:purge-deleted` and `user:delete` alike. An `inactive` mark with an active connection
      is cancelled instead of wiped.
+- Inactivity switched off: with `ECONUMO_INACTIVE_USER_DAYS` back at 0 the policy that made
+  these marks is gone, and "active connection" has no window left to measure. The daily pass
+  then releases EVERY `inactive` mark (cause `inactivity_off`), and a wipe refuses an
+  `inactive` mark the same way. Other reasons are untouched.
 - When everyone in a household is inactive, each member is marked and emailed. If the household
   goes quiet again after a release, its members are marked and emailed again.
 - The rule is about the `inactive` reason only. A user who asked for deletion themselves is
@@ -224,14 +240,22 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
 0), and from `user:delete`. One database transaction per user: it commits whole or rolls back
 whole.
 
-### Prerequisite fix (own commit, with its regression test)
+### Prerequisite fixes (own commits, each with its regression test)
 
-Today's delete-connection has a bug the wipe would spread. `ConnectionBudgetRevoker.revokeDirection`
+Both are bugs today, independent of deletion, that the wipe would spread.
+
+**1.** Today's delete-connection removes a third user. `ConnectionBudgetRevoker.revokeDirection`
 (`internal/server/glue_connection.go`) walks `ListForUser`, which returns budgets the user owns
 AND budgets shared with them. So when A and B are both members of C's budget, disconnecting A
 from B removes B from C's budget and deletes B's rows there (reproduced with a throwaway test
-during the review). The fix: only budgets OWNED by one of the two users are touched. It ships
-with this change because it is a bug today, independent of deletion.
+during the review). The fix: only budgets OWNED by one of the two users are touched.
+
+**2.** `ClearActiveBudget` (`internal/server/glue_budget.go`) reads a user and saves the whole
+row through `UpsertUser` without the row lock. On PostgreSQL a password or email change that
+commits between that read and that save is written back to its old value. The wipe calls this
+for every member of every budget it unwinds. The fix: clear the `budget` option with one
+conditional statement on `users_options` (`... WHERE user_id = ? AND name = 'budget' AND value
+= ?`), never through the user aggregate.
 
 ### Lock order (a requirement; the plan proves it with a two-connection PostgreSQL test)
 
@@ -239,7 +263,14 @@ with this change because it is a bug today, independent of deletion.
    `Prepare` must be first in a transaction (`internal/category/ports.go`), so budgets come
    before the user row.
 2. The user row. The mark is re-checked after this lock, never before.
-3. Everything else. Partner user rows are never locked first; the wipe only writes them late
+3. Every account the user owns, in id order (`FOR UPDATE` on PostgreSQL). A transaction
+   write on an account bumps that account's revision and takes foreign-key locks on its row,
+   so it now waits for the wipe. Without this, a partner whose access the wipe has unwound
+   but not yet committed could still commit a transfer from or into the user's account
+   after step 6 scanned it; the cascade would then delete that transfer with no correction
+   on the partner's side. After the wipe commits, the waiting write fails on the missing
+   account. The two-connection test covers exactly this interleaving.
+4. Everything else. Partner user rows are never locked first; the wipe only writes them late
    (the active-budget pointer), the same order `RevokeAccess` already uses.
 
 The set of budgets is read before it is locked. A budget that joins the set in that window, a
@@ -249,6 +280,9 @@ user stays marked for the next pass or the next `user:delete`.
 ### Steps
 
 1. Take the locks above; re-check the user is still marked (a sign-in may have cancelled it).
+   An age-based wipe (the job, `user:purge-deleted`) also requires `deletion_marked_at` to be
+   the value it selected: a user who signed in and was marked again while the wipe waited
+   has a new mark whose period has just started. `user:delete` has no such condition.
    For reason `inactive`, check the household rule here, under the lock: with an active
    connection the mark is cancelled, the transaction commits that and nothing else.
 2. Read `lifetimeAccess` = `access_level = full AND access_until IS NULL`, and the email.
@@ -282,8 +316,10 @@ user stays marked for the next pass or the next `user:delete`.
 6. Transfers between one of the user's accounts and another user's account lose their other
    side, so the surviving side becomes a correction on that account:
    - other account -> user's account: an expense on the other account for `amount`;
-   - user's account -> other account: an income on the other account for `amount_recipient`
-     (`amount` when it is NULL).
+   - user's account -> other account: an income on the other account for `amount_recipient`.
+     A legacy row with a NULL `amount_recipient` gets NO correction: the balance query sums
+     `amount_recipient`, so that transfer never counted on the recipient's balance, and an
+     income for `amount` would add money that was never there.
    The correction keeps the original's `spent_at` and its position in the day on that side
    (`sort_key`, or `recipient_sort_key` for the recipient side), is authored by the account's
    owner, and its description is "Original transaction deleted: <original description>" (just
@@ -297,6 +333,10 @@ user stays marked for the next pass or the next `user:delete`.
    owner already has a live custom currency with the same code, the moved one arrives
    soft-deleted (`is_deleted = 1`): it keeps resolving for the rows that use it, and the unique
    index on live `(user_id, code)` is not hit. Amounts, rates and rate history are untouched.
+   The currency list query (`GetUserCurrencyListView`) shows a foreign custom currency only
+   through access rows; it is extended to the currencies used by budgets the caller OWNS
+   (budget, element and debt currency), so a second surviving owner still gets the currency
+   and its rates from the API. That also closes the same gap for a budget owner today.
    Why: `currencies.user_id` cascades, `budgets.currency_id` is NOT NULL with `SET NULL` and
    `debts.currency_id` is `NO ACTION`, so the delete in step 9 fails on both engines; and
    `accounts.currency_id` cascades, so a partner's account in the user's currency (prevented
@@ -304,7 +344,11 @@ user stays marked for the next pass or the next `user:delete`.
 8. Rows the cascade cannot reach, deleted or cleared here: `idempotency_keys` and
    `oauth_states` of the user (no foreign key); `applied_category_id`, `applied_payee_id`,
    `applied_tag_id`, `applied_rule_id` on other users' import links that point at the user's
-   entities.
+   entities. OAuth apps the user owns are deleted through the authserver's existing delete
+   path, which revokes the access tokens of every grant: on an upgraded database an app can
+   have grants of OTHER users (migration `20261108000000` gave each app to its earliest
+   grantee), the cascade would drop those grants, and their issued bearers, which have no
+   foreign key to the grant, would keep working until they expire.
 9. `DELETE FROM budgets WHERE user_id = ?`, then `DELETE FROM users WHERE id = ?`. The budgets
    go first on purpose: with the user's own budget in the user's own custom currency, SQLite
    fires the currency's `SET NULL` on the still-present budget and fails, while a fresh
@@ -317,8 +361,10 @@ user stays marked for the next pass or the next `user:delete`.
 10. Rows of other users that pointed at the user's categories, payees or tags are left with
     those fields empty by the existing `SET NULL`. A test asserts every other user's account
     balance at every date is unchanged by the wipe.
-11. Bump the revision of every other user's account changed by steps 3-10 once
-    (`txrevision`, inside this transaction).
+11. Every other user's account changed by steps 3-10 gets its revision bumped once. The
+    affected account ids are registered BEFORE the rows change or go (`txrevision.BumpWhere`
+    in the step that changes them): after a reassignment or a cascade no predicate finds
+    them any more. `txrevision` deduplicates and flushes once before COMMIT.
 12. Write the `deleted` audit row (old user id, reason, `lifetimeAccess`, and the email hash
     only when `lifetimeAccess` is true).
 
@@ -367,7 +413,9 @@ does with it.
 **Wipe test** (both engines, through `dbtest`). Fixture: the user; a partner with a shared
 account and a shared budget each way; an EX-partner holding rows the user wrote; a third user
 who shares a budget with both the user and the partner; cross transfers in both directions; a
-comment; a debt on the user's category in the partner's budget; the user's custom currency as
+comment; a debt on the user's category in the partner's budget; a legacy transfer with a NULL
+`amount_recipient`; an OAuth app the user owns that another user also has a grant on; the
+user's custom currency as
 the currency of their own budget, of the partner's budget, of a partner budget element and of
 a partner debt. It asserts: the delete succeeds; every other user's balance at every date; the
 rows and authors of steps 5-6; the partner budget and debt still resolve their currency; the
@@ -384,10 +432,12 @@ partner and the third user still share their budget; no row anywhere names the w
   re-grant changes nothing. Assumption to confirm with billing before building: a SUBSCRIPTION
   always carries an `access_until`; if billing ever writes `full` + NULL for a subscriber, that
   subscriber would be remembered as lifetime.
-- The re-grant: when the newest audit row for the address's hash is a `deleted` row with
-  `lifetimeAccess: true`, the new user gets `access_level = full`, `access_until = NULL`, and a
-  `lifetime_regranted` row is written in the same transaction. That row is now the newest for
-  the hash, so the same deletion never grants twice: without it, a customer could re-register,
+- The re-grant: when the address's hash has a `deleted` row with `lifetimeAccess: true` that
+  no `lifetime_regranted` row names in `deletedEventId`, the new user gets
+  `access_level = full`, `access_until = NULL`, and a `lifetime_regranted` row naming that
+  `deleted` row is written in the same transaction. The match is by that reference, never by
+  which row is newer: `created_at` has one-second precision, and a wipe and a sign-up can
+  share a second. So the same deletion never grants twice: without it, a customer could re-register,
   move the new account to another address, and register the old address again for a second
   lifetime account, without end. Deleting the re-granted account writes a new `deleted` row and
   re-arms it.
@@ -396,14 +446,19 @@ partner and the third user still share their budget; no row anywhere names the w
   verified the address), the verification code being confirmed when
   `ECONUMO_EMAIL_VERIFICATION` is on, or `user:create` (the operator vouches). A password
   registration with the gate off proves nothing (`NewUser` starts with `email_verified = true`)
-  and gets no automatic re-grant; the operator uses `user:set-access`.
+  and gets no automatic re-grant. The operator's `user:verify-email <email>` vouches for the
+  mailbox and runs the same re-grant, consuming the deletion. `user:set-access` is NOT the
+  way: it would leave the deletion unconsumed, ready to grant a second account.
 - Trials and time-limited access are never carried over.
 
 ## Billing / admin listener
 
 - New `GET /admin/deleted-users?since=<datetime>` on the private admin listener, built like
   `/admin/affiliate-users`: the `deleted` audit rows since the date (`userId`, `deletedAt`,
-  `reason`, `lifetimeAccess`), oldest first. Billing polls it and cancels subscriptions
+  `reason`, `lifetimeAccess`), oldest first, with the same composite cursor as
+  `ListAffiliateUsers` (`since` plus an after-id): a batch of wipes shares one second, and a
+  page that ends inside it must neither skip nor repeat rows. Billing polls it and cancels
+  subscriptions
   (separate billing PR). `lifetimeAccess` is there so billing keeps a lifetime purchase instead
   of treating it as cancelled.
 - `/admin/user-context` for a wiped user answers the existing 404; a marked user shows additive
@@ -422,7 +477,11 @@ promise:
 - what the user sent through the feedback form;
 - the mail provider's delivery logs;
 - billing's own records (billing learns of the wipe from the poll and applies its own rules);
-- database backups and server logs (logs carry ids only).
+- database backups;
+- server logs. Econumo's own log lines carry ids only, with one exception: the console mail
+  transport (the default when `MAILER_DSN` is empty) prints each message to stdout with its
+  recipient and body, so the deletion code email and the inactivity notice leave the address
+  in the container log.
 
 Browser data: the device that confirms the deletion signs out locally. Other devices keep
 their cached copy until their next request is refused; the plan verifies that the existing
@@ -508,6 +567,14 @@ comment rules.
   does.
 - NEW: the activity stamp has day precision (one conditional write per user per day).
 - NEW: the delete-connection three-user bug is fixed in this change.
+- NEW (second review): switching inactivity off releases every `inactive` mark.
+- NEW (second review): eligibility adds one day to the threshold, for the stamp's precision.
+- NEW (second review): existing users are backfilled with the migration time, not token use.
+- NEW (second review): with the verification gate off, `user:verify-email` is the operator's
+  way to re-grant lifetime access; `user:set-access` is not.
+- NEW (second review): the deletion dialog says the CSV leaves out accounts deleted earlier.
+  Alternative: an export that includes them.
+- NEW (second review): `ClearActiveBudget` is fixed to write only the option.
 - NEW: a failed wipe is an ERROR in the log and a non-zero CLI exit; there is no stored
   failure state.
 
