@@ -12,7 +12,8 @@ import (
 
 // The consent page promises a read token changes nothing, so every table is
 // compared around its requests, the refused ones included. The token's own
-// last_used_at is bookkeeping and the one column allowed to move.
+// last_used_at and the owner's last_active_at (any token use is activity) are
+// bookkeeping and the only columns allowed to move.
 func TestReadTokenWritesNothing(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	h := NewHarness(t, db)
@@ -91,7 +92,7 @@ func dumpTables(t *testing.T, db *dbtest.DB) map[string]string {
 				t.Fatal(err)
 			}
 			for i, col := range cols {
-				if table == "access_tokens" && col == "last_used_at" {
+				if (table == "access_tokens" && col == "last_used_at") || (table == "users" && col == "last_active_at") {
 					continue
 				}
 				fmt.Fprintf(&b, "%s=%v ", col, vals[i])

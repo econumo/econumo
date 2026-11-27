@@ -60,6 +60,7 @@ type Service struct {
 	audit                 AuditLog
 	deletionRequests      DeletionRequests
 	deletionCfg           DeletionConfig
+	wiper                 DataWiper
 }
 
 func NewService(
@@ -161,6 +162,10 @@ func (s *Service) SetDeletion(store DeletionStore, audit AuditLog, requests Dele
 	s.deletionRequests = requests
 	s.deletionCfg = cfg
 }
+
+// SetDataWiper installs the other features' part of a wipe. nil leaves the
+// wipe unwired, which the wipe reports as an error.
+func (s *Service) SetDataWiper(w DataWiper) { s.wiper = w }
 
 // Logout revokes the presenting session. The "test" literal is a frozen wire
 // constant clients depend on (see LogoutResult).

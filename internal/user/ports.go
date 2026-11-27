@@ -144,3 +144,11 @@ type LogoutURLBuilder interface {
 	// provider with the given ID token, or "" when the provider supports none.
 	EndSessionURL(ctx context.Context, provider, idToken string) (string, error)
 }
+
+// DataWiper is everything a wipe does outside the user feature.
+type DataWiper interface {
+	// LockBudgets locks, in id order, every budget the wipe will touch. First in the transaction.
+	LockBudgets(ctx context.Context, userID vo.Id) error
+	// Erase runs after the user row is locked and leaves only the users row to delete.
+	Erase(ctx context.Context, userID vo.Id) error
+}
