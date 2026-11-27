@@ -30,24 +30,22 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 		return nil, err
 	}
 
-	// Resolve the owner of every account referenced by a grant once.
+	// Resolve the owner of every account referenced by a grant once. An account
+	// a wipe removed since the listing has no entry and is skipped below.
 	owners := map[string]vo.Id{}
-	resolveOwner := func(accountID vo.Id) (vo.Id, error) {
-		key := accountID.String()
-		if o, ok := owners[key]; ok {
-			return o, nil
-		}
-		o, oerr := s.access.AccountOwner(ctx, accountID)
-		if oerr != nil {
-			return vo.Id{}, oerr
-		}
-		owners[key] = o
-		return o, nil
-	}
 	for _, a := range append(append([]*model.AccountAccess{}, received...), issued...) {
-		if _, oerr := resolveOwner(a.AccountID); oerr != nil {
+		key := a.AccountID.String()
+		if _, ok := owners[key]; ok {
+			continue
+		}
+		o, oerr := s.access.AccountOwner(ctx, a.AccountID)
+		if _, gone := errs.AsNotFound(oerr); gone {
+			continue
+		}
+		if oerr != nil {
 			return nil, oerr
 		}
+		owners[key] = o
 	}
 
 	result := &model.GetConnectionListResult{Items: []model.ConnectionResult{}}
@@ -82,8 +80,8 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 		order := []string{}
 		byID := map[string]model.AccountAccessResult{}
 		add := func(a *model.AccountAccess) {
-			accOwner := owners[a.AccountID.String()]
-			if !accOwner.Equal(cu) && !accOwner.Equal(userID) {
+			accOwner, known := owners[a.AccountID.String()]
+			if !known || (!accOwner.Equal(cu) && !accOwner.Equal(userID)) {
 				return
 			}
 			key := a.AccountID.String()

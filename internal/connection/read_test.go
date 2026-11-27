@@ -93,3 +93,52 @@ func TestGetConnectionList_SkipsAVanishedUser(t *testing.T) {
 		})
 	}
 }
+
+type grantsRepo struct {
+	connectedUsersRepo
+	received []*model.AccountAccess
+	owners   map[string]vo.Id // a missing account answers NotFound
+}
+
+func (r *grantsRepo) ListReceived(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error) {
+	return r.received, nil
+}
+
+func (r *grantsRepo) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
+	o, ok := r.owners[accountID.String()]
+	if !ok {
+		return vo.Id{}, errs.NewNotFound("Account not found")
+	}
+	return o, nil
+}
+
+// A shared account wiped between the grant listing and the owner lookup drops
+// out instead of failing the list.
+func TestGetConnectionList_SkipsAVanishedAccount(t *testing.T) {
+	caller, gone, kept := vo.NewId(), vo.NewId(), vo.NewId()
+	goneAccount, keptAccount := vo.NewId(), vo.NewId()
+	repo := &grantsRepo{
+		connectedUsersRepo: connectedUsersRepo{connected: []vo.Id{gone, kept}},
+		received: []*model.AccountAccess{
+			{AccountID: goneAccount, UserID: caller},
+			{AccountID: keptAccount, UserID: caller},
+		},
+		owners: map[string]vo.Id{keptAccount.String(): kept},
+	}
+	s := NewService(repo, nil, stubUserLookup{}, nil, nil, nil, stubTx{}, fixedClock{now: time.Now()})
+
+	res, err := s.GetConnectionList(context.Background(), caller)
+	if err != nil {
+		t.Fatalf("GetConnectionList: %v", err)
+	}
+	shared := map[string][]string{}
+	for _, item := range res.Items {
+		for _, a := range item.SharedAccounts {
+			shared[item.User.Id] = append(shared[item.User.Id], a.Id)
+		}
+	}
+	if len(res.Items) != 2 || len(shared[gone.String()]) != 0 ||
+		len(shared[kept.String()]) != 1 || shared[kept.String()][0] != keptAccount.String() {
+		t.Fatalf("items = %+v, want both users and only the kept account", res.Items)
+	}
+}
