@@ -2667,29 +2667,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "Hallo {name},",
+      "greeting_anonymous": "Hallo,",
+      "code_label": "Bestätigungscode",
+      "code_text": "Ihr Bestätigungscode lautet: {code}.",
+      "tagline": "Geld verwalten. Gemeinsam.",
+      "open_app": "Econumo öffnen"
+    },
     "reset": {
       "subject": "Bestätigungscode zum Zurücksetzen des Passworts",
-      "body": "Hallo {name},\nIhr Bestätigungscode lautet: {code}.\n\nFalls Sie diesen Code nicht angefordert haben, ignorieren Sie diese E-Mail bitte.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+      "heading": "Passwort zurücksetzen",
+      "body": "Geben Sie diesen Code in Econumo ein, um ein neues Passwort festzulegen.",
+      "note": "Falls Sie diesen Code nicht angefordert haben, ignorieren Sie diese E-Mail. Ihr Passwort bleibt unverändert."
     },
     "verify": {
       "subject": "Bestätigungscode für Ihre E-Mail-Adresse",
-      "body": "Hallo {name},\nIhr Bestätigungscode lautet: {code}.\n\nGeben Sie diesen Code auf dem Anmeldebildschirm ein, um Ihre E-Mail-Adresse zu bestätigen.\n\nFalls Sie kein Econumo-Konto erstellt haben, ignorieren Sie diese E-Mail bitte.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+      "heading": "E-Mail-Adresse bestätigen",
+      "body": "Geben Sie diesen Code auf dem Anmeldebildschirm ein, um Ihre E-Mail-Adresse zu bestätigen.",
+      "note": "Falls Sie kein Econumo-Konto erstellt haben, ignorieren Sie diese E-Mail."
     },
     "change_email": {
       "subject": "Bestätigen Sie Ihre neue E-Mail-Adresse",
-      "body": "Hallo {name},\n\nVerwenden Sie diesen Code, um Ihre neue E-Mail-Adresse zu bestätigen: {code}\n\nDer Code ist 10 Minuten gültig. Falls Sie dies nicht angefordert haben, können Sie diese E-Mail ignorieren."
+      "heading": "Neue E-Mail-Adresse bestätigen",
+      "body": "Verwenden Sie diesen Code, um Ihre neue E-Mail-Adresse zu bestätigen. Er ist 10 Minuten gültig.",
+      "note": "Falls Sie dies nicht angefordert haben, ignorieren Sie diese E-Mail."
     },
     "change_email_notice": {
       "subject": "Änderung der E-Mail-Adresse angefordert",
-      "body": "Hallo {name},\n\nJemand hat angefordert, die E-Mail-Adresse Ihres Kontos in {email} zu ändern. Falls Sie das nicht waren, ändern Sie bitte umgehend Ihr Passwort."
+      "heading": "Änderung der E-Mail-Adresse angefordert",
+      "body": "Jemand hat angefordert, die E-Mail-Adresse Ihres Kontos in {email} zu ändern.",
+      "note": "Falls Sie das nicht waren, ändern Sie umgehend Ihr Passwort."
     },
     "identity_linked": {
       "subject": "Neue Anmeldemethode hinzugefügt",
-      "body": "Hallo {name},\n\nEin {provider}-Konto wurde soeben mit Ihrem Econumo-Konto verknüpft und kann jetzt zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, trennen Sie das Konto in den Einstellungen und ändern Sie Ihr Passwort.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+      "heading": "Neue Anmeldemethode hinzugefügt",
+      "body": "Ein {provider}-Konto wurde soeben mit Ihrem Econumo-Konto verknüpft und kann jetzt zur Anmeldung verwendet werden.",
+      "note": "Falls Sie das nicht waren, trennen Sie das Konto in den Einstellungen und ändern Sie Ihr Passwort."
     },
     "identity_unlinked": {
       "subject": "Anmeldemethode entfernt",
-      "body": "Hallo {name},\n\nDie Verknüpfung Ihres {provider}-Kontos mit Ihrem Econumo-Konto wurde soeben aufgehoben und kann nicht mehr zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, ändern Sie Ihr Passwort und prüfen Sie die verknüpften Konten in den Einstellungen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+      "heading": "Anmeldemethode entfernt",
+      "body": "Die Verknüpfung Ihres {provider}-Kontos mit Ihrem Econumo-Konto wurde soeben aufgehoben. Es kann nicht mehr zur Anmeldung verwendet werden.",
+      "note": "Falls Sie das nicht waren, ändern Sie Ihr Passwort und prüfen Sie die verknüpften Konten in den Einstellungen."
     }
   }
 }

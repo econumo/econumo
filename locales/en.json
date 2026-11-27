@@ -955,19 +955,9 @@
       "header": "Imported from"
     },
     "rules": {
-      "field": {
-        "external_payee": "Payee",
-        "description": "Description"
-      },
-      "type": {
-        "contains": "contains",
-        "prefix": "starts with",
-        "exact": "is exactly"
-      },
-      "action": {
-        "classify": "Classify",
-        "skip": "Skip"
-      },
+      "field": { "external_payee": "Payee", "description": "Description" },
+      "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
+      "action": { "classify": "Classify", "skip": "Skip" },
       "prompt": {
         "title": "Create an import rule",
         "changed_category": "You set the category to {name}. Create a rule for similar imports?",
@@ -1036,12 +1026,7 @@
       "account": "Account",
       "reimport": "Import again",
       "reimport_hint": "Import it again to add it back, or to match a transaction you entered yourself, such as a transfer.",
-      "reimported": {
-        "created": "Imported again",
-        "matched": "Matched to an existing transaction",
-        "queued": "Imported again; it is waiting in the Inbox",
-        "skipped": "Not added: a skip rule or an ignored account matched it"
-      }
+      "reimported": { "created": "Imported again", "matched": "Matched to an existing transaction", "queued": "Imported again; it is waiting in the Inbox", "skipped": "Not added: a skip rule or an ignored account matched it" }
     },
     "suggestions": {
       "dismiss": "Dismiss",

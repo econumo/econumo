@@ -2667,29 +2667,49 @@
     }
   },
   "emails": {
+    "common": {
+      "greeting": "Hola, {name}:",
+      "greeting_anonymous": "Hola:",
+      "code_label": "Código de confirmación",
+      "code_text": "Tu código de confirmación es: {code}.",
+      "tagline": "Gestiona tu dinero. Juntos.",
+      "open_app": "Abrir Econumo"
+    },
     "reset": {
       "subject": "Código de confirmación para restablecer la contraseña",
-      "body": "Hola, {name}:\nTu código de confirmación es: {code}.\n\nSi no solicitaste este código, ignora este mensaje.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+      "heading": "Restablece tu contraseña",
+      "body": "Introduce este código en Econumo para elegir una contraseña nueva.",
+      "note": "Si no solicitaste este código, ignora este mensaje. Tu contraseña no cambiará."
     },
     "verify": {
       "subject": "Código de verificación del correo electrónico",
-      "body": "Hola, {name}:\nTu código de confirmación es: {code}.\n\nIntroduce este código en la pantalla de inicio de sesión para verificar tu dirección de correo electrónico.\n\nSi no creaste una cuenta de Econumo, ignora este mensaje.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+      "heading": "Verifica tu correo electrónico",
+      "body": "Introduce este código en la pantalla de inicio de sesión para verificar tu dirección de correo electrónico.",
+      "note": "Si no creaste una cuenta de Econumo, ignora este mensaje."
     },
     "change_email": {
       "subject": "Confirma tu nuevo correo electrónico",
-      "body": "Hola, {name}:\n\nUsa este código para confirmar tu nueva dirección de correo electrónico: {code}\n\nEl código expira en 10 minutos. Si no lo solicitaste, puedes ignorar este mensaje."
+      "heading": "Confirma tu nuevo correo electrónico",
+      "body": "Usa este código para confirmar tu nueva dirección de correo electrónico. Expira en 10 minutos.",
+      "note": "Si no lo solicitaste, puedes ignorar este mensaje."
     },
     "change_email_notice": {
       "subject": "Se solicitó un cambio de correo electrónico",
-      "body": "Hola, {name}:\n\nAlguien solicitó cambiar el correo electrónico de tu cuenta a {email}. Si no fuiste tú, cambia tu contraseña de inmediato."
+      "heading": "Se solicitó un cambio de correo electrónico",
+      "body": "Alguien solicitó cambiar el correo electrónico de tu cuenta a {email}.",
+      "note": "Si no fuiste tú, cambia tu contraseña de inmediato."
     },
     "identity_linked": {
       "subject": "Se añadió un nuevo método de inicio de sesión",
-      "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de vincularse a tu cuenta de Econumo y ya puede usarse para iniciar sesión.\n\nSi no fuiste tú, desvincula la cuenta desde Configuración y cambia tu contraseña.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+      "heading": "Se añadió un nuevo método de inicio de sesión",
+      "body": "Tu cuenta de {provider} acaba de vincularse a tu cuenta de Econumo y ya puede usarse para iniciar sesión.",
+      "note": "Si no fuiste tú, desvincúlala en Configuración y cambia tu contraseña."
     },
     "identity_unlinked": {
       "subject": "Se eliminó un método de inicio de sesión",
-      "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de desvincularse de tu cuenta de Econumo y ya no puede usarse para iniciar sesión.\n\nSi no fuiste tú, cambia tu contraseña y revisa las cuentas vinculadas en Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+      "heading": "Se eliminó un método de inicio de sesión",
+      "body": "Tu cuenta de {provider} acaba de desvincularse de tu cuenta de Econumo y ya no puede usarse para iniciar sesión.",
+      "note": "Si no fuiste tú, cambia tu contraseña y revisa las cuentas vinculadas en Configuración."
     }
   }
 }
