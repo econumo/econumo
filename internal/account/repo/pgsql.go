@@ -131,6 +131,11 @@ func (pgsqlQuerier) ListAccountIDsByOwner(ctx context.Context, db backend.DBTX, 
 	return pgsqlgen.New(db).ListAccountIDsByOwner(ctx, userID)
 }
 
+func (pgsqlQuerier) LockAccountsByOwner(ctx context.Context, db backend.DBTX, userID string) error {
+	_, err := pgsqlgen.New(db).LockAccountsByOwner(ctx, userID)
+	return err
+}
+
 func (pgsqlQuerier) ReplaceAccountIcon(ctx context.Context, db backend.DBTX, p replaceIconP) (int64, error) {
 	return pgsqlgen.New(db).ReplaceAccountIcon(ctx, pgsqlgen.ReplaceAccountIconParams(p))
 }

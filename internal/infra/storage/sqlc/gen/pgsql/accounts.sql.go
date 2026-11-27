@@ -235,6 +235,36 @@ func (q *Queries) ListDeletedAccounts(ctx context.Context) ([]Account, error) {
 	return items, nil
 }
 
+const lockAccountsByOwner = `-- name: LockAccountsByOwner :many
+SELECT id FROM accounts WHERE user_id = $1 ORDER BY id FOR UPDATE
+`
+
+// Taken by the user wipe: FOR UPDATE conflicts with the FOR KEY SHARE that an
+// insert referencing the account takes, so no write lands on an account while
+// its owner is being deleted. Id order keeps concurrent lockers deadlock-free.
+func (q *Queries) LockAccountsByOwner(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, lockAccountsByOwner, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const replaceAccountIcon = `-- name: ReplaceAccountIcon :execrows
 UPDATE accounts SET icon = $1, updated_at = $2
 WHERE id = $3 AND user_id = $4 AND icon = $5 AND is_deleted = FALSE

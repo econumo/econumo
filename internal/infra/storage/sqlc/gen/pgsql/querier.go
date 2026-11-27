@@ -477,6 +477,10 @@ type Querier interface {
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
 	ListWipeConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
+	// Taken by the user wipe: FOR UPDATE conflicts with the FOR KEY SHARE that an
+	// insert referencing the account takes, so no write lands on an account while
+	// its owner is being deleted. Id order keeps concurrent lockers deadlock-free.
+	LockAccountsByOwner(ctx context.Context, userID string) ([]string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
 	// debts attached to the category are deleted or moved: FOR UPDATE conflicts
 	// with the FOR KEY SHARE a debt create takes on the row, so the delete or
