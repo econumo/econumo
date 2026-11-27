@@ -53,6 +53,9 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if folderID != nil && !b.hasFolder(*folderID) {
 		return nil, accessDenied()
 	}
+	if err := s.currency.EnsureUsable(ctx, userID.String(), curID.String()); err != nil {
+		return nil, err
+	}
 	if err := s.validateEnvelopeCategories(ctx, b, envType.IsIncomeSide(), req.Categories); err != nil {
 		return nil, err
 	}
@@ -171,6 +174,11 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 		}
 		el, eerr := s.elements.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
+			if el.CurrencyID == nil || !el.CurrencyID.Equal(curID) {
+				if cerr := s.currency.EnsureUsable(txCtx, userID.String(), curID.String()); cerr != nil {
+					return cerr
+				}
+			}
 			el.UpdateCurrency(&curID, now)
 			if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 				return serr
