@@ -95,6 +95,7 @@ if got := len(els); got != 1 { t.Errorf("P1's elements on P2's budget = %d, want
 
 **Interfaces:**
 - Produces: `Repository.ClearOptionIfValue(ctx context.Context, userID vo.Id, name, value string, now time.Time) (int64, error)` on `internal/user`. Used again by Task 8.
+- `ClearActiveBudget` runs in the caller's transaction and takes the member's user row lock (`LockRow`) BEFORE the clear: `Repo.Save` upserts every option of the aggregate it read, so without the lock a profile update that read the old pointer could write it back after the clear commits.
 
 - [ ] **Step 1: Write the failing tests.**
 
@@ -108,13 +109,34 @@ lookup.ClearActiveBudget(ctx, uid, budgetID)
 if rowOf(t, db, uid) != before { t.Error("ClearActiveBudget rewrote the users row") }
 // glue: a user that no longer exists is not an error
 if err := lookup.ClearActiveBudget(ctx, vo.NewId(), budgetID); err != nil { t.Errorf(...) }
+// glue: the row lock comes first (recording repo, pattern internal/user/lock_order_test.go):
+//   calls == []string{"LockRow", "ClearOptionIfValue"}
+// pgsql, two connections (//go:build enginecompare, pattern mutate_lock_pgsql_test.go):
+//   UpdateName on connection 1 is paused between its read and its save; ClearActiveBudget on
+//   connection 2 waits for it; afterwards the budget option is NULL, not the old pointer
 ```
 
 - [ ] **Step 2: Run.** Expected: FAIL (method missing).
 - [ ] **Step 3: Add the query `ClearUserOptionIfValue :execrows`** in both engines: `UPDATE users_options SET value = NULL, updated_at = ? WHERE user_id = ? AND name = ? AND value = ?`. Regenerate, add to the `querier`, both adapters and `Repo`.
-- [ ] **Step 4: Rewrite `BudgetUserLookup.ClearActiveBudget`** to call `ClearOptionIfValue(ctx, userID, model.OptionBudget, budgetID.String(), l.clock.Now())` and nothing else; replace `Save` in `budgetUserRepo` by `ClearOptionIfValue` if `Save` has no other user in that file.
+- [ ] **Step 4: Rewrite `BudgetUserLookup.ClearActiveBudget`** to call `LockRow(ctx, userID)` and then `ClearOptionIfValue(ctx, userID, model.OptionBudget, budgetID.String(), l.clock.Now())`, nothing else; `budgetUserRepo` gains those two methods and loses `Save` if nothing else in that file uses it.
 - [ ] **Step 5: Run** `go test ./internal/server/ ./internal/user/repo/ ./internal/budget/... -count=1`. Expected: PASS.
 - [ ] **Step 6: Commit** `fix: Clearing a member's active budget no longer rewrites their user row`.
+
+### Task 2b: the CLI revokes MCP grants
+
+A bug in the released CLI, found while reviewing this plan: `internal/cli/container.go` builds the authserver but never calls `userSvc.SetMCPGrantRevoker`, and `revokeMCPGrants` is a silent no-op without it. `user:deactivate` and `user:change-password` therefore leave an MCP client able to refresh its access. Marking for deletion from the CLI would inherit it.
+
+**Files:**
+- Modify: `internal/cli/container.go`
+- Test: `internal/cli/commands_test.go`
+- Modify: `docs/regression-test-plan.md` (section 12a)
+
+- [ ] **Step 1: Failing test** `TestUserDeactivate_RevokesMCPGrants`: seed a user with an OAuth client, a grant and a live `eco_oat_` token (`fixture.OAuthClient`, `OAuthGrant`, `AccessToken`); `Run([]string{"user:deactivate", email})`; assert `oauth_grants.revoked_at` is set for that grant. The same assertion after `user:change-password`.
+- [ ] **Step 2: Run, see FAIL.** `go test ./internal/cli/ -run TestUserDeactivate_RevokesMCPGrants -count=1`
+- [ ] **Step 3: Fix:** `userSvc.SetMCPGrantRevoker(apps)` right after `apps` is built in `newContainerFor`.
+- [ ] **Step 4: Run** `go test ./internal/cli/ -count=1`. PASS.
+- [ ] **Step 5: Regression plan**, section 12a: `- [ ] `user:deactivate <email>` on the server: an MCP client connected as that user can no longer refresh its access.`
+- [ ] **Step 6: Commit** `fix: CLI user:deactivate and user:change-password revoke MCP grants`.
 
 ---
 
@@ -189,6 +211,8 @@ if len(model.EmailHash("a@b.test")) != 64 { ... }
 // config
 t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "-1")            // Load() returns an error naming the variable
 t.Setenv("ECONUMO_USER_DELETION_DAYS", "abc")           // error
+t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "36501")          // error: above the 36500-day cap
+t.Setenv("ECONUMO_USER_DELETION_DAYS", "36500")          // accepted
 t.Setenv("ECONUMO_INACTIVE_USER_EXCLUDE", " A@x.test ,b@x.test,") // []string{"a@x.test","b@x.test"}
 // unset: all three are 0 / 0 / nil
 ```
@@ -224,7 +248,7 @@ CREATE UNIQUE INDEX UNIQ_users_deletion_requests_user ON users_deletion_requests
 
   pgsql: the same with `UUID` for `id`/`user_id` where the sibling tables use it (copy the types of `users_email_change_requests` in the pgsql migrations), `TIMESTAMP` for datetimes, and the backfill `UPDATE users SET last_active_at = date_trunc('second', NOW() AT TIME ZONE 'UTC');`.
 - [ ] **Step 4: Write `internal/model/user_deletion.go`** as specified above (`crypto/sha256`, `encoding/hex`).
-- [ ] **Step 5: Config.** Read the two day counts with `getIntStrict(key, 0)`, the list with `getStringList` mapped through `model.NormalizeEmail`, the two rate limits in the existing table loop (`ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION` 3, `ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION` 5). Document all five in `docs/full.env.example`, the first three under a new heading with this text:
+- [ ] **Step 5: Config.** Read the two day counts with `getIntStrict(key, 0)` and reject a value above 36500 (the pattern of `ECONUMO_CURRENCY_UPDATE_INTERVAL`'s cap): `(days+1) * 24h` overflows `time.Duration` near 106,752 days, and an overflowed cutoff lands in the future. Read the list with `getStringList` mapped through `model.NormalizeEmail`, the two rate limits in the existing table loop (`ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION` 3, `ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION` 5). Document all five in `docs/full.env.example`, the first three under a new heading with this text:
 
 ```
 # --- User deletion -----------------------------------------------------------
@@ -266,6 +290,10 @@ type DeletionStore interface {
 	ListInactiveCandidates(ctx context.Context, cutoff time.Time) ([]model.InactiveCandidate, error)
 	HasActiveConnection(ctx context.Context, userID vo.Id, cutoff time.Time) (bool, error)
 	DeleteUser(ctx context.Context, userID vo.Id) (int64, error)
+	// LockRowForWipe is stronger than LockRow: on PostgreSQL it is FOR UPDATE, which
+	// also blocks an insert that references users.id (LockRow's FOR NO KEY UPDATE
+	// lets those through).
+	LockRowForWipe(ctx context.Context, userID vo.Id) error
 }
 type AuditLog interface {
 	Insert(ctx context.Context, e model.UserAuditEvent) error
@@ -297,6 +325,9 @@ type DeletionRequests interface {
 // DeleteUser removes the row and returns 1; audit rows with that user_id stay
 // ListByEvent pages with (since, afterID): 3 rows in one second, limit 2, then the third
 // DeletionRequests.Save with a stale generation returns 0
+// LockRowForWipe on a missing row returns nil (like LockRow)
+// pgsql (enginecompare): while one connection holds LockRowForWipe(U), an INSERT INTO transactions
+//   with user_id = U from a second connection waits; with LockRow it does not
 ```
 
 - [ ] **Step 2: Run.** `go test ./internal/user/repo/ -run 'Deletion|Audit' -count=1`. Expected: FAIL.
@@ -317,7 +348,7 @@ WHERE u.deletion_marked_at IS NULL AND u.is_active = 1
 ORDER BY u.id;
 ```
 
-  (`is_active = true` on pgsql.) The others are single-table statements whose shape the interface fixes: `GetUserDeletionState`, `MarkUserForDeletion` (`... WHERE id = ? AND deletion_marked_at IS NULL`), `UnmarkUserDeletion` (`SET deletion_marked_at = NULL, deletion_reason = '' WHERE id = ? AND deletion_marked_at IS NOT NULL`), `ListMarkedUsers`, `UserHasActiveConnection`, `DeleteUserByID`, `InsertUserAudit`, `ListUserAuditByEmailHash`, `ListUserAuditByEvent` (cursor as in `ListAffiliateUsers`), and the four `users_deletion_requests` queries copied from `email_change_request.sql` without `new_email`. `TouchLastActive` passes `now` and `now.Add(-24*time.Hour)`.
+  (`is_active = true` on pgsql.) The others are single-table statements whose shape the interface fixes: `GetUserDeletionState`, `MarkUserForDeletion` (`... WHERE id = ? AND deletion_marked_at IS NULL`), `UnmarkUserDeletion` (`SET deletion_marked_at = NULL, deletion_reason = '' WHERE id = ? AND deletion_marked_at IS NOT NULL`), `ListMarkedUsers`, `UserHasActiveConnection`, `DeleteUserByID`, `InsertUserAudit`, `ListUserAuditByEmailHash`, `ListUserAuditByEvent` (cursor as in `ListAffiliateUsers`), `LockUserRowForWipe` (pgsql `SELECT id FROM users WHERE id = $1 FOR UPDATE`, no-rows mapped to nil; sqlite the same no-op `UPDATE` as `LockUserRow`), and the four `users_deletion_requests` queries modelled on `email_change_request.sql` but naming exactly the five columns of Task 3 (`id, user_id, code, created_at, expired_at`: no `new_email`, no `updated_at`). `TouchLastActive` passes `now` and `now.Add(-24*time.Hour)`.
 - [ ] **Step 4: Repos and adapters** following `internal/user/repo/emailchangerequest*.go`. `ListMarked` and `ListInactiveCandidates` return `users.email` as stored; callers decode it.
 - [ ] **Step 5: Run the tests of step 2, then with the PostgreSQL command of Global Constraints.** Expected: PASS on both.
 - [ ] **Step 6: Commit.**
@@ -412,6 +443,9 @@ func (s *Service) AdminMarkDeleted(ctx context.Context, email string) error
 // TestActivity_TouchIsDaily: stamp 2h old; Authenticate with a token whose last_used_at is 10 min old
 //   leaves the stamp; with the stamp 25h old the same call moves it
 // TestRegister_StampsNewUser: after Register, state.LastActiveAt is not nil
+// TestDeletionCode_DiesWithTheCredential: a users_deletion_requests row exists; after
+//   UpdatePassword it is gone; the same after ResetPassword and after AdminChangePassword
+//   (the two reclaim paths)
 ```
 
 - [ ] **Step 2: Run.** `go test ./internal/user/ -run 'TestMark|TestLogin_|TestActivity|TestRegister_Stamps' -count=1`. Expected: FAIL.
@@ -420,7 +454,8 @@ func (s *Service) AdminMarkDeleted(ctx context.Context, email string) error
   - `createSession`: inside its existing transaction, after `InsertIfGeneration` returned 1, call `s.cancelMarkOnSession(ctx, userID)` (reads the state; when marked: `Unmark` + audit `deletion_cancelled` with the mark's reason and cause `sign_in`) and `s.stampActive(ctx, userID, now)`.
   - `IssueOAuthAccessToken`: `stampActive` when the insert matched. `Authenticate`: `stampActive` in the branch where the token was touched.
   - `persistNewUser`: `stampActive` in the same transaction as the `Save`.
-  - `stampActive` and `cancelMarkOnSession` return nil when `SetDeletion` was never called.
+  - `UpdatePassword` and `reclaimCredentials` delete the user's deletion requests next to `emailChangeRequests.DeleteByUser`: a pending code is a grant, and it must not outlive the credential that asked for it (the code email itself tells the user to change the password).
+  - `stampActive`, `cancelMarkOnSession` and that sweep return nil when `SetDeletion` was never called.
 - [ ] **Step 4: Run the tests of step 2 and the whole package** `go test ./internal/user/... -count=1`. Expected: PASS.
 - [ ] **Step 5: i18n.** Add the two error keys to all 11 catalogues; run `go test ./internal/test/i18ntest/ -count=1`.
 - [ ] **Step 6: Commit.**
@@ -557,7 +592,9 @@ type WipeCorrection struct { // nil-able: a NULL amount_recipient leg gets none
 // TestRewrite_SoftDeletedAccounts: the same two transfer cases with P.acc soft-deleted and, in a
 //   second run, U.acc soft-deleted: the correction is still written and P.acc's balance is unchanged.
 // TestRewrite_BumpsAccountsThatLoseReferences: P's own rows in P.acc that point at U's category,
-//   U's payee, U's tag, carry U's label, or are linked to U's import source: after the call (the
+//   U's payee, U's tag, carry U's label, are linked to U's import source, or have a recurring_id
+//   of a template the cascade will delete (U's template on P.acc; P's template that transfers
+//   into U's account): after the call (the
 //   rows themselves are not changed yet, the cascade does that) P.acc's revision moved by exactly 1.
 // TestRewrite_OwnTransfersUntouched: U.acc1 -> U.acc2 and P.acc1 -> P.acc2 written by P: untouched.
 // TestRewrite_SortKeysStayUnique: after every case, no two rows of an account's day share a key
@@ -568,11 +605,13 @@ type WipeCorrection struct { // nil-able: a NULL amount_recipient leg gets none
 - [ ] **Step 3: Implement.**
   - `ReassignAuthorInForeignAccounts`: first `rev.BumpWhere(ctx, "user_id = ? AND account_id IN (SELECT id FROM accounts WHERE user_id <> ?)", id, id)`, then `UPDATE transactions SET user_id = (SELECT a.user_id FROM accounts a WHERE a.id = transactions.account_id) WHERE user_id = ? AND account_id IN (SELECT id FROM accounts WHERE user_id <> ?)`. `updated_at` is not touched.
   - `ListCrossOwnerTransfers`: `type = 2`, both accounts joined, exactly one of the two owners is the user.
-  - `BumpAccountsLosingReferences(ctx, userID)` (repo): five `rev.BumpWhere` calls, BEFORE anything
+  - `BumpAccountsLosingReferences(ctx, userID)` (repo): six `rev.BumpWhere` calls, BEFORE anything
     changes, for transactions whose `category_id` / `payee_id` / `tag_id` is one of the user's, that
     carry one of the user's labels (`id IN (SELECT transaction_id FROM transactions_labels WHERE
     label_id IN (SELECT id FROM labels WHERE user_id = ?))`), or that are linked to one of the user's
-    import sources. The cascade and `SET NULL` of wipe step 9 change what those rows show.
+    import sources, or whose `recurring_id` is a template the cascade deletes (`recurring_transactions`
+    with `user_id` = the user, or `account_id` / `account_recipient_id` one of the user's accounts).
+    The cascade and `SET NULL` of wipe step 9 change what those rows show.
   - `RewriteForDeletedUser`: `BumpAccountsLosingReferences`, then reassign, then for each listed transfer build the correction in Go (prefix `"Original transaction deleted"`, `": "` + description when not empty, cut to 255 runes) and call `ReplaceTransferWithCorrection`, which `rev.Bump`s the surviving account, inserts the correction with the explicit `sort_key` (a dedicated `InsertWipeCorrection` statement: same columns as `InsertCorrectionTransaction` in `account_corrections.sql`) and deletes the original.
 - [ ] **Step 4: Run, see PASS, then the PostgreSQL command for the same tests. Commit.**
 
@@ -601,8 +640,8 @@ type WipeCorrection struct { // nil-able: a NULL amount_recipient leg gets none
 ```
 
 - [ ] **Step 2: Run, see FAIL.** `go test ./internal/currency/... -run 'TestMove|TestCurrencyList_Owned' -count=1`
-- [ ] **Step 3: Implement.** Queries: `ListLiveAndDeletedCustomCurrencyIDsByOwner`, `MinForeignOwnerOfCurrency` (one statement: `SELECT MIN(owner) FROM (accounts.user_id UNION budgets.user_id UNION owner of the budget of budgets_elements UNION owner of the budget of debts) WHERE currency_id = ? AND owner <> ?`), `MoveCurrency` (`UPDATE currencies SET user_id = ?, is_deleted = ? WHERE id = ?`), and the existing `OwnerCurrencyCodeExists` for the collision. Extend `GetUserCurrencyListView` with four more `OR c.id IN (...)` arms keyed on the caller owning the account / budget / budget of the element / budget of the debt.
-- [ ] **Step 4: Run, PASS; run `go test ./internal/test/apiparity/ -count=1`** (the list query changed; goldens must not move). **Commit.**
+- [ ] **Step 3: Implement.** Queries: `ListLiveAndDeletedCustomCurrencyIDsByOwner`, `FirstForeignOwnerOfCurrency :one` (one statement: `SELECT owner FROM (accounts.user_id UNION budgets.user_id UNION owner of the budget of budgets_elements UNION owner of the budget of debts, each filtered on currency_id) o WHERE owner <> ? ORDER BY owner LIMIT 1`; PostgreSQL 17 has no `MIN(uuid)`; no row = nobody else uses it), `MoveCurrency` (`UPDATE currencies SET user_id = ?, is_deleted = ? WHERE id = ?`), and the existing `OwnerCurrencyCodeExists` for the collision. Extend `GetUserCurrencyListView` with four more `OR c.id IN (...)` arms keyed on the caller owning the account / budget / budget of the element / budget of the debt.
+- [ ] **Step 4: Run, PASS, on sqlite AND with the PostgreSQL command** (the owner query is the engine-sensitive one); **run `go test ./internal/test/apiparity/ -count=1`** (the list query changed; goldens must not move). **Commit.**
 
 ### Task 12: authserver, imports, idempotency
 
@@ -709,7 +748,7 @@ const (
 func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Time) (WipeOutcome, error)
 ```
 
-- [ ] **Step 1: Write `wipetest/fixture.go`**: `func Seed(t *testing.T, db *dbtest.DB) Fixture` building the spec's fixture with `internal/test/fixture`: U; partner P (shared account each way, shared budget each way, cross transfers both directions, one comment by U on P's budget element, a debt on U's category in P's budget); ex-partner X holding one row U wrote; third user T sharing a budget with both U and P (owned by T); a legacy transfer U.acc -> P.acc with NULL `amount_recipient`; an OAuth app U owns with a grant of T; one row P wrote in P's account categorized with U's category; U's custom currency as the currency of U's own budget, of P's budget, of one element of P's budget and of P's debt; idempotency keys and an `oauth_states` row of U. `Fixture` exposes the ids.
+- [ ] **Step 1: Write `wipetest/fixture.go`**: `func Seed(t *testing.T, db *dbtest.DB) Fixture` building the spec's fixture with `internal/test/fixture`: U; partner P (shared account each way, shared budget each way, cross transfers both directions, one comment by U on P's budget element, debt D1 on U's category in P's budget, debt D2 on one of P's OWN categories in P's budget); ex-partner X holding one row U wrote; third user T sharing a budget with both U and P (owned by T); a legacy transfer U.acc -> P.acc with NULL `amount_recipient`; an OAuth app U owns with a grant of T; one row P wrote in P's account categorized with U's category; U's custom currency as the currency of U's own budget, of P's budget, of one element of P's budget and of P's debt D2; idempotency keys and an `oauth_states` row of U. `Fixture` exposes the ids.
 - [ ] **Step 2: Failing tests** (`dbtest.New(t)`, so the same file runs on PostgreSQL under the tag; services from `server.BuildWithServices(cfg, db.Raw, server.Seams{})`):
 
 ```go
@@ -720,8 +759,8 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 //   no other account moved; every remaining row has a sort_key, transfers have a
 //   recipient_sort_key, and no two rows of an account's day share a key (the two invariants
 //   revisionguard enforces on API routes; the wipe has no route, so this test carries them);
-//   P and T still both have access to T's budget; P's budget and P's debt still resolve their
-//   currency (currencies row exists, user_id == min(P,T) owner as applicable);
+//   P and T still both have access to T's budget; debt D1 is gone; P's budget and debt D2 still
+//   resolve their currency (currencies row exists, user_id == min(P,T) owner as applicable);
 //   no table has a row whose user-naming column holds U's id except users_audit
 //   (iterate wipeguard's column list); one users_audit row event "deleted" with
 //   details {"reason":"cli","lifetimeAccess":true} and email_hash == model.EmailHash(U's email).
@@ -737,10 +776,10 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 
 - [ ] **Step 3: Run, see FAIL.** `go test ./internal/test/wipetest/ -count=1`
 - [ ] **Step 4: Implement `Wipe`**, one `s.tx.WithTx`:
-  1. `wiper.LockBudgets`; 2. `repo.LockRow`; 3. `GetState` (NotFound or unmarked or `selectedMark` mismatch -> `WipeNotMarked`); for reason `inactive`, `s.inactiveMarkStillAllowed(ctx, userID)` (Task 17 fills it in; here it returns true) else `Unmark` + audit and return `WipeReleased`; 4. read the user, decode the email, `lifetime := u.AccessLevel == model.AccessLevelFull && u.AccessUntil == nil`; 5. `wiper.Erase`; 6. `store.DeleteUser` (must be 1); 7. audit `deleted`.
+  1. `wiper.LockBudgets`; 2. `store.LockRowForWipe` (not `LockRow`: a request that authenticated before the mark could otherwise still insert a row authored by the user into a partner's account after step 5 scanned it, and the cascade would delete it); 3. `GetState` (NotFound or unmarked or `selectedMark` mismatch -> `WipeNotMarked`); for reason `inactive`, `s.inactiveMarkStillAllowed(ctx, userID)` (Task 17 fills it in; here it returns true) else `Unmark` + audit and return `WipeReleased`; 4. read the user, decode the email, `lifetime := u.AccessLevel == model.AccessLevelFull && u.AccessUntil == nil`; 5. `wiper.Erase`; 6. `store.DeleteUser` (must be 1); 7. audit `deleted`.
   A nil wiper is an error ("wipe is not wired"), never a silent skip.
 - [ ] **Step 5: Run on sqlite, then with the PostgreSQL command.** Expected: PASS on both. If `DELETE FROM users` fails on a constraint, the failing column belongs to Task 5's lists: STOP and report.
-- [ ] **Step 6: Lock-order test** `TestWipe_PartnerTransferWaits` (PostgreSQL, two pools as in `internal/user/mutate_lock_pgsql_test.go`): wrap the wiper so that right after `Erase` returns (before the users row is deleted) a second connection starts `transaction.Create` of a transfer from U's shared account to P's account as P; assert that call does not return until the wipe commits, then fails; assert P's balance equals the pre-wipe balance. A second case: P runs `RevokeAccess` on U from P's budget while the wipe holds its locks; either order is acceptable, a hang longer than 10 s or a wipe that half-applies is not.
+- [ ] **Step 6: Lock-order test** `TestWipe_PartnerTransferWaits` (PostgreSQL, two pools as in `internal/user/mutate_lock_pgsql_test.go`): wrap the wiper so that right after `Erase` returns (before the users row is deleted) a second connection starts `transaction.Create` of a transfer from U's shared account to P's account as P; assert that call does not return until the wipe commits, then fails; assert P's balance equals the pre-wipe balance. A second case: at the same point a second connection inserts, as U, an expense into P's shared account (U still has write access in that connection's snapshot); the insert must wait and then fail, never commit and vanish. A third case: P runs `RevokeAccess` on U from P's budget while the wipe holds its locks; either order is acceptable, a hang longer than 10 s or a wipe that half-applies is not.
 - [ ] **Step 7: Commit.**
 
 ---
@@ -816,13 +855,14 @@ func (s *user.Service) SetDeletionSender(sender *mailer.DeletionSender)
 type DeletionPassResult struct {
 	Released, Wiped, Marked int
 	Failed   []PassFailure // wipe failures only
+	Err      error         // a pass that could not run at all (listing failed)
 }
 type PassFailure struct{ UserID vo.Id; ErrType string }
 // ReleaseInactiveMarks cancels inactive marks the household rule no longer allows,
 // and all of them when InactiveDays is 0.
 func (s *Service) ReleaseInactiveMarks(ctx context.Context) (int, error)
 // WipeExpired wipes users marked at least DeletionDays ago; nobody when DeletionDays is 0.
-func (s *Service) WipeExpired(ctx context.Context) (wiped int, failed []PassFailure)
+func (s *Service) WipeExpired(ctx context.Context) (wiped int, failed []PassFailure, err error)
 // MarkInactive emails and marks; nobody when InactiveDays is 0.
 func (s *Service) MarkInactive(ctx context.Context) (int, error)
 // PurgeDeleted = ReleaseInactiveMarks + WipeExpired (user:purge-deleted).
@@ -843,6 +883,9 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 // TestMarkInactive_WholeHousehold: A and B connected, both inactive -> both marked
 // TestMarkInactive_MailerFailureIsIsolated: the mailer fails for the first candidate -> that
 //   user is NOT marked, the second IS, the returned count is 1, no error
+// TestMarkInactive_SignedInWhileTheMailWasSent: the mailer's Send hook runs Login for that
+//   candidate -> the user is NOT marked and the new session still authenticates
+// TestMarkInactive_EmailChangedWhileTheMailWasSent: the hook changes users.email -> not marked
 // TestMarkInactive_Off: InactiveDays 0 -> 0, no email
 // TestRelease_PartnerCameBack: A and B both marked inactive; B logs in (mark cleared);
 //   ReleaseInactiveMarks -> A unmarked, audit cause "active_connection"
@@ -850,6 +893,11 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 // TestRelease_InactivityOff: InactiveDays 0 -> every inactive mark released with cause
 //   "inactivity_off"; a "cli" and a "self_initiated" mark stay
 // TestRelease_RunsWhenDeletionDaysIsZero
+// TestRelease_DoesNotCancelAReplacementMark: the pass lists A's inactive mark; before it locks A,
+//   A signs in and is marked again from the CLI (hook on the store's ListMarked) -> the cli mark
+//   stays
+// TestPurgeDeleted_ListingFails: a store whose ListMarked errors -> PurgeDeleted().Err is that
+//   error; the CLI test of Task 18 expects exit 1 for it
 // TestWipeExpired_AgeRule: DeletionDays 30: a mark 29 days old stays, 31 days old is wiped;
 //   DeletionDays 0: nobody
 // TestWipeExpired_ContinuesPastAFailure: wiper fails for the first user -> second is wiped,
@@ -859,7 +907,7 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 ```
 
 - [ ] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run 'TestMarkInactive|TestRelease|TestWipeExpired|TestWipe_Releases' -count=1`
-- [ ] **Step 3: Implement.** `cutoff = now - (InactiveDays+1)*24h`. `MarkInactive` per candidate: skip `Exclude[model.NormalizeEmail(decoded)]`; send; on a send error `slog.Warn("deletion: inactivity notice failed", "user_id", ..., "err_type", ...)` and continue; else `mutate`-style transaction (`LockRow`, re-check with `HasActiveConnection`, `markForDeletion`). `WipeExpired` passes each selected `MarkedAt` to `Wipe`; a failure logs `slog.Error("deletion: wipe failed", "user_id", ..., "err_type", ...)`. The job runs release, wipe, mark in that order and ends with `slog.Info("deletion: pass done", "released", n, "wiped", n, "failed", n, "marked", n)`. `StartPolling` follows `RateUpdater.StartPolling` (one goroutine, so runs never overlap) with a 2-minute first delay; it always starts (the release pass matters at any setting).
+- [ ] **Step 3: Implement.** `cutoff = now - (InactiveDays+1)*24h`. `MarkInactive` per candidate: skip `Exclude[model.NormalizeEmail(decoded)]`; send; on a send error `slog.Warn("deletion: inactivity notice failed", "user_id", ..., "err_type", ...)` and continue; else one transaction: `LockRow`, then re-read EVERYTHING the selection relied on, because the mail took time: the user is still active (`is_active`), still unmarked, their own stamp is still older than the cutoff, their address is still the one the notice went to, and `HasActiveConnection` is still false; only then `markForDeletion`. `ReleaseInactiveMarks` does the mirror image per listed mark: `LockRow`, `GetState`, and it releases only when the reason is still `inactive` and `MarkedAt` equals the listed value. A listing error is returned (and lands in `DeletionPassResult.Err`), never swallowed. `WipeExpired` passes each selected `MarkedAt` to `Wipe`; a failure logs `slog.Error("deletion: wipe failed", "user_id", ..., "err_type", ...)`. The job runs release, wipe, mark in that order and ends with `slog.Info("deletion: pass done", "released", n, "wiped", n, "failed", n, "marked", n)`. `StartPolling` follows `RateUpdater.StartPolling` (one goroutine, so runs never overlap) with a 2-minute first delay; it always starts (the release pass matters at any setting).
 - [ ] **Step 4: Start it** in `cmd/econumo/main.go` next to `rateUpdater.StartPolling(ctx)` from `Built.Users`.
 - [ ] **Step 5: Run, PASS; `go build ./...`. Commit.**
 
@@ -882,7 +930,7 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 // user:delete on an inactive mark with an active connection -> 1,
 //   "not deleted: a connected user is active; the mark was removed"
 // user:purge-deleted -> 0 with "released N, deleted N"; 1 when any wipe failed, one line per
-//   failure "failed <user id>: <error type>"
+//   failure "failed <user id>: <error type>"; 1 as well when the pass itself errored (Err set)
 ```
 
 - [ ] **Step 2: Run, FAIL. Step 3: implement** the four commands (summaries: `Mark a user for deletion: user:mark-deleted <email>`, `List users marked for deletion: user:list-pending-deletion`, `Delete a marked user now: user:delete <email>`, `Release and delete marked users whose time has come: user:purge-deleted`); `user:delete` and `user:purge-deleted` use `c.fullUser()`. **Step 4: run** `go test ./internal/cli/ -count=1`, PASS. **Step 5:** add the four names to the `user:` line of the CLI block in `CLAUDE.md`. **Commit.**
@@ -896,7 +944,7 @@ func (j *DeletionJob) StartPolling(ctx context.Context) // first run 2 min after
 - Produces: `GET /admin/deleted-users?since=<datetime>&afterId=<audit id>&limit=<1..500>` answering `[]model.AdminDeletedUser{Id string "id"; UserId string "userId"; DeletedAt string "deletedAt"; Reason string "reason"; LifetimeAccess bool "lifetimeAccess"}` oldest first; `model.AdminUserView` gains `DeletionMarkedAt string "deletionMarkedAt"` and `DeletionReason string "deletionReason"`.
 
 - [ ] **Step 1: Failing tests** in `handler_test.go` (existing harness): three `deleted` rows in one second, `limit=2` -> two rows; the next call with `since` = that second and `afterId` = the second row's `id` -> the third; missing `since` -> 400 with field `since`; a marked user's `user-context` carries both new fields, an unmarked one carries `""`; a wiped user's `user-context` is the existing 404.
-- [ ] **Step 2: Run, FAIL. Step 3: implement** (handler modelled on `AffiliateUsers`; parse `details` JSON in the service). Add `{http.MethodGet, "/admin/deleted-users?since=2026-01-01+00:00:00"}` to `TestAdminRoutesAreNotOnThePublicMux`. **Step 4:** `go test ./internal/admin/... ./internal/test/apiparity/ -run 'Admin' -count=1`. PASS. **Commit.**
+- [ ] **Step 2: Run, FAIL. Step 3: implement** (handler modelled on `AffiliateUsers`; parse `details` JSON in the service). The `deleted` row's `created_at` is taken when the row is written, the last statement of the wipe; two wipes can still commit out of that order, so the endpoint's doc comment states the contract of the spec: the caller re-reads from 10 minutes before the newest `deletedAt` it has seen and ignores ids it already processed. Add `{http.MethodGet, "/admin/deleted-users?since=2026-01-01+00:00:00"}` to `TestAdminRoutesAreNotOnThePublicMux`. **Step 4:** `go test ./internal/admin/... ./internal/test/apiparity/ -run 'Admin' -count=1`. PASS. **Commit.**
 
 ---
 
@@ -955,9 +1003,9 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 - Produces (TS): `ConnectionDto.deletionMarkedAt: string`; `Inbox.markedConnections: ConnectionDto[]` (NOT added to `count`: the row has no action and may stay for weeks).
 - `en` copy: `inbox.sharing.scheduled_for_deletion`: `{name}'s data is scheduled for deletion. The accounts and budgets they share with you will disappear, and transfers with their accounts will become corrections.`
 
-- [ ] **Step 1: Failing tests.** Go (`internal/connection`): a marked connected user -> `DeletionMarkedAt` is the formatted time; unmarked -> `""`. Vitest `DeletionNoticeSection.test.tsx`: renders one row per connection with a non-empty `deletionMarkedAt`, showing the name and the copy; renders nothing for an empty list. `useInbox.test.tsx`: `markedConnections` holds only marked connections and `count` is unchanged by them.
+- [ ] **Step 1: Failing tests.** Go (`internal/connection`): a marked connected user -> `DeletionMarkedAt` is the formatted time; unmarked -> `""`. Vitest `DeletionNoticeSection.test.tsx`: renders one row per connection with a non-empty `deletionMarkedAt`, showing the name and the copy; renders nothing for an empty list. `useInbox.test.tsx`: `markedConnections` holds only marked connections and `count` is unchanged by them. `InboxPage.test.tsx`: with a marked connection as the only item the page shows the notice and NOT the "All caught up" empty state.
 - [ ] **Step 2: Run, FAIL** (`go test ./internal/connection/ -count=1`; `cd web && pnpm test src/features/inbox`).
-- [ ] **Step 3: Implement.** In `InboxPage.tsx` the Sharing section renders when `invites.length > 0 || markedConnections.length > 0`, notices first. The row is a card like the invite card (`UserAvatar`, text), no buttons. `useInbox` reads `useConnections()`.
+- [ ] **Step 3: Implement.** In `InboxPage.tsx` the Sharing section renders when `invites.length > 0 || markedConnections.length > 0`, notices first, and the empty-state predicate (today `count === 0` with nothing skipped) also requires `markedConnections.length === 0`. The row is a card like the invite card (`UserAvatar`, text), no buttons. `useInbox` reads `useConnections()`.
 - [ ] **Step 4: Regenerate apiparity and mcpparity goldens; read the diff** (only the added field). `make swagger`. `cd web && pnpm lint && pnpm exec tsc -b`.
 - [ ] **Step 5: i18n + regression plan.** Add the key to all 11 catalogues. In section 11 add: `- [ ] 📱 A connected user is marked for deletion (user:mark-deleted): the partner's Inbox shows "<name>'s data is scheduled for deletion..." under Sharing without changing the Inbox badge count; it disappears when that user signs in.`
 - [ ] **Step 6: Commit.**
@@ -967,7 +1015,8 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 **Files:** Create `web/src/features/settings/DeleteDataPage.tsx`, `DeleteDataPage.test.tsx`; modify `web/src/api/user.ts`, `web/src/features/user/queries.ts`, `web/src/app/routes.tsx`, `web/src/app/router-pages.ts`, `web/src/features/settings/ProfilePage.tsx`, `web/src/lib/metrics.ts`, `locales/*.json`, `docs/regression-test-plan.md`, `CLAUDE.md`.
 
 **Interfaces:**
-- Consumes: Task 20 routes; `exportTransactionList(accountIds)` + `downloadBlob` (`web/src/features/transactions/ExportCsvDialog.tsx` shows the pair); `useAccounts`; `RouterPage.LOGOUT`; `getBillingUrl()`; `hasPassword` on the user DTO; `isPasswordLoginAllowed()`.
+- Consumes: Task 20 routes; `exportTransactionList(accountIds)` + `downloadBlob` (`web/src/features/transactions/ExportCsvDialog.tsx` shows the pair, and how it picks OWNED accounts); `useAccounts`; `getBillingUrl()`; `hasPassword` on the user DTO; `isPasswordLoginAllowed()`; the local clean-up `LogoutPage.tsx` performs.
+- Produces: `web/src/features/auth/localSignOut.ts` exporting `async function signOutLocally(opts?: { keepPendingWrites?: boolean; keepAppLock?: boolean }): Promise<void>` (the `removeToken` / `clearConfig` / `resetAnalyticsIdentity` / `clearPersistedQueryCache` / `clearPendingWrites` sequence, moved out of `LogoutPage.tsx`, which now calls it).
 - Produces: `requestUserDeletion(password: string): Promise<void>`, `confirmUserDeletion(code: string): Promise<void>`; hooks `useRequestUserDeletion`, `useConfirmUserDeletion` (`meta: { handlesOwnErrors: true }`; confirm's `onSuccess` fires `trackEvent(METRICS.USER_DELETE_DATA)`); `METRICS.USER_DELETE_DATA = 'appUserDeleteData'`; `RouterPage.SETTINGS_DELETE_DATA = '/settings/profile/delete-data'`.
 - `en` copy (namespace `user.delete_data`):
   - `menu_item`: `Delete my data`
@@ -984,8 +1033,8 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
   - `confirm.export.failed`: `The download of your transactions failed.`
   - `confirm.export.retry`: `Try the download again`
   - `confirm.action`: `Delete my data`
-  - `done.text`: `Your data will be deleted within a month. Sign in before then to keep it.`
-  - `done.action`: `Sign out`
+  - `confirm.export.none`: `You have no accounts of your own to export.`
+  - `done.text`: `Your data will be deleted within a month. Sign in before then to keep it.` (shown on the login page, key `auth.login.deletion_scheduled`)
 
 - [ ] **Step 1: Failing tests** (`DeleteDataPage.test.tsx`, msw as in `ChangeEmailPage.test.tsx`):
 
@@ -993,23 +1042,30 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 // password user: submitting without a password shows "Required field"; with one, POSTs
 //   {password} and shows the code phase
 // passwordless user (fixture hasPassword false): no password field; the request body is {password: ''}
-// entering the code phase triggers ONE GET export-transaction-list with the user's own account ids;
-//   a 500 from it shows the failed text and a retry button, and Confirm is still enabled
-// confirm POSTs {code}; on success the done text is shown; "Sign out" navigates to /logout
+// entering the code phase triggers ONE GET export-transaction-list whose accountId lists exactly
+//   the accounts the user OWNS (a shared account in the fixture is not in it), and only after
+//   the account list has loaded; a 500 from it shows the failed text and a retry button, and
+//   Confirm is still enabled
+// a user who owns no account: NO export request is made (a blank accountId means "every
+//   accessible account" to the server) and the "no accounts" text is shown
+// confirm POSTs {code}; on success the token and the persisted query cache are gone from
+//   localStorage and the browser is sent to /login?reason=deletion-scheduled
+// LoginPage with ?reason=deletion-scheduled shows the done text
 // a 400 on confirm shows the server message and stays on the code phase
 // offline (onlineManager.setOnline(false)): both submit buttons are disabled
 // the billing link is rendered only when window.econumoConfig.BILLING_URL is set
 ```
 
 - [ ] **Step 2: Run, FAIL.** `cd web && pnpm test src/features/settings/DeleteDataPage.test.tsx`
-- [ ] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm | done`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase mounts; no resend button (requesting again from the first phase replaces the code).
+- [ ] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase is shown AND the account list has loaded; no resend button (requesting again from the first phase replaces the code). On a successful confirm the page does not wait for a click: it awaits `signOutLocally()` and then `window.location.assign('/login?reason=deletion-scheduled')`; the server has already revoked the session, and a closed tab must not leave the cached data behind. `LoginPage.tsx` renders the done text for that reason next to its existing `reason=expired` notice. There is no `done` phase on the page.
 - [ ] **Step 4: Run** the test file, `pnpm test src/lib/metrics-coverage.test.ts src/lib/offline-coverage.test.ts src/lib/offline-notice-coverage.test.ts`, `pnpm lint`, `pnpm exec tsc -b`. PASS.
 - [ ] **Step 5: i18n** in all 11 catalogues; `go test ./internal/test/i18ntest/ -count=1`.
 - [ ] **Step 6: Regression plan** (section 12):
 
 ```
 - [ ] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →
-      the CSV of your transactions downloads → Delete my data → the final screen → Sign out.
+      the CSV of your transactions downloads → Delete my data → the sign-in page says the data
+      will be deleted.
       Every other device is signed out; signing in again cancels the deletion and nothing is lost.
 - [ ] Delete my data, passwordless account (provider sign-in only): no password is asked.
 - [ ] Delete my data: a wrong code is refused; the page stays on the code step.

@@ -57,7 +57,8 @@ lifetime-access customer get lifetime access back, once.
 | `ECONUMO_USER_DELETION_DAYS` | `0` | wipe marked users this many days after the mark; `0` = never automatically (CLI only) |
 | `ECONUMO_INACTIVE_USER_EXCLUDE` | empty | comma-separated emails the inactivity job never marks |
 
-Strict parsing like every other setting: negative numbers or malformed values fail at boot.
+Strict parsing like every other setting: negative numbers, malformed values and day counts
+above 36500 fail at boot.
 Exclude entries are compared with `model.NormalizeEmail`. Excluded users can still be marked by
 themselves or the CLI.
 
@@ -115,7 +116,8 @@ hour. A test presents the old bearer right after the mark and expects the frozen
 generation bump is also what `AdminDeactivate` does, for this reason: a
 password login, a provider handoff or an OAuth code exchange that read its evidence before the
 mark must not be able to mint a credential after it (the inserts are conditional on the
-generation). The invariant: a marked user has no live credential, and the only mint that can
+generation). A pending self-service deletion code is such a grant as well: a password
+change and both reclaim paths delete it, like a pending email change. The invariant: a marked user has no live credential, and the only mint that can
 reach one is a fresh session, which clears the mark (below). Marking an already-marked user is
 an error for the CLI and impossible from the API (no session survives the mark).
 
@@ -133,9 +135,10 @@ an error for the CLI and impossible from the API (no session survives the mark).
   and can be cancelled sooner in billing (with the billing link when `ECONUMO_BILLING_URL` is
   set), and that people the user shares with keep their own data but lose the shared accounts
   and budgets. Steps: password -> code -> before confirming, the browser
-  downloads the CSV export of all the user's transactions (existing
-  `GET /api/v1/transaction/export-transaction-list`) -> confirm -> a final screen "Your data
-  will be deleted within a month. Sign in before then to keep it." -> local sign-out.
+  downloads the CSV export of the transactions in the accounts the user OWNS (existing
+  `GET /api/v1/transaction/export-transaction-list`) -> confirm -> local sign-out at once (the
+  session is already revoked; a closed tab must not leave cached data behind) -> the sign-in
+  page showing "Your data will be deleted within a month. Sign in before then to keep it."
   Offline-disabled via `useOnline`. Analytics event on confirm.
 - The CSV download failing does not block deletion, but the UI says so and offers a retry.
 - The existing export lists live accounts only (`ListExportAccountsForUser` skips deleted
@@ -180,6 +183,11 @@ an error for the CLI and impossible from the API (no session survives the mark).
   wiped whatever their partners do, and so is a user marked from the CLI.
 - A failed send logs a WARN and leaves the user unmarked, to retry on the next pass; nobody is
   marked without the notice going out. The console transport counts as sent.
+- Sending takes time, so after it, under the row lock, everything the selection relied on is
+  read again: still active, still unmarked, own stamp still older than the cutoff, the address
+  still the one notified, still no active connection. A user who signed in while their notice
+  was being sent is not marked. The release pass is fenced the same way: it cancels only the
+  inactive mark it listed, never a mark made after it.
 - "ONE email" is the normal case, not a guarantee: the send comes before the mark, so if the
   send succeeds and the mark then fails (or the process stops in between), the next pass sends
   the notice again. A second copy of a deletion warning is the harmless direction; a stored
@@ -246,7 +254,7 @@ whole.
 
 ### Prerequisite fixes (own commits, each with its regression test)
 
-Both are bugs today, independent of deletion, that the wipe would spread.
+All three are bugs today, independent of deletion, that this change would spread.
 
 **1.** Today's delete-connection removes a third user. `ConnectionBudgetRevoker.revokeDirection`
 (`internal/server/glue_connection.go`) walks `ListForUser`, which returns budgets the user owns
@@ -257,9 +265,15 @@ during the review). The fix: only budgets OWNED by one of the two users are touc
 **2.** `ClearActiveBudget` (`internal/server/glue_budget.go`) reads a user and saves the whole
 row through `UpsertUser` without the row lock. On PostgreSQL a password or email change that
 commits between that read and that save is written back to its old value. The wipe calls this
-for every member of every budget it unwinds. The fix: clear the `budget` option with one
-conditional statement on `users_options` (`... WHERE user_id = ? AND name = 'budget' AND value
-= ?`), never through the user aggregate.
+for every member of every budget it unwinds. The fix: take that user's row lock, then clear
+the `budget` option with one conditional statement on `users_options` (`... WHERE user_id = ?
+AND name = 'budget' AND value = ?`), never through the user aggregate. The lock matters too:
+a profile save writes back every option it read.
+
+**3.** The CLI never installs the MCP grant revoker (`internal/cli/container.go`), and the
+revocation is a silent no-op without it: `user:deactivate` and `user:change-password` leave an
+MCP client able to refresh its access. Marking from the CLI would inherit this. The fix is
+one line of wiring, with a test.
 
 ### Lock order (a requirement; the plan proves it with a two-connection PostgreSQL test)
 
@@ -267,6 +281,10 @@ conditional statement on `users_options` (`... WHERE user_id = ? AND name = 'bud
    `Prepare` must be first in a transaction (`internal/category/ports.go`), so budgets come
    before the user row.
 2. The user row. The mark is re-checked after this lock, never before.
+   The wipe's lock on it is the strong one (`FOR UPDATE` on PostgreSQL). The ordinary row
+   lock (`FOR NO KEY UPDATE`) lets an insert that references `users.id` through, so a
+   request that authenticated before the mark could still add a row authored by the user to
+   a partner's account after step 5 scanned it, and the cascade would delete that row.
 3. Every account the user owns, in id order (`FOR UPDATE` on PostgreSQL). A transaction
    write on an account bumps that account's revision and takes foreign-key locks on its row,
    so it now waits for the wipe. Without this, a partner whose access the wipe has unwound
@@ -274,8 +292,8 @@ conditional statement on `users_options` (`... WHERE user_id = ? AND name = 'bud
    after step 6 scanned it; the cascade would then delete that transfer with no correction
    on the partner's side. After the wipe commits, the waiting write fails on the missing
    account. The two-connection test covers exactly this interleaving.
-4. Everything else. Partner user rows are never locked first; the wipe only writes them late
-   (the active-budget pointer), the same order `RevokeAccess` already uses.
+4. Everything else. A partner's user row is locked only late, right before its active-budget
+   pointer is cleared (the same order `RevokeAccess` uses); never first.
 
 The set of budgets is read before it is locked. A budget that joins the set in that window, a
 deadlock and a serialization failure all end the same way: the transaction rolls back and the
@@ -465,8 +483,11 @@ partner and the third user still share their budget; no row anywhere names the w
   `/admin/affiliate-users`: the `deleted` audit rows since the date (`userId`, `deletedAt`,
   `reason`, `lifetimeAccess`), oldest first, with the same composite cursor as
   `ListAffiliateUsers` (`since` plus an after-id): a batch of wipes shares one second, and a
-  page that ends inside it must neither skip nor repeat rows. Billing polls it and cancels
-  subscriptions
+  page that ends inside it must neither skip nor repeat rows. The cursor orders rows, not
+  commits: two wipes running at once (the job and a `user:delete`) can commit in the other
+  order, so a caller that only ever moves forward could miss one. The contract: re-read from
+  10 minutes before the newest `deletedAt` seen and skip ids already processed. Billing polls
+  it and cancels subscriptions
   (separate billing PR). `lifetimeAccess` is there so billing keeps a lifetime purchase instead
   of treating it as cancelled.
 - `/admin/user-context` for a wiped user answers the existing 404; a marked user shows additive
