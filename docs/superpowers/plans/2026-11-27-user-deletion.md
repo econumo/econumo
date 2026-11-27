@@ -1049,7 +1049,7 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 - Routes: `POST /api/v1/user/request-user-deletion`, `POST /api/v1/user/confirm-user-deletion`, both authenticated, both in `ReadonlyAllowedPaths`.
 - Errors reused: `CodeUserPasswordIncorrect`, `CodeUserVerificationCodeInvalid`, `CodeUserVerificationCodeExpired`.
 
-- [ ] **Step 1: Failing tests.**
+- [x] **Step 1: Failing tests.**
 
 ```go
 // TestRequestUserDeletion_PasswordUser: wrong password -> ValidationError CodeUserPasswordIncorrect,
@@ -1070,9 +1070,9 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 //   with a wrong code (owner); a "readonly" caller's request is NOT a 402
 ```
 
-- [ ] **Step 2: Run, FAIL.** `go test ./internal/user/ -run 'UserDeletion' -count=1`
-- [ ] **Step 3: Implement** on the model of `RequestEmailChange` / `ConfirmEmailChange` (same limiter helpers, `generatePasswordCode`, `HashResetCode`, the request saved under the row lock with the credentials generation). Password required exactly when `u.Algorithm != model.AlgorithmNone && !s.passwordLoginDisabled`. `ConfirmUserDeletion`: in one transaction `LockRow`, re-read the user and refuse when the request's `Email` is not the stored `users.email` any more (a code proves the mailbox it was sent to, and an email change does not bump the credentials generation), `Consume`, `markForDeletion(ctx, userID, model.DeletionReasonSelf)`. Handlers with swag blocks, `make swagger`.
-- [ ] **Step 4: Regenerate the apiparity goldens, read the diff** (only the new scenario file appears). Run `go test ./internal/test/apiparity/ ./internal/test/i18ntest/ ./internal/user/... -count=1`. PASS. **Commit.**
+- [x] **Step 2: Run, FAIL.** `go test ./internal/user/ -run 'UserDeletion' -count=1`
+- [x] **Step 3: Implement** on the model of `RequestEmailChange` / `ConfirmEmailChange` (same limiter helpers, `generatePasswordCode`, `HashResetCode`, the request saved under the row lock with the credentials generation). Password required exactly when `u.Algorithm != model.AlgorithmNone && !s.passwordLoginDisabled`. `ConfirmUserDeletion`: in one transaction `LockRow`, re-read the user and refuse when the request's `Email` is not the stored `users.email` any more (a code proves the mailbox it was sent to, and an email change does not bump the credentials generation), `Consume`, `markForDeletion(ctx, userID, model.DeletionReasonSelf)`. Handlers with swag blocks, `make swagger`.
+- [x] **Step 4: Regenerate the apiparity goldens, read the diff** (only the new scenario file appears). Run `go test ./internal/test/apiparity/ ./internal/test/i18ntest/ ./internal/user/... -count=1`. PASS. **Commit.**
 
 ### Task 21: `deletionMarkedAt` on connections and the Inbox row
 
