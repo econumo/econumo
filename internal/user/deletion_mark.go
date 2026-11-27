@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -18,7 +19,7 @@ type deletionAuditDetails struct {
 // markForDeletion runs inside the caller's transaction, after LockRow.
 func (s *Service) markForDeletion(ctx context.Context, userID vo.Id, reason model.DeletionReason) error {
 	if s.deletion == nil {
-		return nil
+		return errors.New("user deletion is not wired")
 	}
 	now := s.clock.Now()
 	n, err := s.deletion.Mark(ctx, userID, reason, now)

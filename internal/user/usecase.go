@@ -151,8 +151,10 @@ type DeletionConfig struct {
 	Exclude      map[string]bool // model.NormalizeEmail-ed addresses
 }
 
-// SetDeletion installs the deletion stores. Until it is called every
-// deletion path is a no-op, which keeps unrelated tests untouched.
+// SetDeletion installs the deletion stores. Until it is called the passive
+// hooks (the activity stamp, the cancel on sign-in, the deletion-code sweep)
+// are no-ops, which keeps unrelated tests untouched, while an explicit mark
+// fails with an error rather than reporting a success it did not perform.
 func (s *Service) SetDeletion(store DeletionStore, audit AuditLog, requests DeletionRequests, cfg DeletionConfig) {
 	s.deletion = store
 	s.audit = audit

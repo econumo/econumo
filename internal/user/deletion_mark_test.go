@@ -312,3 +312,19 @@ func TestDeletionCode_DiesWithTheCredential(t *testing.T) {
 		t.Error("user:change-password must drop the pending deletion code")
 	}
 }
+
+func TestMark_FailsWhenDeletionIsNotWired(t *testing.T) {
+	svc, _, clk, _ := newAuthEnv(t)
+	ctx := context.Background()
+	if err := svc.AdminMarkDeleted(ctx, oauthTestEmail); err == nil {
+		t.Fatal("AdminMarkDeleted without SetDeletion must fail")
+	}
+	login, err := svc.Login(ctx, model.LoginRequest{Username: oauthTestEmail, Password: "secretpass"}, "ua", clk.now)
+	if err != nil {
+		t.Fatalf("Login without SetDeletion: %v", err)
+	}
+	clk.now = clk.now.Add(10 * time.Minute)
+	if _, err := svc.Authenticate(ctx, login.Token); err != nil {
+		t.Fatalf("Authenticate without SetDeletion: %v", err)
+	}
+}
