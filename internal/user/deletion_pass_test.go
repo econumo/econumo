@@ -634,3 +634,27 @@ func TestDeletionJob_RunOnceOrder(t *testing.T) {
 		t.Errorf("the idle user was not marked: %+v", st)
 	}
 }
+
+type panickingWiper struct{}
+
+func (panickingWiper) LockBudgets(context.Context, vo.Id) error { return nil }
+func (panickingWiper) Erase(context.Context, vo.Id) error {
+	panic("wipe exploded for user_secret@example.test")
+}
+
+// A panic inside a pass must not take serve down: RunOnce returns and the
+// next tick runs.
+func TestDeletionJob_RunOnceRecoversAPanic(t *testing.T) {
+	e := newPassEnv(t, inactive30)
+	u := e.user(t, "doomed@pass.test", 40*day)
+	e.mark(t, u, model.DeletionReasonCLI, e.clk.now.Add(-31*day))
+	e.svc.SetDataWiper(panickingWiper{})
+
+	res := appuser.NewDeletionJob(e.svc, e.clk).RunOnce(context.Background())
+	if res.Err == nil {
+		t.Error("a pass that panicked must report an error")
+	}
+	if !e.exists(t, u) {
+		t.Error("the user is gone after a panicking wipe")
+	}
+}

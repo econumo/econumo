@@ -2,7 +2,10 @@ package user
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/port"
@@ -12,6 +15,8 @@ const (
 	deletionJobFirstDelay = 2 * time.Minute
 	deletionJobInterval   = 24 * time.Hour
 )
+
+var errDeletionPassPanicked = errors.New("deletion pass panicked")
 
 // DeletionJob runs the daily deletion passes in-process. Only serve starts it.
 type DeletionJob struct {
@@ -49,9 +54,18 @@ func (j *DeletionJob) StartPolling(ctx context.Context) {
 }
 
 // RunOnce releases first, so a partner who came back saves the other before
-// any wipe is tried; marking comes last.
-func (j *DeletionJob) RunOnce(ctx context.Context) DeletionPassResult {
-	res := j.svc.PurgeDeleted(ctx)
+// any wipe is tried; marking comes last. A panic is logged and swallowed: it
+// runs on serve's own goroutine and would otherwise take the server down,
+// again on every restart.
+func (j *DeletionJob) RunOnce(ctx context.Context) (res DeletionPassResult) {
+	defer func() {
+		if p := recover(); p != nil {
+			// The panic value can carry data; its type and the stack cannot.
+			slog.Error("deletion: pass panicked", "panic_type", fmt.Sprintf("%T", p), "stack", string(debug.Stack()))
+			res.Err = errDeletionPassPanicked
+		}
+	}()
+	res = j.svc.PurgeDeleted(ctx)
 	if res.Err != nil {
 		slog.Error("deletion: pass failed", "step", "purge", "err_type", failureReason(res.Err))
 	}
