@@ -657,4 +657,13 @@ func TestDeletionJob_RunOnceRecoversAPanic(t *testing.T) {
 	if !e.exists(t, u) {
 		t.Error("the user is gone after a panicking wipe")
 	}
+
+	// the next tick runs and can write: the panicking wipe left no transaction open
+	e.svc.SetDataWiper(noopWiper{})
+	if res := appuser.NewDeletionJob(e.svc, e.clk).RunOnce(context.Background()); res.Err != nil || res.Wiped != 1 {
+		t.Fatalf("the next RunOnce = %+v, want the user wiped", res)
+	}
+	if e.exists(t, u) {
+		t.Error("the user survived the next tick")
+	}
 }
