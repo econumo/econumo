@@ -491,9 +491,12 @@ promise:
   recipient and body, so the deletion code email and the inactivity notice leave the address
   in the container log.
 
-Browser data: the device that confirms the deletion signs out locally. Other devices keep
-their cached copy until their next request is refused; the plan verifies that the existing
-refused-token path clears IndexedDB and the persisted query cache.
+Browser data: the device that confirms the deletion signs out locally, which clears its
+caches. Other devices are signed out by their next refused request, but that path only drops
+the token: their cached copy stays in the browser until the next sign-in on that device,
+which clears it (checked in the code: `web/src/api/client.ts`, `LogoutPage.tsx`,
+`queryPersist.ts`). Clearing on a refused request was not added: the same path serves an
+expired session, where it would drop changes still waiting to be sent.
 
 ## Daily job
 
