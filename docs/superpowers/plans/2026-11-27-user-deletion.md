@@ -1174,7 +1174,7 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 
 Decided against or left for later while the plan was reviewed; none blocks the tasks above.
 
-- **"Your data will be deleted within a month"** on the sign-in page does not follow `ECONUMO_USER_DELETION_DAYS` (0 by default, or any other number). Raised by both reviewers in every round; kept as the product owner decided.
+- **The sign-in notice after a deletion request** now follows `ECONUMO_USER_DELETION_DAYS` ("in N days"; with 0, "after a manual review of your request"). It was a fixed "within a month" until the product owner changed it after the final reviews.
 - **Lifetime re-grant on an email change.** An existing account that moves to a deleted lifetime address (`ConfirmEmailChange`, a provider's verified address change, `user:change-email`) is not re-granted. Those paths replace the address without saving the aggregate, and the feature is about registering again. The operator can run `user:verify-email <email>`.
 - **Stray rows from a request in flight.** A request that authenticated before the mark can still insert an `idempotency_keys` or `oauth_states` row after the wipe's sweep. Ids only; they expire by age (90 days, 10 minutes). No foreign key was added (a SQLite table rebuild for no exposure).
 - **A connection made after an inactive mark** is not handled at that moment; the daily release and the check inside the wipe see it.

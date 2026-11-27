@@ -739,14 +739,36 @@ it('offline, both submit buttons are disabled', async () => {
   expect(screen.getByRole('button', { name: 'Delete my data' })).toBeDisabled()
 })
 
-it('the sign-in page says the data will be deleted', async () => {
-  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const router = createMemoryRouter([{ path: '/login', element: <LoginPage /> }], { initialEntries: ['/login?reason=deletion-scheduled'] })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  )
-  expect(await screen.findByText('Your data will be deleted within a month. Sign in before then to keep it.')).toBeInTheDocument()
+describe('the sign-in page after a deletion request', () => {
+  function renderSignIn() {
+    server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const router = createMemoryRouter([{ path: '/login', element: <LoginPage /> }], { initialEntries: ['/login?reason=deletion-scheduled'] })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+  }
+
+  it('says in how many days the data will be deleted', async () => {
+    window.econumoConfig = { USER_DELETION_DAYS: 30 }
+    renderSignIn()
+    expect(await screen.findByText('Your data will be deleted in 30 days. Sign in before then to keep it.')).toBeInTheDocument()
+  })
+
+  it('uses the singular for one day', async () => {
+    window.econumoConfig = { USER_DELETION_DAYS: 1 }
+    renderSignIn()
+    expect(await screen.findByText('Your data will be deleted in 1 day. Sign in before then to keep it.')).toBeInTheDocument()
+  })
+
+  it('promises no date when the operator deletes by hand', async () => {
+    window.econumoConfig = { USER_DELETION_DAYS: 0 }
+    renderSignIn()
+    expect(
+      await screen.findByText('Your data will be deleted after a manual review of your request. Sign in before then to keep it.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/in 0 days/)).not.toBeInTheDocument()
+  })
 })

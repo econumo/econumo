@@ -1122,7 +1122,7 @@
         "what": "This deletes your accounts with their transactions, your budgets, categories, payees, tags and settings.",
         "shared": "People you share with lose the accounts and budgets you share with them. They keep their own data: transactions you entered in their accounts stay, with their descriptions, and transfers between your accounts and theirs stay as corrections that keep the description.",
         "cancel": "Signing in again before your data is deleted cancels the deletion.",
-        "subscription": "Deleting your data does not cancel a subscription. Cancel it in billing first.",
+        "subscription": "Your subscription is not cancelled right away. To stop further charges, cancel it in billing first.",
         "billing_link": "Open billing"
       },
       "form": {
@@ -1316,7 +1316,8 @@
   },
   "auth": {
     "login": {
-      "deletion_scheduled": "Your data will be deleted within a month. Sign in before then to keep it."
+      "deletion_scheduled": "Your data will be deleted in {count} day. Sign in before then to keep it. | Your data will be deleted in {count} days. Sign in before then to keep it.",
+      "deletion_scheduled_manual": "Your data will be deleted after a manual review of your request. Sign in before then to keep it."
     },
     "sign_in_failed": {
       "header": "Sign-in failed",

@@ -13,6 +13,7 @@ window.econumoConfig = {
   PASSWORD_LOGIN: true,
   INSTANCE_ID: '',
   BILLING_URL: '',
+  USER_DELETION_DAYS: 0,
   MCP_URL: '',
   AI_ENABLED: false,
   IMPORT_SIMPLEFIN: false,

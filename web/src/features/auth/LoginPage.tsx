@@ -11,6 +11,7 @@ import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
+import { pluralPick } from '@/lib/plural'
 import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
@@ -30,7 +31,7 @@ interface LoginForm {
 }
 
 export function LoginPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [searchParams] = useSearchParams()
   const login = useLogin()
   const [failOpen, setFailOpen] = useState(false)
@@ -39,6 +40,7 @@ export function LoginPage() {
   const [verifyCooldown, setVerifyCooldown] = useState(0)
   const sessionExpired = searchParams.get('reason') === 'expired'
   const deletionScheduled = searchParams.get('reason') === 'deletion-scheduled'
+  const deletionDays = config.getUserDeletionDays()
   const oauthError = searchParams.get('oauthError')
   const customApiAllowed = config.isCustomApiAllowed()
 
@@ -115,7 +117,11 @@ export function LoginPage() {
 
         {deletionScheduled ? (
           <Alert>
-            <AlertDescription>{t('auth.login.deletion_scheduled')}</AlertDescription>
+            <AlertDescription>
+              {deletionDays > 0
+                ? pluralPick(t('auth.login.deletion_scheduled'), deletionDays, i18n.language)
+                : t('auth.login.deletion_scheduled_manual')}
+            </AlertDescription>
           </Alert>
         ) : null}
 

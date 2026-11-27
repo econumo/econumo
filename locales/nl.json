@@ -1122,7 +1122,7 @@
         "what": "Hiermee worden uw rekeningen met hun transacties, uw budgetten, categorieën, begunstigden, tags en instellingen verwijderd.",
         "shared": "Mensen met wie u deelt, verliezen de rekeningen en budgetten die u met hen deelt. Hun eigen gegevens houden ze: transacties die u in hun rekeningen hebt ingevoerd, blijven staan met hun omschrijvingen, en overboekingen tussen uw rekeningen en die van hen blijven staan als correcties die de omschrijving behouden.",
         "cancel": "Als u opnieuw inlogt voordat uw gegevens zijn verwijderd, wordt de verwijdering geannuleerd.",
-        "subscription": "Het verwijderen van uw gegevens zegt geen abonnement op. Zeg het eerst op in de facturering.",
+        "subscription": "Uw abonnement wordt niet meteen opgezegd. Zeg het eerst op in de facturering om verdere kosten te voorkomen.",
         "billing_link": "Facturering openen"
       },
       "form": {
@@ -1316,7 +1316,8 @@
   },
   "auth": {
     "login": {
-      "deletion_scheduled": "Uw gegevens worden binnen een maand verwijderd. Log daarvoor in om ze te behouden."
+      "deletion_scheduled": "Uw gegevens worden over {count} dag verwijderd. Log daarvoor in om ze te behouden. | Uw gegevens worden over {count} dagen verwijderd. Log daarvoor in om ze te behouden.",
+      "deletion_scheduled_manual": "Uw gegevens worden verwijderd na een handmatige beoordeling van uw verzoek. Log daarvoor in om ze te behouden."
     },
     "sign_in_failed": {
       "header": "Inloggen mislukt",

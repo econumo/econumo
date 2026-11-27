@@ -1122,7 +1122,7 @@
         "what": "Esto elimina tus cuentas con sus transacciones, tus presupuestos, categorías, beneficiarios, etiquetas y ajustes.",
         "shared": "Las personas con las que compartes pierden las cuentas y los presupuestos que compartes con ellas. Conservan sus propios datos: las transacciones que introdujiste en sus cuentas se mantienen, con sus descripciones, y las transferencias entre tus cuentas y las suyas se mantienen como correcciones que conservan la descripción.",
         "cancel": "Si vuelves a iniciar sesión antes de que se eliminen tus datos, la eliminación se cancela.",
-        "subscription": "Eliminar tus datos no cancela una suscripción. Cancélala primero en facturación.",
+        "subscription": "Tu suscripción no se cancela de inmediato. Para evitar nuevos cargos, cancélala primero en facturación.",
         "billing_link": "Abrir facturación"
       },
       "form": {
@@ -1316,7 +1316,8 @@
   },
   "auth": {
     "login": {
-      "deletion_scheduled": "Tus datos se eliminarán en el plazo de un mes. Inicia sesión antes para conservarlos."
+      "deletion_scheduled": "Tus datos se eliminarán en {count} día. Inicia sesión antes para conservarlos. | Tus datos se eliminarán en {count} días. Inicia sesión antes para conservarlos.",
+      "deletion_scheduled_manual": "Tus datos se eliminarán tras una revisión manual de tu solicitud. Inicia sesión antes para conservarlos."
     },
     "sign_in_failed": {
       "header": "No se pudo iniciar sesión",

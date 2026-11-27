@@ -3437,9 +3437,14 @@ User C sees none of it.
 - [ ] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the
       daily pass; with the setting at 0 they stay until `user:delete`.
 - [ ] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →
-      the CSV of your transactions downloads → Delete my data → the sign-in page says the data
-      will be deleted.
+      the CSV of your transactions downloads → Delete my data → the sign-in page says in how
+      many days the data will be deleted (the server's ECONUMO_USER_DELETION_DAYS, "in 1 day"
+      for 1).
       Every other device is signed out; signing in again cancels the deletion and nothing is lost.
+- [ ] Delete my data with ECONUMO_USER_DELETION_DAYS=0 (the default): the sign-in page says the
+      data will be deleted after a manual review of the request, with no number of days.
+- [ ] Delete my data with ECONUMO_BILLING_URL set: the first step says the subscription is not
+      cancelled right away and links to billing; without the setting that sentence is absent.
 - [ ] Delete my data, passwordless account (provider sign-in only): no password is asked.
 - [ ] Delete my data: a wrong code is refused; the page stays on the code step.
 - [ ] Delete my data, session revoked meanwhile: reach the code step, revoke this session

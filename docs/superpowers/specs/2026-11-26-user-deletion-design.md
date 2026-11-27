@@ -134,7 +134,7 @@ an error for the CLI and impossible from the API (no session survives the mark).
   reason `self_initiated`. No email is sent.
 - Both are on the readonly allowlist.
 - SPA: Settings danger zone, "Delete my data". Dialog: what gets deleted, that signing in within
-  the period cancels it, that deleting does not cancel a subscription and it should be
+  the period cancels it, that a subscription is not cancelled right away and should be
   cancelled in billing first (with the billing link when `ECONUMO_BILLING_URL` is set; billing
   cancelling at the wipe is a separate change, so the text does not promise it), and that people the user shares with lose the shared accounts and budgets but keep
   their own data, which includes transactions the user entered in their accounts and the
@@ -142,7 +142,10 @@ an error for the CLI and impossible from the API (no session survives the mark).
   downloads the CSV export of the transactions in the accounts the user OWNS (existing
   `GET /api/v1/transaction/export-transaction-list`) -> confirm -> local sign-out at once (the
   session is already revoked; a closed tab must not leave cached data behind) -> the sign-in
-  page showing "Your data will be deleted within a month. Sign in before then to keep it."
+  page showing "Your data will be deleted in N days. Sign in before then to keep it." with N
+  from `ECONUMO_USER_DELETION_DAYS` (served to the SPA as `USER_DELETION_DAYS` in the runtime
+  config), or, when that is 0, "Your data will be deleted after a manual review of your
+  request. Sign in before then to keep it."
   Confirm is refused while the stored offline queue is still loading or changes made offline
   are still waiting to be sent (sign-out drops them, and the CSV holds server rows only), and
   while the download has not finished; the download itself starts only once the queue is known

@@ -1122,7 +1122,7 @@
         "what": "Cela supprime vos comptes avec leurs transactions, vos budgets, catégories, bénéficiaires, tags et paramètres.",
         "shared": "Les personnes avec qui vous partagez perdent les comptes et budgets que vous partagez avec elles. Elles conservent leurs propres données : les transactions que vous avez saisies dans leurs comptes restent, avec leurs descriptions, et les virements entre vos comptes et les leurs restent sous forme de corrections qui gardent la description.",
         "cancel": "Vous reconnecter avant la suppression de vos données annule la suppression.",
-        "subscription": "Supprimer vos données n’annule pas un abonnement. Annulez-le d’abord dans la facturation.",
+        "subscription": "Votre abonnement n’est pas annulé immédiatement. Pour éviter de nouveaux prélèvements, annulez-le d’abord dans la facturation.",
         "billing_link": "Ouvrir la facturation"
       },
       "form": {
@@ -1316,7 +1316,8 @@
   },
   "auth": {
     "login": {
-      "deletion_scheduled": "Vos données seront supprimées dans un délai d’un mois. Connectez-vous avant pour les conserver."
+      "deletion_scheduled": "Vos données seront supprimées dans {count} jour. Connectez-vous avant pour les conserver. | Vos données seront supprimées dans {count} jours. Connectez-vous avant pour les conserver.",
+      "deletion_scheduled_manual": "Vos données seront supprimées après un examen manuel de votre demande. Connectez-vous avant pour les conserver."
     },
     "sign_in_failed": {
       "header": "Échec de la connexion",

@@ -1122,7 +1122,7 @@
         "what": "Dadurch werden Ihre Konten mit ihren Transaktionen, Ihre Budgets, Kategorien, Zahlungsempfänger, Tags und Einstellungen gelöscht.",
         "shared": "Personen, mit denen Sie teilen, verlieren die Konten und Budgets, die Sie mit ihnen teilen. Ihre eigenen Daten behalten sie: Transaktionen, die Sie in ihren Konten erfasst haben, bleiben mit ihren Beschreibungen erhalten, und Überweisungen zwischen Ihren und ihren Konten bleiben als Korrekturen mit der Beschreibung erhalten.",
         "cancel": "Wenn Sie sich vor dem Löschen Ihrer Daten erneut anmelden, wird die Löschung abgebrochen.",
-        "subscription": "Das Löschen Ihrer Daten kündigt kein Abonnement. Kündigen Sie es zuerst in der Abrechnung.",
+        "subscription": "Ihr Abonnement wird nicht sofort gekündigt. Um weitere Abbuchungen zu vermeiden, kündigen Sie es zuerst in der Abrechnung.",
         "billing_link": "Abrechnung öffnen"
       },
       "form": {
@@ -1316,7 +1316,8 @@
   },
   "auth": {
     "login": {
-      "deletion_scheduled": "Ihre Daten werden innerhalb eines Monats gelöscht. Melden Sie sich vorher an, um sie zu behalten."
+      "deletion_scheduled": "Ihre Daten werden in {count} Tag gelöscht. Melden Sie sich vorher an, um sie zu behalten. | Ihre Daten werden in {count} Tagen gelöscht. Melden Sie sich vorher an, um sie zu behalten.",
+      "deletion_scheduled_manual": "Ihre Daten werden nach einer manuellen Prüfung Ihrer Anfrage gelöscht. Melden Sie sich vorher an, um sie zu behalten."
     },
     "sign_in_failed": {
       "header": "Anmeldung fehlgeschlagen",
