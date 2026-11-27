@@ -5,6 +5,7 @@ package wipetest
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/pgsql"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -386,5 +388,87 @@ func TestWipe_PartnerRevokeAccessWaits(t *testing.T) {
 	}
 	if count(t, r.db, `SELECT COUNT(*) FROM budgets WHERE id = ? AND user_id = ?`, pBudget, s.p) != 1 {
 		t.Fatal("P's budget is gone")
+	}
+}
+
+// hookedDeletion pauses the inactivity mark on its re-check: by then the mark
+// holds the user row lock and has neither marked nor revoked anything.
+type hookedDeletion struct {
+	appuser.DeletionStore
+	onRecheck func()
+}
+
+func (d *hookedDeletion) GetState(ctx context.Context, userID vo.Id) (model.DeletionState, error) {
+	if d.onRecheck != nil {
+		d.onRecheck()
+	}
+	return d.DeletionStore.GetState(ctx, userID)
+}
+
+// A request authenticating while the inactivity mark is open stamps the
+// activity before touching its token: the stamp waits on the user row, the
+// touch then finds the token revoked, and the request is refused. Touching
+// first would commit the touch before the revoke and admit the request.
+func TestMarkInactive_AuthenticateWaitsAndIsRefused(t *testing.T) {
+	r := newLockRig(t)
+	f := fixture.New(t, r.db).WithCrypto("").At(Today.AddDate(-2, 0, 0))
+	u := f.User(fixture.User{Email: "idle-auth@lock.test", Name: "U"})
+	const raw = "eco_ses_mark_wait"
+	exp := Today.Add(24 * time.Hour)
+	f.AccessToken(fixture.AccessToken{UserID: u, Kind: model.TokenKindSession, TokenHash: appuser.HashAccessToken(raw), ExpiresAt: &exp})
+
+	reached := make(chan struct{})
+	wait, release := gate(t)
+	var once sync.Once
+	store := &hookedDeletion{DeletionStore: userrepo.NewDeletionRepo(r.db.Engine, r.db.TX), onRecheck: func() {
+		once.Do(func() {
+			close(reached)
+			wait()
+		})
+	}}
+	r.one.Users.SetDeletion(store, userrepo.NewAuditRepo(r.db.Engine, r.db.TX),
+		userrepo.NewDeletionRequestRepo(r.db.Engine, r.db.TX), appuser.DeletionConfig{InactiveDays: 365})
+	type markResult struct {
+		n   int
+		err error
+	}
+	mark := make(chan markResult, 1)
+	go func() {
+		n, err := r.one.Users.MarkInactive(context.Background())
+		mark <- markResult{n, err}
+	}()
+	select {
+	case <-reached:
+	case res := <-mark:
+		t.Fatalf("the mark finished before its pause: %d, %v", res.n, res.err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("the mark never reached its pause")
+	}
+
+	other := second(func(ctx context.Context) error {
+		_, err := r.two.Users.Authenticate(ctx, raw)
+		return err
+	})
+	t.Logf("Authenticate waits on: %s", r.waitsOnLock(t, "Authenticate", other))
+	release()
+	select {
+	case res := <-mark:
+		if res.err != nil || res.n != 1 {
+			t.Fatalf("MarkInactive = %d, %v; want 1 marked", res.n, res.err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the mark hung after its release")
+	}
+	select {
+	case err := <-other:
+		var ue *errs.UnauthorizedError
+		if !errors.As(err, &ue) {
+			t.Fatalf("Authenticate after the mark = %v, want Unauthorized", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Authenticate hung after the mark committed")
+	}
+	if count(t, r.db, `SELECT COUNT(*) FROM users WHERE id = ? AND deletion_marked_at IS NOT NULL`, u) != 1 {
+		t.Fatal("the user is not marked")
 	}
 }
