@@ -6,11 +6,12 @@ Status: design, 2026-11-26.
 
 A user can delete their Econumo data, and users nobody has used for a long time are marked for
 deletion automatically. Deletion is a two-step process: the user is MARKED, and later WIPED.
-Any sign-in between the two removes the mark. Wiping deletes the `users` row and lets the
-database cascade remove everything the user owns. Rows the user wrote into other people's data
-(transactions in a partner's account, comments on a partner's budget) have no foreign key to
-`users`, survive, and render with the author "Deleted". An audit table records the deletion
-history and lets a returning lifetime-access customer get lifetime access back.
+Any sign-in between the two removes the mark. Wiping first disconnects the user from everyone
+(the existing stop-sharing path), then deletes the `users` row and lets the database cascade
+remove everything the user owns or wrote. Partners' account balances are kept right with one
+correction per affected account, the way deleting an account already does. An audit table
+records the deletion history and lets a returning lifetime-access customer get lifetime access
+back.
 
 ## Goals
 
@@ -76,13 +77,6 @@ Indexes on `(event, created_at)` and `(email_hash, event)`. Events now:
 | `deletion_marked` | `{"reason": "self_initiated" \| "inactive" \| "cli"}` |
 | `deletion_cancelled` | `{"reason": <the mark's reason>}` (sign-in removed the mark) |
 | `deleted` | `{"reason": <the mark's reason>, "lifetimeAccess": true \| false}` |
-
-### Foreign keys removed
-
-`transactions.user_id` and `budgets_elements_comments.user_id` lose their foreign key to
-`users` (SQLite: table rebuild in the migration, indexes kept; PostgreSQL: drop the
-constraint). Everywhere a transaction's or comment's author is resolved, a missing user renders
-as "Deleted" instead of failing. Envelopes have no link to a user; they belong to the budget.
 
 `email_hash` = lowercase hex SHA-256 of `model.NormalizeEmail(address)`. More event types can be
 added later without a migration. Accepted limit: the hash is unkeyed, so someone with a list of
@@ -151,40 +145,43 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
 
 1. Lock the user row, re-check it is still marked (a sign-in may have cancelled it).
 2. Read `lifetimeAccess` = `access_level = full AND access_until IS NULL`, and the email.
-3. Stop-sharing unwind with every connected user, through the existing delete-connection path
-   (account access both directions, budget access both directions, the link); delete invites.
-4. Revision bumps (`txrevision.BumpWhere`, before rows change) for every account NOT owned by the
-   user whose transactions reference the user's categories, payees, tags or labels, or that is
-   either side of a transfer with one of the user's accounts.
-5. Cross-owner transfers keep the partner's balance:
-   - partner's account -> user's account: becomes an expense on the partner's account (same
-     amount, recipient columns cleared, no category);
-   - user's account -> partner's account: moves to the partner's account as an income
-     (`account_id` = partner's, `amount` = old `amount_recipient`, `sort_key` = old
-     `recipient_sort_key`, recipient columns cleared, no category).
-   Payee/tag/labels kept only if they belong to the partner.
+3. Disconnect the user from every connected user through the existing delete-connection path
+   (account access both directions; budget membership both directions, whose
+   `removeMemberRecords` deletes the budget elements, savings rows and account memberships a
+   departing member leaves behind - `budgets_elements.external_id` has no foreign key, so the
+   cascade alone would leave orphan elements with plans, debts and comments); delete invites.
+4. Find the partner accounts the wipe will change: accounts NOT owned by the user that hold
+   rows the user wrote (`transactions.user_id`), or that are either side of a transfer with one
+   of the user's accounts. Record each one's all-time balance.
+5. Delete the transfers from a partner account into one of the user's accounts (the cascade
+   would only NULL their recipient, leaving a transfer to nowhere).
 6. Debts on a partner's budget whose currency is one of the user's custom currencies switch to
    the budget's currency (`debts.currency_id` is `NO ACTION` and would block the delete).
    Budget elements in that situation fall back by the existing `SET NULL`.
-7. Write the `deleted` audit row (old user id, email hash, reason, `lifetimeAccess`).
-8. `DELETE FROM users WHERE id = ?`. The cascade removes the user's own budgets with everything
-   inside them, their accounts with every transaction in them (including rows partners wrote
-   there), and their categories, tags, payees, labels, folders, currencies, recurring templates
-   (also ones on partners' accounts, accepted: a template is a plan, not history), imports,
-   debts, options, identities, tokens, OAuth grants and the OAuth apps they own, and the
-   code/request tables. In a partner's budget, only the user's categories (and so their
-   elements, plans and envelope memberships) go; the budget and its envelopes stay.
-9. Kept: transactions the user wrote into partners' accounts and their comments on partners'
-   budgets (no foreign key), shown with the author "Deleted".
+7. `DELETE FROM users WHERE id = ?`. The cascade removes the user's own budgets with everything
+   inside them, their accounts with every transaction in them, every transaction they wrote
+   into partners' accounts, their comments, categories, tags, payees, labels, folders,
+   currencies, recurring templates (including ones on partners' accounts), imports, debts,
+   options, identities, tokens, OAuth grants and the OAuth apps they own, and the code/request
+   tables.
+8. Record each partner account's balance again. Where it changed, insert one correction for
+   the difference: an uncategorized income or expense dated today (the owner's local day),
+   authored by the account's owner, described like the existing account-deleted correction
+   (`internal/account/zero.go`). Partner rows that pointed at the user's categories, payees or
+   tags are left with those fields empty by the existing `SET NULL`.
+9. Bump the revision of every partner account changed by steps 3-8 once
+   (`txrevision`, inside this transaction).
+10. Write the `deleted` audit row (old user id, email hash, reason, `lifetimeAccess`).
 
-A partner's budget that counted the user's accounts, or had elements on the user's categories,
-recalculates without them; intended. This is the same end state as the user disconnecting
-everyone and deleting everything by hand.
+What the partner gives up: their current balances are exact, but past balances (and the net
+worth report) before the correction date shift by the removed amounts, and the user's entries
+disappear from their history. A partner's budget recalculates without the user's accounts and
+categories; intended - the same end state as the user disconnecting everyone and deleting
+everything by hand.
 
 **Guard test**: reads the schema of both engines and fails when a foreign key to `users(id)` is
 not `ON DELETE CASCADE`, or when a column that names a user (`user_id`, `owner_user_id`,
-`connected_user_id`...) has no foreign key and is not on the explicit "kept on purpose" list
-(`transactions.user_id`, `budgets_elements_comments.user_id`) with a reason. A wipe test on a
+`connected_user_id`...) has no foreign key to `users`. A wipe test on a
 fixture with a partner (shared account, shared budget both ways, cross transfers, a comment, a
 custom currency) asserts the partner's balances and rows; `revisionguard` must pass.
 
@@ -220,10 +217,16 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 
 ## Approaches considered
 
-- **Wipe**: delete the `users` row and let the database cascade (chosen; a new table that
-  cascades from `users` is covered automatically) vs keeping the row as a tombstone and deleting
-  root tables in code (an explicit list that must grow with the schema). The two authored-on-
-  others tables lose their foreign key so the cascade does not take partners' history.
+- **Wipe**: disconnect, then delete the `users` row and let the database cascade (chosen; a new
+  table that cascades from `users` is covered automatically) vs keeping the row as a tombstone
+  and deleting root tables in code (an explicit list that must grow with the schema).
+- **Partner rows**: one balance correction per changed partner account (chosen; same pattern as
+  account deletion, no schema change) vs converting each cross-user row in place (keeps the
+  partner's history but needs row-by-row transfer and currency handling) vs dropping the
+  foreign key on `transactions.user_id` (SQLite table rebuild, "Deleted" author handling).
+- **Disconnect first** (chosen) vs relying on the cascade alone: budget elements point at
+  categories and tags without a foreign key, so only the existing member-removal code cleans
+  them.
 - **Lifetime memory**: generic `users_audit` table (chosen) vs a dedicated lifetime table. The audit table also records the history and takes future events.
 - **Subscription cancel**: billing polls `deleted-users` (chosen) vs Econumo calling billing.
 - **Scheduling**: in-process daily job + CLI (chosen) vs host cron; the image has no cron.
@@ -237,6 +240,7 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 - `user:delete` refuses unmarked users (run `user:mark-deleted` first).
 - With the verification gate on, lifetime is re-granted on verification.
 - Recurring templates the user made on partners' accounts are deleted with the user.
+- Corrections are dated on the partner owner's local today.
 - Partner debts in the user's custom currency move to the budget currency.
 
 ## Left to the builder
