@@ -600,7 +600,7 @@ type WipeCorrection struct { // passed by pointer: a NULL amount_recipient leg g
 }
 ```
 
-- [ ] **Step 1: Failing tests** (`fixture.Transaction` with explicit `SortKey`/`RecipientSortKey`; balances through the account repo's `Balance`):
+- [x] **Step 1: Failing tests** (`fixture.Transaction` with explicit `SortKey`/`RecipientSortKey`; balances through the account repo's `Balance`):
 
 ```go
 // TestRewrite_ReassignsForeignAuthoredRows: U wrote an expense and an income into P's account and a
@@ -631,8 +631,8 @@ type WipeCorrection struct { // passed by pointer: a NULL amount_recipient leg g
 //   on that account's side.
 ```
 
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/transaction/ -run TestRewrite -count=1`
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/transaction/ -run TestRewrite -count=1`
+- [x] **Step 3: Implement.**
   - `ReassignAuthorInForeignAccounts`: first `rev.BumpWhere(ctx, "user_id = ? AND account_id IN (SELECT id FROM accounts WHERE user_id <> ?)", id, id)`, then `UPDATE transactions SET user_id = (SELECT a.user_id FROM accounts a WHERE a.id = transactions.account_id) WHERE user_id = ? AND account_id IN (SELECT id FROM accounts WHERE user_id <> ?)`. `updated_at` is not touched.
   - `ListCrossOwnerTransfers`: `type = 2`, both accounts joined, exactly one of the two owners is the user.
   - `BumpAccountsLosingReferences(ctx, userID)` (repo): six `rev.BumpWhere` calls, BEFORE anything
@@ -643,7 +643,7 @@ type WipeCorrection struct { // passed by pointer: a NULL amount_recipient leg g
     with `user_id` = the user, or `account_id` / `account_recipient_id` one of the user's accounts).
     The cascade and `SET NULL` of wipe step 9 change what those rows show.
   - `RewriteForDeletedUser`: `BumpAccountsLosingReferences`, then reassign, then for each listed transfer build the correction in Go (prefix `"Original transaction deleted"`, `": "` + description when not empty, cut to 255 runes) and call `ReplaceTransferWithCorrection`, which `rev.Bump`s the surviving account, inserts the correction (when there is one) with the explicit `sort_key` (a dedicated `InsertWipeCorrection` statement: same columns as `InsertCorrectionTransaction` in `account_corrections.sql`) and deletes the original.
-- [ ] **Step 4: Run, see PASS, then the PostgreSQL command for the same tests. Commit.**
+- [x] **Step 4: Run, see PASS, then the PostgreSQL command for the same tests. Commit.**
 
 ### Task 11: currency
 
