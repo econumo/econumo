@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -20,13 +21,21 @@ func (r *connectedUsersRepo) ConnectedUserIDs(ctx context.Context, userID vo.Id)
 
 type stubUserLookup struct {
 	marked map[string]time.Time
+	// gone answer NotFound from the named lookup ("owner" or "marked").
+	gone map[string]string
 }
 
 func (l stubUserLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
+	if l.gone[userID] == "owner" {
+		return model.OwnerView{}, errs.NewNotFound("User not found")
+	}
 	return model.OwnerView{ID: userID, Name: "User " + userID}, nil
 }
 
 func (l stubUserLookup) DeletionMarkedAt(ctx context.Context, userID string) (*time.Time, error) {
+	if l.gone[userID] == "marked" {
+		return nil, errs.NewNotFound("User not found")
+	}
 	at, ok := l.marked[userID]
 	if !ok {
 		return nil, nil
@@ -61,5 +70,26 @@ func TestGetConnectionList_DeletionMarkedAt(t *testing.T) {
 	}
 	if v, ok := got[unmarked.String()]; !ok || v != "" {
 		t.Errorf("unmarked user: deletionMarkedAt = %q (present %v), want \"\"", v, ok)
+	}
+}
+
+// A connected user wiped between the listing and the per-user lookups drops
+// out of the list instead of failing it.
+func TestGetConnectionList_SkipsAVanishedUser(t *testing.T) {
+	for _, lookup := range []string{"owner", "marked"} {
+		t.Run(lookup, func(t *testing.T) {
+			caller, gone, kept := vo.NewId(), vo.NewId(), vo.NewId()
+			repo := &connectedUsersRepo{connected: []vo.Id{gone, kept}}
+			users := stubUserLookup{gone: map[string]string{gone.String(): lookup}}
+			s := NewService(repo, nil, users, nil, nil, nil, stubTx{}, fixedClock{now: time.Now()})
+
+			res, err := s.GetConnectionList(context.Background(), caller)
+			if err != nil {
+				t.Fatalf("GetConnectionList: %v", err)
+			}
+			if len(res.Items) != 1 || res.Items[0].User.Id != kept.String() {
+				t.Fatalf("items = %+v, want only %s", res.Items, kept)
+			}
+		})
 	}
 }

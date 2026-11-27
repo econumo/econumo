@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -51,11 +52,18 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 
 	result := &model.GetConnectionListResult{Items: []model.ConnectionResult{}}
 	for _, cu := range connected {
+		// A user wiped since the listing drops out rather than failing the list.
 		owner, oerr := s.users.GetOwner(ctx, cu.String())
+		if _, gone := errs.AsNotFound(oerr); gone {
+			continue
+		}
 		if oerr != nil {
 			return nil, oerr
 		}
 		markedAt, merr := s.users.DeletionMarkedAt(ctx, cu.String())
+		if _, gone := errs.AsNotFound(merr); gone {
+			continue
+		}
 		if merr != nil {
 			return nil, merr
 		}
