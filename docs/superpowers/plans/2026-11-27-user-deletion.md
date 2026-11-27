@@ -206,7 +206,7 @@ func EmailHash(address string) string
 
 - Produces (`config.Config`): `InactiveUserDays int`, `UserDeletionDays int`, `InactiveUserExclude []string` (already `model.NormalizeEmail`-ed), `RateLimitRequestUserDeletion int` (default 3), `RateLimitConfirmUserDeletion int` (default 5).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
 
 ```go
 // migration test (pattern: migration_20261116000000_test.go), both columns sets on sqlite
@@ -228,8 +228,8 @@ t.Setenv("ECONUMO_INACTIVE_USER_EXCLUDE", " A@x.test ,b@x.test,") // []string{"a
 // unset: all three are 0 / 0 / nil
 ```
 
-- [ ] **Step 2: Run.** `go test ./internal/infra/storage/migrations/ ./internal/infra/storage/sqliteimport/ ./internal/model/ ./internal/config/ -count=1`. Expected: FAIL.
-- [ ] **Step 3: Write the migration.** sqlite:
+- [x] **Step 2: Run.** `go test ./internal/infra/storage/migrations/ ./internal/infra/storage/sqliteimport/ ./internal/model/ ./internal/config/ -count=1`. Expected: FAIL.
+- [x] **Step 3: Write the migration.** sqlite:
 
 ```sql
 ALTER TABLE users ADD COLUMN deletion_marked_at DATETIME;
@@ -261,8 +261,8 @@ CREATE UNIQUE INDEX UNIQ_users_deletion_requests_user ON users_deletion_requests
 ```
 
   pgsql: the same with `UUID` for `id`/`user_id` where the sibling tables use it (copy the types of `users_email_change_requests` in the pgsql migrations), `TIMESTAMP(0) WITHOUT TIME ZONE` for every datetime (the type the other pgsql tables use: the admin cursor compares whole seconds, and a fractional `created_at` would make a page repeat forever), and the backfill `UPDATE users SET last_active_at = date_trunc('second', NOW() AT TIME ZONE 'UTC');`.
-- [ ] **Step 4: Write `internal/model/user_deletion.go`** as specified above (`crypto/sha256`, `encoding/hex`). In `sqliteimport.go` extend the non-empty-target check from `count(*) FROM users` to users OR `users_audit`.
-- [ ] **Step 5: Config.** Read the two day counts with `getIntStrict(key, 0)` and reject a value above 36500 (the pattern of `ECONUMO_CURRENCY_UPDATE_INTERVAL`'s cap): `(days+1) * 24h` overflows `time.Duration` near 106,752 days, and an overflowed cutoff lands in the future. Read the list with `getStringList` mapped through `model.NormalizeEmail`, the two rate limits in the existing table loop (`ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION` 3, `ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION` 5). Document all five in `docs/full.env.example`, the first three under a new heading with this text:
+- [x] **Step 4: Write `internal/model/user_deletion.go`** as specified above (`crypto/sha256`, `encoding/hex`). In `sqliteimport.go` extend the non-empty-target check from `count(*) FROM users` to users OR `users_audit`.
+- [x] **Step 5: Config.** Read the two day counts with `getIntStrict(key, 0)` and reject a value above 36500 (the pattern of `ECONUMO_CURRENCY_UPDATE_INTERVAL`'s cap): `(days+1) * 24h` overflows `time.Duration` near 106,752 days, and an overflowed cutoff lands in the future. Read the list with `getStringList` mapped through `model.NormalizeEmail`, the two rate limits in the existing table loop (`ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION` 3, `ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION` 5). Document all five in `docs/full.env.example`, the first three under a new heading with this text:
 
 ```
 # --- User deletion -----------------------------------------------------------
@@ -276,8 +276,8 @@ CREATE UNIQUE INDEX UNIQ_users_deletion_requests_user ON users_deletion_requests
 # ECONUMO_INACTIVE_USER_EXCLUDE=
 ```
 
-- [ ] **Step 6: `sqlc generate`, `go build ./...`, run the tests of step 2.** Expected: PASS. Also run `go test ./internal/infra/storage/... -count=1` (version parity).
-- [ ] **Step 7: Commit.**
+- [x] **Step 6: `sqlc generate`, `go build ./...`, run the tests of step 2.** Expected: PASS. Also run `go test ./internal/infra/storage/... -count=1` (version parity).
+- [x] **Step 7: Commit.**
 
 ### Task 4: the three user stores
 
