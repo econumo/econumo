@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { getBillingUrl } from '@/lib/config'
 import { downloadBlob, localDateStamp } from '@/lib/download'
 import { isNotEmpty, isValidRecoveryCode } from '@/lib/validation'
-import { DELETION_CLEANUP_KEY, deletionConfirmPending, expireSession, finishDeletionCleanup } from '@/api/client'
+import { DELETION_CLEANUP_KEY, deletionConfirmPending, expireSession, finishDeletionCleanup, setDeletionConfirmInFlight } from '@/api/client'
 import { exportTransactionList } from '@/api/transaction'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
@@ -23,6 +23,10 @@ import { useConfirmUserDeletion, useRequestUserDeletion, useUserData } from '@/f
 import { SettingsShell } from './SettingsShell'
 
 type ExportState = 'idle' | 'running' | 'done' | 'failed' | 'none'
+
+// generous: a large export is slow, but a stalled one must end as failed
+// rather than keep Confirm disabled
+const EXPORT_TIMEOUT_MS = 5 * 60_000
 
 function setCleanupFlag(): void {
   try {
@@ -49,9 +53,7 @@ export function DeleteDataPage() {
   const { t } = useTranslation()
   const online = useOnline()
   const { data: user } = useUserData()
-  const accountsQuery = useAccounts()
-  const { data: accounts, isSuccess: accountsLoaded } = accountsQuery
-  const accountsFailed = accountsQuery.isError && accounts === undefined
+  const { refetch: refetchAccounts } = useAccounts()
   const passwordLogin = usePasswordLoginAvailable()
   const askPassword = user?.hasPassword !== false && passwordLogin
   // 0 means nothing until the stored queue is in memory; a store that gave up
@@ -75,10 +77,8 @@ export function DeleteDataPage() {
   const exportStarted = useRef(false)
 
   const userId = user?.id
-  const ownedIds = useMemo(() => ownedAccountIds(accounts, userId), [accounts, userId])
   // the CSV must hold every change, so it waits for the queue to be known and empty
   const exportReady = phase === 'confirm' && queueSettled && waiting === 0 && !!userId
-  const shownExport: ExportState = exportState === 'idle' && exportReady && accountsFailed ? 'failed' : exportState
 
   const download = useCallback(async (ids: Id[]) => {
     if (ids.length === 0) {
@@ -87,7 +87,7 @@ export function DeleteDataPage() {
     }
     setExportState('running')
     try {
-      const blob = await exportTransactionList(ids)
+      const blob = await exportTransactionList(ids, { timeout: EXPORT_TIMEOUT_MS })
       downloadBlob(blob, `transactions-${localDateStamp()}.csv`)
       setExportState('done')
     } catch {
@@ -95,24 +95,26 @@ export function DeleteDataPage() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!exportReady || !accountsLoaded || exportStarted.current) {
-      return
-    }
-    exportStarted.current = true
-    void download(ownedIds)
-  }, [exportReady, accountsLoaded, ownedIds, download])
-
-  const retryDownload = async () => {
+  // One path for the first run and for Retry. The account list is fetched
+  // fresh: a cached one can miss an account made on another device, so a
+  // failed fetch is a failed export, never a silent fallback to the cache.
+  const runExport = useCallback(async () => {
     exportStarted.current = true
     setExportState('running')
-    const res = await accountsQuery.refetch()
-    if (res.data === undefined) {
+    const res = await refetchAccounts()
+    if (res.isError || res.data === undefined) {
       setExportState('failed')
       return
     }
     await download(ownedAccountIds(res.data, userId))
-  }
+  }, [refetchAccounts, download, userId])
+
+  useEffect(() => {
+    if (!exportReady || exportStarted.current) {
+      return
+    }
+    void runExport()
+  }, [exportReady, runExport])
 
   const submitRequest = () => {
     setRequestError('')
@@ -154,6 +156,7 @@ export function DeleteDataPage() {
     // Set before sending: if this tab dies between the server's commit and the
     // response, the next 401 still clears what this browser holds.
     setCleanupFlag()
+    setDeletionConfirmInFlight(true)
     try {
       await confirmDeletion.mutateAsync({ code: trimmed })
     } catch (err) {
@@ -167,13 +170,17 @@ export function DeleteDataPage() {
         expireSession()
         return
       }
-      // Without a response the server may have committed, so the flag stays.
-      if (isAxiosError(err) && err.response) {
+      // Only a definite refusal clears the flag: without a response, or with a
+      // 5xx (a proxy's 502/504 can arrive after the commit), the mark may exist.
+      const status = isAxiosError(err) ? err.response?.status : undefined
+      if (status !== undefined && status >= 400 && status < 500) {
         clearCleanupFlag()
       }
       setConfirmError(apiErrorMessage(err))
       setConfirming(false)
       return
+    } finally {
+      setDeletionConfirmInFlight(false)
     }
     // the server has revoked every session: a closed tab must not leave the data behind
     await signOutLocally()
@@ -245,12 +252,12 @@ export function DeleteDataPage() {
           }}
         >
           <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.information')}</p>
-          {shownExport === 'done' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.done')}</p> : null}
-          {shownExport === 'none' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.none')}</p> : null}
-          {shownExport === 'failed' ? (
+          {exportState === 'done' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.done')}</p> : null}
+          {exportState === 'none' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.none')}</p> : null}
+          {exportState === 'failed' ? (
             <div className="flex flex-col items-start gap-2">
               <p className="text-sm text-destructive">{t('user.delete_data.confirm.export.failed')}</p>
-              <Button type="button" variant="secondary" disabled={!exportReady} onClick={() => void retryDownload()}>
+              <Button type="button" variant="secondary" disabled={!exportReady} onClick={() => void runExport()}>
                 {t('user.delete_data.confirm.export.retry')}
               </Button>
             </div>
@@ -275,7 +282,7 @@ export function DeleteDataPage() {
             variant="destructive"
             className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start"
             // a failed download never blocks: the user was told and may go ahead
-            disabled={confirming || !online || !queueSettled || waiting > 0 || shownExport === 'idle' || shownExport === 'running'}
+            disabled={confirming || !online || !queueSettled || waiting > 0 || exportState === 'running'}
           >
             {t('user.delete_data.confirm.action')}
           </Button>

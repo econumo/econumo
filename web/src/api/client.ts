@@ -17,6 +17,14 @@ export { DELETION_CLEANUP_KEY }
 const DELETION_CLEANUP_WINDOW_MS = 10 * 60_000
 
 let deletionCleanup: Promise<void> | null = null
+let deletionConfirmInFlight = false
+
+// While this tab's confirm is in flight its own outcome decides what a revoked
+// session means, so a 401 on another request must not pre-empt it. Memory only:
+// after a reload the stored flag alone drives the recovery.
+export function setDeletionConfirmInFlight(inFlight: boolean): void {
+  deletionConfirmInFlight = inFlight
+}
 
 // True when a deletion confirm was sent recently enough that this 401 can be
 // its committed mark; an older flag is dropped so an ordinary expiry months
@@ -107,7 +115,9 @@ api.interceptors.response.use(
     const ownsIts401 = url.includes('/api/v1/user/login-user') || url.includes('/api/v1/oauth/exchange-handoff')
       || url.includes('/api/v1/user/logout-user') || url.includes('/api/v1/oauth/get-identity-list')
       || url.includes('/api/v1/user/confirm-user-deletion')
-    if (status === 401 && !ownsIts401 && deletionConfirmPending()) {
+    if (status === 401 && !ownsIts401 && deletionConfirmInFlight) {
+      // left to DeleteDataPage, which settles it when its confirm returns
+    } else if (status === 401 && !ownsIts401 && deletionConfirmPending()) {
       finishDeletionCleanup()
     } else if (status === 401 && !ownsIts401) {
       expireSession()

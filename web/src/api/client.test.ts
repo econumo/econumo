@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { toast } from 'sonner'
 import { server } from '@/test/msw'
-import { api, apiUrl } from './client'
+import { api, apiUrl, setDeletionConfirmInFlight } from './client'
 import { setToken, getToken } from '@/lib/storage'
 import { queryClient } from '@/app/queryClient'
 import * as analyticsModule from '@/lib/analytics'
@@ -209,6 +209,31 @@ describe('an interrupted deletion confirm', () => {
       expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
       expect(localStorage.getItem('econumo.query-cache')).toBe('{"stale":"finances"}')
     } finally {
+      setRouter(null)
+    }
+  })
+
+  it('while the confirm is in flight, a 401 on another request does nothing; once it settles the flag decides', async () => {
+    const { setRouter } = await import('@/app/routerRef')
+    const navigate = vi.fn(async () => {})
+    setRouter({ navigate } as unknown as Parameters<typeof setRouter>[0])
+    try {
+      unauthorized()
+      setToken('tok', 'u1')
+      localStorage.setItem(CLEANUP_KEY, String(Date.now()))
+      setDeletionConfirmInFlight(true)
+      await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(assign).not.toHaveBeenCalled()
+      expect(navigate).not.toHaveBeenCalled()
+      expect(getToken()).toBe('tok')
+      expect(localStorage.getItem(CLEANUP_KEY)).not.toBeNull()
+
+      setDeletionConfirmInFlight(false)
+      await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+      await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=deletion-scheduled'))
+    } finally {
+      setDeletionConfirmInFlight(false)
       setRouter(null)
     }
   })

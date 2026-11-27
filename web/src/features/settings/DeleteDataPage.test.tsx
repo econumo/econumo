@@ -7,6 +7,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { setToken } from '@/lib/storage'
+import { api, apiUrl } from '@/api/client'
 import { addChange, settleRefused } from '@/features/pendingWrites/queue'
 import { getOps, loadPendingWrites, mutate } from '@/features/pendingWrites/store'
 import { LoginPage } from '@/features/auth/LoginPage'
@@ -333,6 +334,49 @@ describe('the download', () => {
     expect(log.calls).toHaveLength(2)
   })
 
+  it('a failed account refetch over cached accounts is a failed download, not a stuck page', async () => {
+    const log: ExportLog = { calls: [] }
+    server.use(
+      http.get('*/api/v1/account/get-account-list', () =>
+        HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })),
+      ...coreHandlers(),
+      exportHandler(log),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    queryClient.setQueryData(queryKeys.accounts, fixtureAccounts)
+    await goToCode(user)
+    expect(await screen.findByText('The download of your transactions failed.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try the download again' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled()
+    expect(log.calls).toEqual([])
+  })
+
+  it('exports the freshly fetched account list, not the cached one', async () => {
+    const log: ExportLog = { calls: [] }
+    const fresh = [...fixtureAccounts, { ...fixtureAccounts[0], id: 'a-new', name: 'Made on another device' }]
+    server.use(...coreHandlers({ accounts: fresh }), exportHandler(log), http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()))
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    queryClient.setQueryData(queryKeys.accounts, fixtureAccounts)
+    await goToCode(user)
+    expect(await screen.findByText(/Your transactions were downloaded/)).toBeInTheDocument()
+    expect(log.calls).toHaveLength(1)
+    expect(log.calls[0].split(',').sort()).toEqual(['a-hidden', 'a-new', 'a1', 'a2', 'a3'])
+  })
+
+  it('gives the download a five-minute timeout', async () => {
+    server.use(...coreHandlers(), exportHandler({ calls: [] }), http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()))
+    const get = vi.spyOn(api, 'get')
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    expect(await screen.findByText(/Your transactions were downloaded/)).toBeInTheDocument()
+    const exportCall = get.mock.calls.find(([url]) => String(url).includes('export-transaction-list'))
+    expect(exportCall?.[1]).toMatchObject({ timeout: 5 * 60_000 })
+  })
+
   it('makes no request for a user who owns no account', async () => {
     const log: ExportLog = { calls: [] }
     server.use(
@@ -462,6 +506,107 @@ describe('the confirm', () => {
     expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
     expect(localStorage.getItem('econumo.query-cache')).toBe('{"stale":"finances"}')
     expect(getOps()).toHaveLength(1)
+  })
+
+  it('a 401 on another request while the confirm is in flight wipes nothing; the confirm decides', async () => {
+    setToken('tok', 'u1')
+    await loadPendingWrites('u1')
+    await mutate((ops) => settleRefused(
+      addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }), 'k', 'refused'))
+    let releaseConfirm: () => void = () => {}
+    const confirmHeld = new Promise<void>((resolve) => {
+      releaseConfirm = resolve
+    })
+    let confirmArrived = false
+    server.use(
+      ...codePhaseHandlers(),
+      http.post('*/api/v1/user/confirm-user-deletion', async () => {
+        confirmArrived = true
+        await confirmHeld
+        return HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 })
+      }),
+      http.get('*/api/v1/secure', () =>
+        HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await screen.findByText(/Your transactions were downloaded/)
+    await user.type(screen.getByLabelText('Confirmation code'), '482913')
+    await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+    await waitFor(() => expect(confirmArrived).toBe(true))
+
+    await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(assign).not.toHaveBeenCalled()
+    expect(getOps()).toHaveLength(1)
+
+    releaseConfirm()
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=expired'))
+    expect(assign).not.toHaveBeenCalledWith('/login?reason=deletion-scheduled')
+    expect(getOps()).toHaveLength(1)
+  })
+
+  describe('the in-flight marker is cleared once the confirm settles', () => {
+    // a 401 elsewhere with a fresh flag finishes the clean-up only when no confirm is in flight
+    async function siblingUnauthorizedRunsCleanup() {
+      server.use(http.get('*/api/v1/secure', () =>
+        HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 })))
+      localStorage.setItem(CLEANUP_KEY, String(Date.now()))
+      assign.mockClear()
+      await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=deletion-scheduled'))
+    }
+
+    async function confirmWith(response: () => Response) {
+      server.use(...codePhaseHandlers(), http.post('*/api/v1/user/confirm-user-deletion', response))
+      setToken('tok', 'u1')
+      const user = userEvent.setup()
+      renderPage()
+      await goToCode(user)
+      await screen.findByText(/Your transactions were downloaded/)
+      await user.type(screen.getByLabelText('Confirmation code'), '482913')
+      await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+    }
+
+    it('after a success', async () => {
+      await confirmWith(() => okEnvelope())
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=deletion-scheduled'))
+      setToken('tok', 'u1')
+      await siblingUnauthorizedRunsCleanup()
+    })
+
+    it('after a refused code', async () => {
+      await confirmWith(() =>
+        HttpResponse.json({ success: false, message: 'The confirmation code is not valid.', code: 400, errors: {} }, { status: 400 }))
+      expect(await screen.findByText('The confirmation code is not valid.')).toBeInTheDocument()
+      await siblingUnauthorizedRunsCleanup()
+    })
+
+    it('after a network error', async () => {
+      await confirmWith(() => HttpResponse.error())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled())
+      await siblingUnauthorizedRunsCleanup()
+    })
+  })
+
+  it('a 502 keeps the flag: the mark may have committed behind the proxy', async () => {
+    server.use(
+      ...codePhaseHandlers(),
+      http.post('*/api/v1/user/confirm-user-deletion', () =>
+        HttpResponse.json({ success: false, message: 'Bad gateway', code: 0, exceptionType: 'x' }, { status: 502 })),
+    )
+    setToken('tok', 'u1')
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await screen.findByText(/Your transactions were downloaded/)
+    await user.type(screen.getByLabelText('Confirmation code'), '482913')
+    await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled())
+    expect(Number(localStorage.getItem(CLEANUP_KEY))).toBeGreaterThan(0)
+    expect(assign).not.toHaveBeenCalled()
   })
 
   it('a 401 after an attempt that got no response finishes the deletion clean-up', async () => {
