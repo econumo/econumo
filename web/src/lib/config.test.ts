@@ -47,6 +47,17 @@ describe('flags', () => {
     expect(getUserDeletionDays()).toBe(0)
   })
 
+  it('does not know the deletion period of another backend', () => {
+    window.econumoConfig = { ALLOW_CUSTOM_API: true, USER_DELETION_DAYS: 30 }
+    selfHosted(true)
+    backendHost('https://other.example.test')
+    expect(getUserDeletionDays()).toBeNull()
+    backendHost(`${window.location.origin}/`)
+    expect(getUserDeletionDays()).toBe(30)
+    backendHost('not a url')
+    expect(getUserDeletionDays()).toBeNull()
+  })
+
   it('returns the MCP URL, empty when unset', () => {
     expect(mcpUrl()).toBe('')
     window.econumoConfig = { MCP_URL: 'https://money.example.test/mcp' }

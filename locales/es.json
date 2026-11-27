@@ -1315,7 +1315,8 @@
   "auth": {
     "login": {
       "deletion_scheduled": "Tus datos se eliminarán en {count} día. Inicia sesión antes para conservarlos. | Tus datos se eliminarán en {count} días. Inicia sesión antes para conservarlos.",
-      "deletion_scheduled_manual": "Tus datos se eliminarán tras una revisión manual de tu solicitud. Inicia sesión antes para conservarlos."
+      "deletion_scheduled_manual": "Tus datos se eliminarán tras una revisión manual de tu solicitud. Inicia sesión antes para conservarlos.",
+      "deletion_scheduled_unknown": "Tus datos están programados para eliminarse. Inicia sesión para conservarlos."
     },
     "sign_in_failed": {
       "header": "No se pudo iniciar sesión",

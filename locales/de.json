@@ -1315,7 +1315,8 @@
   "auth": {
     "login": {
       "deletion_scheduled": "Ihre Daten werden in {count} Tag gelöscht. Melden Sie sich vorher an, um sie zu behalten. | Ihre Daten werden in {count} Tagen gelöscht. Melden Sie sich vorher an, um sie zu behalten.",
-      "deletion_scheduled_manual": "Ihre Daten werden nach einer manuellen Prüfung Ihrer Anfrage gelöscht. Melden Sie sich vorher an, um sie zu behalten."
+      "deletion_scheduled_manual": "Ihre Daten werden nach einer manuellen Prüfung Ihrer Anfrage gelöscht. Melden Sie sich vorher an, um sie zu behalten.",
+      "deletion_scheduled_unknown": "Ihre Daten sind zur Löschung vorgemerkt. Melden Sie sich an, um sie zu behalten."
     },
     "sign_in_failed": {
       "header": "Anmeldung fehlgeschlagen",

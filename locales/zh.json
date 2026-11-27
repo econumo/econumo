@@ -1315,7 +1315,8 @@
   "auth": {
     "login": {
       "deletion_scheduled": "您的数据将在 {count} 天后删除。在此之前登录即可保留数据。",
-      "deletion_scheduled_manual": "您的数据将在人工审核您的请求后删除。在此之前登录即可保留数据。"
+      "deletion_scheduled_manual": "您的数据将在人工审核您的请求后删除。在此之前登录即可保留数据。",
+      "deletion_scheduled_unknown": "您的数据已计划删除。登录即可保留数据。"
     },
     "sign_in_failed": {
       "header": "登录失败",

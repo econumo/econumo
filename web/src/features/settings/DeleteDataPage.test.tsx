@@ -13,6 +13,7 @@ import { api, apiUrl } from '@/api/client'
 import { addChange, settleRefused } from '@/features/pendingWrites/queue'
 import { getOps, loadPendingWrites, mutate } from '@/features/pendingWrites/store'
 import { LoginPage } from '@/features/auth/LoginPage'
+import { backendHost, selfHosted } from '@/lib/config'
 import { DeleteDataPage } from './DeleteDataPage'
 
 const queueOverride = vi.hoisted(() => ({ settled: undefined as boolean | undefined }))
@@ -765,5 +766,14 @@ describe('the sign-in page after a deletion request', () => {
       await screen.findByText('Your data will be deleted after a manual review of your request. Sign in before then to keep it.'),
     ).toBeInTheDocument()
     expect(screen.queryByText(/in 0 days/)).not.toBeInTheDocument()
+  })
+
+  it('promises nothing about timing when the page talks to another server', async () => {
+    window.econumoConfig = { ALLOW_CUSTOM_API: true, USER_DELETION_DAYS: 30 }
+    selfHosted(true)
+    backendHost('https://other.example.test')
+    renderSignIn()
+    expect(await screen.findByText('Your data is scheduled for deletion. Sign in to keep it.')).toBeInTheDocument()
+    expect(screen.queryByText(/30 days/)).not.toBeInTheDocument()
   })
 })

@@ -144,7 +144,9 @@ an error for the CLI and impossible from the API (no session survives the mark).
   page showing "Your data will be deleted in N days. Sign in before then to keep it." with N
   from `ECONUMO_USER_DELETION_DAYS` (served to the SPA as `USER_DELETION_DAYS` in the runtime
   config), or, when that is 0, "Your data will be deleted after a manual review of your
-  request. Sign in before then to keep it."
+  request. Sign in before then to keep it." A page pointed at another server (custom API
+  host) does not know that server's period and says only "Your data is scheduled for
+  deletion. Sign in to keep it."
   Confirm is refused while the stored offline queue is still loading or changes made offline
   are still waiting to be sent (sign-out drops them, and the CSV holds server rows only), and
   while the download has not finished; the download itself starts only once the queue is known

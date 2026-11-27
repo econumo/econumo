@@ -154,8 +154,17 @@ export function getBillingUrl(): string {
 }
 
 // Days from a deletion request to the data being deleted; 0 means an operator
-// deletes by hand, so there is no date to promise.
-export function getUserDeletionDays(): number {
+// deletes by hand, so there is no date to promise. Like MCP_URL the value
+// describes the instance SERVING the page: for a tab pointed at another backend
+// the period is that server's and unknown here, hence null.
+export function getUserDeletionDays(): number | null {
+  try {
+    if (new URL(backendHost()).origin !== window.location.origin) {
+      return null
+    }
+  } catch {
+    return null
+  }
   const days = window.econumoConfig?.USER_DELETION_DAYS
   return typeof days === 'number' && Number.isInteger(days) && days > 0 ? days : 0
 }

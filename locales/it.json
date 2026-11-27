@@ -1315,7 +1315,8 @@
   "auth": {
     "login": {
       "deletion_scheduled": "I tuoi dati verranno eliminati tra {count} giorno. Accedi prima di allora per conservarli. | I tuoi dati verranno eliminati tra {count} giorni. Accedi prima di allora per conservarli.",
-      "deletion_scheduled_manual": "I tuoi dati verranno eliminati dopo una verifica manuale della tua richiesta. Accedi prima di allora per conservarli."
+      "deletion_scheduled_manual": "I tuoi dati verranno eliminati dopo una verifica manuale della tua richiesta. Accedi prima di allora per conservarli.",
+      "deletion_scheduled_unknown": "I tuoi dati sono in attesa di eliminazione. Accedi per conservarli."
     },
     "sign_in_failed": {
       "header": "Accesso non riuscito",

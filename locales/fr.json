@@ -1315,7 +1315,8 @@
   "auth": {
     "login": {
       "deletion_scheduled": "Vos données seront supprimées dans {count} jour. Connectez-vous avant pour les conserver. | Vos données seront supprimées dans {count} jours. Connectez-vous avant pour les conserver.",
-      "deletion_scheduled_manual": "Vos données seront supprimées après un examen manuel de votre demande. Connectez-vous avant pour les conserver."
+      "deletion_scheduled_manual": "Vos données seront supprimées après un examen manuel de votre demande. Connectez-vous avant pour les conserver.",
+      "deletion_scheduled_unknown": "La suppression de vos données est programmée. Connectez-vous pour les conserver."
     },
     "sign_in_failed": {
       "header": "Échec de la connexion",

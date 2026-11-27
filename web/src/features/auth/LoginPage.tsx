@@ -118,9 +118,11 @@ export function LoginPage() {
         {deletionScheduled ? (
           <Alert>
             <AlertDescription>
-              {deletionDays > 0
-                ? pluralPick(t('auth.login.deletion_scheduled'), deletionDays, i18n.language)
-                : t('auth.login.deletion_scheduled_manual')}
+              {deletionDays === null
+                ? t('auth.login.deletion_scheduled_unknown')
+                : deletionDays > 0
+                  ? pluralPick(t('auth.login.deletion_scheduled'), deletionDays, i18n.language)
+                  : t('auth.login.deletion_scheduled_manual')}
             </AlertDescription>
           </Alert>
         ) : null}

@@ -1315,7 +1315,8 @@
   "auth": {
     "login": {
       "deletion_scheduled": "Your data will be deleted in {count} day. Sign in before then to keep it. | Your data will be deleted in {count} days. Sign in before then to keep it.",
-      "deletion_scheduled_manual": "Your data will be deleted after a manual review of your request. Sign in before then to keep it."
+      "deletion_scheduled_manual": "Your data will be deleted after a manual review of your request. Sign in before then to keep it.",
+      "deletion_scheduled_unknown": "Your data is scheduled for deletion. Sign in to keep it."
     },
     "sign_in_failed": {
       "header": "Sign-in failed",
