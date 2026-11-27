@@ -262,3 +262,55 @@ type EmailChangeRequests interface {
 
 	DeleteByUser(ctx context.Context, userID vo.Id) error
 }
+
+// DeletionStore reads and writes the deletion state of users rows
+// (deletion_marked_at, deletion_reason, last_active_at) and runs the wipe's
+// row-level statements. Those columns are written nowhere else.
+type DeletionStore interface {
+	// GetState returns *errs.NotFoundError when the row is gone.
+	GetState(ctx context.Context, userID vo.Id) (model.DeletionState, error)
+	// Mark sets the mark only on an unmarked row; 0 rows = already marked.
+	Mark(ctx context.Context, userID vo.Id, reason model.DeletionReason, now time.Time) (int64, error)
+	Unmark(ctx context.Context, userID vo.Id) (int64, error)
+	// TouchLastActive is the one write to a user row without the row lock:
+	// blind, monotonic, at most once per 24 h.
+	TouchLastActive(ctx context.Context, userID vo.Id, now time.Time) error
+	// ListMarked is ordered by marked_at, id.
+	ListMarked(ctx context.Context) ([]model.MarkedUser, error)
+	// cutoff = now - (InactiveUserDays+1) days.
+	ListInactiveCandidates(ctx context.Context, cutoff time.Time) ([]model.InactiveCandidate, error)
+	HasActiveConnection(ctx context.Context, userID vo.Id, cutoff time.Time) (bool, error)
+	DeleteUser(ctx context.Context, userID vo.Id) (int64, error)
+	// LockRowForWipe is stronger than LockRow: on PostgreSQL it is FOR UPDATE, which
+	// also blocks an insert that references users.id (LockRow's FOR NO KEY UPDATE
+	// lets those through).
+	LockRowForWipe(ctx context.Context, userID vo.Id) error
+	// LockWipes serializes wipes for the rest of the transaction (PostgreSQL:
+	// pg_advisory_xact_lock; SQLite has one writer anyway). With it, deleted audit
+	// rows become visible in the order of their created_at.
+	LockWipes(ctx context.Context) error
+	// ConnectedUserIDs: users connected to userID, sorted by id.
+	ConnectedUserIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+}
+
+// AuditLog persists users_audit, which outlives the user rows it describes.
+type AuditLog interface {
+	// Insert reports inserted=false when RefID is already taken (a lost re-grant race).
+	Insert(ctx context.Context, e model.UserAuditEvent) (inserted bool, err error)
+	// ListByEmailHash is ordered by created_at, id.
+	ListByEmailHash(ctx context.Context, hash string) ([]model.UserAuditEvent, error)
+	// ListByEvent pages by the (created_at, id) cursor: rows after (since,
+	// afterID), or at or after since when afterID is empty.
+	ListByEvent(ctx context.Context, event string, since time.Time, afterID string, limit int) ([]model.UserAuditEvent, error)
+}
+
+// DeletionRequests persists pending self-service deletion codes
+// (users_deletion_requests). One outstanding row per user; GetByUser on a
+// missing row returns *errs.NotFoundError.
+type DeletionRequests interface {
+	GetByUser(ctx context.Context, userID vo.Id) (*model.DeletionRequest, error)
+	// Save is fenced on the credentials generation like EmailChangeRequests.Save.
+	Save(ctx context.Context, r *model.DeletionRequest, generation int64) (int64, error)
+	Consume(ctx context.Context, id, userID vo.Id) (int64, error)
+	DeleteByUser(ctx context.Context, userID vo.Id) error
+}
