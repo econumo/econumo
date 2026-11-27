@@ -180,6 +180,10 @@ an error for the CLI and impossible from the API (no session survives the mark).
   wiped whatever their partners do, and so is a user marked from the CLI.
 - A failed send logs a WARN and leaves the user unmarked, to retry on the next pass; nobody is
   marked without the notice going out. The console transport counts as sent.
+- "ONE email" is the normal case, not a guarantee: the send comes before the mark, so if the
+  send succeeds and the mark then fails (or the process stops in between), the next pass sends
+  the notice again. A second copy of a deletion warning is the harmless direction; a stored
+  delivery state to prevent it is not worth a column.
 - Paying users are not exempt.
 
 ### 3. CLI
@@ -285,7 +289,8 @@ user stays marked for the next pass or the next `user:delete`.
    has a new mark whose period has just started. `user:delete` has no such condition.
    For reason `inactive`, check the household rule here, under the lock: with an active
    connection the mark is cancelled, the transaction commits that and nothing else.
-2. Read `lifetimeAccess` = `access_level = full AND access_until IS NULL`, and the email.
+2. Read `lifetimeAccess` = `ECONUMO_TRIAL > 0 AND access_level = full AND access_until IS NULL`,
+   and the email.
 3. Unwind sharing, selected by ACCESS ROWS, not by `users_connections` (an access row without a
    connection must not survive as an orphan):
    - every budget the user is a member of: the existing `RemoveMember`, whose
@@ -335,7 +340,8 @@ user stays marked for the next pass or the next `user:delete`.
    index on live `(user_id, code)` is not hit. Amounts, rates and rate history are untouched.
    The currency list query (`GetUserCurrencyListView`) shows a foreign custom currency only
    through access rows; it is extended to the currencies used by budgets the caller OWNS
-   (budget, element and debt currency), so a second surviving owner still gets the currency
+   (budget, element and debt currency) and by accounts the caller owns, so a second surviving
+   owner still gets the currency
    and its rates from the API. That also closes the same gap for a budget owner today.
    Why: `currencies.user_id` cascades, `budgets.currency_id` is NOT NULL with `SET NULL` and
    `debts.currency_id` is `NO ACTION`, so the delete in step 9 fails on both engines; and
@@ -428,8 +434,13 @@ partner and the third user still share their budget; no row anywhere names the w
   onboarding, and the normal trial rules.
 - Lifetime means `access_level = full` with `access_until = NULL`, as defined in
   `2026-07-19-cloud-monetization-trial-access-design.md` ("paid (one-off / lifetime core)").
-  The same pair is the default on a self-hosted server and for CLI-created users, where the
-  re-grant changes nothing. Assumption to confirm with billing before building: a SUBSCRIPTION
+  The pair alone is not a purchase: with `ECONUMO_TRIAL=0` it is every user's default. So
+  `lifetimeAccess` is recorded as true only on a server that has trials on. On a server
+  without trials it is always false, no email hash is kept for anyone, and nothing is lost:
+  a new registration there has full access anyway. On a server with trials, a CLI-created
+  user or a `user:set-access full` without a date is a deliberate permanent grant by the
+  operator and counts as lifetime. Assumption to confirm with billing before building: a
+  SUBSCRIPTION
   always carries an `access_until`; if billing ever writes `full` + NULL for a subscriber, that
   subscriber would be remembered as lifetime.
 - The re-grant: when the address's hash has a `deleted` row with `lifetimeAccess: true` that
@@ -496,7 +507,7 @@ release runs first so a partner who came back saves the other before any wipe is
 user is independent; a failed release or inactivity mark logs a WARN with the user id (never
 the email) and continues, a failed wipe logs an ERROR (see "When a wipe fails").
 `user:purge-deleted` runs the release and the wipe step by hand, with the same age rule: at 0
-it releases and wipes nobody.
+the release still runs and only the wipe is skipped.
 
 ## Rules this change must follow
 
@@ -575,6 +586,10 @@ comment rules.
 - NEW (second review): the deletion dialog says the CSV leaves out accounts deleted earlier.
   Alternative: an export that includes them.
 - NEW (second review): `ClearActiveBudget` is fixed to write only the option.
+- NEW (second review): lifetime is recorded only on a server with trials on; without trials
+  nobody leaves an email hash.
+- NEW (second review): the single inactivity email is best effort (a crash between send and
+  mark can repeat it). Alternative: a stored delivery state.
 - NEW: a failed wipe is an ERROR in the log and a non-zero CLI exit; there is no stored
   failure state.
 
