@@ -8,8 +8,8 @@ A user can delete their Econumo data, and users nobody has used for a long time 
 deletion automatically. Deletion is a two-step process: the user is MARKED, and later WIPED.
 Any sign-in between the two removes the mark. Wiping first disconnects the user from everyone
 (the existing stop-sharing path), then deletes the `users` row and lets the database cascade
-remove everything the user owns or wrote. Partners' account balances are kept right with one
-correction per affected account, the way deleting an account already does. An audit table
+remove everything the user owns or wrote. Every transaction removed from a partner's account is
+replaced by a correction on the same date, so the partner's balances stay right on every day. An audit table
 records the deletion history and lets a returning lifetime-access customer get lifetime access
 back.
 
@@ -150,11 +150,24 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
    `removeMemberRecords` deletes the budget elements, savings rows and account memberships a
    departing member leaves behind - `budgets_elements.external_id` has no foreign key, so the
    cascade alone would leave orphan elements with plans, debts and comments); delete invites.
-4. Find the partner accounts the wipe will change: accounts NOT owned by the user that hold
-   rows the user wrote (`transactions.user_id`), or that are either side of a transfer with one
-   of the user's accounts. Record each one's all-time balance.
-5. Delete the transfers from a partner account into one of the user's accounts (the cascade
-   would only NULL their recipient, leaving a transfer to nowhere).
+4. Replace every row that is about to leave a partner's account (an account NOT owned by the
+   user) with a correction on that account, one correction per affected side:
+   - a row the user wrote into a partner account (`transactions.user_id` = the user): a
+     correction of the same type and amount on that account; a transfer the user wrote between
+     two partner accounts gives an expense on the source (`amount`) and an income on the
+     recipient (`amount_recipient`);
+   - a transfer from a partner account into one of the user's accounts: an expense on the
+     partner account for `amount`;
+   - a transfer from one of the user's accounts into a partner account: an income on the
+     partner account for `amount_recipient`.
+   Each correction keeps the original's `spent_at` (date and time as stored) and its position
+   in the day on that side (`sort_key`, or `recipient_sort_key` for the recipient side), has no
+   category, payee, tag or labels, is authored by the account's owner, and its description
+   says the original transaction was deleted: "Balance adjustment (original transaction
+   deleted)", English like the existing account-deleted correction
+   (`internal/account/zero.go`). Then delete the originals that the cascade would not remove
+   (transfers from a partner account into the user's account; the cascade would only NULL
+   their recipient).
 6. Debts on a partner's budget whose currency is one of the user's custom currencies switch to
    the budget's currency (`debts.currency_id` is `NO ACTION` and would block the delete).
    Budget elements in that situation fall back by the existing `SET NULL`.
@@ -164,18 +177,16 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
    currencies, recurring templates (including ones on partners' accounts), imports, debts,
    options, identities, tokens, OAuth grants and the OAuth apps they own, and the code/request
    tables.
-8. Record each partner account's balance again. Where it changed, insert one correction for
-   the difference: an uncategorized income or expense dated today (the owner's local day),
-   authored by the account's owner, described like the existing account-deleted correction
-   (`internal/account/zero.go`). Partner rows that pointed at the user's categories, payees or
-   tags are left with those fields empty by the existing `SET NULL`.
+8. Partner rows that pointed at the user's categories, payees or tags are left with those
+   fields empty by the existing `SET NULL`. A test asserts every partner account's balance at
+   every date is unchanged by the wipe.
 9. Bump the revision of every partner account changed by steps 3-8 once
    (`txrevision`, inside this transaction).
 10. Write the `deleted` audit row (old user id, email hash, reason, `lifetimeAccess`).
 
-What the partner gives up: their current balances are exact, but past balances (and the net
-worth report) before the correction date shift by the removed amounts, and the user's entries
-disappear from their history. A partner's budget recalculates without the user's accounts and
+What the partner gives up: the user's entries in their accounts become uncategorized
+corrections on the same dates (balances on every day, net worth, and account order unchanged;
+the category, payee, tag and description are gone). A partner's budget recalculates without the user's accounts and
 categories; intended - the same end state as the user disconnecting everyone and deleting
 everything by hand.
 
@@ -220,9 +231,9 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 - **Wipe**: disconnect, then delete the `users` row and let the database cascade (chosen; a new
   table that cascades from `users` is covered automatically) vs keeping the row as a tombstone
   and deleting root tables in code (an explicit list that must grow with the schema).
-- **Partner rows**: one balance correction per changed partner account (chosen; same pattern as
-  account deletion, no schema change) vs converting each cross-user row in place (keeps the
-  partner's history but needs row-by-row transfer and currency handling) vs dropping the
+- **Partner rows**: a same-date correction for every removed row (chosen; balances right on
+  every day, no schema change) vs one correction per account dated today (past balances
+  shift) vs converting each cross-user row in place vs dropping the
   foreign key on `transactions.user_id` (SQLite table rebuild, "Deleted" author handling).
 - **Disconnect first** (chosen) vs relying on the cascade alone: budget elements point at
   categories and tags without a foreign key, so only the existing member-removal code cleans
@@ -240,7 +251,7 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 - `user:delete` refuses unmarked users (run `user:mark-deleted` first).
 - With the verification gate on, lifetime is re-granted on verification.
 - Recurring templates the user made on partners' accounts are deleted with the user.
-- Corrections are dated on the partner owner's local today.
+- Correction description is English, like the existing account-deleted correction.
 - Partner debts in the user's custom currency move to the budget currency.
 
 ## Left to the builder
