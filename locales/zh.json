@@ -443,12 +443,21 @@
         "currency": "货币",
         "column_question": "哪一项是账户？",
         "found": "此文件中的账户",
-        "existing_name": "已有账户",
         "currency_of": "{name} 的货币",
         "name_hint": "以后可以改名",
         "currency_unknown": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。",
         "per_row": "您的文件为每笔交易写明了账户",
-        "transactions": "{count} 笔交易"
+        "transactions": "{count} 笔交易",
+        "currency_question": "哪一项是货币？",
+        "currency_none": "我的文件没有货币",
+        "currency_from_file": "您的文件写明了每个账户的货币",
+        "currency_default": "新账户将使用 {currency}",
+        "currency_default_hint": "您的文件没有写明货币",
+        "currency_new_accounts": "新账户的货币",
+        "goes_into_existing": "进入您现有的账户（{code}）",
+        "new_in": "新账户，货币为 {code}",
+        "currency_unknown_here": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。",
+        "change_currency": "更改货币"
       },
       "date": {
         "title": "每笔付款是什么时候发生的？",

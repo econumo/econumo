@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAccounts } from '@/features/accounts/queries'
-import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { useUserData } from '@/features/user/queries'
 import { moneyFormat } from '@/lib/money'
 import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { formatDay, formatShortDay, formatSigned, useAccountView, type AccountView } from '../accountView'
 import { parseAmountCell, type DecimalSeparator } from '../amounts'
 import { summarize, type PreparedRow, type RowFix, type StepId } from '../prepare'
-import { nameKey, writableAccounts, type StepBodyProps } from '../wizard'
+import { existingCodes, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 import { PerRowAccounts } from './AccountStep'
 
 // rows shown before "show more"; rows that will be left out are always shown, so none needs hunting for
@@ -175,7 +175,7 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
     return [...byName.values()]
   }, [rows])
   const visible = useMemo(() => rows.filter((row, i) => i < limit || row.status === 'skipped'), [rows, limit])
-  const existingNames = useMemo(() => new Set(writableAccounts(accounts, user?.id).map((a) => nameKey(a.name))), [accounts, user?.id])
+  const existingNames = useMemo(() => existingCodes(writableAccounts(accounts, user?.id)), [accounts, user?.id])
   const count = summary.total - summary.skipped
 
   const setFix = (fileRow: number): SetFix => (update) =>
@@ -244,7 +244,6 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
           file={state.file}
           account={answers.account}
           existing={existingNames}
-          fallbackCurrency={userCurrencyId(user) ?? ''}
           onChange={(account) => setAnswers('account', { account })}
         />
       ) : null}

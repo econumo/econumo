@@ -15,6 +15,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { pluralPick } from '@/lib/plural'
 import { profileColumns, type ColumnProfile } from './columns'
+import { withAccountCurrencies } from './fileCurrency'
 import { applyAiGuess, guessAnswers, isEconumoExport, redetectFormats } from './guess'
 import { readCsvFile, type ParsedFile } from './parse'
 import { buildUpload, prepareRows, pruneFixes, type Role, type RowFix, type StepId, type WizardAnswers } from './prepare'
@@ -93,6 +94,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const foldersQuery = useFolders()
   const currenciesQuery = useCurrencies()
   const user = userQuery.data
+  const currencyList = useMemo(() => currenciesQuery.data ?? [], [currenciesQuery.data])
 
   const [loaded, setLoaded] = useState<LoadedFile | null>(null)
   const [fileError, setFileError] = useState<FileError | null>(null)
@@ -181,11 +183,14 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
           date: next.date.column !== prev.date.column && next.date.order === prev.date.order,
           amount: amountColumnsChanged(prev.amount, next.amount) && next.amount.sep === prev.amount.sep,
         })
-        return releaseTakenExtras(redetected)
+        const released = releaseTakenExtras(redetected)
+        // a pick anywhere can take the currency column; every account's currency follows
+        const { account } = released
+        return account?.kind === 'column' ? { ...released, account: withAccountCurrencies(loaded.file, account, currencyList) } : released
       })
       setTouched((prev) => (prev.has(changed) ? prev : new Set(prev).add(changed)))
     },
-    [loaded],
+    [loaded, currencyList],
   )
 
   const isExport = loaded !== null && isEconumoExport(loaded.file)

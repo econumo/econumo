@@ -102,7 +102,7 @@ describe('prepareRows', () => {
   it('reads the account per row and skips rows without one', () => {
     const file = parseCsvText('d,a,acc\n2026-03-04,1, Cash \n2026-03-05,2,\n')
     const a = answers({
-      account: { kind: 'column', column: 2, currencies: {} },
+      account: { kind: 'column', column: 2, currencyColumn: null, currencyId: '', overrides: {}, currencies: {} },
       date: { column: 0, order: 'ymd' },
       amount: { ...answers().amount, sep: '.' },
       description: null,
@@ -182,7 +182,7 @@ describe('pruneFixes', () => {
     ])
     const pruned = pruneFixes(file, onAmount2, fixes)
     expect([...pruned]).toEqual([[3, 'skip']])
-    const byColumn = answers({ ...onAmount2, date: { column: 0, order: 'dmy' }, account: { kind: 'column', column: 4, currencies: {} } })
+    const byColumn = answers({ ...onAmount2, date: { column: 0, order: 'dmy' }, account: { kind: 'column', column: 4, currencyColumn: null, currencyId: '', overrides: {}, currencies: {} } })
     expect(pruneFixes(file, byColumn, new Map<number, RowFix>([[2, 'skip']])).get(2)).toBe('skip')
   })
 
@@ -258,7 +258,7 @@ describe('buildUpload', () => {
 
   it('sends the account per row and every mapped extra', () => {
     const a = answers({
-      account: { kind: 'column', column: 5, currencies: {} },
+      account: { kind: 'column', column: 5, currencyColumn: null, currencyId: '', overrides: {}, currencies: {} },
       description: null,
       extras: { payee: 3, category: 4, tag: 6, labels: 7, labelsSeparator: '|' },
     })

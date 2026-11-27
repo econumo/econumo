@@ -135,10 +135,18 @@ stays on this step.
 - **Each row says which account** (a small secondary option): pick the column, shown with
   sample values, as on the other steps. Pre-selected when an Econumo export is recognised.
   The step then lists the distinct account names found: a name matching one of the user's
-  writable accounts (case-insensitive, as the server matches) shows "existing"; every other
-  name gets a currency picker, pre-filled from the file's `account_currency` column when
-  present (Econumo export), else the user's currency. *(Builder-check call: the server
-  alone would create them in the instance base currency and ignore `account_currency`.)*
+  writable accounts (case-insensitive, as the server matches) reads "goes into your
+  existing account (EUR)"; every other reads "new account in CAD" with a quiet "Change
+  currency" that opens a per-account picker. Where that currency comes from is a second
+  answer row, a role like the others (one part of the file, one role; never uploaded, it
+  only decides new accounts' currency): a part of the file holding three-letter codes
+  (an Econumo export's `account_currency`) is guessed, and its Change offers the parts
+  holding codes plus "My file has no currency"; without one, "New accounts will be in
+  [USD ▾]" picks one currency for every new account (the user's currency by default).
+  Per account: its own pick, else the one known code its rows name, else that currency.
+  An unknown code reads "your file says AUD, which isn't set up here". *(Builder-check
+  call: the server alone would create them in the instance base currency and ignore
+  `account_currency`.)*
 
 New accounts are created with `create-account` when the user presses Import, not earlier,
 and the import's rows then resolve to them (by id for the single-account case; by the now

@@ -1,7 +1,7 @@
 import { detectDecimalSeparator } from './amounts'
 import type { ColumnProfile, ColumnType } from './columns'
 import { detectDateOrder, localeDateOrder } from './dates'
-import { fileCurrencyId } from './fileCurrency'
+import { fileCurrencyId, withAccountCurrencies } from './fileCurrency'
 import type { ParsedFile } from './parse'
 import type { AccountChoice, Role, StepId, WizardAnswers } from './prepare'
 
@@ -19,7 +19,7 @@ const EXPORT_COLUMNS = {
 } as const
 const EXPORT_HEADER = [...Object.values(EXPORT_COLUMNS), 'transaction_id']
 
-type GuessedRole = Exclude<Role, 'account'>
+type GuessedRole = Exclude<Role, 'account' | 'currency'>
 
 // No 'account' synonyms: a bank's account column usually repeats one IBAN, and
 // "each row says which account" is preselected only for an Econumo export.
@@ -159,19 +159,13 @@ export function columnValues(file: ParsedFile, column: number | null): string[] 
 
 function exportAnswers(file: ParsedFile, ctx: GuessContext): WizardAnswers {
   const at = (name: string) => file.header.indexOf(name)
-  const accountColumn = at(EXPORT_COLUMNS.account)
-  const currencyColumn = at(EXPORT_COLUMNS.currency)
-  const idByCode = new Map((ctx.currencies ?? []).map((c) => [c.code.toUpperCase(), c.id]))
-  // A Map, not an object: account names are user text ("constructor", "__proto__").
-  const currencies = new Map<string, string>()
-  for (const row of file.rows) {
-    const name = (row[accountColumn] ?? '').trim().toLowerCase()
-    if (name === '' || currencies.has(name)) continue
-    const code = (row[currencyColumn] ?? '').trim().toUpperCase()
-    currencies.set(name, idByCode.get(code) ?? ctx.userCurrencyId)
-  }
+  const account = withAccountCurrencies(
+    file,
+    { kind: 'column', column: at(EXPORT_COLUMNS.account), currencyColumn: at(EXPORT_COLUMNS.currency), currencyId: ctx.userCurrencyId, overrides: {}, currencies: {} },
+    ctx.currencies ?? [],
+  )
   return {
-    account: { kind: 'column', column: accountColumn, currencies: Object.fromEntries(currencies) },
+    account,
     date: { column: at(EXPORT_COLUMNS.date), order: 'ymd' },
     amount: { mode: 'single', column: at(EXPORT_COLUMNS.amount), inColumn: null, outColumn: null, flip: false, sep: '.' },
     description: at(EXPORT_COLUMNS.description),
@@ -277,6 +271,7 @@ interface Slot {
 
 const SLOTS: Slot[] = [
   { step: 'account', role: 'account', get: (a) => (a.account?.kind === 'column' ? a.account.column : null), set: () => {} },
+  { step: 'account', role: 'currency', get: (a) => (a.account?.kind === 'column' ? a.account.currencyColumn : null), set: () => {} },
   { step: 'date', role: 'date', get: (a) => a.date.column, set: (a, c) => (a.date.column = c) },
   { step: 'amount', role: 'amount', get: (a) => (a.amount.mode === 'single' ? a.amount.column : null), set: (a, c) => (a.amount.column = c) },
   { step: 'amount', role: 'amountIn', get: (a) => (a.amount.mode === 'dual' ? a.amount.inColumn : null), set: (a, c) => (a.amount.inColumn = c) },
@@ -288,7 +283,7 @@ const SLOTS: Slot[] = [
   { step: 'extras', role: 'labels', get: (a) => a.extras.labels, set: (a, c) => (a.extras.labels = c) },
 ]
 
-// The AI's 'account' role is not applied: it cannot list the account names a
+// The AI's 'account' and 'currency' roles are not applied: it cannot list the account names a
 // per-row account needs currencies for.
 export function applyAiGuess(
   answers: WizardAnswers,
@@ -299,9 +294,9 @@ export function applyAiGuess(
 ): WizardAnswers {
   const { header } = file
   const next: WizardAnswers = { ...answers, date: { ...answers.date }, amount: { ...answers.amount }, extras: { ...answers.extras } }
-  const open = SLOTS.filter((slot) => !touched.has(slot.step) && slot.role !== 'account')
+  const open = SLOTS.filter((slot) => !touched.has(slot.step) && slot.step !== 'account')
   const taken = new Set(
-    SLOTS.filter((slot) => touched.has(slot.step) || slot.role === 'account')
+    SLOTS.filter((slot) => touched.has(slot.step) || slot.step === 'account')
       .map((slot) => slot.get(answers))
       .filter((c) => c !== null),
   )

@@ -7,6 +7,7 @@ import type { Role, WizardAnswers } from './prepare'
 
 const ROLE_KEYS: Record<Role, string> = {
   account: 'transactions.import_wizard.steps.account',
+  currency: 'transactions.import_wizard.account.currency',
   date: 'transactions.import_wizard.steps.date',
   amount: 'transactions.import_wizard.steps.amount',
   amountIn: 'transactions.import_wizard.amount.money_in',
@@ -22,6 +23,7 @@ export function columnRoles(answers: WizardAnswers): [Role, number][] {
   const { account, date, amount, description, extras } = answers
   const roles: [Role, number | null][] = [
     ['account', account?.kind === 'column' ? account.column : null],
+    ['currency', account?.kind === 'column' ? account.currencyColumn : null],
     ['date', date.column],
     ...(amount.mode === 'single'
       ? ([['amount', amount.column]] as [Role, number | null][])

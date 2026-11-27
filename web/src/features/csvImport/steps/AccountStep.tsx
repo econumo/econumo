@@ -2,29 +2,30 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
+import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
 import { Input } from '@/components/ui/input'
 import { useAccounts } from '@/features/accounts/queries'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { useCurrencies } from '@/features/currencies/queries'
+import { selectableCurrencies } from '@/features/currencies/selectable'
+import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { pluralPick } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { ColumnChoices } from '../ColumnChoices'
-import { columnTags, fromName } from '../columnLabels'
+import { columnRoles, columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
-import { AnswerRow, Field, Segmented, SkippedNote } from '../controls'
-import { currencyColumn, fileCurrencyId, rowsCurrencyId, unknownRowsCurrency } from '../fileCurrency'
+import { AnswerRow, Field, QuietButton, Segmented, SkippedNote } from '../controls'
+import { accountCurrencies, currencyColumn, fileCurrencyId, unknownRowsCurrency } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice, PreparedRow } from '../prepare'
-import { defaultAccountName, distinctNames, hasGuess, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
+import { defaultAccountName, distinctNames, existingCodes, hasGuess, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 
 type Option = AccountChoice['kind']
 type NewAccount = Extract<AccountChoice, { kind: 'new' }>
 type PerRow = Extract<AccountChoice, { kind: 'column' }>
-
-// account names are user text, so a name like "constructor" must not read Object.prototype
-const ownCurrency = (currencies: Record<string, string>, key: string) => (Object.hasOwn(currencies, key) ? currencies[key] : undefined)
 
 const NAME_DELAY_MS = 300
 
@@ -72,13 +73,73 @@ function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
   )
 }
 
-export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency, onChange, heading, labelledBy }: {
+function CompactCurrencyPicker({ label, value, onChange }: { label: string; value: string; onChange: (currencyId: string) => void }) {
+  const { data: currencies } = useCurrencies()
+  const options = useMemo(
+    () => selectableCurrencies(currencies, value).map((c) => ({ value: c.id, label: c.code, searchText: fullCurrencyLabel(c), ariaLabel: fullCurrencyLabel(c) })),
+    [currencies, value],
+  )
+  return (
+    <span className="inline-block w-32 align-middle text-sm">
+      <EntitySelect aria-label={label} value={value} options={options} onChange={(id) => id && onChange(id)} />
+    </span>
+  )
+}
+
+/** where each account's currency comes from: a part of the file, or one currency picked for all new accounts */
+function CurrencyAnswer({ state, account, onChange }: { state: StepBodyProps['state']; account: PerRow; onChange: (account: PerRow) => void }) {
+  const { t, i18n } = useTranslation()
+  const [choosing, setChoosing] = useState(false)
+  const open = () => {
+    trackEvent(METRICS.TRANSACTION_IMPORT_CHANGE_ANSWER, { step: 'account_currency' })
+    setChoosing(true)
+  }
+  if (choosing) {
+    return (
+      <ColumnChoices
+        profiles={state.profiles}
+        label={t('transactions.import_wizard.account.currency_question')}
+        selected={account.currencyColumn}
+        onSelect={(currencyColumn) => {
+          onChange({ ...account, currencyColumn })
+          setChoosing(false)
+        }}
+        candidates={candidates('currency', state.profiles, state.answers).filter((c) => c !== account.column)}
+        tags={columnTags(state.answers, t, i18n.language, ['currency'])}
+        noneLabel={t('transactions.import_wizard.account.currency_none')}
+      />
+    )
+  }
+  if (account.currencyColumn !== null) {
+    return (
+      <AnswerRow from={fromName(state.profiles[account.currencyColumn], state.profiles, t)} onChange={open}>
+        {t('transactions.import_wizard.account.currency_from_file')}
+      </AnswerRow>
+    )
+  }
+  const label = t('transactions.import_wizard.account.currency_new_accounts')
+  // the picker sits where the sentence names the currency, whatever the language's word order
+  const [before, after = ''] = t('transactions.import_wizard.account.currency_default', { currency: PICKER_MARK }).split(PICKER_MARK)
+  return (
+    <AnswerRow from={t('transactions.import_wizard.account.currency_default_hint')} onChange={open}>
+      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+        {before.trim() ? <span>{before.trim()}</span> : null}
+        <CompactCurrencyPicker label={label} value={account.currencyId} onChange={(currencyId) => onChange({ ...account, currencyId })} />
+        {after.trim() ? <span>{after.trim()}</span> : null}
+      </span>
+    </AnswerRow>
+  )
+}
+
+const PICKER_MARK = '\u0000'
+
+export function PerRowAccounts({ file, rows, account, existing, onChange, heading, labelledBy }: {
   file: ParsedFile
   /** the prepared rows: each account says how many of them name it */
   rows?: PreparedRow[]
   account: PerRow
-  existing: ReadonlySet<string>
-  fallbackCurrency: string
+  /** the user's accounts a name matches: lowercased name -> its currency code */
+  existing: ReadonlyMap<string, string>
   onChange: (account: PerRow) => void
   heading?: ReactNode
   /** the answer above names the list instead of a heading of its own */
@@ -87,19 +148,9 @@ export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency
   const { t, i18n } = useTranslation()
   const headingId = useId()
   const { data: currencies = [] } = useCurrencies()
+  const [changing, setChanging] = useState<ReadonlySet<string>>(() => new Set())
   const names = useMemo(() => distinctNames(file, account.column), [file, account.column])
-  // what each account's own rows say, when it is a code this instance has no currency for
-  const unknownCodes = useMemo(() => {
-    const codes = currencyColumn(file, currencies)
-    const found = new Map<string, string>()
-    if (codes === null) return found
-    for (const name of names) {
-      const key = nameKey(name)
-      const code = unknownRowsCurrency(file.rows.filter((row) => nameKey(row[account.column] ?? '') === key), codes, currencies)
-      if (code !== null) found.set(key, code)
-    }
-    return found
-  }, [file, account.column, names, currencies])
+  const resolved = useMemo(() => accountCurrencies(file, account, currencies), [file, account, currencies])
   const counts = useMemo(() => {
     const found = new Map<string, number>()
     for (const row of rows ?? []) {
@@ -110,6 +161,7 @@ export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency
     return found
   }, [rows])
   if (names.length === 0) return null
+  const codeOf = (currencyId: string | undefined) => currencies.find((c) => c.id === currencyId)?.code ?? ''
   return (
     <div className="flex flex-col gap-2">
       {labelledBy ? null : (
@@ -120,30 +172,40 @@ export function PerRowAccounts({ file, rows, account, existing, fallbackCurrency
       <ul aria-labelledby={labelledBy ?? headingId} className="divide-y divide-border rounded-xl border border-border">
         {names.map((name) => {
           const key = nameKey(name)
-          const unknownCode = unknownCodes.get(key)
+          const existingCode = existing.get(key)
+          const own = resolved.get(key)
+          const overridden = Object.hasOwn(account.overrides, key)
+          const unknownCode = existingCode === undefined && !overridden ? (own?.unknownCode ?? null) : null
+          const where =
+            existingCode !== undefined
+              ? t('transactions.import_wizard.account.goes_into_existing', { code: existingCode })
+              : t('transactions.import_wizard.account.new_in', { code: codeOf(own?.currencyId ?? account.currencyId) })
           return (
-            <li key={key} className="grid grid-cols-1 items-center gap-2 px-3 py-2 sm:grid-cols-2">
-              <span className="min-w-0 truncate text-sm">
-                {name}
-                {rows ? (
+            <li key={key} className="flex flex-col gap-2 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <p className="min-w-0 flex-1 text-sm break-words">
+                  {name}
                   <span className="text-muted-foreground">
-                    {' · '}
-                    {pluralPick(t('transactions.import_wizard.account.transactions'), counts.get(key) ?? 0, i18n.language)}
+                    {rows ? ` · ${pluralPick(t('transactions.import_wizard.account.transactions'), counts.get(key) ?? 0, i18n.language)}` : ''}
+                    {` — ${where}`}
+                    {unknownCode ? ` — ${t('transactions.import_wizard.account.currency_unknown_here', { code: unknownCode })}` : ''}
                   </span>
+                </p>
+                {existingCode === undefined && !changing.has(key) ? (
+                  <QuietButton onClick={() => setChanging((prev) => new Set(prev).add(key))}>
+                    {t('transactions.import_wizard.account.change_currency')}
+                  </QuietButton>
                 ) : null}
-              </span>
-              {existing.has(key) ? (
-                <span className="text-sm text-muted-foreground">{t('transactions.import_wizard.account.existing_name')}</span>
-              ) : (
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <CurrencyField
+              </div>
+              {existingCode === undefined && changing.has(key) ? (
+                <div>
+                  <CompactCurrencyPicker
                     label={t('transactions.import_wizard.account.currency_of', { name })}
-                    value={ownCurrency(account.currencies, key) ?? fallbackCurrency}
-                    onChange={(currencyId) => onChange({ ...account, currencies: { ...account.currencies, [key]: currencyId } })}
+                    value={own?.currencyId ?? account.currencyId}
+                    onChange={(currencyId) => onChange({ ...account, overrides: { ...account.overrides, [key]: currencyId } })}
                   />
-                  {unknownCode ? <UnknownCurrencyNote code={unknownCode} /> : null}
                 </div>
-              )}
+              ) : null}
             </li>
           )
         })}
@@ -191,7 +253,7 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const writable = useMemo(() => writableAccounts(accounts, user?.id), [accounts, user?.id])
-  const existing = useMemo(() => new Set(writable.map((a) => nameKey(a.name))), [writable])
+  const existing = useMemo(() => existingCodes(writable), [writable])
   const { data: currencies = [] } = useCurrencies()
   const currencyId = userCurrencyId(user) ?? ''
   const fileUnknownCode = useMemo(() => unknownRowsCurrency(state.file.rows, currencyColumn(state.file, currencies), currencies), [state.file, currencies])
@@ -254,18 +316,16 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
 
   const chooseColumn = (column: number | null) => {
     if (column === null) return
-    const previous = account?.kind === 'column' ? account.currencies : {}
-    const keys = distinctNames(state.file, column).map(nameKey).filter((key) => !existing.has(key))
-    // an account's own rows may say its currency; a currency already chosen for it is kept
-    const codes = currencyColumn(state.file, currencies)
-    const fromFile = (key: string) => rowsCurrencyId(state.file.rows.filter((row) => nameKey(row[column] ?? '') === key), codes, currencies)
-    // fromEntries, not assignment: a name like "__proto__" must stay a plain key
-    const perAccount = Object.fromEntries(keys.map((key) => [key, ownCurrency(previous, key) ?? fromFile(key) ?? currencyId]))
-    set({ kind: 'column', column, currencies: perAccount })
+    const previous = account?.kind === 'column' ? account : null
+    // a currency answer given before, "none" included, is kept; otherwise the file is read for one
+    const taken = new Set([column, ...columnRoles(state.answers).filter(([role]) => role !== 'currency').map(([, at]) => at)])
+    const fileColumn = previous ? previous.currencyColumn : currencyColumn(state.file, currencies, taken)
+    set({ kind: 'column', column, currencyColumn: fileColumn, currencyId: previous?.currencyId ?? currencyId, overrides: previous?.overrides ?? {}, currencies: {} })
     closeChoices()
   }
 
   const accountLabel = t('transactions.import_wizard.steps.account')
+  const hasNewAccount = account?.kind === 'column' && distinctNames(state.file, account.column).some((name) => !existing.has(nameKey(name)))
   const nameless = account?.kind === 'column' ? state.rows.filter((row) => row.reason === 'no_account').length : 0
 
   return (
@@ -312,12 +372,12 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
               <AnswerRow id={answerId} from={fromName(state.profiles[account.column], state.profiles, t)} onChange={change}>
                 {t('transactions.import_wizard.account.per_row')}
               </AnswerRow>
+              {hasNewAccount ? <CurrencyAnswer state={state} account={account} onChange={set} /> : null}
               <PerRowAccounts
                 file={state.file}
                 rows={state.rows}
                 account={account}
                 existing={existing}
-                fallbackCurrency={currencyId}
                 onChange={set}
                 labelledBy={answerId}
               />

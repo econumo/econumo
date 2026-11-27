@@ -443,12 +443,21 @@
         "currency": "Валюта",
         "column_question": "Что из этого — счёт?",
         "found": "Счета в этом файле",
-        "existing_name": "Существующий счёт",
         "currency_of": "Валюта для «{name}»",
         "name_hint": "Название можно изменить позже",
         "currency_unknown": "В файле указана {code}, но такой валюты здесь нет. Её можно добавить в настройках.",
         "per_row": "В вашем файле у каждой операции указан счёт",
-        "transactions": "{count} операция | {count} операции | {count} операций"
+        "transactions": "{count} операция | {count} операции | {count} операций",
+        "currency_question": "Что из этого — валюта?",
+        "currency_none": "В моём файле нет валюты",
+        "currency_from_file": "В вашем файле указана валюта каждого счёта",
+        "currency_default": "Новые счета будут в {currency}",
+        "currency_default_hint": "В вашем файле не указана валюта",
+        "currency_new_accounts": "Валюта новых счетов",
+        "goes_into_existing": "в ваш существующий счёт ({code})",
+        "new_in": "новый счёт в {code}",
+        "currency_unknown_here": "в файле указана {code}, но такой валюты здесь нет. Её можно добавить в настройках.",
+        "change_currency": "Изменить валюту"
       },
       "date": {
         "title": "Когда был каждый платёж?",

@@ -81,7 +81,11 @@ describe('guessAnswers', () => {
     expect(a.account).toEqual({
       kind: 'column',
       column: 1,
-      currencies: { cash: 'cur-usd', bank: 'cur-eur', card: 'cur-eur', constructor: 'cur-usd' },
+      currencyColumn: 2,
+      currencyId: 'cur-eur',
+      overrides: {},
+      // "Cash" and "cash" name two currencies, so the account takes the default
+      currencies: { cash: 'cur-eur', bank: 'cur-eur', card: 'cur-eur', constructor: 'cur-usd' },
     })
     expect(a.date).toEqual({ column: 9, order: 'ymd' })
     expect(a.amount).toMatchObject({ mode: 'single', column: 8, flip: false, sep: '.' })

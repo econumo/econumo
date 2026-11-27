@@ -14,11 +14,23 @@ export type Role =
   | 'tag'
   | 'labels'
   | 'account'
+  | 'currency'
 
 export type AccountChoice =
   | { kind: 'new'; name: string; currencyId: string }
   | { kind: 'existing'; accountId: string }
-  | { kind: 'column'; column: number; currencies: Record<string, string> /* lowercased new name -> currencyId */ }
+  | {
+      kind: 'column'
+      column: number
+      /** the part of the file naming each account's currency; null when the file has none */
+      currencyColumn: number | null
+      /** new accounts' currency where the file names none this instance has */
+      currencyId: string
+      /** currencies the user picked for single accounts: lowercased name -> currencyId */
+      overrides: Record<string, string>
+      /** every account's final currency, resolved from the three above: lowercased name -> currencyId */
+      currencies: Record<string, string>
+    }
 
 export interface WizardAnswers {
   account: AccountChoice | null

@@ -443,12 +443,21 @@
         "currency": "Waluta",
         "column_question": "Które z nich to konto?",
         "found": "Konta w tym pliku",
-        "existing_name": "Istniejące konto",
         "currency_of": "Waluta dla {name}",
         "name_hint": "Nazwę możesz zmienić później",
         "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
         "per_row": "Twój plik podaje konto każdej transakcji",
-        "transactions": "{count} transakcja | {count} transakcje | {count} transakcji"
+        "transactions": "{count} transakcja | {count} transakcje | {count} transakcji",
+        "currency_question": "Które z nich to waluta?",
+        "currency_none": "Mój plik nie podaje waluty",
+        "currency_from_file": "Twój plik podaje walutę każdego konta",
+        "currency_default": "Nowe konta będą w {currency}",
+        "currency_default_hint": "Twój plik nie podaje waluty",
+        "currency_new_accounts": "Waluta nowych kont",
+        "goes_into_existing": "trafi na Twoje istniejące konto ({code})",
+        "new_in": "nowe konto w {code}",
+        "currency_unknown_here": "Twój plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
+        "change_currency": "Zmień walutę"
       },
       "date": {
         "title": "Kiedy była każda płatność?",

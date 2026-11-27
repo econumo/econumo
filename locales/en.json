@@ -443,12 +443,21 @@
         "currency": "Currency",
         "column_question": "Which of these is the account?",
         "found": "Accounts in this file",
-        "existing_name": "Existing account",
         "currency_of": "Currency for {name}",
         "name_hint": "You can rename it later",
         "currency_unknown": "The file says {code}, which isn't set up here. You can add it in Settings.",
         "per_row": "Your file names the account for each transaction",
-        "transactions": "{count} transaction | {count} transactions"
+        "transactions": "{count} transaction | {count} transactions",
+        "currency_question": "Which of these is the currency?",
+        "currency_none": "My file has no currency",
+        "currency_from_file": "Your file says each account's currency",
+        "currency_default": "New accounts will be in {currency}",
+        "currency_default_hint": "Your file doesn't say which currency",
+        "currency_new_accounts": "Currency for new accounts",
+        "goes_into_existing": "goes into your existing account ({code})",
+        "new_in": "new account in {code}",
+        "currency_unknown_here": "your file says {code}, which isn't set up here. You can add it in Settings.",
+        "change_currency": "Change currency"
       },
       "date": {
         "title": "When did each payment happen?",

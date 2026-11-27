@@ -183,9 +183,9 @@ describe('ensureAccounts', () => {
 
   it('creates column accounts missing from existing names and created', async () => {
     const created = new Map<string, string>()
-    await ensureAccounts(answers({ kind: 'column', column: 0, currencies: { b: 'c1' } }), created, new Set())
+    await ensureAccounts(answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { b: 'c1' } }), created, new Set())
     vi.mocked(createAccount).mockClear()
-    const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1', c: 'c2' } })
+    const a = answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { a: 'c1', b: 'c1', c: 'c2' } })
     await ensureAccounts(a, created, new Set(['c']))
     expect(createAccount).toHaveBeenCalledTimes(1)
     expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'a', currencyId: 'c1' })
@@ -230,7 +230,7 @@ describe('ensureAccounts', () => {
   it('never takes a per-row account named "new" for the new account', async () => {
     const created = new Map<string, string>()
     vi.mocked(createAccount).mockResolvedValueOnce({ item: { id: 'row-new', folderId: 'general' }, transaction: null } as never)
-    await ensureAccounts(answers({ kind: 'column', column: 0, currencies: { new: 'c1' } }), created, new Set())
+    await ensureAccounts(answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { new: 'c1' } }), created, new Set())
     const result = await ensureAccounts(answers({ kind: 'new', name: 'Cash', currencyId: 'c1' }), created, new Set())
     expect(result.accountId).toBe('server-id')
     expect(createAccount).toHaveBeenCalledTimes(2)
@@ -243,14 +243,14 @@ describe('ensureAccounts', () => {
   })
 
   it('puts later accounts in the folder the first one landed in', async () => {
-    const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1' } })
+    const a = answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { a: 'c1', b: 'c1' } })
     await ensureAccounts(a, new Map(), new Set(), undefined, null)
     expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'general'])
   })
 
   it('reads back the folder the server made when the first create was replayed', async () => {
     vi.mocked(createAccount).mockRejectedValueOnce(replay('first-id'))
-    const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1' } })
+    const a = answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { a: 'c1', b: 'c1' } })
     await ensureAccounts(a, new Map(), new Set(), undefined, null)
     expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'made-by-server'])
   })
@@ -259,20 +259,20 @@ describe('ensureAccounts', () => {
     const created = new Map<string, string>()
     vi.mocked(createAccount).mockResolvedValueOnce({ item: { id: 'a-id', folderId: 'general' }, transaction: null } as never)
     vi.mocked(createAccount).mockRejectedValueOnce(new Error('timeout'))
-    const a = answers({ kind: 'column', column: 0, currencies: { a: 'c1', b: 'c1' } })
+    const a = answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { a: 'c1', b: 'c1' } })
     await expect(ensureAccounts(a, created, new Set(), undefined, null)).rejects.toThrow('timeout')
     await ensureAccounts(a, created, new Set(), undefined, null)
     expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].folderId)).toEqual([null, 'general', 'made-by-server'])
   })
 
   it('makes no account for a name that only left-out rows carry', async () => {
-    const a = answers({ kind: 'column', column: 0, currencies: { kept: 'c1', 'left out': 'c1' } })
+    const a = answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { kept: 'c1', 'left out': 'c1' } })
     await ensureAccounts(a, new Map(), new Set(), new Map([['kept', 'Kept']]))
     expect(vi.mocked(createAccount).mock.calls.map((call) => call[0].name)).toEqual(['Kept'])
   })
 
   it('names a column account as the file writes it', async () => {
-    const a = answers({ kind: 'column', column: 0, currencies: { 'my card': 'c1' } })
+    const a = answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: '', overrides: {}, currencies: { 'my card': 'c1' } })
     await ensureAccounts(a, new Map(), new Set(), new Map([['my card', 'My Card']]))
     expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'My Card' })
   })

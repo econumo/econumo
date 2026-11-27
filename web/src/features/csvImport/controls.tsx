@@ -84,7 +84,8 @@ export function ChoicesDone({ onDone }: { onDone: () => void }) {
   )
 }
 
-function QuietButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+/** a quiet text action beside an answer: Change, Done */
+export function QuietButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"

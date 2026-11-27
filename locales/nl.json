@@ -443,12 +443,21 @@
         "currency": "Valuta",
         "column_question": "Welke hiervan is de rekening?",
         "found": "Rekeningen in dit bestand",
-        "existing_name": "Bestaande rekening",
         "currency_of": "Valuta voor {name}",
         "name_hint": "U kunt de naam later wijzigen",
         "currency_unknown": "Het bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen.",
         "per_row": "Uw bestand vermeldt bij elke transactie de rekening",
-        "transactions": "{count} transactie | {count} transacties"
+        "transactions": "{count} transactie | {count} transacties",
+        "currency_question": "Welke hiervan is de valuta?",
+        "currency_none": "Mijn bestand vermeldt geen valuta",
+        "currency_from_file": "Uw bestand vermeldt de valuta van elke rekening",
+        "currency_default": "Nieuwe rekeningen worden in {currency} aangemaakt",
+        "currency_default_hint": "Uw bestand vermeldt geen valuta",
+        "currency_new_accounts": "Valuta voor nieuwe rekeningen",
+        "goes_into_existing": "gaat naar uw bestaande rekening ({code})",
+        "new_in": "nieuwe rekening in {code}",
+        "currency_unknown_here": "uw bestand noemt {code}, die hier niet is ingesteld. U kunt deze toevoegen in Instellingen.",
+        "change_currency": "Valuta wijzigen"
       },
       "date": {
         "title": "Wanneer vond elke betaling plaats?",

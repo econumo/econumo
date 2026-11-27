@@ -3,7 +3,7 @@ import { delay, http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { readMultipart, server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureEur, fixtureUsd } from '@/test/fixtures'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { ImportWizard } from './ImportWizard'
 
@@ -375,6 +375,34 @@ it('a new account goes into the user’s first folder and the rows into the acco
   await waitFor(() => expect(accountId).toBe('made-by-server'))
   expect(created).toMatchObject({ name: 'statement', folderId: 'f1' })
   expect(created!.id).not.toBe('made-by-server')
+})
+
+it('an Econumo export makes each new account in the currency its rows name', async () => {
+  const made: Record<string, unknown>[] = []
+  const cad = { ...fixtureUsd, id: 'cur-cad', code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' }
+  server.use(
+    ...coreHandlers({ currencies: [fixtureUsd, fixtureEur, cad] }),
+    http.post('*/api/v1/account/create-account', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>
+      made.push(body)
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: `made-${made.length}`, folderId: 'f1' }, transaction: null } })
+    }),
+    http.post('*/api/v1/transaction/import-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } }),
+    ),
+  )
+  renderWizard({
+    initialFile: csv(
+      'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
+        'a1,WS Cash,CAD,Interest,,,,WealthSimple,-4.5,2026-11-08 14:05:09\n' +
+        'a2,Cash,USD,Strata,,,,ICBC,100,2026-11-07 09:00:00\n',
+    ),
+  })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Import 2 transactions' }))
+  await waitFor(() => expect(made).toHaveLength(1))
+  // "Cash" is the user's own account; only WS Cash is made, in CAD
+  expect(made[0]).toMatchObject({ name: 'WS Cash', currencyId: 'cur-cad' })
 })
 
 it('a new account never goes into a hidden folder', async () => {

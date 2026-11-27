@@ -23,7 +23,7 @@ it('answers with nothing to release come back as they were', () => {
 })
 
 it('a per-row account column is released from extras too', () => {
-  const before = answers({ account: { kind: 'column', column: 4, currencies: {} }, extras: { payee: null, category: null, tag: null, labels: 4, labelsSeparator: ';' } })
+  const before = answers({ account: { kind: 'column', column: 4, currencyColumn: null, currencyId: '', overrides: {}, currencies: {} }, extras: { payee: null, category: null, tag: null, labels: 4, labelsSeparator: ';' } })
   expect(releaseTakenExtras(before).extras.labels).toBeNull()
 })
 
@@ -66,7 +66,7 @@ it('a step shows its answer first only when the answer reads real values', () =>
   expect(hasGuess('date', { answers: answers({}), rows: [row({ date: null, status: 'skipped', reason: 'no_date' })], profiles: [], touched: new Set() })).toBe(false)
   expect(hasGuess('description', { answers: answers({ description: null }), rows, profiles: [], touched: new Set() })).toBe(false)
   expect(hasGuess('account', { answers: answers({}), rows, profiles: [], touched: new Set() })).toBe(false)
-  expect(hasGuess('account', { answers: answers({ account: { kind: 'column', column: 3, currencies: {} } }), rows: [row({ account: 'Cash' })], profiles: [], touched: new Set() })).toBe(true)
+  expect(hasGuess('account', { answers: answers({ account: { kind: 'column', column: 3, currencyColumn: null, currencyId: '', overrides: {}, currencies: {} } }), rows: [row({ account: 'Cash' })], profiles: [], touched: new Set() })).toBe(true)
   expect(hasGuess('extras', { answers: answers({}), rows, profiles: [], touched: new Set() })).toBe(false)
   expect(hasGuess('extras', { answers: answers({ extras: { payee: 3, category: null, tag: null, labels: null, labelsSeparator: ';' } }), rows, profiles: [], touched: new Set() })).toBe(false)
   expect(hasGuess('extras', { answers: answers({ extras: { payee: null, category: null, tag: 3, labels: null, labelsSeparator: ';' } }), rows, profiles: [], touched: new Set() })).toBe(true)
@@ -106,7 +106,7 @@ it('one column, one role: a Category or Payee pick takes its column from Descrip
 })
 
 it('one column, one role: a pick takes the Amount, Date or per-row Account column, and that step needs an answer again', () => {
-  const before = answers({ account: { kind: 'column', column: 5, currencies: {} } })
+  const before = answers({ account: { kind: 'column', column: 5, currencyColumn: null, currencyId: '', overrides: {}, currencies: {} } })
   const amount = withExtras(before, { category: 1 })
   expect(amount.amount.column).toBeNull()
   expect(amount.extras.category).toBe(1)
@@ -121,6 +121,18 @@ it('one column, one role: a pick takes the Amount, Date or per-row Account colum
   const dual = answers({ amount: { mode: 'dual', column: null, inColumn: 1, outColumn: 6, flip: false, sep: '.' } })
   expect(withExtras(dual, { payee: 6 }).amount).toMatchObject({ inColumn: 1, outColumn: null })
   expect(pick(dual, { amount: { ...dual.amount, outColumn: 1 } }).amount).toMatchObject({ inColumn: null, outColumn: 1 })
+})
+
+it('one column, one role: the currency column is a role of the Account step', () => {
+  const perRow = { kind: 'column' as const, column: 5, currencyColumn: 3, currencyId: 'cur-usd', overrides: {}, currencies: {} }
+  const before = answers({ account: perRow, extras: { payee: null, category: 3, tag: null, labels: null, labelsSeparator: ';' } })
+  // a currency column is never also a category
+  expect(releaseTakenExtras(before).extras.category).toBeNull()
+  // a later pick takes it: the account stays, the file no longer says the currency
+  const taken = withExtras(answers({ account: perRow }), { category: 3 })
+  expect(taken.account).toMatchObject({ kind: 'column', column: 5, currencyColumn: null })
+  expect(taken.extras.category).toBe(3)
+  expect(missingAnswer('account', taken)).toBe(false)
 })
 
 it('one column, one role: Description takes the Date column, and Date takes the Description column', () => {

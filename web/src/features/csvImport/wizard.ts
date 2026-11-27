@@ -43,11 +43,17 @@ export function writableAccounts(accounts: AccountDto[], meId: string | undefine
   })
 }
 
-/** columns the Account, Date, Amount and Description steps read */
+/** the user's accounts by lowercased name, with their currency code */
+export function existingCodes(accounts: AccountDto[]): Map<string, string> {
+  return new Map(accounts.map((a) => [nameKey(a.name), a.currency.code]))
+}
+
+/** columns the Account (its currency too), Date, Amount and Description steps read */
 function mainColumns(answers: WizardAnswers): Set<number> {
   const { account, date, amount, description } = answers
   const used = [
     account?.kind === 'column' ? account.column : null,
+    account?.kind === 'column' ? account.currencyColumn : null,
     date.column,
     ...(amount.mode === 'single' ? [amount.column] : [amount.inColumn, amount.outColumn]),
     description,
@@ -72,6 +78,8 @@ function clearRole(answers: WizardAnswers, role: Role): WizardAnswers {
   switch (role) {
     case 'account':
       return { ...answers, account: null }
+    case 'currency':
+      return answers.account?.kind === 'column' ? { ...answers, account: { ...answers.account, currencyColumn: null } } : answers
     case 'date':
       return { ...answers, date: { ...answers.date, column: null } }
     case 'amount':

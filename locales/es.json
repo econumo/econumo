@@ -443,12 +443,21 @@
         "currency": "Moneda",
         "column_question": "¿Cuál de estos es la cuenta?",
         "found": "Cuentas en este archivo",
-        "existing_name": "Cuenta existente",
         "currency_of": "Moneda de {name}",
         "name_hint": "Puedes cambiarle el nombre más tarde",
         "currency_unknown": "El archivo indica {code}, que no está configurada aquí. Puedes añadirla en Ajustes.",
         "per_row": "Tu archivo indica la cuenta de cada movimiento",
-        "transactions": "{count} movimiento | {count} movimientos"
+        "transactions": "{count} movimiento | {count} movimientos",
+        "currency_question": "¿Cuál de estos es la moneda?",
+        "currency_none": "Mi archivo no indica la moneda",
+        "currency_from_file": "Tu archivo indica la moneda de cada cuenta",
+        "currency_default": "Las cuentas nuevas estarán en {currency}",
+        "currency_default_hint": "Tu archivo no indica la moneda",
+        "currency_new_accounts": "Moneda de las cuentas nuevas",
+        "goes_into_existing": "va a tu cuenta existente ({code})",
+        "new_in": "cuenta nueva en {code}",
+        "currency_unknown_here": "tu archivo indica {code}, que no está configurada aquí. Puedes añadirla en Ajustes.",
+        "change_currency": "Cambiar moneda"
       },
       "date": {
         "title": "¿Cuándo se hizo cada pago?",

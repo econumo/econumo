@@ -4,6 +4,7 @@ import type { Role, StepId, WizardAnswers } from './prepare'
 
 const STEP_OF: Record<Role, StepId> = {
   account: 'account',
+  currency: 'account',
   date: 'date',
   amount: 'amount',
   amountIn: 'amount',
@@ -28,6 +29,7 @@ const repeatedNames = (p: ColumnProfile) =>
 
 const fits: Record<Role, (p: ColumnProfile) => boolean> = {
   account: repeatedNames,
+  currency: (p) => p.codes,
   date: (p) => p.type === 'date',
   amount: (p) => p.type === 'number' && !p.internal,
   amountIn: (p) => p.type === 'number' && !p.internal,

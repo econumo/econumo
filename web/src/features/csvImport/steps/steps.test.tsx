@@ -130,18 +130,23 @@ it('with accounts, the Account step offers the account picker first', async () =
   expect(within(screen.getByRole('radiogroup', { name: 'Account' })).getAllByRole('radio').length).toBeGreaterThan(0)
 })
 
-it('lists the accounts a per-row column names, with a currency only for the new ones', async () => {
+const perRowList = () => screen.getByRole('list', { name: /^Your file names the account for each transaction/ })
+
+it('lists the accounts a per-row column names as sentences; only a new one can change its currency', async () => {
   renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Cash\n2026-01-03,7.00,Travel card\n2026-01-04,1.00, cash \n')
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
   await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
-  const list = screen.getByRole('list', { name: /^Your file names the account for each transaction/ })
-  const rows = within(list).getAllByRole('listitem')
+  const rows = within(perRowList()).getAllByRole('listitem')
   expect(rows).toHaveLength(2)
-  expect(rows[0]).toHaveTextContent('Cash · 2 transactionsExisting account')
+  expect(rows[0]).toHaveTextContent('Cash · 2 transactions — goes into your existing account (USD)')
+  expect(within(rows[0]).queryByRole('button', { name: 'Change currency' })).not.toBeInTheDocument()
   expect(within(rows[0]).queryByRole('combobox')).not.toBeInTheDocument()
-  expect(within(rows[1]).getByRole('combobox', { name: 'Currency for Travel card' })).toHaveValue('USD, $, US Dollar')
+  expect(rows[1]).toHaveTextContent('Travel card · 1 transaction — new account in USD')
+  expect(within(rows[1]).queryByRole('combobox')).not.toBeInTheDocument()
+  await user.click(within(rows[1]).getByRole('button', { name: 'Change currency' }))
+  expect(within(rows[1]).getByRole('combobox', { name: 'Currency for Travel card' })).toHaveValue('USD')
 })
 
 it('Each row says which account, with no column chosen yet, marks the Account step', async () => {
@@ -158,9 +163,35 @@ it('per-row accounts take the currency their own rows name, the user’s otherwi
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
   await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
-  expect(screen.getByRole('combobox', { name: 'Currency for Trip' })).toHaveValue('EUR, €, Euro')
-  expect(screen.getByRole('combobox', { name: 'Currency for Home' })).toHaveValue('USD, $, US Dollar')
-  expect(screen.getByRole('combobox', { name: 'Currency for Mixed' })).toHaveValue('USD, $, US Dollar')
+  expect(screen.getByText("Your file says each account's currency")).toBeInTheDocument()
+  expect(screen.getByText('from “Cur”')).toBeInTheDocument()
+  const rows = within(perRowList()).getAllByRole('listitem')
+  expect(rows[0]).toHaveTextContent('Trip · 2 transactions — new account in EUR')
+  expect(rows[1]).toHaveTextContent('Home · 1 transaction — new account in USD')
+  expect(rows[2]).toHaveTextContent('Mixed · 2 transactions — new account in USD')
+})
+
+it('a file without a currency: new accounts take the one picked for them, and one account’s own pick wins', async () => {
+  server.use(...coreHandlers({ currencies: [fixtureUsd, fixtureEur, fixtureCad] }))
+  renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Trip\n2026-01-03,7.00,Home\n')
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  expect(screen.getByText("Your file doesn't say which currency")).toBeInTheDocument()
+  const all = screen.getByRole('combobox', { name: 'Currency for new accounts' })
+  expect(all).toHaveValue('USD')
+  // one account first gets its own currency
+  const home = within(perRowList()).getAllByRole('listitem')[1]
+  await user.click(within(home).getByRole('button', { name: 'Change currency' }))
+  await user.click(within(home).getByRole('combobox', { name: 'Currency for Home' }))
+  await user.click(await screen.findByRole('option', { name: 'CAD, C$, Canadian Dollar' }))
+  // then every other new account follows the one picked for all
+  await user.click(all)
+  await user.click(await screen.findByRole('option', { name: 'EUR, €, Euro' }))
+  const rows = within(perRowList()).getAllByRole('listitem')
+  expect(rows[0]).toHaveTextContent('Trip · 1 transaction — new account in EUR')
+  expect(rows[1]).toHaveTextContent('Home · 1 transaction — new account in CAD')
 })
 
 const WS_EXPORT =
@@ -176,39 +207,67 @@ async function openExportAccountStep(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
 }
 
-it('an Econumo export prefills a per-row account’s currency from account_currency', async () => {
+it('an Econumo export reads each account’s currency from account_currency', async () => {
   server.use(...coreHandlers({ currencies: [fixtureUsd, fixtureEur, fixtureCad] }))
   const user = userEvent.setup()
   await openExportAccountStep(user)
   expect(screen.getByRole('radio', { name: 'Each row says which account' })).toBeChecked()
-  expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
-  expect(screen.queryByText(/The file says CAD/)).not.toBeInTheDocument()
-  // choosing the account column again reads the currency from the file the same way
-  await user.click(screen.getByRole('button', { name: 'Change' }))
+  expect(screen.getByText("Your file says each account's currency")).toBeInTheDocument()
+  expect(screen.getByText('from “account_currency”')).toBeInTheDocument()
+  expect(within(perRowList()).getByRole('listitem')).toHaveTextContent('WS Cash · 2 transactions — new account in CAD')
+  expect(screen.queryByText(/isn't set up here/)).not.toBeInTheDocument()
+  // choosing the account column again keeps reading the currency from the file
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[0])
   await user.click(screen.getByRole('button', { name: 'Show all' }))
   await user.click(screen.getByRole('radio', { name: /from “payee”/ }))
-  expect(screen.queryByRole('combobox', { name: 'Currency for WS Cash' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Change' }))
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[0])
   await user.click(screen.getByRole('radio', { name: /from “account_name”/ }))
-  expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
+  expect(within(perRowList()).getByRole('listitem')).toHaveTextContent('WS Cash · 2 transactions — new account in CAD')
 })
 
-it('leaving Each row says which account and coming back shows its answer again, not the list', async () => {
+it('the currency answer offers code columns, and My file has no currency moves new accounts to the picked one', async () => {
   server.use(...coreHandlers({ currencies: [fixtureUsd, fixtureEur, fixtureCad] }))
   const user = userEvent.setup()
   await openExportAccountStep(user)
-  await user.click(screen.getByRole('radio', { name: 'A new account' }))
-  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
-  expect(screen.queryByRole('radiogroup', { name: 'Which of these is the account?' })).not.toBeInTheDocument()
-  expect(screen.getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('CAD, C$, Canadian Dollar')
-  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[1])
+  const choices = screen.getByRole('radiogroup', { name: 'Which of these is the currency?' })
+  // only the part of the file holding codes is offered before Show all
+  expect(within(choices).getAllByRole('radio').map((r) => r.textContent)).toEqual(['CADfrom “account_currency”', 'My file has no currency'])
+  await user.click(within(choices).getByRole('radio', { name: 'My file has no currency' }))
+  expect(screen.getByText("Your file doesn't say which currency")).toBeInTheDocument()
+  await user.click(screen.getByRole('combobox', { name: 'Currency for new accounts' }))
+  await user.click(await screen.findByRole('option', { name: 'EUR, €, Euro' }))
+  expect(within(perRowList()).getByRole('listitem')).toHaveTextContent('WS Cash · 2 transactions — new account in EUR')
+  // the account step's answer is kept when the account column is picked again
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[0])
+  await user.click(screen.getByRole('radio', { name: /from “account_name”/ }))
+  expect(within(perRowList()).getByRole('listitem')).toHaveTextContent('WS Cash · 2 transactions — new account in EUR')
 })
 
-it('a per-row account whose file currency is not set up here keeps the user’s currency, with a note', async () => {
+it('a part of the file the currency reads is not offered as the category, and taking it there leaves new accounts on the picked currency', async () => {
+  renderWizard('Date,Amount,Wallet,Cur,Kind\n2026-01-02,-5.50,Trip,EUR,Food\n2026-01-03,7.00,Trip,EUR,Fun\n2026-01-04,1.00,Home,EUR,Food\n')
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  expect(within(perRowList()).getAllByRole('listitem')[0]).toHaveTextContent('new account in EUR')
+  await user.click(screen.getByRole('button', { name: /^Category/ }))
+  await screen.findByRole('heading', { name: 'How are the payments sorted?' })
+  const offered = () => screen.getByRole('radiogroup', { name: 'Which of these is the category?' })
+  expect(within(offered()).queryByRole('radio', { name: /from “Cur”/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  const cur = within(offered()).getByRole('radio', { name: /from “Cur”/ })
+  expect(cur).toHaveAccessibleDescription('used for currency')
+  await user.click(cur)
+  await user.click(screen.getByRole('button', { name: /^Account/ }))
+  expect(await screen.findByText("Your file doesn't say which currency")).toBeInTheDocument()
+  expect(within(perRowList()).getAllByRole('listitem')[0]).toHaveTextContent('new account in USD')
+})
+
+it('a per-row account whose file currency is not set up here is new in the user’s currency, with a note', async () => {
   await openExportAccountStep(userEvent.setup())
-  const row = within(screen.getByRole('list', { name: /^Your file names the account for each transaction/ })).getByRole('listitem')
-  expect(within(row).getByRole('combobox', { name: 'Currency for WS Cash' })).toHaveValue('USD, $, US Dollar')
-  expect(row).toHaveTextContent("The file says CAD, which isn't set up here. You can add it in Settings.")
+  const row = within(perRowList()).getByRole('listitem')
+  expect(row).toHaveTextContent("WS Cash · 2 transactions — new account in USD — your file says CAD, which isn't set up here. You can add it in Settings.")
 })
 
 it('a new account for a file in a currency not set up here says so under its currency', async () => {

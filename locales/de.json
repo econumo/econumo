@@ -443,12 +443,21 @@
         "currency": "Währung",
         "column_question": "Welches davon ist das Konto?",
         "found": "Konten in dieser Datei",
-        "existing_name": "Vorhandenes Konto",
         "currency_of": "Währung für {name}",
         "name_hint": "Sie können es später umbenennen",
         "currency_unknown": "Die Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen.",
         "per_row": "Ihre Datei nennt zu jeder Buchung das Konto",
-        "transactions": "{count} Buchung | {count} Buchungen"
+        "transactions": "{count} Buchung | {count} Buchungen",
+        "currency_question": "Welches davon ist die Währung?",
+        "currency_none": "Meine Datei enthält keine Währung",
+        "currency_from_file": "Ihre Datei nennt die Währung jedes Kontos",
+        "currency_default": "Neue Konten werden in {currency} angelegt",
+        "currency_default_hint": "Ihre Datei nennt keine Währung",
+        "currency_new_accounts": "Währung für neue Konten",
+        "goes_into_existing": "geht in Ihr bestehendes Konto ({code})",
+        "new_in": "neues Konto in {code}",
+        "currency_unknown_here": "Ihre Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen.",
+        "change_currency": "Währung ändern"
       },
       "date": {
         "title": "Wann fand jede Zahlung statt?",

@@ -773,9 +773,11 @@ navigation (single-pane vs sidebar).
       "Your file names the account for each transaction", Extra details "We’ll
       also bring along:" with "Budget tag: … (from “tag”)" lines — with the
       file's own name in small grey text under it ("from “Buchungstag”") and a
-      quiet "Change" on the right. Under the per-row account's row, one line
-      per account ("WS Cash · 572 transactions" and its currency picker or
-      "Existing account"). The footer's primary button reads "Looks right"
+      quiet "Change" on the right. Under the per-row account's row, a second
+      answer row for the currency, then one plain line per account (no form
+      fields): "WS Cash · 572 transactions — new account in CAD" with a quiet
+      "Change currency", or "Cash · 6 transactions — goes into your existing
+      account (EUR)"). The footer's primary button reads "Looks right"
       instead of Continue (goes to the next step; never an empty footer, also
       on Account). Open questions (date order, decimal separator, "Spending
       shows as" with Flip the signs, Reporting tags' separator) and the grey
@@ -969,12 +971,29 @@ navigation (single-pane vs sidebar).
       pre-filled and a grey note under the picker reads "The file says CAD,
       which isn't set up here. You can add it in Settings."); "Each row says which
       account" asks "Which of these is the account?", then answers "Your file
-      names the account for each transaction" with the names found under it, each
-      with how many transactions it gets: one matching
-      a writable account (any letter case) reads "Existing account", every
-      other gets its own currency picker, pre-filled with the currency its own
-      rows name when they name exactly one (an unknown code gets the same
-      grey note under that account's picker). Import creates the new accounts
+      names the account for each transaction". When any name is new, a second
+      answer row says where new accounts' currency comes from: a part of the
+      file holding three-letter codes is guessed ("Your file says each
+      account's currency", "from “account_currency”"); its Change asks "Which
+      of these is the currency?" (only parts holding codes, the account's own
+      not among them; Show all with the Already used group) plus "My file has
+      no currency". With none, or after picking that, the row reads "New
+      accounts will be in [USD ▾]" (a small currency picker, the user's
+      currency first) with "Your file doesn't say which currency" under it.
+      The part of the file the currency reads is never offered to Category,
+      Payee, Description or Extra details except under Show all, tagged "used
+      for currency"; picking it there takes it from the currency (last pick
+      wins) and new accounts move to the picked currency. Under that, one
+      plain line per name with how many transactions it gets: a name matching
+      a writable account (any letter case) reads "— goes into your existing
+      account (EUR)" with no currency choice; every other reads "— new
+      account in CAD" (the one code its own rows name when the app knows it,
+      else the currency picked above) and a quiet "Change currency" opens a
+      small picker for that account only, which wins over the file and the
+      picker above and survives picking the account or currency again. A
+      code the app has no currency for reads "— new account in USD — your
+      file says AUD, which isn't set up here. You can add it in Settings."
+      Import creates the new accounts
       (in the user's first visible folder, never a hidden one, or "General"
       for a user with none) and
       puts each row in its account; a name found only on rows that will be

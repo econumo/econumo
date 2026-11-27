@@ -51,9 +51,19 @@ describe('candidates', () => {
     const { profiles, answers } = load('Date,Amount,Wallet,Memo', rows)
     const taken: WizardAnswers = { ...answers, description: 2 }
     expect(names(profiles, candidates('account', profiles, taken))).toEqual(['Memo'])
-    const perRow: WizardAnswers = { ...answers, description: null, account: { kind: 'column', column: 2, currencies: {} } }
+    const perRow: WizardAnswers = { ...answers, description: null, account: { kind: 'column', column: 2, currencyColumn: null, currencyId: '', overrides: {}, currencies: {} } }
     expect(names(profiles, candidates('description', profiles, perRow))).toEqual(['Memo'])
     expect(names(profiles, candidates('payee', profiles, perRow))).toEqual(['Memo'])
+  })
+
+  it('the currency is a part of the file holding codes; once it reads one, no other step is offered it', () => {
+    const rows = Array.from({ length: 12 }, (_, i) => [day(i), `-${i + 1}.00`, i % 2 ? 'Cash' : 'Visa', i % 2 ? 'EUR' : 'usd', ['Food', 'Fun'][i % 2]].join(','))
+    const { profiles, answers } = load('Date,Amount,Wallet,Cur,Kind', rows)
+    expect(names(profiles, candidates('currency', profiles, answers))).toEqual(['Cur'])
+    const perRow: WizardAnswers = { ...answers, account: { kind: 'column', column: 2, currencyColumn: 3, currencyId: '', overrides: {}, currencies: {} } }
+    for (const role of ['category', 'payee', 'description', 'tag', 'labels'] as const) {
+      expect(names(profiles, candidates(role, profiles, perRow))).not.toContain('Cur')
+    }
   })
 
   it('a small file repeats little, so a few different names still count as accounts', () => {
