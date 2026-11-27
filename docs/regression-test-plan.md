@@ -880,11 +880,12 @@ navigation (single-pane vs sidebar).
       used" group and "The file has no category" / "The file has no payee";
       picking None answers "Categories are left out. You can sort
       transactions into categories later." (Payees likewise) and the step
-      list reads "None". One part of the file has one role: picking on
-      Category or Payee a part another step uses (from "Show all") takes it
-      from there, the last pick wins; picking the amount as the category
-      leaves Amount with a warning mark and Import disabled until it is
-      answered again. The guess and the AI never give a category or payee a
+      list reads "None". One part of the file has one role, on every
+      step: picking a part another step uses (from "Show all") takes it from
+      there, the last pick wins; picking the amount as the category leaves
+      Amount with a warning mark and Import disabled until it is answered
+      again, picking the date as the description marks Date, and picking
+      the description as the date leaves Description at "No description". The guess and the AI never give a category or payee a
       part Account, Date, Amount or Description reads. A bank statement with
       neither (the German `Buchungstag;Betrag;Verwendungszweck` file) answers
       calmly: "Your file has no categories. You can sort transactions into

@@ -7,7 +7,7 @@ import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
 import { AnswerRow } from '../controls'
 import { categoryKey, distinctNew, useOwnerLists } from '../ownerLists'
-import { firstDistinct, hasGuess, pickDetail, type StepBodyProps } from '../wizard'
+import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
 
 type Detail = 'category' | 'payee'
 
@@ -26,7 +26,7 @@ function DetailStep({ role, state, setAnswers, choosing, change, closeChoices, n
           label={k('choose')}
           selected={column}
           onSelect={(picked) => {
-            setAnswers(role, pickDetail(state.answers, role, picked))
+            setAnswers(role, { extras: { ...state.answers.extras, [role]: picked } })
             closeChoices()
           }}
           candidates={likely}

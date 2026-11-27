@@ -23,6 +23,7 @@ import { stepSummary } from './stepSummary'
 import { useColumnGuess } from './useColumnGuess'
 import { WizardShell, type ShellStep } from './WizardShell'
 import {
+  claimPicked,
   defaultAccountName,
   distinctNames,
   hasGuess,
@@ -174,7 +175,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       if (!loaded) return
       setAnswersState((prev) => {
         if (prev === null) return prev
-        const next = { ...prev, ...patch }
+        const next = claimPicked(prev, { ...prev, ...patch })
         // a new column gets its formats detected again, unless the same patch chose them
         const redetected = redetectFormats(next, loaded.file, navigator.language, {
           date: next.date.column !== prev.date.column && next.date.order === prev.date.order,

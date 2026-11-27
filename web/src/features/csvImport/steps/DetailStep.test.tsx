@@ -7,6 +7,7 @@ import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
 import { profileColumns } from '../columns'
 import { parseCsvText } from '../parse'
 import { prepareRows, type StepId, type WizardAnswers } from '../prepare'
+import { claimPicked } from '../wizard'
 import { CategoryStep, PayeeStep } from './DetailStep'
 
 const noExtras: WizardAnswers['extras'] = { payee: null, category: null, tag: null, labels: null, labelsSeparator: ';' }
@@ -41,7 +42,7 @@ function Harness({ step, text, extras = noExtras, description = null, account = 
       <Step
         state={{ file, fileName: 'a.csv', profiles, answers, touched, fixes: new Map(), rows, isExport: false }}
         setAnswers={(changed, patch) => {
-          setAnswersState((prev) => ({ ...prev, ...patch }))
+          setAnswersState((prev) => claimPicked(prev, { ...prev, ...patch }))
           setTouched((prev) => new Set(prev).add(changed))
         }}
         setFixes={() => {}}

@@ -1,9 +1,10 @@
 import type { AccountDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
 import { candidates } from './candidates'
+import { columnRoles } from './columnLabels'
 import type { ColumnProfile } from './columns'
 import type { ParsedFile } from './parse'
-import type { PreparedRow, RowFix, StepId, WizardAnswers } from './prepare'
+import type { PreparedRow, Role, RowFix, StepId, WizardAnswers } from './prepare'
 
 export const STEP_ORDER: StepId[] = ['file', 'account', 'date', 'amount', 'category', 'description', 'payee', 'extras', 'preview']
 
@@ -67,26 +68,35 @@ export function unusedColumns(answers: WizardAnswers, profiles: ColumnProfile[])
   return profiles.filter((p) => !used.has(p.index) && p.type !== 'empty')
 }
 
-/** One column, one role: a Category or Payee pick takes its column from whichever step read
-    it, the last pick wins. A required step that loses it asks again. */
-export function pickDetail(answers: WizardAnswers, role: 'category' | 'payee', column: number | null): Partial<WizardAnswers> {
-  const extras = { ...answers.extras }
-  if (column === null) return { extras: { ...extras, [role]: null } }
-  for (const r of ['payee', 'category', 'tag', 'labels'] as const) if (extras[r] === column) extras[r] = null
-  extras[role] = column
-  const { account, date, amount, description } = answers
-  return {
-    extras,
-    account: account?.kind === 'column' && account.column === column ? null : account,
-    date: date.column === column ? { ...date, column: null } : date,
-    amount: {
-      ...amount,
-      column: amount.column === column ? null : amount.column,
-      inColumn: amount.inColumn === column ? null : amount.inColumn,
-      outColumn: amount.outColumn === column ? null : amount.outColumn,
-    },
-    description: description === column ? null : description,
+function clearRole(answers: WizardAnswers, role: Role): WizardAnswers {
+  switch (role) {
+    case 'account':
+      return { ...answers, account: null }
+    case 'date':
+      return { ...answers, date: { ...answers.date, column: null } }
+    case 'amount':
+      return { ...answers, amount: { ...answers.amount, column: null } }
+    case 'amountIn':
+      return { ...answers, amount: { ...answers.amount, inColumn: null } }
+    case 'amountOut':
+      return { ...answers, amount: { ...answers.amount, outColumn: null } }
+    case 'description':
+      return { ...answers, description: null }
+    default:
+      return { ...answers, extras: { ...answers.extras, [role]: null } }
   }
+}
+
+/** One column, one role: a column a pick gives a role is taken from every other role that read
+    it, the last pick wins. A required step that loses its column asks again. */
+export function claimPicked(prev: WizardAnswers, next: WizardAnswers): WizardAnswers {
+  const before = columnRoles(prev)
+  const picked = columnRoles(next).filter(([role, column]) => !before.some(([r, c]) => r === role && c === column))
+  let result = next
+  for (const [role, column] of picked) {
+    for (const [other, at] of columnRoles(result)) if (other !== role && at === column) result = clearRole(result, other)
+  }
+  return result
 }
 
 export function missingAnswer(step: StepId, answers: WizardAnswers): boolean {

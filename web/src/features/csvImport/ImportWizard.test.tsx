@@ -114,6 +114,28 @@ it('picking the amount as the category moves it: Amount loses it and needs an an
   expect(screen.getByRole('button', { name: /^Import/ })).toBeDisabled()
 })
 
+it('picking the date as the description moves it: Date loses it and needs an answer', async () => {
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('button', { name: 'Description' }))
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  await user.click(screen.getByRole('radio', { name: /from “Booking date”/ }))
+  expect(screen.getByRole('button', { name: /^Date.*needs your attention/ })).toBeInTheDocument()
+})
+
+it('picking the description as the date moves it: Description is left empty', async () => {
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('button', { name: 'Date' }))
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  await user.click(screen.getByRole('button', { name: 'Show all' }))
+  await user.click(screen.getByRole('radio', { name: /from “Details”/ }))
+  expect(screen.getByRole('button', { name: /^Description/ })).toHaveAccessibleDescription('No description')
+})
+
 it('Category and Payee left as None never block Import', async () => {
   renderWizard({ initialFile: csv(EXPORT, 'econumo.csv') })
   const user = userEvent.setup()
