@@ -309,3 +309,27 @@ DELETE FROM import_suggestion_links WHERE suggestion_id = $1 AND link_id = $2;
 
 -- name: DeleteImportSuggestion :exec
 DELETE FROM import_suggestions WHERE id = $1;
+
+-- Clearing other users' import links that point at a deleted user's entities.
+-- The four applied_* columns have no foreign key; the user's own links go
+-- with the import_sources cascade.
+
+-- name: ClearImportLinkAppliedCategoryOfUser :exec
+UPDATE import_transaction_links SET applied_category_id = NULL
+WHERE applied_category_id IN (SELECT x.id FROM categories x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1);
+
+-- name: ClearImportLinkAppliedPayeeOfUser :exec
+UPDATE import_transaction_links SET applied_payee_id = NULL
+WHERE applied_payee_id IN (SELECT x.id FROM payees x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1);
+
+-- name: ClearImportLinkAppliedTagOfUser :exec
+UPDATE import_transaction_links SET applied_tag_id = NULL
+WHERE applied_tag_id IN (SELECT x.id FROM tags x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1);
+
+-- name: ClearImportLinkAppliedRuleOfUser :exec
+UPDATE import_transaction_links SET applied_rule_id = NULL
+WHERE applied_rule_id IN (SELECT x.id FROM import_rules x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1);

@@ -34,6 +34,7 @@ type querier interface {
 	Insert(ctx context.Context, db backend.DBTX, p insertParams) error
 	Delete(ctx context.Context, db backend.DBTX, p deleteParams) error
 	Purge(ctx context.Context, db backend.DBTX, before time.Time) error
+	DeleteByUser(ctx context.Context, db backend.DBTX, userID string) error
 }
 
 // Store runs every query through TxManager.Querier(ctx), so it joins the
@@ -91,6 +92,10 @@ func (s *Store) Delete(ctx context.Context, userID vo.Id, key string) error {
 	return s.q.Delete(ctx, s.tx.Querier(ctx), deleteParams{UserID: userID.String(), IdempotencyKey: key})
 }
 
+func (s *Store) DeleteByUser(ctx context.Context, userID vo.Id) error {
+	return s.q.DeleteByUser(ctx, s.tx.Querier(ctx), userID.String())
+}
+
 // MaybePurge drops rows older than ninety days, at most once every ten minutes
 // per process. Best-effort: a failure is logged and never reaches the request.
 func (s *Store) MaybePurge(ctx context.Context) {
@@ -125,6 +130,10 @@ func (sqliteQuerier) Purge(ctx context.Context, db backend.DBTX, before time.Tim
 	return sqlitegen.New(db).PurgeIdempotencyKeys(ctx, before)
 }
 
+func (sqliteQuerier) DeleteByUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).DeleteIdempotencyKeysByUser(ctx, userID)
+}
+
 type pgsqlQuerier struct{}
 
 func (pgsqlQuerier) Get(ctx context.Context, db backend.DBTX, p getParams) (*string, error) {
@@ -141,4 +150,8 @@ func (pgsqlQuerier) Delete(ctx context.Context, db backend.DBTX, p deleteParams)
 
 func (pgsqlQuerier) Purge(ctx context.Context, db backend.DBTX, before time.Time) error {
 	return pgsqlgen.New(db).PurgeIdempotencyKeys(ctx, before)
+}
+
+func (pgsqlQuerier) DeleteByUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).DeleteIdempotencyKeysByUser(ctx, userID)
 }

@@ -51,6 +51,7 @@ type querier interface {
 	LockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error)
 	ShareLockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error)
 	DeleteOAuthClient(ctx context.Context, db backend.DBTX, id string) (int64, error)
+	ListOAuthClientIDsByOwner(ctx context.Context, db backend.DBTX, ownerUserID *string) ([]string, error)
 
 	InsertOAuthCode(ctx context.Context, db backend.DBTX, p insertCodeParams) error
 	ConsumeOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error)
@@ -175,6 +176,15 @@ func (r *Repo) ShareLockClient(ctx context.Context, id vo.Id) error {
 
 func (r *Repo) DeleteClient(ctx context.Context, id vo.Id) (int64, error) {
 	return r.q.DeleteOAuthClient(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) ListClientIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	owner := userID.String()
+	rows, err := r.q.ListOAuthClientIDsByOwner(ctx, r.db(ctx), &owner)
+	if err != nil {
+		return nil, err
+	}
+	return parseIDs(rows)
 }
 
 func (r *Repo) MarkClientUsed(ctx context.Context, id vo.Id, now time.Time) error {

@@ -16,6 +16,13 @@ type Querier interface {
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error)
+	// Clearing other users' import links that point at a deleted user's entities.
+	// The four applied_* columns have no foreign key; the user's own links go
+	// with the import_sources cascade.
+	ClearImportLinkAppliedCategoryOfUser(ctx context.Context, userID string) error
+	ClearImportLinkAppliedPayeeOfUser(ctx context.Context, userID string) error
+	ClearImportLinkAppliedRuleOfUser(ctx context.Context, userID string) error
+	ClearImportLinkAppliedTagOfUser(ctx context.Context, userID string) error
 	ClearUserOptionIfValue(ctx context.Context, arg ClearUserOptionIfValueParams) (int64, error)
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
@@ -68,6 +75,7 @@ type Querier interface {
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
+	DeleteIdempotencyKeysByUser(ctx context.Context, userID string) error
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteImportAccountLink(ctx context.Context, id string) error
 	DeleteImportCredentialKey(ctx context.Context, userID string) error
@@ -452,6 +460,7 @@ type Querier interface {
 	ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error)
 	ListMarkedUsers(ctx context.Context) ([]ListMarkedUsersRow, error)
 	ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error)
+	ListOAuthClientIDsByOwner(ctx context.Context, ownerUserID *string) ([]string, error)
 	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
 	ListOpenImportSuggestionLinksByUser(ctx context.Context, userID string) ([]ImportSuggestionLink, error)
 	ListOpenImportSuggestionsByUser(ctx context.Context, userID string) ([]ImportSuggestion, error)

@@ -399,3 +399,19 @@ func (pgsqlQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db 
 func (pgsqlQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteImportSuggestion(ctx, id)
 }
+
+func (pgsqlQuerier) ClearImportLinkAppliedCategoryOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).ClearImportLinkAppliedCategoryOfUser(ctx, userID)
+}
+
+func (pgsqlQuerier) ClearImportLinkAppliedPayeeOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).ClearImportLinkAppliedPayeeOfUser(ctx, userID)
+}
+
+func (pgsqlQuerier) ClearImportLinkAppliedTagOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).ClearImportLinkAppliedTagOfUser(ctx, userID)
+}
+
+func (pgsqlQuerier) ClearImportLinkAppliedRuleOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).ClearImportLinkAppliedRuleOfUser(ctx, userID)
+}

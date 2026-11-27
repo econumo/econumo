@@ -429,6 +429,33 @@ func (q *Queries) ListOAuthClientGrants(ctx context.Context, clientID string) ([
 	return items, nil
 }
 
+const listOAuthClientIDsByOwner = `-- name: ListOAuthClientIDsByOwner :many
+SELECT id FROM oauth_clients WHERE owner_user_id = $1 ORDER BY id
+`
+
+func (q *Queries) ListOAuthClientIDsByOwner(ctx context.Context, ownerUserID *string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listOAuthClientIDsByOwner, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOAuthClients = `-- name: ListOAuthClients :many
 SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global FROM oauth_clients ORDER BY created_at, id
 `

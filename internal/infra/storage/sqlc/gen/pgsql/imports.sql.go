@@ -10,6 +10,54 @@ import (
 	"time"
 )
 
+const clearImportLinkAppliedCategoryOfUser = `-- name: ClearImportLinkAppliedCategoryOfUser :exec
+
+UPDATE import_transaction_links SET applied_category_id = NULL
+WHERE applied_category_id IN (SELECT x.id FROM categories x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1)
+`
+
+// Clearing other users' import links that point at a deleted user's entities.
+// The four applied_* columns have no foreign key; the user's own links go
+// with the import_sources cascade.
+func (q *Queries) ClearImportLinkAppliedCategoryOfUser(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, clearImportLinkAppliedCategoryOfUser, userID)
+	return err
+}
+
+const clearImportLinkAppliedPayeeOfUser = `-- name: ClearImportLinkAppliedPayeeOfUser :exec
+UPDATE import_transaction_links SET applied_payee_id = NULL
+WHERE applied_payee_id IN (SELECT x.id FROM payees x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1)
+`
+
+func (q *Queries) ClearImportLinkAppliedPayeeOfUser(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, clearImportLinkAppliedPayeeOfUser, userID)
+	return err
+}
+
+const clearImportLinkAppliedRuleOfUser = `-- name: ClearImportLinkAppliedRuleOfUser :exec
+UPDATE import_transaction_links SET applied_rule_id = NULL
+WHERE applied_rule_id IN (SELECT x.id FROM import_rules x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1)
+`
+
+func (q *Queries) ClearImportLinkAppliedRuleOfUser(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, clearImportLinkAppliedRuleOfUser, userID)
+	return err
+}
+
+const clearImportLinkAppliedTagOfUser = `-- name: ClearImportLinkAppliedTagOfUser :exec
+UPDATE import_transaction_links SET applied_tag_id = NULL
+WHERE applied_tag_id IN (SELECT x.id FROM tags x WHERE x.user_id = $1)
+  AND source_id NOT IN (SELECT s.id FROM import_sources s WHERE s.user_id = $1)
+`
+
+func (q *Queries) ClearImportLinkAppliedTagOfUser(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, clearImportLinkAppliedTagOfUser, userID)
+	return err
+}
+
 const deleteImportAccountLink = `-- name: DeleteImportAccountLink :exec
 DELETE FROM import_account_links WHERE id = $1
 `

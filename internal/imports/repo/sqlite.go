@@ -258,3 +258,19 @@ func (sqliteQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db
 func (sqliteQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteImportSuggestion(ctx, id)
 }
+
+func (sqliteQuerier) ClearImportLinkAppliedCategoryOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).ClearImportLinkAppliedCategoryOfUser(ctx, userID)
+}
+
+func (sqliteQuerier) ClearImportLinkAppliedPayeeOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).ClearImportLinkAppliedPayeeOfUser(ctx, userID)
+}
+
+func (sqliteQuerier) ClearImportLinkAppliedTagOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).ClearImportLinkAppliedTagOfUser(ctx, userID)
+}
+
+func (sqliteQuerier) ClearImportLinkAppliedRuleOfUser(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).ClearImportLinkAppliedRuleOfUser(ctx, userID)
+}
