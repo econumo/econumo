@@ -37,6 +37,16 @@ type AffiliateLister interface {
 	ListAffiliateUsers(ctx context.Context, program string, since time.Time, afterUserID string, limit int) ([]model.AdminAffiliateUser, error)
 }
 
+// DeletedUserLister reads the users_audit rows the billing poller pages through.
+type DeletedUserLister interface {
+	ListByEvent(ctx context.Context, event string, since time.Time, afterID string, limit int) ([]model.UserAuditEvent, error)
+}
+
+// DeletionStateReader returns *errs.NotFoundError once the user row is gone.
+type DeletionStateReader interface {
+	GetState(ctx context.Context, userID vo.Id) (model.DeletionState, error)
+}
+
 type ConnectionLookup interface {
 	ConnectedUserIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }

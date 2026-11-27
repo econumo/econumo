@@ -128,3 +128,57 @@ func (h *Handlers) AffiliateUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.OK(w, res)
 }
+
+const (
+	defaultDeletedLimit = 500
+	maxDeletedLimit     = 500
+)
+
+// DeletedUsers lets billing poll wiped users, oldest first, by the cursor
+// (since, afterId): pass the last row's deletedAt and id to read the next page.
+// Wipes are serialized and each writes its deleted row last, so on one server
+// rows become visible in cursor order. A caller should still re-read a short
+// overlap (start a little before the last deletedAt) and skip ids it already
+// processed: a clock set back, or app servers whose clocks differ, can make a
+// row appear behind the cursor.
+func (h *Handlers) DeletedUsers(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	raw := q.Get("since")
+	if raw == "" {
+		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+			errs.FieldError{Key: "since", Message: "This value should not be blank."}))
+		return
+	}
+	since, err := time.ParseInLocation(datetime.Layout, raw, time.UTC)
+	if err != nil {
+		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+			errs.FieldError{Key: "since", Message: "Invalid date"}))
+		return
+	}
+	limit := defaultDeletedLimit
+	if raw := q.Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > maxDeletedLimit {
+			h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+				errs.FieldError{Key: "limit", Message: "This value should be between 1 and 500."}))
+			return
+		}
+		limit = n
+	}
+	after := q.Get("afterId")
+	if after != "" {
+		id, err := vo.ParseId(after)
+		if err != nil {
+			h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
+				errs.FieldError{Key: "afterId", Message: "Invalid id"}))
+			return
+		}
+		after = id.String()
+	}
+	res, err := h.svc.DeletedUsers(r.Context(), since, after, limit)
+	if err != nil {
+		h.writeErr(r.Context(), w, err)
+		return
+	}
+	httpx.OK(w, res)
+}

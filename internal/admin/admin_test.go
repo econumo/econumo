@@ -51,6 +51,12 @@ func (s *stubConns) ConnectedUserIDs(_ context.Context, id vo.Id) ([]vo.Id, erro
 	return s.ids[id.String()], nil
 }
 
+type noDeletions struct{}
+
+func (noDeletions) GetState(context.Context, vo.Id) (model.DeletionState, error) {
+	return model.DeletionState{}, nil
+}
+
 func newFixture() (*Service, *stubUsers, vo.Id, vo.Id) {
 	self, partner := vo.NewId(), vo.NewId()
 	users := &stubUsers{
@@ -62,7 +68,7 @@ func newFixture() (*Service, *stubUsers, vo.Id, vo.Id) {
 		until: map[string]*time.Time{},
 	}
 	conns := &stubConns{ids: map[string][]vo.Id{self.String(): {partner}}}
-	return NewService(users, conns, nil, testClock{}), users, self, partner
+	return NewService(users, conns, nil, nil, noDeletions{}, testClock{}), users, self, partner
 }
 
 func TestSetAccessWritesLevelAndExpiry(t *testing.T) {
@@ -237,7 +243,7 @@ func TestUserContextSkipsDanglingConnection(t *testing.T) {
 		self.String():    {ID: self.String(), Name: "Alex", Email: "alex@example.test", AccessLevel: model.AccessLevelFull},
 		partner.String(): {ID: partner.String(), Name: "Sam", Email: "sam@example.test", AccessLevel: model.AccessLevelFull},
 	}, saved: map[string]model.AccessLevel{}, until: map[string]*time.Time{}}
-	svc = NewService(users, svcConns, nil, testClock{})
+	svc = NewService(users, svcConns, nil, nil, noDeletions{}, testClock{})
 
 	res, err := svc.UserContext(context.Background(), self)
 	if err != nil {

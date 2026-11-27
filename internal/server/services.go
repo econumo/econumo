@@ -550,7 +550,8 @@ func BuildWithServices(cfg config.Config, db *sql.DB, seams Seams) (*Built, erro
 		apidoc.RegisterAPI(),
 	)
 
-	adminSvc := appadmin.NewService(NewAdminUserAccess(userSvc), connectionRepo, userRepo, clk)
+	adminSvc := appadmin.NewService(NewAdminUserAccess(userSvc), connectionRepo, userRepo,
+		userrepo.NewAuditRepo(cfg.DatabaseDriver, txm), userrepo.NewDeletionRepo(cfg.DatabaseDriver, txm), clk)
 	adminMux := http.NewServeMux()
 	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc))(adminMux)
 	// No CORS (never browser-reached) and no timezone/language (nothing here is

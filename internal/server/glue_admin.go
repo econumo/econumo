@@ -1,8 +1,7 @@
 // Adapter bridging the admin feature to the user feature. It lives here
 // because features must not import each other; only the composition root may
-// join them. The connection and affiliate sides need no adapter: *connectionrepo.Repo
-// and *userrepo.Repo already satisfy admin.ConnectionLookup / AffiliateLister
-// (asserted below) and are wired directly.
+// join them. The connection, affiliate and deletion sides need no adapter: the
+// repos below already satisfy the admin ports (asserted) and are wired directly.
 package server
 
 import (
@@ -19,6 +18,8 @@ import (
 
 var _ appadmin.ConnectionLookup = (*connectionrepo.Repo)(nil)
 var _ appadmin.AffiliateLister = (*userrepo.Repo)(nil)
+var _ appadmin.DeletedUserLister = (*userrepo.AuditRepo)(nil)
+var _ appadmin.DeletionStateReader = (*userrepo.DeletionRepo)(nil)
 
 type AdminUserAccess struct{ users *appuser.Service }
 

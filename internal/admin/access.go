@@ -48,6 +48,9 @@ func (s *Service) SetAccess(ctx context.Context, req model.AdminSetAccessRequest
 	if err != nil {
 		return nil, err
 	}
-	v := s.view(rec)
+	v, err := s.view(ctx, rec, id)
+	if err != nil {
+		return nil, err
+	}
 	return &v, nil
 }

@@ -13,7 +13,11 @@ import (
 // it — in the product, so the portal never duplicates "who may see whom".
 func (s *Service) UserContext(ctx context.Context, userID vo.Id) (*model.AdminUserContextResult, error) {
 	reqctx.AddLogAttr(ctx, "user_id", userID.String())
-	self, err := s.users.GetUser(ctx, userID)
+	rec, err := s.users.GetUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	self, err := s.view(ctx, rec, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -26,6 +30,10 @@ func (s *Service) UserContext(ctx context.Context, userID vo.Id) (*model.AdminUs
 	conns := make([]model.AdminUserView, 0, len(ids))
 	for _, id := range ids {
 		rec, cerr := s.users.GetUser(ctx, id)
+		var v model.AdminUserView
+		if cerr == nil {
+			v, cerr = s.view(ctx, rec, id)
+		}
 		if cerr != nil {
 			// A dangling connection (its user row gone — possible once account
 			// deletion ships) must not abort the target user's context: the
@@ -36,9 +44,9 @@ func (s *Service) UserContext(ctx context.Context, userID vo.Id) (*model.AdminUs
 			}
 			return nil, cerr
 		}
-		conns = append(conns, s.view(rec))
+		conns = append(conns, v)
 	}
 	// How many connected users' data left the product on this call.
 	reqctx.AddLogAttr(ctx, "connections", len(conns))
-	return &model.AdminUserContextResult{User: s.view(self), Connections: conns}, nil
+	return &model.AdminUserContextResult{User: self, Connections: conns}, nil
 }
