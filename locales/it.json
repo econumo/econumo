@@ -1121,9 +1121,7 @@
       "explain": {
         "what": "Vengono eliminati i tuoi conti con le relative transazioni, i tuoi budget, le categorie, i beneficiari, i tag e le impostazioni.",
         "shared": "Le persone con cui condividi perdono i conti e i budget che condividi con loro. Mantengono i propri dati: le transazioni che hai inserito nei loro conti restano, con le loro descrizioni, e i trasferimenti tra i tuoi conti e i loro restano come correzioni che mantengono la descrizione.",
-        "cancel": "Accedere di nuovo prima che i tuoi dati vengano eliminati annulla l'eliminazione.",
-        "subscription": "Il tuo abbonamento non viene annullato subito. Per evitare altri addebiti, annullalo prima nella fatturazione.",
-        "billing_link": "Apri la fatturazione"
+        "cancel": "Accedere di nuovo prima che i tuoi dati vengano eliminati annulla l'eliminazione."
       },
       "form": {
         "password": { "label": "Password" },

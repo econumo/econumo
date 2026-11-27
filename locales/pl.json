@@ -1121,9 +1121,7 @@
       "explain": {
         "what": "Spowoduje to usunięcie Twoich kont wraz z transakcjami, budżetów, kategorii, odbiorców, tagów i ustawień.",
         "shared": "Osoby, którym udostępniasz dane, tracą konta i budżety, które im udostępniasz. Zachowują własne dane: transakcje, które wprowadzono w ich kontach, pozostają wraz z opisami, a przelewy między Twoimi kontami a ich kontami pozostają jako korekty z zachowanym opisem.",
-        "cancel": "Ponowne zalogowanie się przed usunięciem danych anuluje usunięcie.",
-        "subscription": "Subskrypcja nie jest anulowana od razu. Aby uniknąć kolejnych opłat, najpierw anuluj ją w płatnościach.",
-        "billing_link": "Otwórz płatności"
+        "cancel": "Ponowne zalogowanie się przed usunięciem danych anuluje usunięcie."
       },
       "form": {
         "password": { "label": "Hasło" },

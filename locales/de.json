@@ -1121,9 +1121,7 @@
       "explain": {
         "what": "Dadurch werden Ihre Konten mit ihren Transaktionen, Ihre Budgets, Kategorien, Zahlungsempfänger, Tags und Einstellungen gelöscht.",
         "shared": "Personen, mit denen Sie teilen, verlieren die Konten und Budgets, die Sie mit ihnen teilen. Ihre eigenen Daten behalten sie: Transaktionen, die Sie in ihren Konten erfasst haben, bleiben mit ihren Beschreibungen erhalten, und Überweisungen zwischen Ihren und ihren Konten bleiben als Korrekturen mit der Beschreibung erhalten.",
-        "cancel": "Wenn Sie sich vor dem Löschen Ihrer Daten erneut anmelden, wird die Löschung abgebrochen.",
-        "subscription": "Ihr Abonnement wird nicht sofort gekündigt. Um weitere Abbuchungen zu vermeiden, kündigen Sie es zuerst in der Abrechnung.",
-        "billing_link": "Abrechnung öffnen"
+        "cancel": "Wenn Sie sich vor dem Löschen Ihrer Daten erneut anmelden, wird die Löschung abgebrochen."
       },
       "form": {
         "password": { "label": "Passwort" },

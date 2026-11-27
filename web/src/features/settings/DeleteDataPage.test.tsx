@@ -193,17 +193,12 @@ describe('the request phase', () => {
     expect(body).toEqual({ password: '' })
   })
 
-  it('renders the billing link only when billing is configured', () => {
-    server.use(...coreHandlers())
-    renderPage()
-    expect(screen.queryByRole('button', { name: 'Open billing' })).not.toBeInTheDocument()
-  })
-
-  it('renders the billing link with BILLING_URL set', () => {
+  it('says nothing about a subscription, even with billing configured', () => {
     window.econumoConfig = { BILLING_URL: 'https://billing.example.test' }
     server.use(...coreHandlers())
     renderPage()
-    expect(screen.getByRole('button', { name: 'Open billing' })).toBeInTheDocument()
+    expect(screen.queryByText(/subscription/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open billing' })).not.toBeInTheDocument()
   })
 })
 

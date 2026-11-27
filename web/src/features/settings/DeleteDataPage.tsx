@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
-import { getBillingUrl } from '@/lib/config'
 import { downloadBlob, localDateStamp } from '@/lib/download'
 import { isNotEmpty, isValidRecoveryCode } from '@/lib/validation'
 import { DELETION_CLEANUP_KEY, deletionConfirmPending, expireSession, finishDeletionCleanup, setDeletionConfirmInFlight } from '@/api/client'
@@ -15,7 +14,6 @@ import { getAccountListWithin } from '@/api/account'
 import { exportTransactionList } from '@/api/transaction'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
-import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { signOutLocally } from '@/features/auth/localSignOut'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { useStoredQueueSettled, useWaitingCount } from '@/features/pendingWrites/hooks'
@@ -65,8 +63,6 @@ export function DeleteDataPage() {
   // counts as settled so Confirm cannot stay disabled for good
   const queueSettled = useStoredQueueSettled()
   const waiting = useWaitingCount()
-  const billingEnabled = getBillingUrl() !== ''
-  const portal = useOpenBillingPortal()
   const requestDeletion = useRequestUserDeletion()
   const confirmDeletion = useConfirmUserDeletion()
 
@@ -228,19 +224,6 @@ export function DeleteDataPage() {
             <p>{t('user.delete_data.explain.what')}</p>
             <p>{t('user.delete_data.explain.shared')}</p>
             <p>{t('user.delete_data.explain.cancel')}</p>
-            {billingEnabled ? (
-              <p>
-                {t('user.delete_data.explain.subscription')}{' '}
-                <button
-                  type="button"
-                  className="text-econumo-link underline disabled:opacity-50"
-                  disabled={portal.disabled}
-                  onClick={() => portal.open()}
-                >
-                  {t('user.delete_data.explain.billing_link')}
-                </button>
-              </p>
-            ) : null}
           </div>
           {askPassword ? (
             <div className="flex flex-col gap-2">

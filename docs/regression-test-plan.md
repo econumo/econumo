@@ -3443,8 +3443,6 @@ User C sees none of it.
       Every other device is signed out; signing in again cancels the deletion and nothing is lost.
 - [ ] Delete my data with ECONUMO_USER_DELETION_DAYS=0 (the default): the sign-in page says the
       data will be deleted after a manual review of the request, with no number of days.
-- [ ] Delete my data with ECONUMO_BILLING_URL set: the first step says the subscription is not
-      cancelled right away and links to billing; without the setting that sentence is absent.
 - [ ] Delete my data, passwordless account (provider sign-in only): no password is asked.
 - [ ] Delete my data: a wrong code is refused; the page stays on the code step.
 - [ ] Delete my data, session revoked meanwhile: reach the code step, revoke this session

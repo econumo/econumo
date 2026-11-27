@@ -1121,9 +1121,7 @@
       "explain": {
         "what": "Cela supprime vos comptes avec leurs transactions, vos budgets, catégories, bénéficiaires, tags et paramètres.",
         "shared": "Les personnes avec qui vous partagez perdent les comptes et budgets que vous partagez avec elles. Elles conservent leurs propres données : les transactions que vous avez saisies dans leurs comptes restent, avec leurs descriptions, et les virements entre vos comptes et les leurs restent sous forme de corrections qui gardent la description.",
-        "cancel": "Vous reconnecter avant la suppression de vos données annule la suppression.",
-        "subscription": "Votre abonnement n’est pas annulé immédiatement. Pour éviter de nouveaux prélèvements, annulez-le d’abord dans la facturation.",
-        "billing_link": "Ouvrir la facturation"
+        "cancel": "Vous reconnecter avant la suppression de vos données annule la suppression."
       },
       "form": {
         "password": { "label": "Mot de passe" },

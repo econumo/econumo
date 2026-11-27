@@ -1121,9 +1121,7 @@
       "explain": {
         "what": "This deletes your accounts with their transactions, your budgets, categories, payees, tags and settings.",
         "shared": "People you share with lose the accounts and budgets you share with them. They keep their own data: transactions you entered in their accounts stay, with their descriptions, and transfers between your accounts and theirs stay as corrections that keep the description.",
-        "cancel": "Signing in again before your data is deleted cancels the deletion.",
-        "subscription": "Your subscription is not cancelled right away. To stop further charges, cancel it in billing first.",
-        "billing_link": "Open billing"
+        "cancel": "Signing in again before your data is deleted cancels the deletion."
       },
       "form": {
         "password": { "label": "Password" },

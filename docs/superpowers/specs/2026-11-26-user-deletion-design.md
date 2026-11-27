@@ -134,11 +134,10 @@ an error for the CLI and impossible from the API (no session survives the mark).
   reason `self_initiated`. No email is sent.
 - Both are on the readonly allowlist.
 - SPA: Settings danger zone, "Delete my data". Dialog: what gets deleted, that signing in within
-  the period cancels it, that a subscription is not cancelled right away and should be
-  cancelled in billing first (with the billing link when `ECONUMO_BILLING_URL` is set; billing
-  cancelling at the wipe is a separate change, so the text does not promise it), and that people the user shares with lose the shared accounts and budgets but keep
+  the period cancels it, and that people the user shares with lose the shared accounts and budgets but keep
   their own data, which includes transactions the user entered in their accounts and the
-  descriptions of transfers with them. Steps: password -> code -> before confirming, the browser
+  descriptions of transfers with them. Nothing is said about a subscription: billing handles
+  it on its side (decided by the product owner after the final reviews). Steps: password -> code -> before confirming, the browser
   downloads the CSV export of the transactions in the accounts the user OWNS (existing
   `GET /api/v1/transaction/export-transaction-list`) -> confirm -> local sign-out at once (the
   session is already revoked; a closed tab must not leave cached data behind) -> the sign-in
