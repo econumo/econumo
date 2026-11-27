@@ -453,7 +453,7 @@ func (s *Service) AdminMarkDeleted(ctx context.Context, email string) error
 
 - Produces (errors): `errs.CodeUserDeletionAlreadyMarked = "user.deletion_already_marked"` (en: "This user is already marked for deletion."), `errs.CodeUserDeletionNotMarked = "user.deletion_not_marked"` (en: "This user is not marked for deletion.").
 
-- [ ] **Step 1: Write the failing tests** (service over sqlite, the helper that `internal/user/*_test.go` already uses to build a `Service`, plus `SetDeletion`):
+- [x] **Step 1: Write the failing tests** (service over sqlite, the helper that `internal/user/*_test.go` already uses to build a `Service`, plus `SetDeletion`):
 
 ```go
 // TestMark_RevokesEverything: a session, a PAT and an OAuth token (fixture.AccessToken with each kind)
@@ -475,17 +475,17 @@ func (s *Service) AdminMarkDeleted(ctx context.Context, email string) error
 //   (the two reclaim paths)
 ```
 
-- [ ] **Step 2: Run.** `go test ./internal/user/ -run 'TestMark|TestLogin_|TestActivity|TestRegister_Stamps' -count=1`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run.** `go test ./internal/user/ -run 'TestMark|TestLogin_|TestActivity|TestRegister_Stamps' -count=1`. Expected: FAIL.
+- [x] **Step 3: Implement.**
   - `markForDeletion`: `Mark` (0 rows -> `CodeUserDeletionAlreadyMarked`), `BumpCredentialsGeneration`, `revokeTokens(ctx, id, vo.Id{}, now, model.TokenKindSession, model.TokenKindPersonal, model.TokenKindOAuth)`, `revokeMCPGrants`, `requests.DeleteByUser`, audit insert. `AdminMarkDeleted` wraps it in `mutateByEmail`.
   - `createSession`: inside its existing transaction, after `InsertIfGeneration` returned 1, call `s.cancelMarkOnSession(ctx, userID)` (reads the state; when marked: `Unmark` + audit `deletion_cancelled` with the mark's reason and cause `sign_in`) and `s.stampActive(ctx, userID, now)`.
   - `IssueOAuthAccessToken`: `stampActive` when the insert matched. `Authenticate`: `stampActive` in the branch where the token was touched.
   - `persistNewUser`: `stampActive` in the same transaction as the `Save`.
   - `UpdatePassword` and `reclaimCredentials` delete the user's deletion requests next to `emailChangeRequests.DeleteByUser`: a pending code is a grant, and it must not outlive the credential that asked for it (the code email itself tells the user to change the password).
   - `stampActive`, `cancelMarkOnSession` and that sweep return nil when `SetDeletion` was never called.
-- [ ] **Step 4: Run the tests of step 2 and the whole package** `go test ./internal/user/... -count=1`. Expected: PASS.
-- [ ] **Step 5: i18n.** Add the two error keys to all 11 catalogues; run `go test ./internal/test/i18ntest/ -count=1`.
-- [ ] **Step 6: Commit.**
+- [x] **Step 4: Run the tests of step 2 and the whole package** `go test ./internal/user/... -count=1`. Expected: PASS.
+- [x] **Step 5: i18n.** Add the two error keys to all 11 catalogues; run `go test ./internal/test/i18ntest/ -count=1`.
+- [x] **Step 6: Commit.**
 
 ---
 
