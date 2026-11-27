@@ -684,11 +684,11 @@ Found by the automated security review of Task 11. `CreateEnvelope` and `UpdateE
 **Interfaces:**
 - Consumes: the budget service's existing `s.currency.EnsureUsable(ctx, userID, currencyID string) error`.
 
-- [ ] **Step 1: Failing tests.** `TestCreateEnvelope_RefusesAForeignCustomCurrency`: user P creates an envelope in P's budget with the id of a custom currency owned by another user U -> the same validation error `ChangeElementCurrency` returns for that case (field `currencyId`, code `errs.CodeCurrencyNotAvailable`), no envelope row written. `TestUpdateEnvelope_RefusesAForeignCustomCurrency`: changing an existing envelope's currency to U's custom currency is refused the same way; updating the envelope's NAME while it already carries a currency the caller could not pick today (seeded directly) still succeeds, because the check runs only when the currency changes. A global currency and the caller's own custom currency are accepted in both.
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/budget/ -run 'Envelope_Refuses' -count=1`
-- [ ] **Step 3: Implement:** in `CreateEnvelope` always, and in `UpdateEnvelope` only when the requested currency differs from the element's current one, call `s.currency.EnsureUsable` with the CALLER's id, as `ChangeElementCurrency` in `internal/budget/accounts.go` does.
-- [ ] **Step 4: Run** `go test ./internal/budget/... ./internal/test/apiparity/ ./internal/test/mcpparity/ -count=1` (goldens must not move). PASS.
-- [ ] **Step 5: Commit** `fix: Envelopes accept only a currency the caller may use`.
+- [x] **Step 1: Failing tests.** `TestCreateEnvelope_RefusesAForeignCustomCurrency`: user P creates an envelope in P's budget with the id of a custom currency owned by another user U -> the same validation error `ChangeElementCurrency` returns for that case (field `currencyId`, code `errs.CodeCurrencyNotAvailable`), no envelope row written. `TestUpdateEnvelope_RefusesAForeignCustomCurrency`: changing an existing envelope's currency to U's custom currency is refused the same way; updating the envelope's NAME while it already carries a currency the caller could not pick today (seeded directly) still succeeds, because the check runs only when the currency changes. A global currency and the caller's own custom currency are accepted in both.
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/budget/ -run 'Envelope_Refuses' -count=1`
+- [x] **Step 3: Implement:** in `CreateEnvelope` always, and in `UpdateEnvelope` only when the requested currency differs from the element's current one, call `s.currency.EnsureUsable` with the CALLER's id, as `ChangeElementCurrency` in `internal/budget/accounts.go` does.
+- [x] **Step 4: Run** `go test ./internal/budget/... ./internal/test/apiparity/ ./internal/test/mcpparity/ -count=1` (goldens must not move). PASS.
+- [x] **Step 5: Commit** `fix: Envelopes accept only a currency the caller may use`.
 
 ### Task 12: authserver, imports, idempotency
 
