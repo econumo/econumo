@@ -74,9 +74,28 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 			return eerr
 		}
 		u.UpdateEmail(encryptedEmail, s.clock.Now())
-		return s.repo.Save(ctx, u)
+		if serr := s.repo.Save(ctx, u); serr != nil {
+			return serr
+		}
+		return s.deleteOutstandingCodes(ctx, u.ID)
 	})
 	return err
+}
+
+// deleteOutstandingCodes drops every code sent to the user's address: codes
+// are stored by user id, so after an operator's email change one delivered to
+// the old mailbox would otherwise still prove the new one.
+func (s *Service) deleteOutstandingCodes(ctx context.Context, userID vo.Id) error {
+	if err := s.emailVerifications.DeleteByUser(ctx, userID); err != nil {
+		return err
+	}
+	if err := s.passwordRequests.DeleteByUser(ctx, userID); err != nil {
+		return err
+	}
+	if err := s.emailChangeRequests.DeleteByUser(ctx, userID); err != nil {
+		return err
+	}
+	return s.deleteDeletionRequests(ctx, userID)
 }
 
 // AdminChangePassword sets a user's password, rehashed with the current

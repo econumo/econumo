@@ -30,6 +30,7 @@ type selfDeleteEnv struct {
 	clk      *testClock
 	mail     *passMailer
 	tokens   *userrepo.AccessTokenRepo
+	users    *userrepo.Repo
 	store    *userrepo.DeletionRepo
 	requests *userrepo.DeletionRequestRepo
 }
@@ -53,7 +54,8 @@ func newSelfDeleteEnvWrapped(t *testing.T, wrap func(appuser.Repository, *testCl
 		},
 		Window: time.Hour,
 	}, clk)
-	var repo appuser.Repository = userrepo.NewRepo(db.Engine, db.TX)
+	users := userrepo.NewRepo(db.Engine, db.TX)
+	var repo appuser.Repository = users
 	if wrap != nil {
 		repo = wrap(repo, clk)
 	}
@@ -66,7 +68,7 @@ func newSelfDeleteEnvWrapped(t *testing.T, wrap func(appuser.Repository, *testCl
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, false, 0, false)
 	e := &selfDeleteEnv{
-		svc: svc, clk: clk, tokens: tokens,
+		svc: svc, clk: clk, tokens: tokens, users: users,
 		mail:     &passMailer{failTo: map[string]bool{}},
 		store:    userrepo.NewDeletionRepo(db.Engine, db.TX),
 		requests: userrepo.NewDeletionRequestRepo(db.Engine, db.TX),
@@ -244,11 +246,10 @@ func TestConfirmUserDeletion_AddressChanged(t *testing.T) {
 	uid := e.passwordUser(t)
 	e.request(t, uid, selfDeletePassword)
 	code := e.lastCode(t)
-	if err := e.svc.AdminChangeEmail(ctx, selfDeleteEmail, "moved-away@econumo.test"); err != nil {
-		t.Fatalf("AdminChangeEmail: %v", err)
-	}
-	if _, err := e.requests.GetByUser(ctx, uid); err != nil {
-		t.Fatalf("the request must survive the email change for this test to mean anything: %v", err)
+	// a raw move: every email change path drops the outstanding codes, so the
+	// confirm's own address check is the guard tested here
+	if err := e.users.SetEmail(ctx, uid, "moved-away@econumo.test"); err != nil {
+		t.Fatalf("SetEmail: %v", err)
 	}
 
 	_, err := e.svc.ConfirmUserDeletion(ctx, uid, model.ConfirmUserDeletionRequest{Code: code})

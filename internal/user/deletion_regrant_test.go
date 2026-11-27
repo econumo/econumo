@@ -406,3 +406,31 @@ func TestRegrant_OtherAddress(t *testing.T) {
 		t.Fatalf("regrant rows = %d, want 0", n)
 	}
 }
+
+// A code sent to the old address must not prove the new one: an operator's
+// email change drops the outstanding codes.
+func TestRegrant_NotWithACodeSentBeforeAnOperatorEmailChange(t *testing.T) {
+	e := newRegrantEnv(t, true)
+	ctx := context.Background()
+	const oldEmail = "before-change@example.test"
+	u := e.register(t, oldEmail)
+	if _, _, err := e.svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: oldEmail}); err != nil {
+		t.Fatalf("ResendVerificationCode: %v", err)
+	}
+	if len(e.cap.msgs) != 1 {
+		t.Fatalf("want 1 email, got %d", len(e.cap.msgs))
+	}
+	code := codeFrom(t, e.cap.msgs[0].Text)
+	e.seedDeleted(t, regrantEmail, true)
+
+	if err := e.svc.AdminChangeEmail(ctx, oldEmail, regrantEmail); err != nil {
+		t.Fatalf("AdminChangeEmail: %v", err)
+	}
+	if _, err := e.svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: regrantEmail, Code: code}); err == nil {
+		t.Fatal("a code sent to the old address verified the new one")
+	}
+	if rows := e.regrants(t); len(rows) != 0 {
+		t.Fatalf("regrant rows = %d, want none", len(rows))
+	}
+	e.assertTrial(t, e.user(t, u.ID))
+}
