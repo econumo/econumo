@@ -246,8 +246,9 @@ func TestConfirmUserDeletion_AddressChanged(t *testing.T) {
 	uid := e.passwordUser(t)
 	e.request(t, uid, selfDeletePassword)
 	code := e.lastCode(t)
-	// a raw move: every email change path drops the outstanding codes, so the
-	// confirm's own address check is the guard tested here
+	// a raw move: user:change-email drops the outstanding codes, but
+	// ConfirmEmailChange and a provider's address change do not, and for those
+	// the confirm's own address check is the guard tested here
 	if err := e.users.SetEmail(ctx, uid, "moved-away@econumo.test"); err != nil {
 		t.Fatalf("SetEmail: %v", err)
 	}
@@ -362,4 +363,23 @@ func TestConfirmUserDeletion_CodeExpiresWhileWaitingForTheLock(t *testing.T) {
 	}
 	_, err = e.svc.ConfirmUserDeletion(ctx, uid, model.ConfirmUserDeletionRequest{Code: wrong})
 	wantTooMany(t, err)
+}
+
+func TestAdminChangeEmail_DropsAnOutstandingDeletionRequest(t *testing.T) {
+	e := newSelfDeleteEnv(t)
+	ctx := context.Background()
+	uid := e.passwordUser(t)
+	e.request(t, uid, selfDeletePassword)
+	if _, err := e.requests.GetByUser(ctx, uid); err != nil {
+		t.Fatalf("the request must exist before the change: %v", err)
+	}
+
+	if err := e.svc.AdminChangeEmail(ctx, selfDeleteEmail, "moved-away@econumo.test"); err != nil {
+		t.Fatalf("AdminChangeEmail: %v", err)
+	}
+	if _, err := e.requests.GetByUser(ctx, uid); err == nil {
+		t.Fatal("the deletion request survived the operator's email change")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("GetByUser: %v", err)
+	}
 }

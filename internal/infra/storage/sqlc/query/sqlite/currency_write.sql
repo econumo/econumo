@@ -165,6 +165,3 @@ LIMIT 1;
 
 -- name: MoveCurrency :exec
 UPDATE currencies SET user_id = sqlc.arg(user_id), is_deleted = sqlc.arg(is_deleted) WHERE id = sqlc.arg(id);
-
--- Profile defaults holding this currency id, for the archive guard (a
--- default must stay pickable).

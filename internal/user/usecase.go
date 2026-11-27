@@ -210,10 +210,10 @@ func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *model.Use
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		// The lock comes before the read, because the write below is the WHOLE
 		// aggregate: a row read before a reclaim committed would otherwise be
-		// saved back over it, restoring the password it just replaced. Every
-		// path takes budget rows before user rows, and user rows in ascending id
-		// order (the reclaim takes this one row only), so these serialize and
-		// cannot deadlock.
+		// saved back over it, restoring the password it just replaced. Paths
+		// that lock several rows take budget rows first, then user rows,
+		// ascending by id within each pass (the reclaim takes this one row
+		// only).
 		if err := s.repo.LockRow(ctx, userID); err != nil {
 			return err
 		}
