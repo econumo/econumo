@@ -152,11 +152,9 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
    cascade alone would leave orphan elements with plans, debts and comments); delete invites.
 4. Rows the user wrote into a partner's account (an account NOT owned by the user,
    `transactions.user_id` = the user) stay as they are: a row written into another user's
-   account already uses that account owner's categories, payees, tags and labels. The wipe
-   reassigns `user_id` to the account's owner and appends the note to the description:
-   "<original description> (original author deleted)" (just "Original author deleted" when
-   empty; truncated to the column's 255 characters). Date, order, amounts, category, payee, tag
-   and labels are untouched. This includes transfers the user wrote between two partner
+   account already uses that account owner's categories, payees, tags and labels. The wipe only
+   reassigns `user_id` to the account's owner; everything else (description, date, order,
+   amounts, category, payee, tag, labels) is untouched. This includes transfers the user wrote between two partner
    accounts.
 5. Transfers between one of the user's accounts and a partner account lose their other side,
    so the partner's side becomes a correction on that account:
@@ -168,7 +166,7 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
    owner, and its description is "Original transaction deleted: <original description>" (just
    "Original transaction deleted" when empty; truncated to 255). Transfers carry no category,
    payee or tag. Then the originals are deleted (the cascade would remove the second kind and
-   only NULL the recipient of the first). Wording of both notes is English, like the existing
+   only NULL the recipient of the first). Wording of the note is English, like the existing
    account-deleted correction (`internal/account/zero.go`).
 6. Debts on a partner's budget whose currency is one of the user's custom currencies switch to
    the budget's currency (`debts.currency_id` is `NO ACTION` and would block the delete).
@@ -188,7 +186,7 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
 What the partner sees: transfers with the user's accounts become corrections on the same
 dates (balances on every day, net worth, and account order unchanged;
 the original description kept). Rows the user wrote into the partner's accounts stay whole,
-now authored by the partner, with a note in the description. A partner's budget recalculates without the user's accounts and
+now authored by the partner. A partner's budget recalculates without the user's accounts and
 categories; intended - the same end state as the user disconnecting everyone and deleting
 everything by hand.
 
@@ -233,8 +231,7 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 - **Wipe**: disconnect, then delete the `users` row and let the database cascade (chosen; a new
   table that cascades from `users` is covered automatically) vs keeping the row as a tombstone
   and deleting root tables in code (an explicit list that must grow with the schema).
-- **Partner rows**: rows written into partner accounts reassigned to the account owner with a
-  note, cross-user transfers replaced by same-date corrections (chosen; balances right on
+- **Partner rows**: rows written into partner accounts reassigned to the account owner, cross-user transfers replaced by same-date corrections (chosen; balances right on
   every day, no schema change) vs one correction per account dated today (past balances
   shift) vs converting each cross-user row in place vs dropping the
   foreign key on `transactions.user_id` (SQLite table rebuild, "Deleted" author handling).
