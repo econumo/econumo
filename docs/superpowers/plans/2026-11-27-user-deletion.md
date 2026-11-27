@@ -849,7 +849,7 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 **Interfaces:**
 - Produces: `func (s *Service) regrantLifetime(ctx context.Context, u *model.User, plainEmail string, now time.Time) (bool, error)`: inside the caller's transaction; when the hash has an unconsumed lifetime deletion it calls `u.SetAccess(model.AccessLevelFull, nil, now)` (the caller saves `u`) and inserts `lifetime_regranted` with `RefID` = the consumed `deleted` row's id, details `{"fromUserId":"...","deletedEventId":"..."}` and the email hash. When the insert reports `inserted=false` (someone else consumed it first) it grants nothing.
 
-- [ ] **Step 1: Failing tests** (trial days 14 on the service; a `deleted` audit row with `lifetimeAccess:true` for `anna@example.test` seeded directly):
+- [x] **Step 1: Failing tests** (trial days 14 on the service; a `deleted` audit row with `lifetimeAccess:true` for `anna@example.test` seeded directly):
 
 ```go
 // TestRegrant_ProviderSignUp: ProvisionExternalUser -> AccessLevel full, AccessUntil nil;
@@ -875,10 +875,10 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 // TestRegrant_OtherAddress: no row for the hash -> no grant
 ```
 
-- [ ] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run TestRegrant -count=1`
-- [ ] **Step 3: Implement.** Match in Go over `audit.ListByEmailHash(hash)`: the set of `RefID` values of `lifetime_regranted` rows, then the first `deleted` row with `lifetimeAccess` true whose id is not in the set; the unique index on `ref_id` is what makes it once even for two accounts racing. Call sites: the places where a NEWLY REGISTERED account's address is proven, each of which already holds the row lock and saves the whole aggregate afterwards, so the re-grant only sets the access on `u` before that `Save`: `persistNewUser` (it gets a `proven bool` parameter: true from `ProvisionExternalUser` and `AdminCreateUser`, false from `Register`), `ConfirmEmail` and `ResetPassword` (after the code is consumed, next to `MarkEmailVerified`), each ONLY when `u.EmailVerified` was false before the call (the unverified-to-verified transition is what marks a newly registered account; an already verified account resetting its password proves nothing new), and `AdminVerifyEmail` (the operator vouches, whatever the flag says). NOT `ConfirmEmailChange`, `ReplaceVerifiedEmail` or `AdminChangeEmail`: they replace the address with an SQL-only statement and have no aggregate save, so setting access on the aggregate there would either be lost or write the old email back (see Open items).
-- [ ] **Step 3b: Regression plan** (section 2): `- [ ] A deleted account that had full access with no end date: registering again with the same email and confirming the address gives full access with no end date again; a second new account on that address later does not.`
-- [ ] **Step 4: Run, PASS; `go test ./internal/user/... -count=1`. Commit.**
+- [x] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run TestRegrant -count=1`
+- [x] **Step 3: Implement.** Match in Go over `audit.ListByEmailHash(hash)`: the set of `RefID` values of `lifetime_regranted` rows, then the first `deleted` row with `lifetimeAccess` true whose id is not in the set; the unique index on `ref_id` is what makes it once even for two accounts racing. Call sites: the places where a NEWLY REGISTERED account's address is proven, each of which already holds the row lock and saves the whole aggregate afterwards, so the re-grant only sets the access on `u` before that `Save`: `persistNewUser` (it gets a `proven bool` parameter: true from `ProvisionExternalUser` and `AdminCreateUser`, false from `Register`), `ConfirmEmail` and `ResetPassword` (after the code is consumed, next to `MarkEmailVerified`), each ONLY when `u.EmailVerified` was false before the call (the unverified-to-verified transition is what marks a newly registered account; an already verified account resetting its password proves nothing new), and `AdminVerifyEmail` (the operator vouches, whatever the flag says). NOT `ConfirmEmailChange`, `ReplaceVerifiedEmail` or `AdminChangeEmail`: they replace the address with an SQL-only statement and have no aggregate save, so setting access on the aggregate there would either be lost or write the old email back (see Open items).
+- [x] **Step 3b: Regression plan** (section 2): `- [ ] A deleted account that had full access with no end date: registering again with the same email and confirming the address gives full access with no end date again; a second new account on that address later does not.`
+- [x] **Step 4: Run, PASS; `go test ./internal/user/... -count=1`. Commit.**
 
 ---
 
