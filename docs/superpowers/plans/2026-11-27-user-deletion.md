@@ -332,7 +332,7 @@ type DeletionRequests interface {
 - `Insert` returns two values at every call site (Tasks 6, 14, 15, 17): all check `err`; only the re-grant of Task 15 looks at `inserted`.
 - Produces (`internal/user/repo`): `NewDeletionRepo(driver string, tx *backend.TxManager) *DeletionRepo`, `NewAuditRepo(...) *AuditRepo`, `NewDeletionRequestRepo(...) *DeletionRequestRepo`.
 
-- [ ] **Step 1: Write the failing integration tests** (`dbtest.New(t)`, `fixture`), one per rule:
+- [x] **Step 1: Write the failing integration tests** (`dbtest.New(t)`, `fixture`), one per rule:
 
 ```go
 // Mark twice: first returns 1, second 0; GetState shows MarkedAt and Reason
@@ -356,8 +356,8 @@ type DeletionRequests interface {
 //   with user_id = U from a second connection waits; with LockRow it does not
 ```
 
-- [ ] **Step 2: Run.** `go test ./internal/user/repo/ -run 'Deletion|Audit' -count=1`. Expected: FAIL.
-- [ ] **Step 3: Write the queries** (both engines). The two that carry a decision:
+- [x] **Step 2: Run.** `go test ./internal/user/repo/ -run 'Deletion|Audit' -count=1`. Expected: FAIL.
+- [x] **Step 3: Write the queries** (both engines). The two that carry a decision:
 
 ```sql
 -- name: TouchUserLastActive :exec
@@ -375,9 +375,9 @@ ORDER BY u.id;
 ```
 
   (`is_active = true` on pgsql.) The others are single-table statements whose shape the interface fixes: `GetUserDeletionState`, `MarkUserForDeletion` (`... WHERE id = ? AND deletion_marked_at IS NULL`), `UnmarkUserDeletion` (`SET deletion_marked_at = NULL, deletion_reason = '' WHERE id = ? AND deletion_marked_at IS NOT NULL`), `ListMarkedUsers`, `UserHasActiveConnection`, `ListWipeConnectedUserIDs` (`ORDER BY connected_user_id`; `connection.sql` already has a `ListConnectedUserIDs`, and sqlc generates one package per engine, so the name must differ), `DeleteUserByID`, `InsertUserAudit`, `ListUserAuditByEmailHash`, `ListUserAuditByEvent` (cursor as in `ListAffiliateUsers`), `LockUserRowForWipe` (pgsql `SELECT id FROM users WHERE id = $1 FOR UPDATE`, no-rows mapped to nil; sqlite the same no-op `UPDATE` as `LockUserRow`), and the four `users_deletion_requests` queries modelled on `email_change_request.sql` but naming exactly the six columns of Task 3 (`id, user_id, email, code, created_at, expired_at`: no `new_email`, no `updated_at`), plus `LockDeletionWipes` (pgsql `SELECT pg_advisory_xact_lock(7203251127)`, sqlite a Go no-op) and `InsertUserAudit` with `ON CONFLICT DO NOTHING` returning the affected rows. `TouchLastActive` passes `now` and `now.Add(-24*time.Hour)`.
-- [ ] **Step 4: Repos and adapters** following `internal/user/repo/emailchangerequest*.go`. `ListMarked` and `ListInactiveCandidates` return `users.email` as stored; callers decode it.
-- [ ] **Step 5: Run the tests of step 2, then with the PostgreSQL command of Global Constraints.** Expected: PASS on both.
-- [ ] **Step 6: Commit.**
+- [x] **Step 4: Repos and adapters** following `internal/user/repo/emailchangerequest*.go`. `ListMarked` and `ListInactiveCandidates` return `users.email` as stored; callers decode it.
+- [x] **Step 5: Run the tests of step 2, then with the PostgreSQL command of Global Constraints.** Expected: PASS on both.
+- [x] **Step 6: Commit.**
 
 ### Task 5: schema guard
 
