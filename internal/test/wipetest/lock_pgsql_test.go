@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync"
@@ -470,5 +472,52 @@ func TestMarkInactive_AuthenticateWaitsAndIsRefused(t *testing.T) {
 	}
 	if count(t, r.db, `SELECT COUNT(*) FROM users WHERE id = ? AND deletion_marked_at IS NOT NULL`, u) != 1 {
 		t.Fatal("the user is not marked")
+	}
+}
+
+// P disconnecting from U while U's wipe holds the budget locks: the disconnect
+// drops the shared budget first, so it waits on that lock instead of holding
+// the account grants the wipe deletes next.
+func TestWipe_PartnerDisconnectDoesNotDeadlock(t *testing.T) {
+	r := newLockRig(t)
+	s := seedPair(t, r.db)
+	ctx := context.Background()
+	f := fixture.New(t, r.db)
+	pBudget := f.Budget(fixture.Budget{UserID: s.p, Name: "P budget", StartedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)})
+	f.BudgetAccess(pBudget, s.u, 1, true)
+	f.BudgetAccount(pBudget, s.pCash)
+	f.BudgetAccount(pBudget, s.uCash)
+	f.Option(s.u, "budget", &pBudget)
+	const raw = "eco_ses_partner_disconnect"
+	exp := Today.Add(24 * time.Hour)
+	f.AccessToken(fixture.AccessToken{UserID: s.p, Kind: model.TokenKindSession, TokenHash: appuser.HashAccessToken(raw), ExpiresAt: &exp})
+	if err := r.one.Users.AdminMarkDeleted(ctx, s.uEmail); err != nil {
+		t.Fatalf("AdminMarkDeleted: %v", err)
+	}
+
+	wipe, release := r.startWipe(t, s.u, func(w *hookedWiper, hook func()) { w.beforeErase = hook })
+	other := second(func(ctx context.Context) error {
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/connection/delete-connection", strings.NewReader(`{"id":"`+s.u+`"}`))
+		req.Header.Set("Authorization", "Bearer "+raw)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		r.two.API.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			return fmt.Errorf("delete-connection = %d: %s", rec.Code, rec.Body.String())
+		}
+		return nil
+	})
+	t.Logf("P's disconnect waits on: %s", r.waitsOnLock(t, "P's disconnect", other))
+	// The API hides the driver error: a deadlock shows up as a 500 here.
+	if err := r.finish(t, release, wipe, other, "P's disconnect"); err != nil {
+		t.Fatalf("P's disconnect after the wipe: %v", err)
+	}
+	if count(t, r.db, `SELECT COUNT(*) FROM users WHERE id = ?`, s.u) != 0 ||
+		count(t, r.db, `SELECT COUNT(*) FROM accounts_access WHERE user_id = ? OR account_id = ?`, s.u, s.uCash) != 0 ||
+		count(t, r.db, `SELECT COUNT(*) FROM budgets_access WHERE budget_id = ?`, pBudget) != 0 {
+		t.Fatal("the wipe half-applied")
+	}
+	if count(t, r.db, `SELECT COUNT(*) FROM budgets WHERE id = ? AND user_id = ?`, pBudget, s.p) != 1 {
+		t.Fatal("P's budget is gone")
 	}
 }
