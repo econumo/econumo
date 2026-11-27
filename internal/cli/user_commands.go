@@ -266,7 +266,7 @@ func userCommands() []command {
 					return err
 				}
 				if outcome == appuser.WipeReleased {
-					return errors.New("not deleted: a connected user is active; the mark was removed")
+					return errors.New("not deleted: the inactivity mark no longer applies (a connected user is active, or inactivity marking is off); the mark was removed")
 				}
 				fmt.Printf("User %s deleted\n", email)
 				return nil

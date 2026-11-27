@@ -313,6 +313,17 @@ func TestDeletionCode_DiesWithTheCredential(t *testing.T) {
 	}
 }
 
+func TestAdminDeleteAndList_FailWhenDeletionIsNotWired(t *testing.T) {
+	svc, _, _, _ := newAuthEnv(t)
+	ctx := context.Background()
+	if _, err := svc.AdminDelete(ctx, oauthTestEmail); err == nil {
+		t.Error("AdminDelete without SetDeletion must fail")
+	}
+	if _, err := svc.ListPendingDeletion(ctx); err == nil {
+		t.Error("ListPendingDeletion without SetDeletion must fail")
+	}
+}
+
 func TestMark_FailsWhenDeletionIsNotWired(t *testing.T) {
 	svc, _, clk, _ := newAuthEnv(t)
 	ctx := context.Background()

@@ -868,40 +868,57 @@ func TestUserDeletionCommands(t *testing.T) {
 	}
 }
 
-func TestUserDelete_InactiveMarkWithActiveConnectionIsReleased(t *testing.T) {
-	dbPath := cliEnvDB(t)
-	t.Setenv("ECONUMO_INACTIVE_USER_DAYS", "30")
-	raw := deletionTestDB(t, dbPath)
-	f := fixture.New(t, &dbtest.DB{Raw: raw, Engine: "sqlite"})
-	const email = "del-inactive@example.test"
-	id := f.User(fixture.User{Email: email})
-	partner := f.User(fixture.User{Email: "del-partner@example.test"})
-	f.Connect(id, partner)
-	if _, err := raw.Exec(`UPDATE users SET last_active_at = ? WHERE id = ?`, time.Now().UTC().Format(datetime.Layout), partner); err != nil {
-		t.Fatalf("stamp the partner active: %v", err)
-	}
-	markUser(t, raw, id, "inactive", time.Now().AddDate(0, 0, -1))
+const releasedMsg = "not deleted: the inactivity mark no longer applies (a connected user is active, or inactivity marking is off); the mark was removed"
 
-	code, _, stderr := runApp(t, "user:delete", email)
-	if code != 1 || !strings.Contains(stderr, "not deleted: a connected user is active; the mark was removed") {
-		t.Fatalf("user:delete = %d, stderr %q", code, stderr)
+func TestUserDelete_InactiveMarkIsReleased(t *testing.T) {
+	cases := []struct {
+		name         string
+		inactiveDays string
+		activePeer   bool
+		cause        string
+	}{
+		{"active connection", "30", true, "active_connection"},
+		{"inactivity marking off", "", false, "inactivity_off"},
 	}
-	if !userExists(t, raw, id) {
-		t.Fatal("a released user was deleted")
-	}
-	var markedAt sql.NullString
-	if err := raw.QueryRow(`SELECT deletion_marked_at FROM users WHERE id = ?`, id).Scan(&markedAt); err != nil {
-		t.Fatal(err)
-	}
-	if markedAt.Valid {
-		t.Errorf("deletion_marked_at = %q, want the mark removed", markedAt.String)
-	}
-	var details string
-	if err := raw.QueryRow(`SELECT details FROM users_audit WHERE user_id = ? AND event = 'deletion_cancelled'`, id).Scan(&details); err != nil {
-		t.Fatalf("cancel audit row: %v", err)
-	}
-	if !strings.Contains(details, `"active_connection"`) {
-		t.Errorf("cancel audit details = %s, want the active_connection cause", details)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dbPath := cliEnvDB(t)
+			t.Setenv("ECONUMO_INACTIVE_USER_DAYS", tc.inactiveDays)
+			raw := deletionTestDB(t, dbPath)
+			f := fixture.New(t, &dbtest.DB{Raw: raw, Engine: "sqlite"})
+			const email = "del-inactive@example.test"
+			id := f.User(fixture.User{Email: email})
+			if tc.activePeer {
+				partner := f.User(fixture.User{Email: "del-partner@example.test"})
+				f.Connect(id, partner)
+				if _, err := raw.Exec(`UPDATE users SET last_active_at = ? WHERE id = ?`, time.Now().UTC().Format(datetime.Layout), partner); err != nil {
+					t.Fatalf("stamp the partner active: %v", err)
+				}
+			}
+			markUser(t, raw, id, "inactive", time.Now().AddDate(0, 0, -1))
+
+			code, _, stderr := runApp(t, "user:delete", email)
+			if code != 1 || !strings.Contains(stderr, releasedMsg) {
+				t.Fatalf("user:delete = %d, stderr %q", code, stderr)
+			}
+			if !userExists(t, raw, id) {
+				t.Fatal("a released user was deleted")
+			}
+			var markedAt sql.NullString
+			if err := raw.QueryRow(`SELECT deletion_marked_at FROM users WHERE id = ?`, id).Scan(&markedAt); err != nil {
+				t.Fatal(err)
+			}
+			if markedAt.Valid {
+				t.Errorf("deletion_marked_at = %q, want the mark removed", markedAt.String)
+			}
+			var details string
+			if err := raw.QueryRow(`SELECT details FROM users_audit WHERE user_id = ? AND event = 'deletion_cancelled'`, id).Scan(&details); err != nil {
+				t.Fatalf("cancel audit row: %v", err)
+			}
+			if !strings.Contains(details, `"`+tc.cause+`"`) {
+				t.Errorf("cancel audit details = %s, want the %s cause", details, tc.cause)
+			}
+		})
 	}
 }
 
