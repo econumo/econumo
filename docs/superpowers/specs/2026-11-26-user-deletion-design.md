@@ -6,11 +6,11 @@ Status: design, 2026-11-26.
 
 A user can delete their Econumo data, and users nobody has used for a long time are marked for
 deletion automatically. Deletion is a two-step process: the user is MARKED, and later WIPED.
-Any sign-in between the two removes the mark. Wiping removes the user's financial data and
-personal details; the `users` row stays as a "Deleted" tombstone so everything that points at it
-(a transaction they wrote into a partner's account, a budget comment) keeps rendering. An audit
-table records the deletion history and lets a returning lifetime-access customer get lifetime
-access back.
+Any sign-in between the two removes the mark. Wiping deletes the `users` row and lets the
+database cascade remove everything the user owns. Rows the user wrote into other people's data
+(transactions in a partner's account, comments on a partner's budget) have no foreign key to
+`users`, survive, and render with the author "Deleted". An audit table records the deletion
+history and lets a returning lifetime-access customer get lifetime access back.
 
 ## Goals
 
@@ -59,7 +59,6 @@ themselves or the CLI.
 |---|---|
 | `deletion_marked_at DATETIME NULL` | when the user was marked; NULL = not marked |
 | `deletion_reason TEXT NOT NULL DEFAULT ''` | `self_initiated`, `inactive` or `cli` while marked |
-| `deleted_at DATETIME NULL` | when the user was wiped; set = tombstone |
 | `last_active_at DATETIME NULL` | last sign-in or token use |
 
 `last_active_at` backfill: the newest `access_tokens.last_used_at` when it is within the last 30
@@ -78,6 +77,13 @@ Indexes on `(event, created_at)` and `(email_hash, event)`. Events now:
 | `deletion_cancelled` | `{"reason": <the mark's reason>}` (sign-in removed the mark) |
 | `deleted` | `{"reason": <the mark's reason>, "lifetimeAccess": true \| false}` |
 
+### Foreign keys removed
+
+`transactions.user_id` and `budgets_elements_comments.user_id` lose their foreign key to
+`users` (SQLite: table rebuild in the migration, indexes kept; PostgreSQL: drop the
+constraint). Everywhere a transaction's or comment's author is resolved, a missing user renders
+as "Deleted" instead of failing. Envelopes have no link to a user; they belong to the budget.
+
 `email_hash` = lowercase hex SHA-256 of `model.NormalizeEmail(address)`. More event types can be
 added later without a migration. Accepted limit: the hash is unkeyed, so someone with a list of
 addresses can test it; plaintext never leaks. A keyed hash was rejected because a lost key would
@@ -87,8 +93,8 @@ silently break lifetime re-grants on self-hosted servers.
 
 All three paths: under the user row lock, set `deletion_marked_at = now`, `deletion_reason`,
 revoke every session, PAT and OAuth grant, write a `deletion_marked` audit row. Marking an
-already-marked or wiped user is an error for the CLI and impossible from the API (no session
-survives the mark).
+already-marked user is an error for the CLI and impossible from the API (no session survives
+the mark).
 
 ### 1. Self-service (Settings)
 
@@ -111,7 +117,7 @@ survives the mark).
 ### 2. Inactivity
 
 - Daily job (below). When `ECONUMO_INACTIVE_USER_DAYS` > 0, every user with
-  `last_active_at` older than that, not marked, not wiped, `is_active = 1`, and not excluded is
+  `last_active_at` older than that, not marked, `is_active = 1`, and not excluded is
   marked with reason `inactive` and receives ONE email: "Under our policy we delete the data of
   users inactive for <period>. If you want to keep your data, sign in." (11 catalogues; period
   rendered from the setting; includes `ECONUMO_URL` when set).
@@ -144,7 +150,7 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
 0), and from `user:delete`. One database transaction per user:
 
 1. Lock the user row, re-check it is still marked (a sign-in may have cancelled it).
-2. Read `lifetimeAccess` = `access_level = full AND access_until IS NULL`.
+2. Read `lifetimeAccess` = `access_level = full AND access_until IS NULL`, and the email.
 3. Stop-sharing unwind with every connected user, through the existing delete-connection path
    (account access both directions, budget access both directions, the link); delete invites.
 4. Revision bumps (`txrevision.BumpWhere`, before rows change) for every account NOT owned by the
@@ -157,34 +163,34 @@ Runs from the daily job for users marked at least `ECONUMO_USER_DELETION_DAYS` a
      (`account_id` = partner's, `amount` = old `amount_recipient`, `sort_key` = old
      `recipient_sort_key`, recipient columns cleared, no category).
    Payee/tag/labels kept only if they belong to the partner.
-6. Delete the user's own data from an explicit, ordered list of root tables; descendants go by
-   the existing cascades: accounts (their transactions, including rows partners wrote into
-   them), budgets, folders, categories, payees, tags, labels, recurring transactions, imports
-   (sources, rules, credential keys, suggestions...), debts, user options, hidden currencies,
-   identities, access tokens, OAuth grants/codes/clients they own, password/verification/email
-   change requests, idempotency keys, operation ids.
-7. Kept and still pointing at the tombstone: transactions the user wrote into partners'
-   accounts, their comments on partners' budgets, any other authored rows on others' data.
-   These render with the author "Deleted".
-8. Scrub the row: `name = 'Deleted'`, default avatar, `email = 'deleted:<user id>'` (unique,
-   never a valid address), `password`/`salt` empty with `algorithm = none`, `is_active = 0`,
-   `email_verified = 0`, timezone/language reset, `credentials_generation` bumped,
-   `deleted_at = now`, mark columns cleared. `access_level`/`access_until` are left as they
-   were (no meaning any more; the audit row carries what matters).
-9. Write the `deleted` audit row with the email hash, reason and `lifetimeAccess`.
+6. Debts on a partner's budget whose currency is one of the user's custom currencies switch to
+   the budget's currency (`debts.currency_id` is `NO ACTION` and would block the delete).
+   Budget elements in that situation fall back by the existing `SET NULL`.
+7. Write the `deleted` audit row (old user id, email hash, reason, `lifetimeAccess`).
+8. `DELETE FROM users WHERE id = ?`. The cascade removes the user's own budgets with everything
+   inside them, their accounts with every transaction in them (including rows partners wrote
+   there), and their categories, tags, payees, labels, folders, currencies, recurring templates
+   (also ones on partners' accounts, accepted: a template is a plan, not history), imports,
+   debts, options, identities, tokens, OAuth grants and the OAuth apps they own, and the
+   code/request tables. In a partner's budget, only the user's categories (and so their
+   elements, plans and envelope memberships) go; the budget and its envelopes stay.
+9. Kept: transactions the user wrote into partners' accounts and their comments on partners'
+   budgets (no foreign key), shown with the author "Deleted".
 
-The user's own accounts and transactions are hard-deleted: the same end state as the user
-disconnecting everyone and deleting everything by hand. A partner's budget that counted those
-accounts, or had elements on the user's categories, recalculates without them; intended.
+A partner's budget that counted the user's accounts, or had elements on the user's categories,
+recalculates without them; intended. This is the same end state as the user disconnecting
+everyone and deleting everything by hand.
 
-**Guard test**: reads the schema of both engines and fails when a table with a foreign key to
-`users(id)` (or a `user_id` column) is in neither the wipe list nor an explicit "kept, points at
-the tombstone" list with a reason. `revisionguard` must pass for the wipe.
+**Guard test**: reads the schema of both engines and fails when a foreign key to `users(id)` is
+not `ON DELETE CASCADE`, or when a column that names a user (`user_id`, `owner_user_id`,
+`connected_user_id`...) has no foreign key and is not on the explicit "kept on purpose" list
+(`transactions.user_id`, `budgets_elements_comments.user_id`) with a reason. A wipe test on a
+fixture with a partner (shared account, shared budget both ways, cross transfers, a comment, a
+custom currency) asserts the partner's balances and rows; `revisionguard` must pass.
 
 ## Registering again
 
-- The old address is free (the tombstone holds `deleted:<id>`), so registration creates a NEW
-  user with a new id, onboarding, and the normal trial rules.
+- The old address is free (the row is gone), so registration creates a NEW user with a new id, onboarding, and the normal trial rules.
 - Password register, provider sign-up and `user:create`: after the user is created, if the
   latest `deleted` audit row for the address's hash has `lifetimeAccess: true`, the new user gets
   `access_level = full`, `access_until = NULL`. With the email-verification gate on, the grant
@@ -196,8 +202,7 @@ the tombstone" list with a reason. `revisionguard` must pass for the wipe.
 - New `GET /admin/deleted-users?since=<datetime>` on the private admin listener, built like
   `/admin/affiliate-users`: the `deleted` audit rows since the date (`userId`, `deletedAt`,
   `reason`), oldest first. Billing polls it and cancels subscriptions (separate billing PR).
-- `/admin/user-context` for a wiped user answers normally with the tombstone (name "Deleted",
-  empty email) plus additive `deletedAt`, `deletionReason`; a marked user shows
+- `/admin/user-context` for a wiped user answers the existing 404; a marked user shows additive
   `deletionMarkedAt`, `deletionReason`.
 
 ## Daily job
@@ -215,13 +220,11 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 
 ## Approaches considered
 
-- **Wipe**: tombstone row + explicit root-table deletes + guard test (chosen) vs deleting the
-  `users` row and letting cascades do it. Deleting the row would also cascade away transactions
-  the user wrote into partners' accounts (needing the `transactions.user_id` foreign key dropped,
-  a SQLite table rebuild, and blank-author handling everywhere); the tombstone keeps those rows
-  rendering as "Deleted" with no schema change.
-- **Lifetime memory**: generic `users_audit` table (chosen) vs a dedicated lifetime table vs
-  the hash on the `users` row. The audit table also records the history and takes future events.
+- **Wipe**: delete the `users` row and let the database cascade (chosen; a new table that
+  cascades from `users` is covered automatically) vs keeping the row as a tombstone and deleting
+  root tables in code (an explicit list that must grow with the schema). The two authored-on-
+  others tables lose their foreign key so the cascade does not take partners' history.
+- **Lifetime memory**: generic `users_audit` table (chosen) vs a dedicated lifetime table. The audit table also records the history and takes future events.
 - **Subscription cancel**: billing polls `deleted-users` (chosen) vs Econumo calling billing.
 - **Scheduling**: in-process daily job + CLI (chosen) vs host cron; the image has no cron.
 
@@ -233,6 +236,8 @@ both migration engines, revisionguard, slog with ids only, comment rules.
 - Marking revokes PATs and OAuth grants too; cancelling the mark does not bring them back.
 - `user:delete` refuses unmarked users (run `user:mark-deleted` first).
 - With the verification gate on, lifetime is re-granted on verification.
+- Recurring templates the user made on partners' accounts are deleted with the user.
+- Partner debts in the user's custom currency move to the budget currency.
 
 ## Left to the builder
 
