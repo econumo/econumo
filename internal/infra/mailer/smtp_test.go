@@ -411,6 +411,9 @@ func TestSMTPRender_MultipartParses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got := textPart.Header.Get("Content-Type"); got != "text/plain; charset=UTF-8" {
+		t.Fatalf("text part type %q", got)
+	}
 	if got := readQP(t, textPart); got != msg.Text {
 		t.Fatalf("text part = %q", got)
 	}
@@ -427,6 +430,9 @@ func TestSMTPRender_MultipartParses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got := htmlPart.Header.Get("Content-Type"); got != "text/html; charset=UTF-8" {
+		t.Fatalf("html part type %q", got)
+	}
 	if got := readQP(t, htmlPart); got != msg.HTML {
 		t.Fatalf("html part = %q", got)
 	}
@@ -437,7 +443,7 @@ func TestSMTPRender_MultipartParses(t *testing.T) {
 	if got := img.Header.Get("Content-Id"); got != "<"+LogoContentID+">" {
 		t.Fatalf("content-id %q", got)
 	}
-	if got := img.Header.Get("Content-Disposition"); got != `inline; filename="econumo.png"` {
+	if got := img.Header.Get("Content-Disposition"); got != `inline; filename=econumo.png` {
 		t.Fatalf("disposition %q", got)
 	}
 	if got := img.Header.Get("Content-Type"); got != "image/png" {
@@ -480,4 +486,39 @@ func readQP(t *testing.T, p *multipart.Part) string {
 		t.Fatal(err)
 	}
 	return strings.ReplaceAll(string(b), "\r\n", "\n")
+}
+
+func TestSMTPRender_TextOnlyIsSinglePart(t *testing.T) {
+	m := newSMTPMailer(SMTPConfig{Host: "localhost"})
+	raw, err := m.render(&mail.Address{Address: "a@example.test"}, &mail.Address{Address: "b@example.test"}, nil, nil, Message{Subject: "s", Text: "hi"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "Content-Type: text/plain; charset=UTF-8\r\n") || strings.Contains(string(raw), "multipart") {
+		t.Fatalf("unexpected output: %q", raw)
+	}
+}
+
+func TestSMTPRender_RejectsHeaderInjectionInInline(t *testing.T) {
+	m := newSMTPMailer(SMTPConfig{Host: "localhost"})
+	for name, f := range map[string]InlineFile{
+		"content id": {ContentID: "x\r\nBcc: a@b.c", Filename: "a.png", ContentType: "image/png"},
+		"filename":   {ContentID: "x", Filename: "a\r\nBcc: a@b.c.png", ContentType: "image/png"},
+		"type":       {ContentID: "x", Filename: "a.png", ContentType: "image/png\r\nBcc: a@b.c"},
+	} {
+		raw, err := m.render(&mail.Address{Address: "a@example.test"}, &mail.Address{Address: "b@example.test"}, nil, nil,
+			Message{Subject: "s", Text: "t", HTML: "<p>h</p>", Inline: []InlineFile{f}})
+		if name == "filename" {
+			// FormatMediaType percent-encodes it (RFC 2231), so it is safe rather than refused.
+			if err != nil {
+				t.Errorf("filename: %v", err)
+			} else if strings.Contains(string(raw), "\r\nBcc:") || strings.Contains(string(raw), "filename=\"a\r") {
+				t.Errorf("filename: header injected")
+			}
+			continue
+		}
+		if err == nil {
+			t.Errorf("%s: expected an error", name)
+		}
+	}
 }

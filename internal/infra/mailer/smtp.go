@@ -348,11 +348,16 @@ func writeQPPart(mw *multipart.Writer, contentType, body string) error {
 }
 
 func writeInlinePart(mw *multipart.Writer, f InlineFile) error {
+	ctype := mime.FormatMediaType(f.ContentType, nil)
+	disposition := mime.FormatMediaType("inline", map[string]string{"filename": f.Filename})
+	if ctype == "" || disposition == "" || !safeContentID(f.ContentID) {
+		return errors.New("mailer: invalid inline attachment header")
+	}
 	pw, err := mw.CreatePart(textproto.MIMEHeader{
-		"Content-Type":              {f.ContentType},
+		"Content-Type":              {ctype},
 		"Content-Transfer-Encoding": {"base64"},
 		"Content-Id":                {"<" + f.ContentID + ">"},
-		"Content-Disposition":       {`inline; filename="` + f.Filename + `"`},
+		"Content-Disposition":       {disposition},
 	})
 	if err != nil {
 		return err
@@ -378,4 +383,16 @@ func messageID(from string) (string, error) {
 		return "", err
 	}
 	return "<" + hex.EncodeToString(r[:]) + "@" + domain + ">", nil
+}
+
+func safeContentID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, r := range id {
+		if r <= ' ' || r >= 0x7f || r == '<' || r == '>' {
+			return false
+		}
+	}
+	return true
 }
