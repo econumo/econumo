@@ -494,7 +494,8 @@
         "status_new": "新分类",
         "status_existing": "您现有的分类",
         "kind_expense": "支出",
-        "kind_income": "收入"
+        "kind_income": "收入",
+        "kind_both": "收入和支出"
       },
       "description": {
         "none": "文件中没有描述",
@@ -532,7 +533,11 @@
           "labels": "您文件中的统计标签"
         },
         "status_new": "新标签",
-        "status_existing": "您现有的标签"
+        "status_existing": "您现有的标签",
+        "status_taken": {
+          "tag": "略过：已是统计标签",
+          "labels": "略过：已是预算标签"
+        }
       },
       "preview": {
         "title": "以下内容将被添加",
@@ -561,7 +566,8 @@
         "no_amount": "没有可识别的金额",
         "no_account": "没有账户名称",
         "user_skipped": "已由你跳过",
-        "unconfirmed": "已发送，但回应丢失：请检查账户"
+        "unconfirmed": "已发送，但回应丢失：请检查账户",
+        "too_many_labels": "统计标签超过 50 个"
       },
       "continue": "继续",
       "step_of": "第 {n} 步，共 {total} 步 · {title}",

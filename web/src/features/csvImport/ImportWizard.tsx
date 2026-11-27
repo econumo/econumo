@@ -311,9 +311,10 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       const result = await runChunks(upload, importTransactionList, { skipped, onProgress: (done, total) => setProgress({ done, total }) })
       reportRun(result)
       lastRun.current = { upload, result }
-      await settle(result).catch(() => undefined)
+      // the result first: settling an onboarding import step can finish onboarding and leave the page
       onClose()
       onComplete(result, result.failedChunks.length > 0 ? retryFailed : undefined)
+      await settle(result).catch(() => undefined)
     } finally {
       setImporting(false)
     }

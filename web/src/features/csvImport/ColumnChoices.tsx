@@ -22,6 +22,8 @@ interface ColumnChoicesProps {
   onlyOneNote?: string
   /** an optional answer: with nothing that fits, "none of these" is the whole list */
   noneWhenNothingFits?: boolean
+  /** parts of the file that can never answer this question, left out of the list */
+  exclude?: number[]
 }
 
 const rowClass = (selected: boolean) =>
@@ -43,10 +45,10 @@ function Dot({ on }: { on: boolean }) {
  * file's own name for it is a grey caption. An answer is a button, not a native radio: picking
  * the one already chosen is an answer too ("yes, that one"), and arrow keys must not pick.
  */
-export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, nothingFitsNote, onlyOneNote, noneWhenNothingFits = false }: ColumnChoicesProps) {
+export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, nothingFitsNote, onlyOneNote, noneWhenNothingFits = false, exclude = [] }: ColumnChoicesProps) {
   const { t, i18n } = useTranslation()
   const name = useId()
-  const filled = profiles.filter((p) => p.type !== 'empty' || p.index === selected).map((p) => p.index)
+  const filled = profiles.filter((p) => (p.type !== 'empty' || p.index === selected) && !exclude.includes(p.index)).map((p) => p.index)
   const likely = [...(selected === null ? [] : [selected]), ...candidates.filter((c) => c !== selected)]
   const rest = filled.filter((c) => !likely.includes(c))
   const nothingFits = candidates.length === 0 && !noneWhenNothingFits

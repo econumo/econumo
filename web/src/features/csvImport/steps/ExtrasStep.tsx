@@ -1,14 +1,13 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useLabels, useTags } from '@/features/classifications/queries'
-import { firstDistinct, hasGuess, nameKey, unusedColumns, type StepBodyProps } from '../wizard'
+import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from '@/components/ui/native-select'
+import { firstDistinct, hasGuess, unusedColumns, type StepBodyProps } from '../wizard'
 import { displaySamples, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
 import { AnswerRow, ChoicesDone, Field, Segmented } from '../controls'
 import { NAMES_SHOWN, NamesList } from '../NamesList'
-import { namesInFile, useOwnerLists } from '../ownerLists'
+import { useNameResolution } from '../ownerLists'
 
 type Role = 'tag' | 'labels'
 const ROLES: Role[] = ['tag', 'labels']
@@ -21,26 +20,22 @@ const SEPARATOR_NAMES: Record<string, string> = {
 
 export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, keepChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
-  const { data: tags = [] } = useTags()
-  const { data: labels = [] } = useLabels()
   const customId = useId()
-  const { extras, account } = state.answers
+  const { extras } = state.answers
   const [custom, setCustom] = useState(() => (SEPARATORS.includes(extras.labelsSeparator) ? '' : extras.labelsSeparator))
   const separator = extras.labelsSeparator || DEFAULT_SEPARATOR
 
-  const { ownerId, readOnlyLists } = useOwnerLists(account)
-
-  // Archived ones count too: the server finds them and does not create a second one.
-  // Budget and reporting tags share one name space.
-  const existingLabels = useMemo(
-    () => new Set([...labels, ...tags].filter((item) => item.ownerUserId === ownerId).map((item) => nameKey(item.name))),
-    [labels, tags, ownerId],
-  )
+  const { names } = useNameResolution(state.rows, state.answers)
 
   // the earlier steps' columns are never offered; a column belongs to one role, so giving it to another takes it from the first
   const offered = unusedColumns(state.answers, state.profiles)
   const likely = new Set(candidates('tag', state.profiles, state.answers))
-  const choicesFor = (role: Role) => (likely.size === 0 ? offered : offered.filter((p) => likely.has(p.index) || p.index === extras[role]))
+  // the likely ones first, every other unused part of the file after them
+  const choicesFor = (role: Role) => {
+    if (likely.size === 0) return { main: offered, rest: [] }
+    const isMain = (p: (typeof offered)[number]) => likely.has(p.index) || p.index === extras[role]
+    return { main: offered.filter(isMain), rest: offered.filter((p) => !isMain(p)) }
+  }
   const assign = (role: Role, column: number | null) => {
     const next = { ...extras }
     for (const r of ROLES) if (column !== null && next[r] === column) next[r] = null
@@ -81,11 +76,20 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
                     onChange={(e) => assign(role, e.target.value === '' ? null : Number(e.target.value))}
                   >
                     <NativeSelectOption value="">{t('transactions.import_wizard.extras.leave_out')}</NativeSelectOption>
-                    {choicesFor(role).map((p) => (
+                    {choicesFor(role).main.map((p) => (
                       <NativeSelectOption key={p.index} value={String(p.index)}>
                         {option(p)}
                       </NativeSelectOption>
                     ))}
+                    {choicesFor(role).rest.length > 0 ? (
+                      <NativeSelectOptGroup label={t('transactions.import_wizard.other_parts')}>
+                        {choicesFor(role).rest.map((p) => (
+                          <NativeSelectOption key={p.index} value={String(p.index)}>
+                            {option(p)}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelectOptGroup>
+                    ) : null}
                   </NativeSelect>
                 </div>
               )
@@ -148,15 +152,18 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
           key={role}
           heading={t(`transactions.import_wizard.extras.found.${role}`)}
           limit={NAMES_SHOWN}
-          items={namesInFile(state.rows, role, role === 'labels' ? separator : null, existingLabels).map((entry) => ({
+          items={names[role].map((entry) => ({
             key: entry.key,
             name: entry.name,
             count: entry.count,
-            status: !entry.isNew
-              ? t('transactions.import_wizard.extras.status_existing')
-              : readOnlyLists
-                ? t('transactions.import_wizard.status_left_out')
-                : t('transactions.import_wizard.extras.status_new'),
+            status:
+              entry.outcome === 'existing'
+                ? t('transactions.import_wizard.extras.status_existing')
+                : entry.outcome === 'new'
+                  ? t('transactions.import_wizard.extras.status_new')
+                  : entry.outcome === 'taken'
+                    ? t(`transactions.import_wizard.extras.status_taken.${role}`)
+                    : t('transactions.import_wizard.status_left_out'),
           }))}
         />
       ))}

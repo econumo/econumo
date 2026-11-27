@@ -56,7 +56,7 @@ export interface PreparedRow {
   fileRow: number
   raw: string
   status: 'ok' | 'skipped'
-  reason: 'no_date' | 'no_amount' | 'no_account' | 'user_skipped' | null
+  reason: 'no_date' | 'no_amount' | 'no_account' | 'too_many_labels' | 'user_skipped' | null
   date: string | null
   time: string | null
   amount: string | null
@@ -69,6 +69,23 @@ export interface PreparedRow {
 }
 
 const PLAIN_DECIMAL = /^-?\d+(\.\d+)?$/
+
+/** the most reporting tags one transaction holds; the server refuses a row with more */
+export const MAX_LABELS = 50
+
+/** a labels cell as the server reads it: split, trimmed, blanks dropped, one per name whatever the letter case */
+export function splitLabels(cell: string, separator: string): string[] {
+  const seen = new Set<string>()
+  const names: string[] = []
+  for (const part of cell.split(separator || ';')) {
+    const name = part.trim()
+    const key = name.toLowerCase()
+    if (name === '' || seen.has(key)) continue
+    seen.add(key)
+    names.push(name)
+  }
+  return names
+}
 
 function cell(row: string[], column: number | null): string {
   return column === null ? '' : (row[column] ?? '').trim()
@@ -118,11 +135,13 @@ export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: Rea
     const date = own.date ?? fixedDate(typed?.date)
     const amount = own.amount ?? fixedAmount(typed?.amount)
     const accountName = own.account
+    const labels = cell(row, answers.extras.labels)
 
     let reason: PreparedRow['reason'] = null
     if (date === null) reason = 'no_date'
     else if (amount === null) reason = 'no_amount'
     else if (account?.kind === 'column' && accountName === null) reason = 'no_account'
+    else if (labels !== '' && splitLabels(labels, answers.extras.labelsSeparator).length > MAX_LABELS) reason = 'too_many_labels'
     if (reason !== null && fix === 'skip') reason = 'user_skipped'
 
     result.push({
@@ -138,7 +157,7 @@ export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: Rea
       payee: cell(row, answers.extras.payee),
       category: cell(row, answers.extras.category),
       tag: cell(row, answers.extras.tag),
-      labels: cell(row, answers.extras.labels),
+      labels,
     })
   })
   return result

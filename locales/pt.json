@@ -494,7 +494,8 @@
         "status_new": "Categoria nova",
         "status_existing": "A sua categoria existente",
         "kind_expense": "despesa",
-        "kind_income": "receita"
+        "kind_income": "receita",
+        "kind_both": "receita e despesa"
       },
       "description": {
         "none": "O ficheiro não tem descrição",
@@ -532,7 +533,11 @@
           "labels": "Etiquetas de relatório no seu ficheiro"
         },
         "status_new": "Etiqueta nova",
-        "status_existing": "A sua etiqueta existente"
+        "status_existing": "A sua etiqueta existente",
+        "status_taken": {
+          "tag": "Omitido: já é uma etiqueta de relatório",
+          "labels": "Omitido: já é uma etiqueta de orçamento"
+        }
       },
       "preview": {
         "title": "Isto é o que será adicionado",
@@ -561,7 +566,8 @@
         "no_amount": "Sem montante legível",
         "no_account": "Sem nome de conta",
         "user_skipped": "Ignorada por si",
-        "unconfirmed": "Enviada, mas a resposta perdeu-se: verifique a conta"
+        "unconfirmed": "Enviada, mas a resposta perdeu-se: verifique a conta",
+        "too_many_labels": "Mais de 50 etiquetas de relatório"
       },
       "continue": "Continuar",
       "step_of": "Passo {n} de {total} · {title}",

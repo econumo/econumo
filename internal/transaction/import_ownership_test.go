@@ -27,6 +27,7 @@ type stubImportLabelOwner struct {
 
 	labelsByOwner      map[string][]model.ImportNamed
 	labelsByOwnerCalls []vo.Id
+	tagsByOwner        map[string][]model.ImportNamed
 
 	nextLabelID      vo.Id
 	createLabelCalls []struct {
@@ -69,7 +70,7 @@ func (s *stubImportLabelOwner) PayeesByOwner(ctx context.Context, ownerID vo.Id)
 }
 
 func (s *stubImportLabelOwner) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
-	return nil, nil
+	return s.tagsByOwner[ownerID.String()], nil
 }
 
 func (s *stubImportLabelOwner) LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {

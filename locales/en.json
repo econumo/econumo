@@ -494,7 +494,8 @@
         "status_new": "New category",
         "status_existing": "Your existing category",
         "kind_expense": "expense",
-        "kind_income": "income"
+        "kind_income": "income",
+        "kind_both": "income and expense"
       },
       "description": {
         "none": "The file has no description",
@@ -532,7 +533,11 @@
           "labels": "Reporting tags in your file"
         },
         "status_new": "New tag",
-        "status_existing": "Your existing tag"
+        "status_existing": "Your existing tag",
+        "status_taken": {
+          "tag": "Left out: already a reporting tag",
+          "labels": "Left out: already a budget tag"
+        }
       },
       "preview": {
         "title": "Here is what will be added",
@@ -561,7 +566,8 @@
         "no_amount": "No readable amount",
         "no_account": "No account name",
         "user_skipped": "Skipped by you",
-        "unconfirmed": "Sent, but the answer was lost: check the account"
+        "unconfirmed": "Sent, but the answer was lost: check the account",
+        "too_many_labels": "More than 50 reporting tags"
       },
       "continue": "Continue",
       "step_of": "Step {n} of {total} · {title}",

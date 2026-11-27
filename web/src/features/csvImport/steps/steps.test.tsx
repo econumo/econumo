@@ -89,6 +89,27 @@ it('with no accounts, the Account step starts on a new account in the user’s c
   expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
 })
 
+it('with no accounts, a lost account answer comes back as a new account to name', async () => {
+  server.use(...coreHandlers({ accounts: [] }))
+  renderWizard('Date,Amount,Wallet,Memo\n2026-01-02,-5.50,Trip,lunch\n2026-01-03,7.00,Home,salary\n')
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  // another step takes the account column, leaving the account unanswered
+  await user.click(screen.getByRole('button', { name: /^Category/ }))
+  await screen.findByRole('heading', { name: 'How are the payments sorted?' })
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  await user.click(screen.getByRole('button', { name: /^Account/ }))
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(screen.getByRole('radio', { name: 'A new account' })).toBeChecked()
+  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+  expect(screen.getByLabelText('Account name')).toHaveValue('')
+  fireEvent.change(screen.getByLabelText('Account name'), { target: { value: 'Travel card' } })
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Account.*needs your attention/ })).not.toBeInTheDocument())
+})
+
 it('a new account is missing until it is named, and typing a name clears the mark', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount\n2026-01-02,-5.50\n')
@@ -266,6 +287,16 @@ it('the currency answer offers code columns, and My file has no currency moves n
   await user.click(screen.getAllByRole('button', { name: 'Change' })[0])
   await user.click(screen.getByRole('radio', { name: /from “account_name”/ }))
   expect(within(perRowList()).getByRole('listitem')).toHaveTextContent('WS Cash · 2 transactions New account · EUR')
+})
+
+it('the currency answer never offers the account column itself', async () => {
+  server.use(...coreHandlers({ currencies: [fixtureUsd, fixtureEur, fixtureCad] }))
+  const user = userEvent.setup()
+  await openExportAccountStep(user)
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[1])
+  const choices = screen.getByRole('radiogroup', { name: 'Which of these is the currency?' })
+  expect(within(choices).getByText('Other parts of your file')).toBeInTheDocument()
+  expect(within(choices).queryByRole('radio', { name: /from “account_name”/ })).not.toBeInTheDocument()
 })
 
 it('with nothing else that fits the category, a part the currency reads is listed as used, and taking it there leaves new accounts on the picked currency', async () => {

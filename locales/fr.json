@@ -494,7 +494,8 @@
         "status_new": "Nouvelle catégorie",
         "status_existing": "Votre catégorie existante",
         "kind_expense": "dépense",
-        "kind_income": "revenu"
+        "kind_income": "revenu",
+        "kind_both": "revenu et dépense"
       },
       "description": {
         "none": "Le fichier n’a pas de description",
@@ -532,7 +533,11 @@
           "labels": "Tags de rapport dans votre fichier"
         },
         "status_new": "Nouveau tag",
-        "status_existing": "Votre tag existant"
+        "status_existing": "Votre tag existant",
+        "status_taken": {
+          "tag": "Ignoré : déjà un tag de rapport",
+          "labels": "Ignoré : déjà un tag budgétaire"
+        }
       },
       "preview": {
         "title": "Voici ce qui sera ajouté",
@@ -561,7 +566,8 @@
         "no_amount": "Pas de montant lisible",
         "no_account": "Pas de nom de compte",
         "user_skipped": "Ignorée par vous",
-        "unconfirmed": "Envoyée, mais la réponse s’est perdue : vérifiez le compte"
+        "unconfirmed": "Envoyée, mais la réponse s’est perdue : vérifiez le compte",
+        "too_many_labels": "Plus de 50 tags de rapport"
       },
       "continue": "Continuer",
       "step_of": "Étape {n} sur {total} · {title}",

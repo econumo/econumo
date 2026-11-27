@@ -429,7 +429,10 @@ navigation (single-pane vs sidebar).
       that name in EUR (in a "General" folder) holding exactly the file's rows,
       2,487.50 here; the step is ticked and Categories opens. Nothing is
       created before Import is pressed: closing the wizard earlier leaves no
-      account.
+      account. Choosing "Each row says which account" and a column, then
+      taking that column for Category, and coming back to Account shows "A
+      new account" chosen WITH its name and currency fields (attention mark
+      until named).
 - [ ] Import step, some rows not sent (stop the server while the second of
       two 500-row chunks uploads, then start it): the result dialog shows
       "Import completed with errors" with the imported and failed counts and
@@ -439,7 +442,9 @@ navigation (single-pane vs sidebar).
       swipe-down do nothing). Rows the
       wizard skipped are listed with their reason and row number, never
       re-sent. While the step waits for a failed `finish-import`, the drop area
-      stays disabled so the same file cannot be imported twice.
+      stays disabled so the same file cannot be imported twice. With every
+      other step already done or skipped, the result dialog still shows and
+      Getting started completes (landing on Budget) only after it is closed.
 - [ ] While onboarding is in progress, a CSV import from Settings → Data also
       settles the Import step through `finish-import` (the budget appears and,
       with AI, icons arrive).
@@ -921,7 +926,8 @@ navigation (single-pane vs sidebar).
       on the right, counted from the rows that will be imported only (a name
       found only on a skipped row is not listed). A name used by both income
       and expense rows that exists for only one kind says which kind is new
-      ("New category · income"). The 8 most used come first, then a quiet
+      ("New category · income"); one new for both kinds reads "New category
+      · income and expense". The 8 most used come first, then a quiet
       "and N more" shows the rest in place. Description shows no such list.
       The imported rows carry exactly those values.
 - [ ] Tags (a file with Tags and Labels columns from another app):
@@ -937,7 +943,11 @@ navigation (single-pane vs sidebar).
       "Reporting tags in your file" (the latter split by the chosen
       separator, and updating when it changes) list each tag as Category
       does: "New tag" or "Your existing tag", from the rows that will be
-      imported only, 8 then "and N more". The imported rows carry exactly
+      imported only, 8 then "and N more". Budget and reporting tags share
+      one name space: a budget tag named like an existing (or earlier in the
+      file) reporting tag reads "Left out: already a reporting tag", a
+      reporting tag named like a budget tag "Left out: already a budget
+      tag", and the row imports without it. The imported rows carry exactly
       those values.
 - [ ] 📱 Check and import: three tiles, Transactions, Money in (green) and
       Money out (the money tiles are left out when the rows land in accounts
@@ -945,8 +955,9 @@ navigation (single-pane vs sidebar).
       date format ("Nov 3, 2026" in English, "03.11.2026" in German, never
       ISO) and, when rows will be skipped, "N will be skipped (reason: count)".
       Below, the transactions as they will be added, in file order: day and
-      month, description, "payee · category" (the account's name first for a
-      per-row account), and the signed amount with the account's currency
+      month, description, "payee · category · tag · reporting tags" (the
+      account's name first for a per-row account; a name the import leaves
+      out, e.g. "Left out (shared account)", is not shown), and the signed amount with the account's currency
       (income green with +). A long file shows its first 100 rows plus every
       row that will be left out, then "Show N more rows". Hovering a row shows
       the file's original line. Each value opens the step that shapes it;
@@ -957,7 +968,8 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 Problem rows on Check: rows that will be left out sit in the list
       where they are in the file, on a pale yellow background with a "Left
       out" badge, "Row 9: Kartengebühr", the reason in grey ("No readable
-      date", "No readable amount") and the file's original line. A row with no
+      date", "No readable amount", "More than 50 reporting tags" with no
+      field and no Skip) and the file's original line. A row with no
       readable date has a date field, one with no readable amount an amount
       field (read with the file's decimal separator; unreadable input says
       "Can't read this amount"). Filling it turns the row into a transaction
@@ -983,12 +995,14 @@ navigation (single-pane vs sidebar).
       chosen and Account carries no warning) lists only accounts the user owns
       or holds an accepted admin/user share of (not a guest share, not a
       pending invitation), and rows imported into a shared one land there.
-      With a user (not admin) share, the Category, Payee and Tags lists read
+      With a user (not admin) share (also when "Each row says which account"
+      names the shared account), the Category, Payee and Tags lists read
       "Left out (shared account)" for each name the owner doesn't have yet,
       and the rows import
       with the owner's existing ones and without the new ones (nothing is
-      added to the owner's lists); with an admin share they are created in
-      the owner's lists as for the owner;
+      added to the owner's lists, nor to the importer's); with an admin share
+      they are created in the owner's lists as for the owner, and the owner
+      can edit and save the imported rows;
       "A new account" asks a name and a currency (pre-filled from a currency
       column when every row names the same code the app knows, e.g. `EUR`;
       the user's currency otherwise, always changeable; when that code is one

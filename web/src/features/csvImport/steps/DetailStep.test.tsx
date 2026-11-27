@@ -174,10 +174,10 @@ it('the list counts only rows that will be imported', async () => {
   expect(rowsOf('Categories in your file')).toEqual(['Travel · 1 transaction New category'])
 })
 
-it('a name both kinds of row use says which kind is new', async () => {
+it('a name both kinds of row use says which kind is new, or that both are', async () => {
   renderStep({ step: 'category', text: 'Date,Amount,Group\n2026-01-02,-5,Food\n2026-01-03,5,food\n2026-01-04,5,Bonus\n2026-01-05,-5,Bonus\n', extras: { ...noExtras, category: 2 } })
   await waitFor(() =>
-    expect(rowsOf('Categories in your file')).toEqual(['Food · 2 transactions New category · income', 'Bonus · 2 transactions New category']),
+    expect(rowsOf('Categories in your file')).toEqual(['Food · 2 transactions New category · income', 'Bonus · 2 transactions New category · income and expense']),
   )
 })
 

@@ -107,6 +107,7 @@ function CurrencyAnswer({ state, account, onChange }: { state: StepBodyProps['st
           setChoosing(false)
         }}
         candidates={candidates('currency', state.profiles, state.answers).filter((c) => c !== account.column)}
+        exclude={[account.column]}
         tags={columnTags(state.answers, t, i18n.language, ['currency'])}
         noneLabel={t('transactions.import_wizard.account.currency_none')}
         noneWhenNothingFits
@@ -289,14 +290,14 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
     setAnswers('account', { account: next })
   }
 
+  const newFallback = (): NewAccount => ({ kind: 'new', name: '', currencyId: fileCurrencyId(state.file, currencies) ?? currencyId })
+
   const choose = (next: Option) => {
     setPicked(next)
     if (next === option) return
     // leaving "new" keeps the typed name for coming back, without saving it as the answer
     dropTypedName()
-    const fallback: AccountChoice | null =
-      next === 'new' ? { kind: 'new', name: '', currencyId: fileCurrencyId(state.file, currencies) ?? currencyId } : null
-    set(remembered.current[next] ?? fallback)
+    set(remembered.current[next] ?? (next === 'new' ? newFallback() : null))
     // back to a column chosen before: its answer, not the list the other options left open
     if (next === 'column' && remembered.current.column) closeChoices()
   }
@@ -327,9 +328,11 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
         ]}
         onChange={choose}
       />
-      {option === 'new' && account?.kind === 'new' ? (
+      {option === 'new' && (account === null || account.kind === 'new') ? (
         <NewAccountFields
-          account={account}
+          // "A new account" shown with no answer under it (another step took the account
+          // column) still offers its fields; the answer comes with the first one filled
+          account={account ?? (remembered.current.new as NewAccount | undefined) ?? newFallback()}
           unknownCode={fileUnknownCode}
           onChange={set}
           onNameChange={typeName}

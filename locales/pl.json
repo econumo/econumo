@@ -494,7 +494,8 @@
         "status_new": "Nowa kategoria",
         "status_existing": "Twoja istniejąca kategoria",
         "kind_expense": "wydatek",
-        "kind_income": "przychód"
+        "kind_income": "przychód",
+        "kind_both": "przychód i wydatek"
       },
       "description": {
         "none": "Plik nie ma opisu",
@@ -532,7 +533,11 @@
           "labels": "Tagi raportowe w Twoim pliku"
         },
         "status_new": "Nowy tag",
-        "status_existing": "Twój istniejący tag"
+        "status_existing": "Twój istniejący tag",
+        "status_taken": {
+          "tag": "Pominięte: to już tag raportowy",
+          "labels": "Pominięte: to już tag budżetowy"
+        }
       },
       "preview": {
         "title": "Oto, co zostanie dodane",
@@ -561,7 +566,8 @@
         "no_amount": "Brak czytelnej kwoty",
         "no_account": "Brak nazwy konta",
         "user_skipped": "Pominięta przez Ciebie",
-        "unconfirmed": "Wysłana, ale odpowiedź zaginęła: sprawdź konto"
+        "unconfirmed": "Wysłana, ale odpowiedź zaginęła: sprawdź konto",
+        "too_many_labels": "Ponad 50 tagów raportowych"
       },
       "continue": "Dalej",
       "step_of": "Krok {n} z {total} · {title}",

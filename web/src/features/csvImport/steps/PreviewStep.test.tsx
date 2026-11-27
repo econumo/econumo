@@ -123,6 +123,19 @@ it('the list shows each transaction the way it will be imported, read with a dec
   expect(importButton()).toHaveTextContent('Import 2 transactions')
 })
 
+it('a row shows only the names that will land on it, and a row with too many reporting tags is left out', async () => {
+  const many = Array.from({ length: 51 }, (_, i) => 'x' + i).join(';')
+  renderWizard('Date,Amount,Details,tag,labels\n2026-01-02,-4.50,Kaffee,health,vacation;Fun\n2026-01-03,-1.00,Tee,,' + many + '\n')
+  const user = userEvent.setup()
+  await openCheck(user)
+  // "health" is a reporting tag and "vacation" a budget tag already: both are left out of the row
+  expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).toHaveTextContent(/Kaffee\s*Fun/)
+  expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).not.toHaveTextContent(/health|vacation/)
+  expect(problemRow('Tee')).toHaveTextContent('More than 50 reporting tags')
+  expect(within(problemRow('Tee')).queryByRole('button', { name: 'Skip this row' })).not.toBeInTheDocument()
+  expect(importButton()).toHaveTextContent('Import 1 transaction')
+})
+
 it('rows that will be left out sit in the list in file order, with the reason and the line from the file', async () => {
   renderWizard(PROBLEMS)
   const user = userEvent.setup()

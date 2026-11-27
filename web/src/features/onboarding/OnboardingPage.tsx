@@ -62,11 +62,18 @@ export function OnboardingPage() {
   const [skippingAll, setSkippingAll] = useState(false)
   const [importResult, setImportResult] = useState<{ result: ImportResult; retry?: RetryFailedChunks } | null>(null)
   const completing = useRef(false)
+  // an import's result dialog holds the page: completing would navigate away from it
+  const resultShown = useRef(false)
+  const finishWaiting = useRef(false)
   const autoCompleted = useRef(false)
   // where a completion lands, kept so the Finish retry after a failure goes there too
   const landing = useRef<string>(RouterPage.BUDGET)
 
   const finish = useCallback(async () => {
+    if (resultShown.current) {
+      finishWaiting.current = true
+      return
+    }
     if (completing.current) return
     completing.current = true
     try {
@@ -132,6 +139,19 @@ export function OnboardingPage() {
     else setSelected(key)
   }
 
+  const showImportResult = (result: ImportResult, retry?: RetryFailedChunks) => {
+    resultShown.current = true
+    setImportResult({ result, retry })
+  }
+  const closeImportResult = () => {
+    setImportResult(null)
+    resultShown.current = false
+    if (finishWaiting.current) {
+      finishWaiting.current = false
+      void finish().catch(() => undefined)
+    }
+  }
+
   const Body = STEP_BODIES[active]
   const coreStepsDone = steps.filter((s) => s.key === 'categories' || s.key === 'accounts').every((s) => s.state === 'done')
 
@@ -170,11 +190,11 @@ export function OnboardingPage() {
           ) : null}
         </div>
       ) : null}
-      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} onImportResult={(result, retry) => setImportResult({ result, retry })} />}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} onImportResult={showImportResult} />}
       <ImportResultDialog
         open={importResult !== null}
         result={importResult?.result ?? null}
-        onClose={() => setImportResult(null)}
+        onClose={closeImportResult}
         onRetry={
           importResult?.retry
             ? async () => {

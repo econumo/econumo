@@ -494,7 +494,8 @@
         "status_new": "Categoría nueva",
         "status_existing": "Tu categoría existente",
         "kind_expense": "gasto",
-        "kind_income": "ingreso"
+        "kind_income": "ingreso",
+        "kind_both": "ingreso y gasto"
       },
       "description": {
         "none": "El archivo no tiene descripción",
@@ -532,7 +533,11 @@
           "labels": "Etiquetas de informes en tu archivo"
         },
         "status_new": "Etiqueta nueva",
-        "status_existing": "Tu etiqueta existente"
+        "status_existing": "Tu etiqueta existente",
+        "status_taken": {
+          "tag": "Se omite: ya es una etiqueta de informes",
+          "labels": "Se omite: ya es una etiqueta de presupuesto"
+        }
       },
       "preview": {
         "title": "Esto es lo que se añadirá",
@@ -561,7 +566,8 @@
         "no_amount": "Sin importe legible",
         "no_account": "Sin nombre de cuenta",
         "user_skipped": "Omitida por ti",
-        "unconfirmed": "Enviada, pero se perdió la respuesta: revisa la cuenta"
+        "unconfirmed": "Enviada, pero se perdió la respuesta: revisa la cuenta",
+        "too_many_labels": "Más de 50 etiquetas de informes"
       },
       "continue": "Continuar",
       "step_of": "Paso {n} de {total} · {title}",

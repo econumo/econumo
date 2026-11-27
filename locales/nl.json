@@ -494,7 +494,8 @@
         "status_new": "Nieuwe categorie",
         "status_existing": "Uw bestaande categorie",
         "kind_expense": "uitgave",
-        "kind_income": "inkomsten"
+        "kind_income": "inkomsten",
+        "kind_both": "inkomsten en uitgave"
       },
       "description": {
         "none": "Het bestand heeft geen omschrijving",
@@ -532,7 +533,11 @@
           "labels": "Rapportagetags in uw bestand"
         },
         "status_new": "Nieuwe tag",
-        "status_existing": "Uw bestaande tag"
+        "status_existing": "Uw bestaande tag",
+        "status_taken": {
+          "tag": "Weggelaten: al een rapportagetag",
+          "labels": "Weggelaten: al een budgettag"
+        }
       },
       "preview": {
         "title": "Dit wordt toegevoegd",
@@ -561,7 +566,8 @@
         "no_amount": "Geen leesbaar bedrag",
         "no_account": "Geen rekeningnaam",
         "user_skipped": "Door u overgeslagen",
-        "unconfirmed": "Verstuurd, maar het antwoord ging verloren: controleer de rekening"
+        "unconfirmed": "Verstuurd, maar het antwoord ging verloren: controleer de rekening",
+        "too_many_labels": "Meer dan 50 rapportagetags"
       },
       "continue": "Doorgaan",
       "step_of": "Stap {n} van {total} · {title}",

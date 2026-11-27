@@ -494,7 +494,8 @@
         "status_new": "Nuova categoria",
         "status_existing": "La tua categoria esistente",
         "kind_expense": "spesa",
-        "kind_income": "entrata"
+        "kind_income": "entrata",
+        "kind_both": "entrata e spesa"
       },
       "description": {
         "none": "Il file non ha una descrizione",
@@ -532,7 +533,11 @@
           "labels": "Tag per i report nel tuo file"
         },
         "status_new": "Nuovo tag",
-        "status_existing": "Il tuo tag esistente"
+        "status_existing": "Il tuo tag esistente",
+        "status_taken": {
+          "tag": "Tralasciato: è già un tag per i report",
+          "labels": "Tralasciato: è già un tag di budget"
+        }
       },
       "preview": {
         "title": "Ecco cosa verrà aggiunto",
@@ -561,7 +566,8 @@
         "no_amount": "Nessun importo leggibile",
         "no_account": "Nessun nome del conto",
         "user_skipped": "Saltata da te",
-        "unconfirmed": "Inviata, ma la risposta è andata persa: controlla il conto"
+        "unconfirmed": "Inviata, ma la risposta è andata persa: controlla il conto",
+        "too_many_labels": "Più di 50 tag per i report"
       },
       "continue": "Continua",
       "step_of": "Passo {n} di {total} · {title}",

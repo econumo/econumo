@@ -19,6 +19,19 @@ const noFixes = new Map<number, RowFix>()
 const STATEMENT = 'Datum;Betrag;Text\n04.03.2026;-4,50;Kaffee\nirgendwann;12,00;Miete\n'
 
 describe('prepareRows', () => {
+  it('leaves out a row with more distinct reporting tags than a transaction holds, as the server would refuse it', () => {
+    const many = Array.from({ length: 51 }, (_, i) => `t${i}`).join('|')
+    // 50 distinct names once letter case and blanks are folded, like the server counts them
+    const fifty = [...Array.from({ length: 50 }, (_, i) => `t${i}`), 'T0', ' ', 't1'].join('|')
+    const file = parseCsvText(`Datum;Betrag;Text;Tags\n04.03.2026;-4,50;a;${many}\n05.03.2026;-1,00;b;${fifty}\n`)
+    const rows = prepareRows(file, answers({ extras: { payee: null, category: null, tag: null, labels: 3, labelsSeparator: '|' } }), noFixes)
+    expect(rows.map((r) => [r.status, r.reason])).toEqual([
+      ['skipped', 'too_many_labels'],
+      ['ok', null],
+    ])
+    expect(summarize(rows).byReason).toEqual({ too_many_labels: 1 })
+  })
+
   it('turns readable rows into transactions numbered as file lines (header = 1) with the raw line', () => {
     const [row] = prepareRows(parseCsvText(STATEMENT), answers(), noFixes)
     expect(row).toEqual({

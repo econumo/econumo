@@ -117,3 +117,52 @@ it('an import that left rows out shows the result, and Try the rest again sends 
   await user.click(screen.getByRole('button', { name: 'OK' }))
   expect(await screen.findByRole('heading', { name: 'What do you spend on?' }, { timeout: 5000 })).toBeInTheDocument()
 })
+
+it('a partial import as the last open step keeps its result on screen before onboarding completes', { timeout: 20000 }, async () => {
+  let option = 'categories,accounts,plan,!home_screen,!connect'
+  let completed = false
+  server.use(...coreHandlers({ user: userWith(option), budgets: [], categories: [] }))
+  server.use(
+    http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith(completed ? 'completed' : option) })),
+    http.post('*/api/v1/transaction/import-transaction-list', () => ok({ imported: 1, skipped: 1, errors: { 'Invalid amount format': [3] } })),
+    http.post('*/api/v1/onboarding/finish-import', () => {
+      option = 'import,' + option
+      return ok({ user: userWith(option), budgetId: fixtureWireBudget.meta.id })
+    }),
+    http.post('*/api/v1/user/complete-onboarding', () => {
+      completed = true
+      return ok({ user: userWith('completed') })
+    }),
+  )
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter(
+    [
+      { path: '/onboarding', element: <OnboardingPage /> },
+      { path: '/budget', element: <p>budget page</p> },
+    ],
+    { initialEntries: ['/onboarding'] },
+  )
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Bring in your history' }, { timeout: 5000 })
+  await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
+  await user.upload(await screen.findByLabelText('Choose a file'), new File([CSV], 'bank.csv', { type: 'text/csv' }))
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: /from “Account”/ }))
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Import 2 transactions' }))
+  expect(await screen.findByText('Import completed with errors')).toBeInTheDocument()
+  // the step settled behind the dialog, and the page waits for it
+  await waitFor(() => expect(option.startsWith('import,')).toBe(true))
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  expect(screen.getByText('Import completed with errors')).toBeInTheDocument()
+  expect(screen.queryByText('budget page')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'OK' }))
+  expect(await screen.findByText('budget page', {}, { timeout: 5000 })).toBeInTheDocument()
+  expect(completed).toBe(true)
+})

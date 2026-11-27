@@ -494,7 +494,8 @@
         "status_new": "Neue Kategorie",
         "status_existing": "Ihre bestehende Kategorie",
         "kind_expense": "Ausgabe",
-        "kind_income": "Einnahme"
+        "kind_income": "Einnahme",
+        "kind_both": "Einnahme und Ausgabe"
       },
       "description": {
         "none": "Die Datei hat keine Beschreibung",
@@ -532,7 +533,11 @@
           "labels": "Auswertungs-Tags in Ihrer Datei"
         },
         "status_new": "Neues Tag",
-        "status_existing": "Ihr bestehendes Tag"
+        "status_existing": "Ihr bestehendes Tag",
+        "status_taken": {
+          "tag": "Weggelassen: schon ein Auswertungs-Tag",
+          "labels": "Weggelassen: schon ein Budget-Tag"
+        }
       },
       "preview": {
         "title": "Das wird hinzugefügt",
@@ -561,7 +566,8 @@
         "no_amount": "Kein lesbarer Betrag",
         "no_account": "Kein Kontoname",
         "user_skipped": "Von Ihnen übersprungen",
-        "unconfirmed": "Gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto"
+        "unconfirmed": "Gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto",
+        "too_many_labels": "Mehr als 50 Auswertungs-Tags"
       },
       "continue": "Weiter",
       "step_of": "Schritt {n} von {total} · {title}",

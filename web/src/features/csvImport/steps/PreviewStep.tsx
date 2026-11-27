@@ -14,6 +14,7 @@ import { parseAmountCell, type DecimalSeparator } from '../amounts'
 import { summarize, type PreparedRow, type RowFix, type StepId } from '../prepare'
 import { existingCodes, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
 import { PerRowAccounts } from './AccountStep'
+import { useNameResolution, type ResolvedNames } from '../ownerLists'
 
 // rows shown before "show more"; rows that will be left out are always shown, so none needs hunting for
 const PAGE = 100
@@ -29,17 +30,17 @@ function StepLink({ step, goTo, className, label, children }: { step: StepId; go
   )
 }
 
-function TransactionRow({ row, account, perRow, labelsSeparator, goTo }: {
+function TransactionRow({ row, names, account, perRow, goTo }: {
   row: PreparedRow
+  /** what of the row's names lands: a name the import leaves out is not shown */
+  names: ResolvedNames | undefined
   account: AccountView
   perRow: boolean
-  labelsSeparator: string
   goTo: (step: StepId) => void
 }) {
   const { t, i18n } = useTranslation()
   const signed = row.amount === null ? null : formatSigned(row.amount, account.currency)
-  const labels = row.labels === '' ? [] : row.labels.split(labelsSeparator).map((l) => l.trim()).filter((l) => l !== '')
-  const extras = [row.payee, row.category, row.tag, ...labels].filter((v) => v !== '')
+  const extras = names ? [names.payee, names.category, names.tag, ...names.labels].filter((v) => v !== '') : []
   const details = [...(perRow && account.name ? [account.name] : []), ...extras]
   const fullDate = row.date === null ? '' : [formatDay(row.date, i18n.language), row.time].filter(Boolean).join(' ')
   return (
@@ -163,6 +164,7 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
   const { data: accounts = [] } = useAccounts()
   const { rows, answers } = state
   const accountView = useAccountView(answers)
+  const resolution = useNameResolution(rows, answers)
   const summary = useMemo(() => summarize(rows), [rows])
   const [limit, setLimit] = useState(PAGE)
   const perRow = answers.account?.kind === 'column'
@@ -255,9 +257,9 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
               <TransactionRow
                 key={row.fileRow}
                 row={row}
+                names={resolution.byRow.get(row.fileRow)}
                 account={accountView(row)}
                 perRow={perRow}
-                labelsSeparator={answers.extras.labelsSeparator || ';'}
                 goTo={goTo}
               />
             ) : (
