@@ -642,7 +642,7 @@ navigation (single-pane vs sidebar).
 - [ ] Account page in a narrow desktop browser window (phone layout): press and
       hold a row with the mouse for about half a second, then drag; a plain
       click still opens the preview.
-- [ ] CSV import whose Category, Payee or Extra details step uses a column as
+- [ ] CSV import whose Category, Payee or Tags step uses a column as
       Category, Payee or Budget tag, naming a new one in different letter cases ("Snacks" on one row,
       "snacks" on a later one), creates it once, as first spelled; for a
       category the wizard's note reads "1 new category will be created".
@@ -753,7 +753,7 @@ navigation (single-pane vs sidebar).
       steps Account, Date, Amount, Category, Description, Payee, Extra
       details, Check and import as a vertical list, and at the bottom "N
       transactions ready · M left out"; on the right "Step 2 of 8 · Date" ("of
-      7" when Extra details is skipped), the step's question as a
+      7" when Tags is skipped), the step's question as a
       heading, its answers, and Back / Continue (Import on the last step;
       no Back on Account). Your file accepts a .csv picked or dropped; a file
       over 10 MB says "This file is larger than 10 MB", an empty one "This file
@@ -770,7 +770,7 @@ navigation (single-pane vs sidebar).
       "Strata · Interest · Car Insurance …", Description "REWE Markt Berlin ·
       Gehalt November · Spotify …", Payee "WealthSimple · ICBC · IFS Premium
       …", the per-row account
-      "Your file names the account for each transaction", Extra details "We’ll
+      "Your file names the account for each transaction", Tags "We’ll
       also bring along:" with "Budget tag: … (from “tag”)" lines — with the
       file's own name in small grey text under it ("from “Buchungstag”") and a
       quiet "Change" on the right. Under the per-row account's row, a second
@@ -778,21 +778,27 @@ navigation (single-pane vs sidebar).
       file" over one line per account (no form fields): "WS Cash · 572
       transactions" on the left and "New account · CAD" with a quiet "Change
       currency" on the right, or "Your existing account · EUR" (the status
-      drops under the name on a phone). The footer's primary button reads "Looks right"
-      instead of Continue (goes to the next step; never an empty footer, also
-      on Account). Open questions (date order, decimal separator, "Spending
+      drops under the name on a phone). The footer's primary button reads Continue on
+      every step (Import on Check); over a guessed answer it accepts it and
+      goes to the next step (never an empty footer, also on Account). A step
+      with a complete guess opens on its answer, not its list, also when the
+      guess arrives after the step was opened (an AI reply, a part another
+      step gave back): Amount with a good guess opens on "−5.50 · +100.00 …"
+      from “amount”. Open questions (date order, decimal separator, "Spending
       shows as" with Flip the signs, Reporting tags' separator) and the grey
-      skipped-rows notes stay visible under the answer. "Looks right" and
+      skipped-rows notes stay visible under the answer. Continue and
       Change answer nothing: an AI reply landing later still fills the step.
       Change puts the choices IN PLACE of the answer row (the answer is not
-      shown twice; the footer button reads Continue), with the question
+      shown twice), with the question
       ("Which of these is the account?") and the short list; picking one
       (also the one already chosen) closes the list and shows the answer
-      again. Money in and money out, and Extra details, take more than one
-      pick: their list stays open, with a quiet "Done" that goes back to the
-      answer. An opened list stays open when the step is left and opened
+      again. Money in and money out take two picks: the list stays open
+      after the first and folds back to the answer after the second. Tags
+      take more than one pick: its list stays open, with a quiet "Done" that
+      goes back to the answer. An opened list stays open when the step is left and opened
       again. A step with nothing to show (no guess, or values that read as
-      nothing) opens on its choices; picking one that reads shows the answer
+      nothing) opens on its choices, and shows its answer as soon as a guess
+      arrives while it is open (unless Change opened the list); picking one that reads shows the answer
       row. The choices are ONE rounded list with thin lines between rows (no
       grid of cards), on Account's per-row option, Date, Amount ("Which of
       these is money in?" / "…money out?" one under the other), Category,
@@ -807,7 +813,7 @@ navigation (single-pane vs sidebar).
       currency codes such as CAD/EUR, not ids, not long free text); Date —
       dates; Amount — money; Category — short text that repeats (not
       currency codes, not ids), the fewest different names first;
-      Description — text, the longest first; Payee and Extra details — text. A part another step already uses is not listed. A quiet
+      Description — text, the longest first; Payee and Tags — text. A part another step already uses is not listed. A quiet
       "Show all" under the list adds every other non-empty part, each one
       another step uses with a small grey tag ("used for payee", "used for
       description"); when nothing fits, the whole list shows at once. On an
@@ -821,21 +827,24 @@ navigation (single-pane vs sidebar).
       ("New: Girokonto · EUR", "From WS Cash and 2 more accounts", "Oct 2,
       2026", "−12.50 · +2,500.00", "Strata · Interest", "REWE Markt Berlin",
       "WealthSimple · ICBC", "With budget tag", "12 to import · 1 left out";
-      "None" for a Category or Payee left out; never a header name) and a
-      green check once answered; the open step is highlighted with its number
+      "None" for a Category or Payee left out; never a header name). A
+      step turns into a green check only once the user has been on it and left
+      it (Continue there, or another step picked while it was open); a guessed
+      answer alone keeps the neutral numbered circle with its answer in grey
+      under the name, and the steps an Econumo export skips stay numbered
+      (Import is not held back by unseen steps); the open step is highlighted with its number
       in magenta. A step whose required answer is missing (Account, Date,
       Amount) shows a yellow warning mark instead, and Import stays disabled
       until those are answered. Category and Payee are optional and never
       carry a warning or hold Import back. Category and Payee are optional and never
       carry a warning or hold Import back. Rows that will be skipped never put a mark on
-      a step: the step says so in grey with an info icon. Extra details appears
+      a step: the step says so in grey with an info icon. Tags appears
       only when some column is left unused by the steps above it (Category
       and Payee included). On a 390 px phone the list is the
       first screen, with "We read your file and filled in what we could. Tap a
       step to change it." and a "Check N transactions" button; tapping a step
       opens it full screen with ← (back to the list), the question and Back /
-      Continue at the bottom ("Looks right" in its place while a guess is
-      shown). Before a file is read the phone shows Your file
+      Continue at the bottom. Before a file is read the phone shows Your file
       with ✕.
 - [ ] Bank statement (`Buchungstag;Betrag;Verwendungszweck`, decimal comma,
       `dd.mm.yyyy` dates with a day above 12): Date, Amount and Description are
@@ -859,9 +868,9 @@ navigation (single-pane vs sidebar).
       readings (−1.5 and −1500, in the UI language's number format) as choices; the choice moves every amount on
       Check. A file with `250,00` or `2.500,00` asks nothing.
 - [ ] Flip signs: a file that writes spending as positive (`12.50` for a
-      purchase): Amount shows "Spending shows as: 12.50" with a real value from
-      the file, written as the file writes it (a decimal-comma file shows
-      `-12,50`, and `12,50` once flipped); turning on "Flip the signs" makes that row −12.50 on Check and
+      purchase): Amount shows "Spending shows as: −100.00", a fixed example in
+      the file's decimal notation (a decimal-comma file shows `−100,00`), and
+      `100.00` once flipped; turning on "Flip the signs" makes that row −12.50 on Check and
       income positive; the ✓ answer shows the first three signed amounts as
       they will be added (income green). In the choices, "One amount, minus
       for spending" / "Money in and money out" switch how the file shows
@@ -878,7 +887,7 @@ navigation (single-pane vs sidebar).
       Category ("How are the payments sorted?") opens on "Strata · Interest ·
       Car Insurance …" from “category”, Payee ("Who was paid, or who paid
       you?") on "WealthSimple · ICBC · IFS Premium …" from “payee”, each with
-      "Looks right". Change shows "Which of these is the category?" / "Which
+      Continue. Change shows "Which of these is the category?" / "Which
       of these says who was paid?", the short list, "Show all", the "Already
       used" group and "The file has no category" / "The file has no payee";
       picking None answers "Categories are left out. You can sort
@@ -893,7 +902,7 @@ navigation (single-pane vs sidebar).
       neither (the German `Buchungstag;Betrag;Verwendungszweck` file) answers
       calmly: "Your file has no categories. You can sort transactions into
       categories later." and "Your file doesn’t say who was paid. You can add
-      payees later.", with Looks right, no warning mark, and Import enabled.
+      payees later.", with Continue, no warning mark, and Import enabled.
       On Description, a part Payee uses is listed only after "Show all", with
       "used for payee"; one that ends up on Description anyway (e.g. by the
       AI guess) is never also uploaded as a category or payee. Category
@@ -902,7 +911,7 @@ navigation (single-pane vs sidebar).
       counted), within its kind (an income row naming the expense category
       "Food" counts a new income "Food"). The imported rows carry exactly
       those values.
-- [ ] Extra details (a file with Tags and Labels columns from another app):
+- [ ] Tags (a file with Tags and Labels columns from another app):
       recognised headers come preselected and the step opens on "We’ll also
       bring along:" with one line per detail ("Reporting tags: Mexico2025 ·
       #oregon2410 (from “labels”)"). Change shows one row per detail (Budget
@@ -959,7 +968,7 @@ navigation (single-pane vs sidebar).
       chosen and Account carries no warning) lists only accounts the user owns
       or holds an accepted admin/user share of (not a guest share, not a
       pending invitation), and rows imported into a shared one land there.
-      With a user (not admin) share, Category, Payee and Extra details each
+      With a user (not admin) share, Category, Payee and Tags each
       say the categories, payees or tags the owner doesn't have yet are left
       out, and the rows import
       with the owner's existing ones and without the new ones (nothing is

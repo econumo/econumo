@@ -417,7 +417,7 @@
         "category": "Kategoria",
         "description": "Opis",
         "payee": "Odbiorca",
-        "extras": "Dodatkowe dane",
+        "extras": "Tagi",
         "preview": "Sprawdź i importuj"
       },
       "file": {
@@ -577,7 +577,6 @@
         "nothing": "Brak"
       },
       "from": "z „{name}”",
-      "looks_right": "Zgadza się",
       "change": "Zmień",
       "done": "Gotowe"
     },

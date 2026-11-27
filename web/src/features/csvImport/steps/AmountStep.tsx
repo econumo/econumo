@@ -1,7 +1,6 @@
-import { Fragment, useId, useMemo } from 'react'
+import { Fragment, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Switch } from '@/components/ui/switch'
-import { isNegative } from '@/lib/decimal'
 import { pluralPick } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { formatSigned, useAccountView } from '../accountView'
@@ -17,29 +16,10 @@ import { hasGuess, missingAnswer, type StepBodyProps } from '../wizard'
 
 type Amount = WizardAnswers['amount']
 
-// A real value from the file: its first negative amount, else its first amount,
-// written as the file writes it, with the sign the current setting gives it.
-function spendingExample(values: string[], amount: Amount): string | null {
-  let example: string | null = null
-  for (const value of values) {
-    const read = parseAmountCell(value, amount.sep)
-    if (read === null) continue
-    if (isNegative(read)) {
-      example = value
-      break
-    }
-    example ??= value
-  }
-  return example === null ? null : amount.flip ? flipWritten(example) : example
-}
-
-// the sign is turned around in the file's own writing, so "-12,50" reads "12,50", not "12.50";
-// currency marks around the number ("EUR -12,50", "12,50 €") stay where they are
-function flipWritten(value: string): string {
-  if (/\(.*\d.*\)/.test(value)) return value.replace(/\((.*)\)/, '$1')
-  if (/[-−]\s*(?=[\d.,])/.test(value)) return value.replace(/[-−]\s*(?=[\d.,])/, '')
-  if (/\d\s*[-−]/.test(value)) return value.replace(/(\d)\s*[-−]/, '$1')
-  return value.replace(/\+?(?=[\d.,])/, '-')
+// a fixed round example in the file's decimal notation: a real value from the file (often "-1") reads oddly
+function spendingExample(amount: Amount): string {
+  const value = `100${amount.sep}00`
+  return amount.flip ? value : `−${value}`
 }
 
 function readAs(value: string, sep: DecimalSeparator, language: string): string {
@@ -55,22 +35,35 @@ function amountValues(file: ParsedFile, amount: Amount): string[] {
 
 const EXAMPLE_ROWS = 3
 
-export function AmountStep({ state, setAnswers, choosing, change, closeChoices }: StepBodyProps) {
+export function AmountStep({ state, setAnswers, choosing, change, closeChoices, keepChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const flipId = useId()
   const { amount } = state.answers
   const set = (patch: Partial<Amount>) => setAnswers('amount', { amount: { ...amount, ...patch } })
   const accountView = useAccountView(state.answers)
+  // money in and money out are two picks: the list folds once both sides were picked, not after the first
+  const picked = useRef(new Set<'in' | 'out'>())
+  const pickSide = (side: 'in' | 'out', patch: Partial<Amount>) => {
+    set(patch)
+    picked.current.add(side)
+    if (picked.current.size === 2) {
+      picked.current = new Set()
+      closeChoices()
+    } else {
+      keepChoices()
+    }
+  }
 
   const values = useMemo(() => amountValues(state.file, amount), [state.file, amount])
   const separator = useMemo(() => detectDecimalSeparator(values), [values])
-  const spending = amount.mode === 'single' && amount.column !== null ? spendingExample(values, amount) : null
+  const spending = amount.mode === 'single' && amount.column !== null ? spendingExample(amount) : null
   const separatorExample = separator.ambiguous ? separator.example : null
   // every row whose amount reads, also one left out for its date: hasGuess counts the same rows
   const readable = state.rows.filter((row) => row.amount !== null)
   const examples = readable.slice(0, EXAMPLE_ROWS)
   const guessed = hasGuess('amount', state)
   const open = choosing || !guessed
+  if (!open) picked.current.clear()
   const nameOf = (column: number | null) => (column === null ? null : fromName(state.profiles[column], state.profiles, t))
   const from =
     amount.mode === 'single'
@@ -114,7 +107,7 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices }
                 profiles={state.profiles}
                 label={moneyIn}
                 selected={amount.inColumn}
-                onSelect={(inColumn) => set({ inColumn })}
+                onSelect={(inColumn) => pickSide('in', { inColumn })}
                 candidates={candidates('amountIn', state.profiles, state.answers)}
                 tags={columnTags(state.answers, t, i18n.language, ['amountIn'])}
                 noneLabel={t('transactions.import_wizard.amount.none_in')}
@@ -123,7 +116,7 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices }
                 profiles={state.profiles}
                 label={moneyOut}
                 selected={amount.outColumn}
-                onSelect={(outColumn) => set({ outColumn })}
+                onSelect={(outColumn) => pickSide('out', { outColumn })}
                 candidates={candidates('amountOut', state.profiles, state.answers)}
                 tags={columnTags(state.answers, t, i18n.language, ['amountOut'])}
                 noneLabel={t('transactions.import_wizard.amount.none_out')}

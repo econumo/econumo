@@ -50,6 +50,7 @@ function Harness({ step, text, extras = noExtras, description = null, account = 
         choosing={choosing}
         change={() => setChoosing(true)}
         closeChoices={() => setChoosing(false)}
+        keepChoices={() => setChoosing(true)}
       />
       <output aria-label="answers">{JSON.stringify({ description: answers.description, ...answers.extras })}</output>
     </>

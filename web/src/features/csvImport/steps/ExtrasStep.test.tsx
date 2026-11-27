@@ -32,6 +32,7 @@ function Harness({ text, extras = noExtras, account = { kind: 'new', name: 'Main
         choosing
         change={() => {}}
         closeChoices={() => {}}
+        keepChoices={() => {}}
       />
       <output aria-label="extras">{JSON.stringify(answers.extras)}</output>
     </>

@@ -417,7 +417,7 @@
         "category": "分类",
         "description": "说明",
         "payee": "收款人",
-        "extras": "其他信息",
+        "extras": "标签",
         "preview": "核对并导入"
       },
       "file": {
@@ -577,7 +577,6 @@
         "nothing": "无"
       },
       "from": "来自“{name}”",
-      "looks_right": "没问题",
       "change": "更改",
       "done": "完成"
     },

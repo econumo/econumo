@@ -417,7 +417,7 @@
         "category": "Categorie",
         "description": "Omschrijving",
         "payee": "Begunstigde",
-        "extras": "Extra gegevens",
+        "extras": "Tags",
         "preview": "Controleren en importeren"
       },
       "file": {
@@ -577,7 +577,6 @@
         "nothing": "Geen"
       },
       "from": "uit ‘{name}’",
-      "looks_right": "Klopt",
       "change": "Wijzigen",
       "done": "Klaar"
     },

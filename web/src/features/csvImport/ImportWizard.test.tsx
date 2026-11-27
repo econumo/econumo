@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -58,7 +58,7 @@ it('picking a file in the dialog moves on to the Account step', async () => {
   expect(await screen.findByRole('heading', { name: 'Which account are these transactions from?' })).toBeInTheDocument()
 })
 
-it('any step opens from the step list, and Back and Looks right walk the steps in order', async () => {
+it('any step opens from the step list, and Back and Continue walk the steps in order', async () => {
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -67,26 +67,26 @@ it('any step opens from the step list, and Back and Looks right walk the steps i
   expect(currentStep()).toHaveAccessibleName(/^Amount/)
   await user.click(screen.getByRole('button', { name: 'Back' }))
   expect(screen.getByRole('heading', { name: 'When did each payment happen?' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Looks right' }))
-  await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(screen.getByRole('heading', { name: 'How are the payments sorted?' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(screen.getByRole('heading', { name: 'What was each payment for?' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(screen.getByRole('heading', { name: 'Who was paid, or who paid you?' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Looks right' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(screen.getByRole('heading', { name: 'Here is what will be added' })).toBeInTheDocument()
 })
 
 it('lists Category between Amount and Description, and Payee after Description', async () => {
   renderWizard({ initialFile: csv('Booking date,Amount,Details,Trip\n2026-01-02,-5.50,Coffee,Rome\n') })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  const titles = screen.getAllByRole('button', { name: /^(Account|Date|Amount|Category|Description|Payee|Extra details|Check and import)/ })
-  const order = ['Account', 'Date', 'Amount', 'Category', 'Description', 'Payee', 'Extra details', 'Check and import']
+  const titles = screen.getAllByRole('button', { name: /^(Account|Date|Amount|Category|Description|Payee|Tags|Check and import)/ })
+  const order = ['Account', 'Date', 'Amount', 'Category', 'Description', 'Payee', 'Tags', 'Check and import']
   expect(titles.map((b) => b.textContent)).toEqual(order.map((title) => expect.stringMatching(new RegExp(`^\\d*${title}`))))
 })
 
-it('a file with no category or payee answers both calmly with Looks right; they never need attention', async () => {
+it('a file with no category or payee answers both calmly; they never need attention', async () => {
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -94,10 +94,10 @@ it('a file with no category or payee answers both calmly with Looks right; they 
   expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('None')
   await user.click(screen.getByRole('button', { name: 'Category' }))
   expect(screen.getByText('Your file has no categories. You can sort transactions into categories later.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Payee' }))
   expect(screen.getByText('Your file doesn’t say who was paid. You can add payees later.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
 })
 
 it('picking the amount as the category moves it: Amount loses it and needs an answer, Import waits', async () => {
@@ -152,7 +152,7 @@ it('Category and Payee left as None never block Import', async () => {
   expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeEnabled()
 })
 
-it('a guessed step opens on its answer with Looks right in the footer; Change puts the choices in its place and brings Continue back', async () => {
+it('a guessed step opens on its answer with Continue in the footer; Change puts the choices in its place', async () => {
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -160,9 +160,7 @@ it('a guessed step opens on its answer with Looks right in the footer; Change pu
   expect(screen.getByText('Jan 2, 2026 · Jan 3, 2026')).toBeInTheDocument()
   expect(screen.getByText('from “Booking date”')).toBeInTheDocument()
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
-  // the footer's primary button accepts the guess
-  expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Change' }))
   expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_CHANGE_ANSWER, { step: 'date' })
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()
@@ -170,44 +168,104 @@ it('a guessed step opens on its answer with Looks right in the footer; Change pu
   // the answer row gives way to the list
   expect(screen.queryByText('from “Booking date”', { selector: 'div' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Looks right' })).not.toBeInTheDocument()
   // the list stays open after leaving the step and coming back
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   await user.click(screen.getByRole('button', { name: 'Back' }))
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()
 })
 
-it('a step with nothing guessed opens on its question, and picking an answer shows it with Looks right', async () => {
+it('a step with nothing guessed opens on its question, and picking an answer shows it', async () => {
   renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,1.00,x\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Looks right' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
   await user.click(screen.getByRole('radio', { name: /from “Day”/ }))
   expect(screen.queryByRole('radiogroup', { name: 'Which of these is the date?' })).not.toBeInTheDocument()
   expect(screen.getByText('from “Day”')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
 })
 
-it('Extra details is left out when every column is already used', async () => {
+const marker = (name: RegExp) => screen.getByRole('button', { name }).querySelector('span.rounded-full')
+
+it('a guessed step keeps its number until it is seen and left; a missing answer keeps its mark; Import is not held back', async () => {
+  renderWizard({ initialFile: csv('Booking date,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,100.00,Salary\n') })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(marker(/^Date/)).toHaveTextContent('2')
+  expect(marker(/^Date/)?.querySelector('svg')).toBeNull()
+  expect(screen.getByRole('button', { name: /^Date/ })).toHaveAccessibleDescription(/^Jan 2, 2026/)
+  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /^Date/ }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(marker(/^Date/)?.querySelector('svg.lucide-check')).not.toBeNull()
+  expect(marker(/^Description/)).toHaveTextContent(/\d/)
+  // left the account step without an answer: the mark stays
+  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+})
+
+it('steps never opened stay numbered and do not hold back Import', async () => {
+  renderWizard({ initialFile: csv(EXPORT, 'econumo.csv') })
+  await screen.findByRole('heading', { name: 'Here is what will be added' })
+  for (const name of [/^Account/, /^Date/, /^Amount/]) expect(marker(name)?.querySelector('svg')).toBeNull()
+  expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeEnabled()
+})
+
+it('a step that opened on its question shows the answer once a guess arrives', async () => {
+  let reply: () => void = () => {}
+  const replied = new Promise<void>((resolve) => (reply = resolve))
+  server.use(
+    http.get('*/api/v1/transaction/suggest-import-columns', async () => {
+      await replied
+      return HttpResponse.json({ success: true, message: '', data: { roles: { payee: 'Who' } } })
+    }),
+  )
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Who\n2026-01-02,-5.50,Coffee,Cafe Roma\n2026-01-03,100.00,Salary,ACME Ltd\n') })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('button', { name: /^Payee/ }))
+  expect(screen.getByRole('radiogroup', { name: 'Which of these says who was paid?' })).toBeInTheDocument()
+  reply()
+  await waitFor(() => expect(screen.queryByRole('radiogroup', { name: 'Which of these says who was paid?' })).not.toBeInTheDocument())
+  expect(screen.getByText('from “Who”')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument()
+})
+
+it('money in and money out keep the list open after the first pick and fold it after the second', async () => {
+  renderWizard({ initialFile: csv('Booking date,Foo,Bar,Details\n2026-01-02,,5.50,Coffee\n2026-01-03,100.00,,Salary\n') })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('button', { name: /^Amount/ }))
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'Money in and money out' }))
+  const moneyIn = () => screen.getByRole('radiogroup', { name: 'Which of these is money in?' })
+  const moneyOut = () => screen.getByRole('radiogroup', { name: 'Which of these is money out?' })
+  await user.click(within(moneyIn()).getByRole('radio', { name: /from “Foo”/ }))
+  expect(moneyOut()).toBeInTheDocument()
+  await user.click(within(moneyOut()).getByRole('radio', { name: /from “Bar”/ }))
+  expect(screen.queryByRole('radiogroup', { name: 'Which of these is money out?' })).not.toBeInTheDocument()
+  expect(screen.getByText('from “Foo” · from “Bar”')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
+})
+
+it('Tags is left out when every column is already used', async () => {
   renderWizard({ initialFile: csv(BANK) })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  expect(screen.queryByRole('button', { name: /^Extra details/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^Tags/ })).not.toBeInTheDocument()
 })
 
-it('Extra details is offered when the file has a column no step uses', async () => {
+it('Tags is offered when the file has a column no step uses', async () => {
   renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant,Trip\n2026-01-02,-5.50,Coffee,Cafe,Rome\n') })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  expect(screen.getByRole('button', { name: /^Extra details/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /^Tags/ })).toBeInTheDocument()
 })
 
-it('Extra details is left out when Category and Payee read the only columns left', async () => {
+it('Tags is left out when Category and Payee read the only columns left', async () => {
   renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee,Cafe\n') })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('Cafe')
-  expect(screen.queryByRole('button', { name: /^Extra details/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^Tags/ })).not.toBeInTheDocument()
 })
 
 it('marks an unanswered account and a date column that leaves rows unread', async () => {
@@ -226,7 +284,7 @@ it('with no date chosen yet, Amount still answers with the amounts the file read
   await user.click(screen.getByRole('button', { name: 'Amount' }))
   const items = screen.getAllByRole('listitem')
   expect(items.map((item) => item.textContent)).toEqual(expect.arrayContaining([expect.stringMatching(/^−5\.5/), expect.stringMatching(/^\+1/)]))
-  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
 })
 
 it('choosing a different date column on its step clears the warning', async () => {
@@ -292,7 +350,7 @@ it('an Econumo export’s Account step answers with the accounts the file names'
   expect(list).toHaveTextContent('Cash · 1 transaction')
   expect(list).toHaveTextContent('Bank · 1 transaction')
   expect(screen.queryByRole('radio', { name: /from “account_name”/ })).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
 })
 
 it('closing on the Date step reports the step it was closed on', async () => {

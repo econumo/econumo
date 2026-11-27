@@ -417,7 +417,7 @@
         "category": "Category",
         "description": "Description",
         "payee": "Payee",
-        "extras": "Extra details",
+        "extras": "Tags",
         "preview": "Check and import"
       },
       "file": {
@@ -577,7 +577,6 @@
         "nothing": "None"
       },
       "from": "from “{name}”",
-      "looks_right": "Looks right",
       "change": "Change",
       "done": "Done"
     },

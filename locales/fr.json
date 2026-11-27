@@ -417,7 +417,7 @@
         "category": "Catégorie",
         "description": "Description",
         "payee": "Bénéficiaire",
-        "extras": "Autres détails",
+        "extras": "Tags",
         "preview": "Vérifier et importer"
       },
       "file": {
@@ -577,7 +577,6 @@
         "nothing": "Aucun"
       },
       "from": "de « {name} »",
-      "looks_right": "C’est bon",
       "change": "Modifier",
       "done": "Terminé"
     },

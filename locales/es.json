@@ -417,7 +417,7 @@
         "category": "Categoría",
         "description": "Descripción",
         "payee": "Beneficiario",
-        "extras": "Más detalles",
+        "extras": "Etiquetas",
         "preview": "Revisar e importar"
       },
       "file": {
@@ -577,7 +577,6 @@
         "nothing": "Ninguno"
       },
       "from": "de «{name}»",
-      "looks_right": "Está bien",
       "change": "Cambiar",
       "done": "Listo"
     },

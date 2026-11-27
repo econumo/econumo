@@ -61,6 +61,7 @@ function StepHarness({ text, Step, onSet, open = true }: {
         choosing={choosing}
         change={() => setChoosing(true)}
         closeChoices={() => setChoosing(false)}
+        keepChoices={() => setChoosing(true)}
       />
       <output aria-label="first row date">{rows[0]?.date ?? ''}</output>
     </>,
@@ -339,9 +340,9 @@ it('counts the rows whose date cannot be read', () => {
 it('one amount column shows how spending looks with a switch to flip it; separate columns hide the switch', async () => {
   render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n'} Step={AmountStep} onSet={vi.fn()} />)
   const user = userEvent.setup()
-  expect(screen.getByText('Spending shows as: -4.50')).toBeInTheDocument()
+  expect(screen.getByText('Spending shows as: −100.00')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
-  expect(screen.getByText('Spending shows as: 4.50')).toBeInTheDocument()
+  expect(screen.getByText('Spending shows as: 100.00')).toBeInTheDocument()
   await user.click(screen.getByRole('radio', { name: 'Money in and money out' }))
   expect(screen.queryByRole('switch', { name: 'Flip the signs' })).not.toBeInTheDocument()
   expect(screen.getByRole('radiogroup', { name: 'Which of these is money in?' })).toBeInTheDocument()
@@ -358,7 +359,8 @@ it('with separate columns, each side picks its own column, and either side can b
   await user.click(moneyIn().getByRole('radio', { name: /from “In”/ }))
   expect(moneyIn().getByRole('radio', { name: /from “In”/ })).toBeChecked()
   await user.click(moneyOut().getByRole('radio', { name: /from “Out”/ }))
-  expect(moneyOut().getByRole('radio', { name: /from “Out”/ })).toBeChecked()
+  expect(onSet).toHaveBeenLastCalledWith('amount', { amount: expect.objectContaining({ inColumn: 2, outColumn: 3 }) })
+  await user.click(screen.getByRole('button', { name: 'Change' }))
   expect(moneyIn().getByRole('radio', { name: /from “Out”/ })).toHaveAccessibleDescription('used for money out')
   await user.click(moneyOut().getByRole('radio', { name: 'None of these is money out' }))
   expect(onSet).toHaveBeenLastCalledWith('amount', { amount: expect.objectContaining({ inColumn: 2, outColumn: null }) })
@@ -379,28 +381,20 @@ it('rows whose amount cannot be read are a quiet note, not a warning', () => {
   expect(screen.getByText('1 row has no readable amount and will be skipped')).toHaveClass('text-muted-foreground')
 })
 
-it('spending is shown with the file’s first negative amount, as it will be imported', async () => {
-  render(<StepHarness text={'Date,Amount\n2026-01-02,12.00\n2026-01-03,-4.50\n'} Step={AmountStep} onSet={vi.fn()} />)
+it('spending is shown as a round example, not a value from the file', async () => {
+  render(<StepHarness text={'Date,Amount\n2026-01-02,12.00\n2026-01-03,-1\n'} Step={AmountStep} onSet={vi.fn()} />)
   const user = userEvent.setup()
-  expect(screen.getByText('Spending shows as: -4.50')).toBeInTheDocument()
+  expect(screen.getByText('Spending shows as: −100.00')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
-  expect(screen.getByText('Spending shows as: 4.50')).toBeInTheDocument()
+  expect(screen.getByText('Spending shows as: 100.00')).toBeInTheDocument()
 })
 
-it('spending is written the way the file writes it, a decimal comma included', async () => {
+it('the spending example is written in the file’s decimal notation', async () => {
   render(<StepHarness text={'Datum;Betrag\n03.11.2026;-12,50\n05.11.2026;2.500,00\n'} Step={AmountStep} onSet={vi.fn()} />)
   const user = userEvent.setup()
-  expect(screen.getByText('Spending shows as: -12,50')).toBeInTheDocument()
+  expect(screen.getByText('Spending shows as: −100,00')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
-  expect(screen.getByText('Spending shows as: 12,50')).toBeInTheDocument()
-})
-
-it('with no negative amount, spending is shown with the file’s first amount, as it will be imported', async () => {
-  render(<StepHarness text={'Date,Amount\n2026-01-02,12.00\n2026-01-03,3.00\n'} Step={AmountStep} onSet={vi.fn()} />)
-  const user = userEvent.setup()
-  expect(screen.getByText('Spending shows as: 12.00')).toBeInTheDocument()
-  await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
-  expect(screen.getByText('Spending shows as: -12.00')).toBeInTheDocument()
+  expect(screen.getByText('Spending shows as: 100,00')).toBeInTheDocument()
 })
 
 it('a guessed answer shows no choices; Change puts them in its place without answering anything', async () => {
@@ -424,7 +418,7 @@ it('a guessed answer shows no choices; Change puts them in its place without ans
   expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument()
 })
 
-it('with money in and out, the list stays open for the second pick and Done goes back to the answer', async () => {
+it('with money in and out, the list stays open for the second pick and folds back to the answer after it', async () => {
   render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n2026-01-03,7.00,7.00,\n'} Step={AmountStep} onSet={vi.fn()} open={false} />)
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Change' }))
@@ -432,7 +426,6 @@ it('with money in and out, the list stays open for the second pick and Done goes
   await user.click(within(screen.getByRole('radiogroup', { name: 'Which of these is money in?' })).getByRole('radio', { name: /from “In”/ }))
   expect(screen.getByRole('radiogroup', { name: 'Which of these is money out?' })).toBeInTheDocument()
   await user.click(within(screen.getByRole('radiogroup', { name: 'Which of these is money out?' })).getByRole('radio', { name: /from “Out”/ }))
-  await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(screen.queryByRole('radiogroup', { name: 'Which of these is money out?' })).not.toBeInTheDocument()
   expect(screen.getByText('from “In” · from “Out”')).toBeInTheDocument()
 })

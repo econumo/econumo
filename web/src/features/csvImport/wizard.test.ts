@@ -34,7 +34,7 @@ it('a new account goes to the first visible folder, a hidden one only when all a
   expect(newAccountFolderId([])).toBeNull()
 })
 
-it('Extra details stays listed while it is open, even with no free column left', () => {
+it('Tags stays listed while it is open, even with no free column left', () => {
   const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [], internal: false, filled: 1, distinct: 1, averageLength: 1, codes: false }))
   expect(visibleSteps(answers({}), profiles)).not.toContain('extras')
   expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'category', 'description', 'payee', 'extras', 'preview'])
@@ -155,7 +155,7 @@ it('a guessed category or payee on an Account, Date, Amount or Description colum
   expect(releaseTakenExtras(before).extras).toMatchObject({ payee: null, category: null })
 })
 
-it('Extra details offers neither the category nor the payee column, and a tag on either is released', () => {
+it('Tags offers neither the category nor the payee column, and a tag on either is released', () => {
   const profiles = [0, 1, 2, 3, 4, 5].map((i) => text(i))
   const chosen = answers({ extras: { payee: 3, category: 4, tag: 3, labels: 4, labelsSeparator: ';' } })
   expect(unusedColumns(chosen, profiles).map((p) => p.index)).toEqual([5])

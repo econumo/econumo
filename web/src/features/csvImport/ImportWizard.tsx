@@ -27,7 +27,6 @@ import {
   claimPicked,
   defaultAccountName,
   distinctNames,
-  hasGuess,
   missingAnswer,
   nameKey,
   newAccountFolderId,
@@ -102,6 +101,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const [touched, setTouched] = useState<ReadonlySet<StepId>>(() => new Set())
   // steps whose list of choices was opened with Change; not "touched": opening it answers nothing
   const [choosing, setChoosing] = useState<ReadonlySet<StepId>>(() => new Set())
+  // steps the user has seen and left: only these show a check; a guess alone stays a numbered step
+  const [visited, setVisited] = useState<ReadonlySet<StepId>>(() => new Set())
   const [fixes, setFixes] = useState<ReadonlyMap<number, RowFix>>(() => new Map())
   const [step, setStep] = useState<StepId>('file')
   // a phone shows the step list first; picking a step opens it over the list
@@ -124,6 +125,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     setAnswersState(null)
     setTouched(new Set())
     setChoosing(new Set())
+    setVisited(new Set())
     setFixes(new Map())
     setStep('file')
     setPhoneList(false)
@@ -219,7 +221,13 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const state: LoadedWizardState | null =
     loaded && answers ? { ...loaded, answers, touched, fixes, rows, isExport } : null
 
+  const leaveStep = () => {
+    if (visited.has(step)) return
+    setVisited((prev) => new Set(prev).add(step))
+  }
   const openStep = (next: StepId) => {
+    // on a phone's step list the current step was not on screen, so leaving it is not seeing it
+    if (next !== step && !phoneList) leaveStep()
     setStep(next)
     setPhoneList(false)
   }
@@ -315,10 +323,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     setChoosing((prev) => new Set(prev).add(step))
     trackEvent(METRICS.TRANSACTION_IMPORT_CHANGE_ANSWER, { step })
   }
-  // A step that opens on its list of choices keeps it open until a pick closes it: in and out
-  // columns are two picks, and the first must not fold the list away under the pointer. Set
-  // during render, so the list never flickers shut.
-  if (state !== null && step !== 'file' && step !== 'preview' && !choosing.has(step) && !hasGuess(step, state)) {
+  const keepChoices = () => {
+    if (choosing.has(step)) return
     setChoosing((prev) => new Set(prev).add(step))
   }
   const closeChoices = () => {
@@ -329,8 +335,6 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       return next
     })
   }
-  // over a guessed answer the footer's primary button accepts it: "Looks right" instead of Continue
-  const guessShown = state !== null && !choosing.has(step) && hasGuess(step, state)
 
   const Body = step === 'file' ? null : STEP_BODIES[step]
   const okCount = importCount
@@ -352,7 +356,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
           t,
           language: i18n.language,
         }),
-        answered: id !== 'preview' && !missingAnswer(id, state.answers),
+        answered: id !== 'preview' && visited.has(id) && !missingAnswer(id, state.answers),
         warning: missingAnswer(id, state.answers),
       }))
     : listed.map((id) => ({ id, title: t(`transactions.import_wizard.steps.${id}`), summary: '', answered: false, warning: false }))
@@ -377,7 +381,10 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       question={question}
       ready={state ? pluralPick(t('transactions.import_wizard.ready', { skipped: leftOut }), okCount, i18n.language) : null}
       phoneList={phoneList}
-      onPhoneBack={() => setPhoneList(true)}
+      onPhoneBack={() => {
+        leaveStep()
+        setPhoneList(true)
+      }}
       phoneCheck={state ? { label: pluralPick(t('transactions.import_wizard.check_button'), okCount, i18n.language), onClick: () => openStep('preview') } : null}
       status={
         <>
@@ -401,7 +408,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
           <div className="ml-auto" />
           {step !== 'preview' ? (
             <Button type="button" className="h-10 px-5" disabled={state === null} onClick={goNext}>
-              {t(guessShown ? 'transactions.import_wizard.looks_right' : 'transactions.import_wizard.continue')}
+              {t('transactions.import_wizard.continue')}
             </Button>
           ) : (
             // a long count or language wraps to two lines instead of running out of the button
@@ -423,6 +430,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
             choosing={choosing.has(step)}
             change={changeStep}
             closeChoices={closeChoices}
+            keepChoices={keepChoices}
           />
         </fieldset>
       ) : (

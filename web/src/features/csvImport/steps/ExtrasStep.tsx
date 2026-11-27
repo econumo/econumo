@@ -19,7 +19,7 @@ const SEPARATOR_NAMES: Record<string, string> = {
   '\n': 'transactions.import_wizard.extras.newline',
 }
 
-export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices }: StepBodyProps) {
+export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, keepChoices }: StepBodyProps) {
   const { t, i18n } = useTranslation()
   const { data: tags = [] } = useTags()
   const { data: labels = [] } = useLabels()
@@ -50,6 +50,7 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices }
     for (const r of ROLES) if (column !== null && next[r] === column) next[r] = null
     next[role] = column
     setAnswers('extras', { extras: next })
+    keepChoices()
   }
 
   const setSeparator = (value: string) => setAnswers('extras', { extras: { ...extras, labelsSeparator: value } })

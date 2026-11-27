@@ -31,6 +31,8 @@ export interface StepBodyProps {
   change: () => void
   /** a pick was made: back to the answer */
   closeChoices: () => void
+  /** a pick in a step that takes more than one: its list stays open until Done, also once the answer is complete */
+  keepChoices: () => void
 }
 
 // accounts I can write transactions into, as the import checks it: mine, or shared to me with

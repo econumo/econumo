@@ -417,7 +417,7 @@
         "category": "Kategorie",
         "description": "Beschreibung",
         "payee": "Zahlungsempfänger",
-        "extras": "Weitere Angaben",
+        "extras": "Tags",
         "preview": "Prüfen und importieren"
       },
       "file": {
@@ -577,7 +577,6 @@
         "nothing": "Keine"
       },
       "from": "aus „{name}“",
-      "looks_right": "Stimmt so",
       "change": "Ändern",
       "done": "Fertig"
     },
