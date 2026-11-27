@@ -33,8 +33,9 @@ type InsertWipeCorrectionParams struct {
 	SortKey     string
 }
 
-// The replacement keeps the transfer's key on the surviving side, so sort_key
-// is explicit and never placed by txorder.
+// The replacement keeps the transfer's key on the surviving side; a side
+// without one gets a top-of-day key from txorder. Either way sort_key is
+// bound explicitly.
 func (q *Queries) InsertWipeCorrection(ctx context.Context, arg InsertWipeCorrectionParams) error {
 	_, err := q.db.ExecContext(ctx, insertWipeCorrection,
 		arg.ID,

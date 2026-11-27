@@ -366,7 +366,6 @@ func (q *Queries) ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow
 }
 
 const listLiveAndDeletedCustomCurrencyIDsByOwner = `-- name: ListLiveAndDeletedCustomCurrencyIDsByOwner :many
-
 SELECT id, code, is_deleted FROM currencies WHERE user_id = $1 ORDER BY id
 `
 
@@ -376,8 +375,6 @@ type ListLiveAndDeletedCustomCurrencyIDsByOwnerRow struct {
 	IsDeleted bool
 }
 
-// Profile defaults holding this currency id, for the archive guard (a
-// default must stay pickable).
 // User deletion: see the sqlite variant.
 func (q *Queries) ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error) {
 	rows, err := q.db.QueryContext(ctx, listLiveAndDeletedCustomCurrencyIDsByOwner, userID)

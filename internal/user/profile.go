@@ -175,10 +175,10 @@ func (s *Service) UpdateLanguage(ctx context.Context, userID vo.Id, req model.Up
 }
 
 // UpdateBudget sets the user's default budget option to the given budget id and
-// returns the refreshed current user. The budget must already exist
-// (existence-only, no ownership/access check); a miss maps to the "Plan not
-// found" validation error (HTTP 400). The id format is validated tier-1
-// (NotBlank + Uuid).
+// returns the refreshed current user. The caller must have access to the
+// budget (checked under the user row lock); a budget they cannot access, or a
+// missing one, maps to the "Plan not found" validation error (HTTP 400). The id
+// format is validated tier-1 (NotBlank + Uuid).
 func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateActiveBudgetRequest) (*model.UpdateActiveBudgetResult, error) {
 	var u *model.User
 	// The access check runs under the row lock, on the transaction's context: a

@@ -96,7 +96,8 @@ func (r *Repo) ListCrossOwnerTransfers(ctx context.Context, userID vo.Id) ([]dom
 }
 
 // ReplaceTransferWithCorrection swaps a cross-owner transfer for its surviving
-// side's correction, written at the original's key so the day's order holds.
+// side's correction, written at the original's key on that side so the day's
+// order holds, or at a top-of-day key when that side has none.
 // Both sides are bumped: the surviving one changed, and the deleted user's
 // account goes with the cascade anyway.
 func (r *Repo) ReplaceTransferWithCorrection(ctx context.Context, t domtransaction.CrossOwnerTransfer, c *domtransaction.WipeCorrection) error {

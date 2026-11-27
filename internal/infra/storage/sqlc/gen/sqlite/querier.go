@@ -486,8 +486,9 @@ type Querier interface {
 	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
-	// The replacement keeps the transfer's key on the surviving side, so sort_key
-	// is explicit and never placed by txorder.
+	// The replacement keeps the transfer's key on the surviving side; a side
+	// without one gets a top-of-day key from txorder. Either way sort_key is
+	// bound explicitly.
 	InsertWipeCorrection(ctx context.Context, arg InsertWipeCorrectionParams) error
 	// The one write that touches recurring_id on an existing row: an explicit
 	// "make recurring from this transaction" link. UpsertTransaction deliberately
@@ -619,8 +620,6 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
-	// Profile defaults holding this currency id, for the archive guard (a
-	// default must stay pickable).
 	// User deletion: a custom currency another owner's account, budget, budget
 	// element or debt uses moves to that owner instead of cascading away.
 	ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error)

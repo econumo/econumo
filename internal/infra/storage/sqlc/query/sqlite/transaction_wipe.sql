@@ -22,8 +22,9 @@ WHERE t.type = 2
 ORDER BY t.id;
 
 -- name: InsertWipeCorrection :exec
--- The replacement keeps the transfer's key on the surviving side, so sort_key
--- is explicit and never placed by txorder.
+-- The replacement keeps the transfer's key on the surviving side; a side
+-- without one gets a top-of-day key from txorder. Either way sort_key is
+-- bound explicitly.
 INSERT INTO transactions (
     id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id,
     description, created_at, updated_at, spent_at, type, amount, amount_recipient, sort_key

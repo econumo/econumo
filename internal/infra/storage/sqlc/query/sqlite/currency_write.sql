@@ -142,9 +142,6 @@ DELETE FROM users_hidden_currencies
 WHERE users_hidden_currencies.user_id = ?
   AND currency_id IN (SELECT c.id FROM currencies c WHERE c.user_id IS NULL);
 
--- Profile defaults holding this currency id, for the archive guard (a
--- default must stay pickable).
-
 -- User deletion: a custom currency another owner's account, budget, budget
 -- element or debt uses moves to that owner instead of cascading away.
 -- name: ListLiveAndDeletedCustomCurrencyIDsByOwner :many
@@ -168,3 +165,6 @@ LIMIT 1;
 
 -- name: MoveCurrency :exec
 UPDATE currencies SET user_id = sqlc.arg(user_id), is_deleted = sqlc.arg(is_deleted) WHERE id = sqlc.arg(id);
+
+-- Profile defaults holding this currency id, for the archive guard (a
+-- default must stay pickable).

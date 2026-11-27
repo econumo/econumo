@@ -454,8 +454,6 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
-	// Profile defaults holding this currency id, for the archive guard (a
-	// default must stay pickable).
 	// User deletion: see the sqlite variant.
 	ListLiveAndDeletedCustomCurrencyIDsByOwner(ctx context.Context, userID *string) ([]ListLiveAndDeletedCustomCurrencyIDsByOwnerRow, error)
 	ListMarkedUsers(ctx context.Context) ([]ListMarkedUsersRow, error)
