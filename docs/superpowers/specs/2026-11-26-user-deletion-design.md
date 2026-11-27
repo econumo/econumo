@@ -87,8 +87,10 @@ activity stamp back.
 
 ### `users_audit` (new)
 
-`id`, `user_id` (TEXT, no foreign key), `event`, `email_hash` (NULL except below), `details`
-(JSON text), `created_at`. Indexes on `(event, created_at)` and `(email_hash, created_at)`.
+`id`, `user_id` (TEXT, no foreign key), `event`, `email_hash` (NULL except below), `ref_id`
+(NULL except on a re-grant, unique), `details` (JSON text), `created_at` (whole seconds, like
+every stored datetime: the admin cursor compares seconds). Indexes on `(event, created_at)`
+and `(email_hash, created_at)`.
 Events now:
 
 | event | details | `email_hash` |
@@ -117,7 +119,8 @@ generation bump is also what `AdminDeactivate` does, for this reason: a
 password login, a provider handoff or an OAuth code exchange that read its evidence before the
 mark must not be able to mint a credential after it (the inserts are conditional on the
 generation). A pending self-service deletion code is such a grant as well: a password
-change and both reclaim paths delete it, like a pending email change. The invariant: a marked user has no live credential, and the only mint that can
+change and both reclaim paths delete it, like a pending email change, and it is bound to the
+address it was sent to: after an email change the old code is refused. The invariant: a marked user has no live credential, and the only mint that can
 reach one is a fresh session, which clears the mark (below). Marking an already-marked user is
 an error for the CLI and impossible from the API (no session survives the mark).
 
@@ -133,8 +136,9 @@ an error for the CLI and impossible from the API (no session survives the mark).
 - SPA: Settings danger zone, "Delete my data". Dialog: what gets deleted, that signing in within
   the period cancels it, that a subscription keeps running until the data is actually deleted
   and can be cancelled sooner in billing (with the billing link when `ECONUMO_BILLING_URL` is
-  set), and that people the user shares with keep their own data but lose the shared accounts
-  and budgets. Steps: password -> code -> before confirming, the browser
+  set), and that people the user shares with lose the shared accounts and budgets but keep
+  their own data, which includes transactions the user entered in their accounts and the
+  descriptions of transfers with them. Steps: password -> code -> before confirming, the browser
   downloads the CSV export of the transactions in the accounts the user OWNS (existing
   `GET /api/v1/transaction/export-transaction-list`) -> confirm -> local sign-out at once (the
   session is already revoked; a closed tab must not leave cached data behind) -> the sign-in
@@ -153,6 +157,9 @@ an error for the CLI and impossible from the API (no session survives the mark).
   ACTIVE connected user is marked with reason `inactive` and receives ONE email: "Under our
   policy we delete the data of users inactive for <period>. If you want to keep your data,
   sign in." (11 catalogues; period rendered from the setting; includes `ECONUMO_URL` when set).
+- A connection made AFTER an inactive mark (a partner accepting an invite code issued just
+  before it; codes live five minutes) is not handled at that moment: the next daily release
+  and the check inside the wipe both see it.
 - Household rule (agreed 2026-11-26): a user is neither marked nor wiped for inactivity while
   a connected user is active. "Active connection" has one definition, used everywhere below:
   a row in `users_connections` to a user who is NOT marked and whose own `last_active_at` is
@@ -295,9 +302,15 @@ one line of wiring, with a test.
 4. Everything else. A partner's user row is locked only late, right before its active-budget
    pointer is cleared (the same order `RevokeAccess` uses); never first.
 
-The set of budgets is read before it is locked. A budget that joins the set in that window, a
-deadlock and a serialization failure all end the same way: the transaction rolls back and the
-user stays marked for the next pass or the next `user:delete`.
+Before any of these, a wipe takes one global wipe lock (an advisory lock on PostgreSQL), so
+two wipes never run at once: the `deleted` audit rows then become visible in the order of
+their timestamps, which is what the billing cursor needs.
+
+The set of budgets is read before it is locked, so it is read AGAIN once the locks are held;
+a budget that joined in that window (a shared budget cloned meanwhile) makes the wipe stop
+before it changes anything. That, a deadlock and a serialization failure all end the same
+way: the transaction rolls back and the user stays marked for the next pass or the next
+`user:delete`.
 
 ### Steps
 
@@ -365,7 +378,10 @@ user stays marked for the next pass or the next `user:delete`.
    `accounts.currency_id` cascades, so a partner's account in the user's currency (prevented
    today only by `EnsureUsable`, not by the schema) would be deleted with all its rows.
 8. Rows the cascade cannot reach, deleted or cleared here: `idempotency_keys` and
-   `oauth_states` of the user (no foreign key); `applied_category_id`, `applied_payee_id`,
+   `oauth_states` of the user (no foreign key; a request that was already in flight when the
+   user was marked can still add one such row after this sweep: it holds ids only and expires
+   by age, 90 days and 10 minutes, so no foreign key and no SQLite table rebuild was added
+   for it); `applied_category_id`, `applied_payee_id`,
    `applied_tag_id`, `applied_rule_id` on other users' import links that point at the user's
    entities. OAuth apps the user owns are deleted through the authserver's existing delete
    path, which revokes the access tokens of every grant: on an upgraded database an app can
@@ -461,16 +477,19 @@ partner and the third user still share their budget; no row anywhere names the w
 - The re-grant: when the address's hash has a `deleted` row with `lifetimeAccess: true` that
   no `lifetime_regranted` row names in `deletedEventId`, the new user gets
   `access_level = full`, `access_until = NULL`, and a `lifetime_regranted` row naming that
-  `deleted` row is written in the same transaction. The match is by that reference, never by
-  which row is newer: `created_at` has one-second precision, and a wipe and a sign-up can
+  `deleted` row is written in the same transaction, with `ref_id` = that row's id. `ref_id` is
+  unique, so the database itself refuses a second claim (two accounts racing, or two legacy
+  spellings of one address). The match is by that reference, never by which row is newer: `created_at` has one-second precision, and a wipe and a sign-up can
   share a second. So the same deletion never grants twice: without it, a customer could re-register,
   move the new account to another address, and register the old address again for a second
   lifetime account, without end. Deleting the re-granted account writes a new `deleted` row and
   re-arms it.
 - The re-grant needs proof of the mailbox, because the hash is all that ties the new user to
-  the old one. It happens at the moment the proof exists: a provider sign-up (the provider
-  verified the address), the verification code being confirmed when
-  `ECONUMO_EMAIL_VERIFICATION` is on, or `user:create` (the operator vouches). A password
+  the old one. It happens at the moment the proof exists, wherever an account's address is
+  proven: a provider sign-up (the provider verified the address), the verification code being
+  confirmed when `ECONUMO_EMAIL_VERIFICATION` is on, a password reset completed with its
+  emailed code, an email change confirmed with its code, or an operator command that sets or
+  vouches for the address (`user:create`, `user:verify-email`, `user:change-email`). A password
   registration with the gate off proves nothing (`NewUser` starts with `email_verified = true`)
   and gets no automatic re-grant. The operator's `user:verify-email <email>` vouches for the
   mailbox and runs the same re-grant, consuming the deletion. `user:set-access` is NOT the
@@ -483,11 +502,10 @@ partner and the third user still share their budget; no row anywhere names the w
   `/admin/affiliate-users`: the `deleted` audit rows since the date (`userId`, `deletedAt`,
   `reason`, `lifetimeAccess`), oldest first, with the same composite cursor as
   `ListAffiliateUsers` (`since` plus an after-id): a batch of wipes shares one second, and a
-  page that ends inside it must neither skip nor repeat rows. The cursor orders rows, not
-  commits: two wipes running at once (the job and a `user:delete`) can commit in the other
-  order, so a caller that only ever moves forward could miss one. The contract: re-read from
-  10 minutes before the newest `deletedAt` seen and skip ids already processed. Billing polls
-  it and cancels subscriptions
+  page that ends inside it must neither skip nor repeat rows. Wipes are serialized and each
+  writes its `deleted` row last, so rows appear in cursor order and a forward-only cursor
+  misses nothing on one server. Belt and braces for app servers whose clocks differ: re-read
+  a short overlap and skip ids already processed. Billing polls it and cancels subscriptions
   (separate billing PR). `lifetimeAccess` is there so billing keeps a lifetime purchase instead
   of treating it as cancelled.
 - `/admin/user-context` for a wiped user answers the existing 404; a marked user shows additive
