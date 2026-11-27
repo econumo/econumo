@@ -134,15 +134,19 @@ an error for the CLI and impossible from the API (no session survives the mark).
   reason `self_initiated`. No email is sent.
 - Both are on the readonly allowlist.
 - SPA: Settings danger zone, "Delete my data". Dialog: what gets deleted, that signing in within
-  the period cancels it, that a subscription keeps running until the data is actually deleted
-  and can be cancelled sooner in billing (with the billing link when `ECONUMO_BILLING_URL` is
-  set), and that people the user shares with lose the shared accounts and budgets but keep
+  the period cancels it, that deleting does not cancel a subscription and it should be
+  cancelled in billing first (with the billing link when `ECONUMO_BILLING_URL` is set; billing
+  cancelling at the wipe is a separate change, so the text does not promise it), and that people the user shares with lose the shared accounts and budgets but keep
   their own data, which includes transactions the user entered in their accounts and the
   descriptions of transfers with them. Steps: password -> code -> before confirming, the browser
   downloads the CSV export of the transactions in the accounts the user OWNS (existing
   `GET /api/v1/transaction/export-transaction-list`) -> confirm -> local sign-out at once (the
   session is already revoked; a closed tab must not leave cached data behind) -> the sign-in
   page showing "Your data will be deleted within a month. Sign in before then to keep it."
+  Confirm is refused while changes made offline are still waiting to be sent (sign-out drops
+  them, and the CSV holds server rows only). If the tab dies between the server's commit and
+  the response, a flag set before the request makes the next refused request finish the local
+  clean-up.
   Offline-disabled via `useOnline`. Analytics event on confirm.
 - The CSV download failing does not block deletion, but the UI says so and offers a retry.
 - The existing export lists live accounts only (`ListExportAccountsForUser` skips deleted
@@ -299,8 +303,13 @@ one line of wiring, with a test.
    after step 6 scanned it; the cascade would then delete that transfer with no correction
    on the partner's side. After the wipe commits, the waiting write fails on the missing
    account. The two-connection test covers exactly this interleaving.
-4. Everything else. A partner's user row is locked only late, right before its active-budget
-   pointer is cleared (the same order `RevokeAccess` uses); never first.
+4. For an `inactive` mark only: the user rows of the connected users, in id order, before the
+   household check. A partner's sign-in writes that row, so it either lands before the check
+   (and the mark is cancelled) or waits for the wipe; it cannot land between the check and
+   the delete.
+5. Everything else. Any other user row is locked only late, right before its active-budget
+   pointer is cleared. `RevokeAccess` and member removal take the budget lock first as well
+   (changed here), so a partner revoking the user mid-wipe waits instead of deadlocking.
 
 Before any of these, a wipe takes one global wipe lock (an advisory lock on PostgreSQL), so
 two wipes never run at once: the `deleted` audit rows then become visible in the order of
@@ -449,6 +458,10 @@ a bug in this change or a schema change the guard test missed, which is why it i
 A new table, key or id column therefore fails the build until someone decides what the wipe
 does with it.
 
+`data:import-sqlite` refuses a non-empty target by counting `users`. A target whose last user
+was wiped still holds `users_audit` (lifetime entitlements, deletions billing has not polled),
+so the check counts that table too.
+
 **Wipe test** (both engines, through `dbtest`). Fixture: the user; a partner with a shared
 account and a shared budget each way; an EX-partner holding rows the user wrote; a third user
 who shares a budget with both the user and the partner; cross transfers in both directions; a
@@ -488,8 +501,8 @@ partner and the third user still share their budget; no row anywhere names the w
   the old one. It happens at the moment the proof exists, wherever an account's address is
   proven: a provider sign-up (the provider verified the address), the verification code being
   confirmed when `ECONUMO_EMAIL_VERIFICATION` is on, a password reset completed with its
-  emailed code, an email change confirmed with its code, or an operator command that sets or
-  vouches for the address (`user:create`, `user:verify-email`, `user:change-email`). A password
+  emailed code, an email change confirmed with its code, a provider reporting a passwordless
+  account's new verified address, or an operator command that sets or vouches for the address (`user:create`, `user:verify-email`, `user:change-email`). A password
   registration with the gate off proves nothing (`NewUser` starts with `email_verified = true`)
   and gets no automatic re-grant. The operator's `user:verify-email <email>` vouches for the
   mailbox and runs the same re-grant, consuming the deletion. `user:set-access` is NOT the
@@ -503,8 +516,9 @@ partner and the third user still share their budget; no row anywhere names the w
   `reason`, `lifetimeAccess`), oldest first, with the same composite cursor as
   `ListAffiliateUsers` (`since` plus an after-id): a batch of wipes shares one second, and a
   page that ends inside it must neither skip nor repeat rows. Wipes are serialized and each
-  writes its `deleted` row last, so rows appear in cursor order and a forward-only cursor
-  misses nothing on one server. Belt and braces for app servers whose clocks differ: re-read
+  writes its `deleted` row last, with a timestamp never earlier than the newest existing
+  `deleted` row (a clock set back cannot reorder them), so rows appear in cursor order and a
+  forward-only cursor misses nothing on one server. Belt and braces for app servers whose clocks differ: re-read
   a short overlap and skip ids already processed. Billing polls it and cancels subscriptions
   (separate billing PR). `lifetimeAccess` is there so billing keeps a lifetime purchase instead
   of treating it as cancelled.

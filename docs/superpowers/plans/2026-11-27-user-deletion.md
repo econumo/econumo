@@ -122,7 +122,7 @@ if err := lookup.ClearActiveBudget(ctx, vo.NewId(), budgetID); err != nil { t.Er
 - [ ] **Step 2: Run.** Expected: FAIL (method missing).
 - [ ] **Step 3: Add the query `ClearUserOptionIfValue :execrows`** in both engines: `UPDATE users_options SET value = NULL, updated_at = ? WHERE user_id = ? AND name = ? AND value = ?`. Regenerate, add to the `querier`, both adapters and `Repo`.
 - [ ] **Step 4: Rewrite `BudgetUserLookup.ClearActiveBudget`** to call `LockRow(ctx, userID)` and then `ClearOptionIfValue(ctx, userID, model.OptionBudget, budgetID.String(), l.clock.Now())`, nothing else; `budgetUserRepo` gains those two methods and loses `Save` if nothing else in that file uses it.
-- [ ] **Step 4b: `internal/user/profile.go` `UpdateBudget`:** today `s.budgets.HasAccess` runs before `s.mutate` takes the row lock, so a selection that passed the check can save a budget id after a revoke (or a wipe) cleared it. Move the check into the `mutate` callback.
+- [ ] **Step 4b: `internal/user/profile.go` `UpdateBudget`:** today `s.budgets.HasAccess` runs before `s.mutate` takes the row lock, so a selection that passed the check can save a budget id after a revoke (or a wipe) cleared it. Rewrite `UpdateBudget` as one explicit `s.tx.WithTx(ctx, func(ctx context.Context) error { ... })`: `LockRow(ctx)`, `s.budgets.HasAccess(ctx, ...)`, `GetByID(ctx)`, the option change, `Save(ctx)`. Do NOT put the check into the `mutate` callback: that callback has no context parameter, the check would run on the outer context, ask the pool for a second connection, and on SQLite (one connection, already held by the transaction) wait on itself forever. The test runs through `dbtest` (the production SQLite opener) with a 5-second test timeout to catch exactly that.
 - [ ] **Step 5: Run** `go test ./internal/server/ ./internal/user/... ./internal/budget/... -count=1`. Expected: PASS.
 - [ ] **Step 6: Commit** `fix: Clearing a member's active budget no longer rewrites their user row`.
 
@@ -152,6 +152,7 @@ A bug in the released CLI, found while reviewing this plan: `internal/cli/contai
 - Create: `internal/infra/storage/migrations/sqlite/20261127000000.sql`, `.../pgsql/20261127000000.sql`
 - Create: `internal/infra/storage/migrations/migration_20261127_test.go`
 - Create: `internal/model/user_deletion.go`
+- Modify: `internal/infra/storage/sqliteimport/sqliteimport.go`, `import_test.go`
 - Modify: `internal/config/config.go`, `internal/config/config_test.go`, `docs/full.env.example`
 - Regenerate: `internal/infra/storage/sqlc/gen/`
 
@@ -210,6 +211,9 @@ func EmailHash(address string) string
 // users has deletion_marked_at (NULL), deletion_reason ('' NOT NULL), last_active_at (NULL)
 // a user row inserted BEFORE the migration has last_active_at NOT NULL after it
 // tables users_audit and users_deletion_requests exist; users_deletion_requests.user_id cascades
+// sqliteimport: TestImport_AbortsWhenTargetHasOnlyAuditRowsWithoutForce: a target with no users
+//   but one users_audit row refuses the import without --force (today only `users` is counted,
+//   and the import truncates every table: lifetime entitlements and unpolled deletions would go)
 // model
 if got := model.EmailHash("  Anna@Example.TEST "); got != model.EmailHash("anna@example.test") { ... }
 if len(model.EmailHash("a@b.test")) != 64 { ... }
@@ -222,7 +226,7 @@ t.Setenv("ECONUMO_INACTIVE_USER_EXCLUDE", " A@x.test ,b@x.test,") // []string{"a
 // unset: all three are 0 / 0 / nil
 ```
 
-- [ ] **Step 2: Run.** `go test ./internal/infra/storage/migrations/ ./internal/model/ ./internal/config/ -count=1`. Expected: FAIL.
+- [ ] **Step 2: Run.** `go test ./internal/infra/storage/migrations/ ./internal/infra/storage/sqliteimport/ ./internal/model/ ./internal/config/ -count=1`. Expected: FAIL.
 - [ ] **Step 3: Write the migration.** sqlite:
 
 ```sql
@@ -255,7 +259,7 @@ CREATE UNIQUE INDEX UNIQ_users_deletion_requests_user ON users_deletion_requests
 ```
 
   pgsql: the same with `UUID` for `id`/`user_id` where the sibling tables use it (copy the types of `users_email_change_requests` in the pgsql migrations), `TIMESTAMP(0) WITHOUT TIME ZONE` for every datetime (the type the other pgsql tables use: the admin cursor compares whole seconds, and a fractional `created_at` would make a page repeat forever), and the backfill `UPDATE users SET last_active_at = date_trunc('second', NOW() AT TIME ZONE 'UTC');`.
-- [ ] **Step 4: Write `internal/model/user_deletion.go`** as specified above (`crypto/sha256`, `encoding/hex`).
+- [ ] **Step 4: Write `internal/model/user_deletion.go`** as specified above (`crypto/sha256`, `encoding/hex`). In `sqliteimport.go` extend the non-empty-target check from `count(*) FROM users` to users OR `users_audit`.
 - [ ] **Step 5: Config.** Read the two day counts with `getIntStrict(key, 0)` and reject a value above 36500 (the pattern of `ECONUMO_CURRENCY_UPDATE_INTERVAL`'s cap): `(days+1) * 24h` overflows `time.Duration` near 106,752 days, and an overflowed cutoff lands in the future. Read the list with `getStringList` mapped through `model.NormalizeEmail`, the two rate limits in the existing table loop (`ECONUMO_RATE_LIMIT_REQUEST_USER_DELETION` 3, `ECONUMO_RATE_LIMIT_CONFIRM_USER_DELETION` 5). Document all five in `docs/full.env.example`, the first three under a new heading with this text:
 
 ```
@@ -306,12 +310,16 @@ type DeletionStore interface {
 	// pg_advisory_xact_lock; SQLite has one writer anyway). With it, deleted audit
 	// rows become visible in the order of their created_at.
 	LockWipes(ctx context.Context) error
+	// ConnectedUserIDs: users connected to userID, sorted by id.
+	ConnectedUserIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 type AuditLog interface {
 	// Insert reports inserted=false when RefID is already taken (a lost re-grant race).
 	Insert(ctx context.Context, e model.UserAuditEvent) (inserted bool, err error)
 	ListByEmailHash(ctx context.Context, hash string) ([]model.UserAuditEvent, error)                               // created_at, id
 	ListByEvent(ctx context.Context, event string, since time.Time, afterID string, limit int) ([]model.UserAuditEvent, error) // (created_at, id) cursor
+	// NewestCreatedAt of an event; zero time when there is none.
+	NewestCreatedAt(ctx context.Context, event string) (time.Time, error)
 }
 type DeletionRequests interface {
 	GetByUser(ctx context.Context, userID vo.Id) (*model.DeletionRequest, error)
@@ -389,6 +397,7 @@ var handledBlockers = map[string]string{
 }
 var handledLooseIDs = map[string]string{
 	"users_audit.user_id":                      "kept on purpose",
+	"users_audit.ref_id":                       "names another users_audit row, which is never deleted",
 	"idempotency_keys.user_id":                 "wipe step 8",
 	"idempotency_keys.resource_id":             "wipe step 8",
 	"oauth_states.link_user_id":                "wipe step 8",
@@ -500,7 +509,8 @@ Every method in this phase runs on the caller's transaction context (a nested `W
 **Files:** Create `internal/budget/wipe.go`, `wipe_test.go`; modify `internal/infra/storage/sqlc/query/{sqlite,pgsql}/budgets.sql`, `internal/budget/repository.go`, `internal/budget/repo/*`.
 
 **Interfaces:**
-- Consumes: existing `RemoveMember(ctx, budgetID, memberID vo.Id) error`, `s.users.ClearActiveBudget` (fixed in Task 2), `BudgetStore.Delete`.
+- Consumes: existing `RemoveMember(ctx, budgetID, memberID vo.Id) error`, `s.users.ClearActiveBudget` (fixed in Task 2), `BudgetStore.Delete`, `s.debts.LockBudget` (the budget service's existing debt port).
+- Changes: `RevokeAccess` and `RemoveMember` take `s.debts.LockBudget(txCtx, budgetID)` as the FIRST statement of their transaction (when `s.debts` is set). Today a revoke deletes the access row and only then touches the member's user row; a wipe holds that user's row and wants the access row, so the two would wait on each other. With the budget lock first, on both, the revoke waits for the wipe.
 - Produces:
 
 ```go
@@ -524,6 +534,8 @@ func (s *Service) DeleteOwned(ctx context.Context, userID vo.Id) error
 //   T's access row and elements are untouched; P's "budget" option is NULL
 // after DeleteOwned(U): BU is gone; BP still exists
 // pending (not accepted) access row of U on another budget is removed by UnwindUser too
+// lock order (recording debts port): RevokeAccess and RemoveMember call LockBudget before
+//   DeleteAccess
 ```
 
 - [ ] **Step 2: Run, see FAIL.** `go test ./internal/budget/ -run TestWipe -count=1`
@@ -563,7 +575,7 @@ func (s *Service) UnwindGrantsOf(ctx context.Context, userID vo.Id) error
 func (s *Service) RewriteForDeletedUser(ctx context.Context, userID vo.Id) error
 ```
 
-- Produces (repo): `ReassignAuthorInForeignAccounts(ctx, userID vo.Id) error`, `ListCrossOwnerTransfers(ctx, userID vo.Id) ([]CrossOwnerTransfer, error)`, `ReplaceTransferWithCorrection(ctx, t CrossOwnerTransfer, c WipeCorrection) error`, with
+- Produces (repo): `ReassignAuthorInForeignAccounts(ctx, userID vo.Id) error`, `ListCrossOwnerTransfers(ctx, userID vo.Id) ([]CrossOwnerTransfer, error)`, `ReplaceTransferWithCorrection(ctx, t CrossOwnerTransfer, c *WipeCorrection) error` (a nil correction deletes the transfer and still bumps the surviving account's revision), with
 
 ```go
 type CrossOwnerTransfer struct {
@@ -576,7 +588,7 @@ type CrossOwnerTransfer struct {
 	SortKey         string
 	RecipientSortKey *string
 }
-type WipeCorrection struct { // nil-able: a NULL amount_recipient leg gets none
+type WipeCorrection struct { // passed by pointer: a NULL amount_recipient leg gets none
 	ID, AuthorID, AccountID vo.Id
 	Type        model.TransactionType // expense or income
 	Amount      string
@@ -628,7 +640,7 @@ type WipeCorrection struct { // nil-able: a NULL amount_recipient leg gets none
     import sources, or whose `recurring_id` is a template the cascade deletes (`recurring_transactions`
     with `user_id` = the user, or `account_id` / `account_recipient_id` one of the user's accounts).
     The cascade and `SET NULL` of wipe step 9 change what those rows show.
-  - `RewriteForDeletedUser`: `BumpAccountsLosingReferences`, then reassign, then for each listed transfer build the correction in Go (prefix `"Original transaction deleted"`, `": "` + description when not empty, cut to 255 runes) and call `ReplaceTransferWithCorrection`, which `rev.Bump`s the surviving account, inserts the correction with the explicit `sort_key` (a dedicated `InsertWipeCorrection` statement: same columns as `InsertCorrectionTransaction` in `account_corrections.sql`) and deletes the original.
+  - `RewriteForDeletedUser`: `BumpAccountsLosingReferences`, then reassign, then for each listed transfer build the correction in Go (prefix `"Original transaction deleted"`, `": "` + description when not empty, cut to 255 runes) and call `ReplaceTransferWithCorrection`, which `rev.Bump`s the surviving account, inserts the correction (when there is one) with the explicit `sort_key` (a dedicated `InsertWipeCorrection` statement: same columns as `InsertCorrectionTransaction` in `account_corrections.sql`) and deletes the original.
 - [ ] **Step 4: Run, see PASS, then the PostgreSQL command for the same tests. Commit.**
 
 ### Task 11: currency
@@ -679,6 +691,8 @@ func (s *idempotency.Store) DeleteByUser(ctx context.Context, userID vo.Id) erro
 // authserver: U owns app A; U and T both hold grants on A, T has a live eco_oat_ token
 //   (fixture.OAuthClient/OAuthGrant/AccessToken with the grant). After DeleteAppsOwnedBy(U):
 //   the client row is gone; T's token has revoked_at set; a global app and T's own app are untouched.
+//   An app that was U's when listed but is global by the time its lock is taken (hook between
+//   the list and the delete runs MakeClientGlobal) is NOT deleted and keeps its grants.
 // imports: P's import link whose applied_category_id / applied_payee_id / applied_tag_id point at
 //   U's category/payee/tag and whose applied_rule_id points at U's rule -> all four NULL after the
 //   call; a link pointing at P's own entities is unchanged; U's own links are unchanged.
@@ -686,7 +700,7 @@ func (s *idempotency.Store) DeleteByUser(ctx context.Context, userID vo.Id) erro
 ```
 
 - [ ] **Step 2: Run, see FAIL.**
-- [ ] **Step 3: Implement.** `ListOAuthClientIDsByOwner` (`ORDER BY id`) then `DeleteApp` per id. Four `UPDATE import_transaction_links SET applied_x_id = NULL WHERE applied_x_id IN (SELECT id FROM <table> WHERE user_id = ?) AND source_id NOT IN (SELECT id FROM import_sources WHERE user_id = ?)` statements (`categories`, `payees`, `tags`, `import_rules`); the user's own links go with the cascade and are left alone, as the test requires. `DeleteIdempotencyKeysByUser`.
+- [ ] **Step 3: Implement.** `ListOAuthClientIDsByOwner` (`ORDER BY id`), then per id the existing delete path with one addition: after the client lock is taken, re-read the client and skip it when `owner_user_id` is no longer the user (an operator's `app:make-global` in between). Give `deleteApp` an optional expected owner rather than duplicating its locking. Four `UPDATE import_transaction_links SET applied_x_id = NULL WHERE applied_x_id IN (SELECT id FROM <table> WHERE user_id = ?) AND source_id NOT IN (SELECT id FROM import_sources WHERE user_id = ?)` statements (`categories`, `payees`, `tags`, `import_rules`); the user's own links go with the cascade and are left alone, as the test requires. `DeleteIdempotencyKeysByUser`.
 - [ ] **Step 4: Run, PASS. Commit.**
 
 ---
@@ -793,16 +807,19 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 // TestWipe_NotLifetime: user with access_until set -> details lifetimeAccess false, email_hash NULL.
 // TestWipe_NotMarked: unmarked user -> WipeNotMarked, row still there.
 // TestWipe_SelectedMarkMismatch: Wipe(U, &otherTime) -> WipeNotMarked.
+// TestWipe_AuditTimeNeverGoesBack: wipe A at 12:00:10, set the clock back to 12:00:00, wipe B ->
+//   B's deleted row has created_at >= A's, and ListByEvent with A's (created_at, id) as the cursor
+//   returns B
 // TestWipe_RollsBackWhole: a DataWiper whose Erase fails after doing part of the work (wrap the
 //   real one) -> error; U's row, U's access rows and P's transfers are exactly as before.
 ```
 
 - [ ] **Step 3: Run, see FAIL.** `go test ./internal/test/wipetest/ -count=1`
 - [ ] **Step 4: Implement `Wipe`**, one `s.tx.WithTx`:
-  0. `store.LockWipes`; 1. `wiper.LockBudgets`; 2. `store.LockRowForWipe` (not `LockRow`: a request that authenticated before the mark could otherwise still insert a row authored by the user into a partner's account after step 5 scanned it, and the cascade would delete it); 3. `GetState` (NotFound or unmarked or `selectedMark` mismatch -> `WipeNotMarked`); for reason `inactive`, `s.inactiveMarkStillAllowed(ctx, userID)` (Task 17 fills it in; here it returns true) else `Unmark` + audit and return `WipeReleased`; 4. read the user, decode the email, `lifetime := u.AccessLevel == model.AccessLevelFull && u.AccessUntil == nil`; 5. `wiper.Erase`; 6. `store.DeleteUser` (must be 1); 7. audit `deleted`.
-  A nil wiper is an error ("wipe is not wired"), never a silent skip. The audit row is written with the clock read at that last step, so with wipes serialized by `LockWipes` its `created_at` never precedes a row that committed earlier.
+  0. `store.LockWipes`; 1. `wiper.LockBudgets`; 2. `store.LockRowForWipe` (not `LockRow`: a request that authenticated before the mark could otherwise still insert a row authored by the user into a partner's account after step 5 scanned it, and the cascade would delete it); 3. `GetState` (NotFound or unmarked or `selectedMark` mismatch -> `WipeNotMarked`); for reason `inactive`, first `repo.LockRow` on every `store.ConnectedUserIDs(userID)` in id order (a partner's sign-in and activity stamp write that row, so they now wait for the wipe or the wipe sees them; without it a partner could become active between the check and the commit), then `s.inactiveMarkStillAllowed(ctx, userID)` (Task 17 fills it in; here it returns true) else `Unmark` + audit and return `WipeReleased`; 4. read the user, decode the email, `lifetime := u.AccessLevel == model.AccessLevelFull && u.AccessUntil == nil`; 5. `wiper.Erase`; 6. `store.DeleteUser` (must be 1); 7. audit `deleted`.
+  A nil wiper is an error ("wipe is not wired"), never a silent skip. The audit row's `created_at` is `max(clock now, audit.NewestCreatedAt("deleted"))`, both truncated to the second: with wipes serialized by `LockWipes` it never precedes a row that committed earlier, even if the server clock was set back.
 - [ ] **Step 5: Run on sqlite, then with the PostgreSQL command.** Expected: PASS on both. If `DELETE FROM users` fails on a constraint, the failing column belongs to Task 5's lists: STOP and report.
-- [ ] **Step 6: Lock-order test** `TestWipe_PartnerTransferWaits` (PostgreSQL, two pools as in `internal/user/mutate_lock_pgsql_test.go`): wrap the wiper so that right after `Erase` returns (before the users row is deleted) a second connection starts `transaction.Create` of a transfer from U's shared account to P's account as P; assert that call does not return until the wipe commits, then fails; assert P's balance equals the pre-wipe balance. A second case: at the same point a second connection inserts, as U, an expense into P's shared account (U still has write access in that connection's snapshot); the insert must wait and then fail, never commit and vanish. A third case: P runs `RevokeAccess` on U from P's budget while the wipe holds its locks; either order is acceptable, a hang longer than 10 s or a wipe that half-applies is not.
+- [ ] **Step 6: Lock-order test** `TestWipe_PartnerTransferWaits` (PostgreSQL, two pools as in `internal/user/mutate_lock_pgsql_test.go`): wrap the wiper so that right after `Erase` returns (before the users row is deleted) a second connection starts `transaction.Create` of a transfer from U's shared account to P's account as P; assert that call does not return until the wipe commits, then fails; assert P's balance equals the pre-wipe balance. A second case: at the same point a second connection inserts, as U, an expense into P's shared account (U still has write access in that connection's snapshot); the insert must wait and then fail, never commit and vanish. A third case (reason `inactive`, U connected to P with no shared budget): the wipe is paused right after its household check; P's `Login` on a second connection must wait until the wipe commits (it cannot slip in between the check and the delete). A fourth case: P runs `RevokeAccess` on U from P's budget while the wipe holds its locks; either order is acceptable, a hang longer than 10 s or a wipe that half-applies is not.
 - [ ] **Step 7: Commit.**
 
 ---
@@ -834,6 +851,8 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 //   (it marks the address verified) -> full, nil
 // TestRegrant_EmailChange: a trial user on another address runs RequestEmailChange to
 //   anna@example.test and ConfirmEmailChange -> full, nil; AdminChangeEmail does the same
+// TestRegrant_ProviderEmailDrift: ReplaceVerifiedEmail to anna@example.test with the right
+//   generation -> full, nil; with a stale generation (0 rows) -> no grant, no regrant row
 // TestRegrant_LostRace: a lifetime_regranted row with that RefID already exists (inserted
 //   directly) -> the caller keeps the trial and no error is returned
 // TestRegrant_NotLifetime: a deleted row with lifetimeAccess false -> no grant
@@ -841,7 +860,7 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 ```
 
 - [ ] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run TestRegrant -count=1`
-- [ ] **Step 3: Implement.** Match in Go over `audit.ListByEmailHash(hash)`: the set of `RefID` values of `lifetime_regranted` rows, then the first `deleted` row with `lifetimeAccess` true whose id is not in the set; the unique index on `ref_id` is what makes it once even for two accounts racing. Call sites, one per place where an account's address is proven: `persistNewUser` gets a `proven bool` parameter (true from `ProvisionExternalUser` and `AdminCreateUser`, false from `Register`) and calls `regrantLifetime` before `Save`; `ConfirmEmail`, `ResetPassword` (after its code check), `ConfirmEmailChange`, `AdminVerifyEmail` and `AdminChangeEmail` call it inside their transaction (the last three write access with `SetAccess` + `Save` or the existing access setter, whichever that function already has in hand).
+- [ ] **Step 3: Implement.** Match in Go over `audit.ListByEmailHash(hash)`: the set of `RefID` values of `lifetime_regranted` rows, then the first `deleted` row with `lifetimeAccess` true whose id is not in the set; the unique index on `ref_id` is what makes it once even for two accounts racing. Call sites, one per place where an account's address is proven: `persistNewUser` gets a `proven bool` parameter (true from `ProvisionExternalUser` and `AdminCreateUser`, false from `Register`) and calls `regrantLifetime` before `Save`; `ConfirmEmail`, `ResetPassword` (after its code check), `ConfirmEmailChange`, `ReplaceVerifiedEmail` (the provider verified a passwordless account's new address; only when the fenced replacement matched a row, so a refused one consumes nothing), `AdminVerifyEmail` and `AdminChangeEmail` call it inside their transaction (the last three write access with `SetAccess` + `Save` or the existing access setter, whichever that function already has in hand).
 - [ ] **Step 3b: Regression plan** (section 2): `- [ ] A deleted account that had full access with no end date: registering again with the same email and confirming the address gives full access with no end date again; a second new account on that address later does not.`
 - [ ] **Step 4: Run, PASS; `go test ./internal/user/... -count=1`. Commit.**
 
@@ -1057,7 +1076,7 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 
 ### Task 22: "Delete my data" in Settings
 
-**Files:** Create `web/src/features/settings/DeleteDataPage.tsx`, `DeleteDataPage.test.tsx`; modify `web/src/api/user.ts`, `web/src/features/user/queries.ts`, `web/src/app/routes.tsx`, `web/src/app/router-pages.ts`, `web/src/features/settings/ProfilePage.tsx`, `web/src/lib/metrics.ts`, `locales/*.json`, `docs/regression-test-plan.md`, `CLAUDE.md`.
+**Files:** Create `web/src/features/settings/DeleteDataPage.tsx`, `DeleteDataPage.test.tsx`; modify `web/src/api/user.ts`, `web/src/api/client.ts`, `web/src/features/auth/LogoutPage.tsx`, `LoginPage.tsx`, `web/src/features/user/queries.ts`, `web/src/app/routes.tsx`, `web/src/app/router-pages.ts`, `web/src/features/settings/ProfilePage.tsx`, `web/src/lib/metrics.ts`, `locales/*.json`, `docs/regression-test-plan.md`, `CLAUDE.md`.
 
 **Interfaces:**
 - Consumes: Task 20 routes; `exportTransactionList(accountIds)` + `downloadBlob` (`web/src/features/transactions/ExportCsvDialog.tsx` shows the pair, and how it picks OWNED accounts); `useAccounts`; `getBillingUrl()`; `hasPassword` on the user DTO; `usePasswordLoginAvailable()` (what `ProfilePage.tsx` uses: it answers for the backend the user is signed in to, which `isPasswordLoginAllowed()` does not on a custom-backend setup); the local clean-up `LogoutPage.tsx` performs.
@@ -1069,7 +1088,8 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
   - `explain.what`: `This deletes your accounts with their transactions, your budgets, categories, payees, tags and settings.`
   - `explain.shared`: `People you share with lose the accounts and budgets you share with them. They keep their own data: transactions you entered in their accounts stay, with their descriptions, and transfers between your accounts and theirs stay as corrections that keep the description.`
   - `explain.cancel`: `Signing in again before your data is deleted cancels the deletion.`
-  - `explain.subscription`: `A subscription keeps running until your data is actually deleted. You can cancel it sooner in billing.`
+  - `explain.subscription`: `Deleting your data does not cancel a subscription. Cancel it in billing first.`
+  - `confirm.pending_writes`: `Some of your changes are still waiting to be sent. Wait until they are sent before you delete your data.`
   - `explain.billing_link`: `Open billing`
   - `form.password.label`: `Password`
   - `form.submit.label`: `Send confirmation code`
@@ -1098,13 +1118,18 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 // confirm POSTs {code}; on success the token and the persisted query cache are gone from
 //   localStorage and the browser is sent to /login?reason=deletion-scheduled
 // LoginPage with ?reason=deletion-scheduled shows the done text
+// with one change in the pendingWrites queue: Confirm is disabled and the pending-writes text
+//   is shown; with the queue empty it is enabled
+// interrupted confirm: the flag localStorage['econumo.deletionCleanup'] is set before the
+//   confirm request; a 400 clears it; a later 401 on any request with the flag set runs
+//   signOutLocally() and lands on /login?reason=deletion-scheduled (client.ts interceptor test)
 // a 400 on confirm shows the server message and stays on the code phase
 // offline (onlineManager.setOnline(false)): both submit buttons are disabled
 // the billing link is rendered only when window.econumoConfig.BILLING_URL is set
 ```
 
 - [ ] **Step 2: Run, FAIL.** `cd web && pnpm test src/features/settings/DeleteDataPage.test.tsx`
-- [ ] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase is shown AND the account list has loaded; no resend button (requesting again from the first phase replaces the code). On a successful confirm the page does not wait for a click: it awaits `signOutLocally()` and then `window.location.assign('/login?reason=deletion-scheduled')`; the server has already revoked the session, and a closed tab must not leave the cached data behind. `LoginPage.tsx` renders the done text for that reason next to its existing `reason=expired` notice. There is no `done` phase on the page.
+- [ ] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase is shown AND the account list has loaded; no resend button (requesting again from the first phase replaces the code). On a successful confirm the page does not wait for a click: it awaits `signOutLocally()` and then `window.location.assign('/login?reason=deletion-scheduled')`; the server has already revoked the session, and a closed tab must not leave the cached data behind. `LoginPage.tsx` renders the done text for that reason next to its existing `reason=expired` notice. There is no `done` phase on the page. Two guards around the confirm: (1) it is disabled while the offline write queue is not empty (the hook the sync indicator in `ApplicationLayout.tsx` reads): sign-out clears that queue and the CSV holds server rows only, so unsent changes would be lost even if the user later cancels by signing in; (2) the page sets `localStorage['econumo.deletionCleanup'] = '1'` before sending the confirm and removes it on a refused confirm; the 401 interceptor in `web/src/api/client.ts` checks it and, when set, runs `signOutLocally()` and goes to `/login?reason=deletion-scheduled` instead of its usual token-only handling, so a tab that died between the server's commit and the response still gets its local data cleared.
 - [ ] **Step 4: Run** the test file, `pnpm test src/lib/metrics-coverage.test.ts src/lib/offline-coverage.test.ts src/lib/offline-notice-coverage.test.ts`, `pnpm lint`, `pnpm exec tsc -b`. PASS.
 - [ ] **Step 5: i18n** in all 11 catalogues; `go test ./internal/test/i18ntest/ -count=1`.
 - [ ] **Step 6: Regression plan** (section 12):
