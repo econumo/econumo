@@ -26,7 +26,7 @@ access) survives and comes back if the same email registers again.
 ## Non-goals
 
 - Exporting data before deletion (separate feature).
-- Cancelling a billing subscription (billing owns it; see Open questions).
+- Cancelling a billing subscription (billing owns it; the delete dialog points to it).
 - Restoring data after the wipe. A wipe is final.
 - Any MCP surface.
 
@@ -53,10 +53,14 @@ New columns (both engines, one migration version above every released one):
 | `purged_at DATETIME NULL` | set when the data was wiped |
 | `last_active_at DATETIME NULL` | last time any of the user's tokens was used, or they signed in |
 | `inactivity_warnings INTEGER NOT NULL DEFAULT 0` | how many of the 3 inactivity warnings were sent (0-3) |
+| `inactivity_wipe_at DATETIME NULL` | the inactivity deadline, fixed when the first warning is sent |
 
 States: live (`deleted_at` NULL), pending (`deleted_at` set, `purged_at` NULL), wiped
 (`purged_at` set). `last_active_at` is backfilled by the migration from the newest
-`access_tokens.last_used_at`, else `created_at`.
+`access_tokens.last_used_at` when it is newer than the migration minus 30 days, else the
+migration time. `token:purge` deletes expired and revoked tokens, so older token rows are not
+evidence of inactivity; anchoring to the migration means nobody is closer to deletion on the
+day the feature ships than a full threshold.
 
 ### Self-service request (user-requested)
 
@@ -87,19 +91,24 @@ by a login, which restores.
   30-day warning) — builder may pick the exact minimum.
 - Activity = `last_active_at`, refreshed when a token is touched (already throttled to once per
   5 minutes in `Touch`, so the extra write rides the same throttle) and on every sign-in.
-- With threshold T days and `last_active_at` = L, warnings go out at L+T-30, L+T-7, L+T-1
-  ("will be deleted in 30 days / 7 days / tomorrow, sign in to keep it"). `inactivity_warnings`
-  records which were sent so a missed day sends only the latest due warning, never a burst.
-  Activity resets the counter to 0.
-- At L+T the account is wiped directly with `deletion_reason = inactive` (`deleted_at` and
-  `purged_at` both set to now). No extra grace window: the warnings were the grace.
-- If the mailer is the console transport the warnings are still "sent" (logged). Deletion does
-  not wait for a successful send — builder's call whether a send failure postpones (proposed:
-  a failed send does not advance the counter, so the wipe waits until the last warning was sent).
+- With threshold T days and `last_active_at` = L: once now >= L+T-30 and no warning was sent,
+  the first warning ("will be deleted in 30 days") is sent and `inactivity_wipe_at` is fixed at
+  send time + 30 days. The deadline is anchored to the first warning ACTUALLY sent, never to
+  L+T, so a user found long past the threshold (feature just enabled, job down for a week) still
+  gets the full 30 days.
+- The second ("in 7 days") goes out at `inactivity_wipe_at - 7d`, the third ("tomorrow") at
+  `inactivity_wipe_at - 1d`. A late pass sends only the latest due warning, never a burst, and
+  records it in `inactivity_warnings`.
+- A failed send does not advance `inactivity_warnings`. The wipe happens at
+  `inactivity_wipe_at` only when the third warning was sent at least 20 hours earlier;
+  otherwise `inactivity_wipe_at` moves to the third warning's send time + 1 day. The console
+  transport counts as sent.
+- Any activity (token touch, sign-in) clears `inactivity_warnings` and `inactivity_wipe_at`.
+- At the deadline the account is wiped directly with `deletion_reason = inactive` (`deleted_at`
+  and `purged_at` both set to now). No extra grace window: the warnings were the grace.
 - Users already pending (user-requested) are skipped by the inactivity pass.
 - Users with `is_active = 0` (deactivated by an admin) are skipped too.
-- Users with current paid access (`access_level = full` and `access_until` in the future) are
-  skipped: they get no warnings and are not wiped while their paid access is current.
+- Paying users: OPEN, see Open questions.
 
 ### Wipe
 
@@ -112,7 +121,17 @@ and `user:delete`. One database transaction per user:
    delete pending invites.
 3. Bump the transaction revision of every account NOT owned by the user whose transactions
    reference the user's categories, payees, tags or labels (they become NULL / unlinked via FK),
-   using `txrevision.BumpWhere` before the rows change.
+   or that is either side of a transfer with one of the user's accounts, using
+   `txrevision.BumpWhere` before the rows change.
+3a. Cross-owner transfers keep the partner's balance intact (nothing in the code handles a
+   missing transfer side today, so the wipe resolves both cases explicitly instead of leaving
+   it to the FKs):
+   - partner's account -> user's account: the row becomes an expense on the partner's account
+     (same amount, recipient columns cleared, no category);
+   - user's account -> partner's account: the row moves to the partner's account as an income
+     (`account_id` = the partner's account, `amount` = the old `amount_recipient`,
+     `sort_key` = the old `recipient_sort_key`, recipient columns cleared, no category).
+   Both keep date, description, payee/tag only if they belong to the partner (else NULL).
 4. Delete everything the user owns from an explicit ordered table list: accounts (and their
    transactions, including ones others wrote into them), budgets, folders, categories, payees,
    tags, labels, recurring transactions, imports (sources, runs, events, links, rules,
@@ -158,8 +177,13 @@ when no live row has the address.
   it carries over at once, matching how registration works there today.
 - Login, `remind-password` and `reset-password` on a wiped address behave exactly as for an
   unknown address.
-- Another user may change their email to a wiped address (the unique key no longer blocks it);
-  the wiped row stays orphaned.
+- Another user may change their email to a wiped address (the unique key no longer blocks it).
+  Confirming that change rewrites the wiped row's email to `orphaned:<row id>` in the same
+  transaction: the address now belongs to a live account, so the wiped row can never be
+  revived, and when that live account is later wiped its `deleted:<hash>` cannot collide. The
+  wipe also checks defensively: if another row already holds the same `deleted:<hash>`, that
+  older row is rewritten to `orphaned:<its id>` first. The same applies when the CLI
+  `user:change-email` targets a wiped address.
 - `set-access` (admin) on a wiped user works as usual.
 - Provider sign-in with a wiped email: same revival, then the identity is linked.
 - If the email belongs to a pending (not yet wiped) row, register answers "user already exists"
@@ -183,8 +207,10 @@ and continues. Never runs inside a request.
 
 ### Billing / admin surface
 
-`/admin/user-context` gains additive fields `deletedAt`, `deletionReason`, `purgedAt` so
-billing can see the state. A wiped user's access is unchanged.
+Billing identifies users by id, so a wiped row keeps working for billing. `/admin/user-context`
+gains additive fields `deletedAt`, `deletionReason`, `purgedAt`; for a wiped row it returns
+`email` and `name` as empty strings (never the `deleted:` hash). `/admin/affiliate-users`
+keeps listing wiped users (it returns ids, not emails). A wiped user's access is unchanged.
 
 ### Emails (all 11 catalogues)
 
@@ -216,7 +242,13 @@ length/expiry reuse, the minimum allowed inactivity threshold, email copy.
 
 ## Open questions
 
-None. Calls made by the designer (not discussed explicitly), for review:
+1. Are paying users exempt from the inactivity wipe? Econumo's own columns cannot tell a paid
+   user from a trial (both are `full` with a future `access_until`); only billing's get-access
+   (`paid`, `renewing`) can. Options: no exemption (matches "paid users can be deleted"), or
+   exempt when billing reports `paid` or `renewing` (the job asks billing, only when
+   `ECONUMO_BILLING_URL` is set; a billing failure postpones that user, never wipes).
+
+Calls made by the designer (not discussed explicitly), for review:
 
 - Any use of the user's OWN tokens counts as activity (Apple Wallet ingest, MCP included);
   partner activity on shared accounts does not.
@@ -227,3 +259,8 @@ None. Calls made by the designer (not discussed explicitly), for review:
   call.
 - Grace window fixed at 30 days (not configurable).
 - No email after the wipe.
+- Cross-owner transfers are converted so the partner's balance does not change (Wipe 3a).
+- The inactivity deadline is anchored to the first warning sent; the backfill never puts anyone
+  closer than a full threshold on the day the feature ships.
+- A wiped row whose address is taken by a live account becomes `orphaned:<id>` and is never
+  revived.
