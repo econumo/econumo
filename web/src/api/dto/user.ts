@@ -36,6 +36,10 @@ export interface CurrentUserDto {
   createdAt: string
   /** false for an account created via OAuth that never set a password */
   hasPassword: boolean
+  /** months of inactivity before the account is deleted; 0 = this server never deletes */
+  inactivityMonths: number
+  /** what the user may choose, ascending; [] when the server never deletes. May not contain inactivityMonths */
+  inactivityChoices: number[]
   /** @deprecated */
   currency: string
   /** @deprecated */

@@ -1115,6 +1115,12 @@
         }
       }
     },
+    "inactivity": {
+      "menu_item": "Eliminar mi cuenta si está inactiva",
+      "header": "Eliminar mi cuenta si está inactiva",
+      "information": "Si no usas Econumo durante este tiempo, te enviamos un correo y luego eliminamos tus datos. Iniciar sesión los conserva.",
+      "months": "{count} mes | {count} meses"
+    },
     "delete_data": {
       "menu_item": "Eliminar mis datos",
       "header": "Eliminar mis datos",

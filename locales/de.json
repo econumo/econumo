@@ -1115,6 +1115,12 @@
         }
       }
     },
+    "inactivity": {
+      "menu_item": "Konto bei Inaktivität löschen",
+      "header": "Konto bei Inaktivität löschen",
+      "information": "Wenn Sie Econumo so lange nicht nutzen, senden wir Ihnen eine E-Mail und löschen dann Ihre Daten. Eine Anmeldung bewahrt sie.",
+      "months": "{count} Monat | {count} Monate"
+    },
     "delete_data": {
       "menu_item": "Meine Daten löschen",
       "header": "Meine Daten löschen",

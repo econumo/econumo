@@ -101,6 +101,11 @@ export async function updateAi(enabled: boolean): Promise<CurrentUserDto> {
   return response.data.data.user
 }
 
+export async function updateInactivityPeriod(months: number): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-inactivity-period'), { months })
+  return response.data.data.user
+}
+
 export async function updateOnboarding(value: string): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-onboarding'), { value })
   return response.data.data.user

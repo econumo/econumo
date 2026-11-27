@@ -14,6 +14,7 @@ import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
 import { useOnline } from '@/hooks/useOnline'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { pluralPick } from '@/lib/plural'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -24,6 +25,7 @@ import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { SettingsShell } from './SettingsShell'
 import { AnalyticsDialog } from './AnalyticsDialog'
 import { AiDialog } from './AiDialog'
+import { InactivityDialog } from './InactivityDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { themePreference } from '@/lib/theme'
 import { useTheme } from 'next-themes'
@@ -52,6 +54,7 @@ export function ProfilePage() {
   const [themeOpen, setThemeOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [inactivityOpen, setInactivityOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -292,6 +295,19 @@ export function ProfilePage() {
             <ChevronRight className="size-4 text-muted-foreground" />
           </Link>
         ) : null}
+        {user && user.inactivityMonths > 0 ? (
+          <button
+            type="button"
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover"
+            onClick={() => setInactivityOpen(true)}
+          >
+            {t('user.inactivity.menu_item')}
+            <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+              {pluralPick(t('user.inactivity.months'), user.inactivityMonths, i18n.language)}
+              <ChevronRight className="size-4" />
+            </span>
+          </button>
+        ) : null}
         <Link
           to={RouterPage.SETTINGS_DELETE_DATA}
           className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3.5 text-sm text-destructive hover:bg-destructive/10"
@@ -318,6 +334,15 @@ export function ProfilePage() {
         enabled={userAiOn(user)}
         onChange={(checked) => updateAi.mutate(checked)}
       />
+
+      {user && user.inactivityMonths > 0 ? (
+        <InactivityDialog
+          open={inactivityOpen}
+          onClose={() => setInactivityOpen(false)}
+          months={user.inactivityMonths}
+          choices={user.inactivityChoices ?? []}
+        />
+      ) : null}
 
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 

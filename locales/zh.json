@@ -1115,6 +1115,12 @@
         }
       }
     },
+    "inactivity": {
+      "menu_item": "不活跃时删除我的账户",
+      "header": "不活跃时删除我的账户",
+      "information": "如果您在这段时间内未使用 Econumo，我们会先发送邮件给您，然后删除您的数据。登录即可保留数据。",
+      "months": "{count} 个月"
+    },
     "delete_data": {
       "menu_item": "删除我的数据",
       "header": "删除我的数据",

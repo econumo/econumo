@@ -463,3 +463,150 @@ describe('App lock row', () => {
   })
 
 })
+
+describe('Delete my account when inactive', () => {
+  const rowName = /Delete my account when inactive/
+
+  function withPeriod(inactivityMonths: number, inactivityChoices: number[]) {
+    const user = { ...fixtureUser, inactivityMonths, inactivityChoices }
+    server.use(...coreHandlers({ user }))
+    return user
+  }
+
+  async function openDialog(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: rowName }))
+    return screen.findByRole('dialog')
+  }
+
+  function entries(dialog: HTMLElement) {
+    return within(dialog).getAllByRole('button', { name: /months?$/ })
+  }
+
+  it('is absent when the server does not delete inactive accounts', async () => {
+    withPeriod(0, [])
+    renderPage()
+    expect(await screen.findByText('Sign-in methods')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: rowName })).not.toBeInTheDocument()
+  })
+
+  it('shows the current period, directly above Delete my data', async () => {
+    withPeriod(12, [6, 12, 24])
+    renderPage()
+    const row = await screen.findByRole('button', { name: rowName })
+    expect(row).toHaveTextContent('12 months')
+    expect(row.nextElementSibling).toHaveAttribute('href', '/settings/profile/delete-data')
+  })
+
+  it('reads one month in the singular', async () => {
+    withPeriod(1, [1, 2])
+    renderPage()
+    expect(await screen.findByRole('button', { name: rowName })).toHaveTextContent('1 month')
+  })
+
+  it('saves a choice, closes, shows it on the row and tracks it', async () => {
+    const current = withPeriod(12, [6, 12, 24])
+    vi.mocked(trackEvent).mockClear()
+    let body: unknown
+    server.use(
+      http.post('*/api/v1/user/update-inactivity-period', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ success: true, message: '', data: { user: { ...current, inactivityMonths: 6 } } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const dialog = await openDialog(user)
+    expect(within(dialog).getByText('If you do not use Econumo for this long, we email you and then delete your data. Signing in keeps it.')).toBeInTheDocument()
+    expect(entries(dialog).map((b) => b.textContent)).toEqual(['6 months', '12 months', '24 months'])
+    expect(within(dialog).getByRole('button', { name: '12 months' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(within(dialog).getByRole('button', { name: '6 months' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(body).toEqual({ months: 6 })
+    expect(screen.getByRole('button', { name: rowName })).toHaveTextContent('6 months')
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_UPDATE_INACTIVITY_PERIOD, { months: 6 })
+  })
+
+  it('choosing the current period sends nothing', async () => {
+    withPeriod(12, [6, 12, 24])
+    let calls = 0
+    server.use(http.post('*/api/v1/user/update-inactivity-period', () => {
+      calls++
+      return HttpResponse.json({ success: true, message: '', data: { user: fixtureUser } })
+    }))
+    const user = userEvent.setup()
+    renderPage()
+    const dialog = await openDialog(user)
+    await user.click(within(dialog).getByRole('button', { name: '12 months' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(calls).toBe(0)
+  })
+
+  it('lists a period outside the choices last, selected, and drops it once a choice is saved', async () => {
+    const current = withPeriod(36, [6, 12, 24])
+    let calls = 0
+    server.use(
+      http.post('*/api/v1/user/update-inactivity-period', () => {
+        calls++
+        return HttpResponse.json({ success: true, message: '', data: { user: { ...current, inactivityMonths: 24 } } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    let dialog = await openDialog(user)
+    expect(entries(dialog).map((b) => b.textContent)).toEqual(['6 months', '12 months', '24 months', '36 months'])
+    expect(within(dialog).getByRole('button', { name: '36 months' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(within(dialog).getByRole('button', { name: '36 months' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(calls).toBe(0)
+
+    dialog = await openDialog(user)
+    await user.click(within(dialog).getByRole('button', { name: '24 months' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(calls).toBe(1)
+
+    dialog = await openDialog(user)
+    expect(entries(dialog).map((b) => b.textContent)).toEqual(['6 months', '12 months', '24 months'])
+    expect(within(dialog).getByRole('button', { name: '24 months' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('places a period outside the choices in ascending order', async () => {
+    withPeriod(9, [6, 12, 24])
+    const user = userEvent.setup()
+    renderPage()
+    const dialog = await openDialog(user)
+    expect(entries(dialog).map((b) => b.textContent)).toEqual(['6 months', '9 months', '12 months', '24 months'])
+    expect(within(dialog).getByRole('button', { name: '9 months' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('cannot be changed offline', async () => {
+    withPeriod(12, [6, 12, 24])
+    const user = userEvent.setup()
+    renderPage()
+    const dialog = await openDialog(user)
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+    for (const entry of entries(dialog)) {
+      expect(entry).toBeDisabled()
+    }
+  })
+
+  it('a refused save shows the message and keeps the dialog open', async () => {
+    withPeriod(12, [6, 12, 24])
+    server.use(
+      http.post('*/api/v1/user/update-inactivity-period', () => HttpResponse.json(
+        { success: false, message: 'Form validation error', code: 400, errors: { months: ['This value is not valid.'] } },
+        { status: 400 },
+      )),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const dialog = await openDialog(user)
+    await user.click(within(dialog).getByRole('button', { name: '6 months' }))
+    expect(await within(dialog).findByText('This value is not valid.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: rowName, hidden: true })).toHaveTextContent('12 months')
+  })
+})

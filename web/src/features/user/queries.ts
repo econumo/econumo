@@ -243,6 +243,17 @@ export function useUpdateAi() {
   })
 }
 
+export function useUpdateInactivityPeriod() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (months: number) => userApi.updateInactivityPeriod(months),
+    onSuccess: (user, months) => {
+      queryClient.setQueryData(queryKeys.user, user)
+      trackEvent(METRICS.USER_UPDATE_INACTIVITY_PERIOD, { months })
+    },
+  })
+}
+
 export function useUpdateLastSeenVersion() {
   const queryClient = useQueryClient()
   return useMutation({

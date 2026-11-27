@@ -3444,6 +3444,17 @@ User C sees none of it.
 - [ ] Upgrading a server with lifetime accounts (full access, no end date): each gets the
       `inactivity_months` option 36 once (`migration:seed-lifetime-inactivity`, also runnable by
       hand, a second run seeds 0); trial and read-only accounts get nothing.
+- [ ] 📱 Profile shows "Delete my account when inactive" with the current period ("12 months"),
+      directly above "Delete my data", only when ECONUMO_INACTIVE_USER_MONTHS > 0; with 0 the
+      row is absent.
+- [ ] 📱 With ECONUMO_INACTIVE_USER_MONTHS=12 the row's dialog lists 6, 12 and 24 months, 12
+      checked for an account that never chose; tapping 6 saves it, closes the dialog, the row
+      reads "6 months" at once and still does after a reload; tapping the checked entry closes
+      without a request; offline every entry is greyed out and nothing is saved.
+- [ ] An account that had lifetime access at the upgrade shows 36 months on the row; its
+      dialog lists 6, 12, 24 and 36 (checked, last); tapping 36 changes nothing; after
+      choosing one of the three, 36 is no longer listed.
+- [ ] A read-only account (trial ended) can still change the period from that dialog.
 - [ ] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the
       daily pass; with the setting at 0 they stay until `user:delete`.
 - [ ] 📱 **Delete my data**: Profile → Delete my data → password → code from the email →

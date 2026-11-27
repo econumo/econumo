@@ -1115,6 +1115,12 @@
         }
       }
     },
+    "inactivity": {
+      "menu_item": "Delete my account when inactive",
+      "header": "Delete my account when inactive",
+      "information": "If you do not use Econumo for this long, we email you and then delete your data. Signing in keeps it.",
+      "months": "{count} month | {count} months"
+    },
     "delete_data": {
       "menu_item": "Delete my data",
       "header": "Delete my data",
