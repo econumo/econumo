@@ -198,6 +198,11 @@ it('a file without a currency: new accounts take the one picked for them, and on
   const rows = within(perRowList()).getAllByRole('listitem')
   expect(rows[0]).toHaveTextContent('Trip · 1 transaction — new account in EUR')
   expect(rows[1]).toHaveTextContent('Home · 1 transaction — new account in CAD')
+  // picking the account again keeps both currency answers
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[0])
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  expect(within(perRowList()).getAllByRole('listitem')[0]).toHaveTextContent('new account in EUR')
+  expect(within(perRowList()).getAllByRole('listitem')[1]).toHaveTextContent('new account in CAD')
 })
 
 const WS_EXPORT =

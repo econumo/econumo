@@ -980,10 +980,11 @@ navigation (single-pane vs sidebar).
       no currency". With none, or after picking that, the row reads "New
       accounts will be in [USD ▾]" (a small currency picker, the user's
       currency first) with "Your file doesn't say which currency" under it.
-      The part of the file the currency reads is never offered to Category,
-      Payee, Description or Extra details except under Show all, tagged "used
-      for currency"; picking it there takes it from the currency (last pick
-      wins) and new accounts move to the picked currency. Under that, one
+      The part of the file the currency reads is not offered to Extra
+      details, and Category, Payee and Description offer it only under Show
+      all, tagged "used for currency"; picking it there takes it from the
+      currency (last pick wins) and new accounts move to the picked
+      currency. Under that, one
       plain line per name with how many transactions it gets: a name matching
       a writable account (any letter case) reads "— goes into your existing
       account (EUR)" with no currency choice; every other reads "— new
@@ -1000,19 +1001,18 @@ navigation (single-pane vs sidebar).
       left out (no readable date or amount, or skipped) gets no account. Pressing Import again after an error
       never creates an account twice, also after choosing the file again or
       closing and reopening the dialog: an account the failed Import made is
-      then listed as "Existing account".
+      then listed as "goes into your existing account (…)".
 - [ ] Econumo export: export transactions (§ CSV export) and import that file,
       with the UI in English and in another language: the wizard skips
       straight to Check, with "Accounts in this file" listing each account (on
       the Account step: "Your file names the account for each transaction"
       with "WS Cash · N transactions", and the step list reads "From WS Cash
       and N more accounts"; transaction_id never shows among the choices
-      until "Show all"); a
-      new one has a currency picker prefilled from the file's
-      `account_currency` (CAD stays CAD when the instance has CAD, also for a
-      user whose currency is USD; otherwise the user's currency with the note
-      "The file says CAD, which isn't set up here. You can add it in
-      Settings."). Every column is used by itself, the tags column
+      until "Show all"); the currency row reads "Your file says each
+      account's currency" from “account_currency”, and a new account reads
+      "new account in CAD" (CAD stays CAD when the instance has CAD, also for
+      a user whose currency is USD; otherwise "new account in USD — your file
+      says CAD, which isn't set up here. You can add it in Settings."). Every column is used by itself, the tags column
       included, and the imported rows keep their account, category, payee,
       budget tag and reporting tags, also on a transaction with more than 10
       reporting tags (the limit is 50, as when entering a transaction). The
