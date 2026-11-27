@@ -146,8 +146,8 @@ an error for the CLI and impossible from the API (no session survives the mark).
   Confirm is refused while changes made offline are still waiting to be sent (sign-out drops
   them, and the CSV holds server rows only). If the tab dies between the server's commit and
   the response, a flag set before the request makes the next refused request finish the local
-  clean-up; any later successful request removes the flag, so an ordinary expired session is
-  never mistaken for a deletion.
+  clean-up. The flag is a timestamp and counts for ten minutes, so an ordinary expired session
+  later on is never mistaken for a deletion.
   Offline-disabled via `useOnline`. Analytics event on confirm.
 - The CSV download failing does not block deletion, but the UI says so and offers a retry.
 - The existing export lists live accounts only (`ListExportAccountsForUser` skips deleted
@@ -272,7 +272,8 @@ All three are bugs today, independent of deletion, that this change would spread
 (`internal/server/glue_connection.go`) walks `ListForUser`, which returns budgets the user owns
 AND budgets shared with them. So when A and B are both members of C's budget, disconnecting A
 from B removes B from C's budget and deletes B's rows there (reproduced with a throwaway test
-during the review). The fix: only budgets OWNED by one of the two users are touched.
+during the review). The fix: only budgets OWNED by one of the two users are touched, and the
+removals of both directions run in one pass ordered by budget id.
 
 **2.** `ClearActiveBudget` (`internal/server/glue_budget.go`) reads a user and saves the whole
 row through `UpsertUser` without the row lock. On PostgreSQL a password or email change that
@@ -309,8 +310,8 @@ one line of wiring, with a test.
    on the partner's side. After the wipe commits, the waiting write fails on the missing
    account. The two-connection test covers exactly this interleaving.
 4. Everything else. Any other user row is locked only late, right before its active-budget
-   pointer is cleared. `RevokeAccess` and member removal take the budget lock first as well
-   (changed here), so a partner revoking the user mid-wipe waits instead of deadlocking.
+   pointer is cleared. `RevokeAccess`, `DeclineAccess` and member removal take the budget lock
+   first as well (changed here), so a partner revoking the user mid-wipe waits instead of deadlocking.
 
 Before any of these, a wipe takes one global wipe lock (an advisory lock on PostgreSQL), so
 two wipes never run at once: the `deleted` audit rows then become visible in the order of
@@ -501,8 +502,9 @@ partner and the third user still share their budget; no row anywhere names the w
 - The re-grant needs proof of the mailbox, because the hash is all that ties the new user to
   the old one. It happens at the moment a newly registered account's address is proven: a
   provider sign-up (the provider verified the address), the verification code being confirmed
-  when `ECONUMO_EMAIL_VERIFICATION` is on, a password reset completed with its emailed code,
-  or an operator command that creates or vouches for the account (`user:create`,
+  when `ECONUMO_EMAIL_VERIFICATION` is on, a password reset completed with its emailed code
+  by an account that was still unverified (an already verified account resetting its password
+  gets nothing), or an operator command that creates or vouches for the account (`user:create`,
   `user:verify-email`). An EXISTING account that moves to the address by an email change is
   not re-granted: the feature is about registering again, and the operator can vouch with
   `user:verify-email`. A password

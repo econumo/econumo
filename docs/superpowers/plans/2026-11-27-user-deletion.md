@@ -80,7 +80,7 @@ if got := len(els); got != 1 { t.Errorf("P1's elements on P2's budget = %d, want
 ```
 
 - [ ] **Step 2: Run it.** `go test ./internal/server/ -run TestConnectionBudgetRevoker_LeavesThirdPartyBudgets -count=1`. Expected: FAIL, 1 access row and 0 elements.
-- [ ] **Step 3: Fix `revokeDirection`:** skip every budget whose `bud.UserID` is not `owner` (`ListForUser` returns owned AND shared budgets; only owned ones belong to this pair), and walk the remaining budgets in id order (`ListForUser` is ordered by `created_at`; Task 8 makes `RemoveMember` take the budget lock, and budget locks are taken in id order everywhere). Correct the doc comment of `revokeDirection`. Add to the test: with two owned budgets created in reverse id order, `RemoveMember` is called in ascending id order (recording remover).
+- [ ] **Step 3: Fix `revokeDirection`:** skip every budget whose `bud.UserID` is not `owner` (`ListForUser` returns owned AND shared budgets; only owned ones belong to this pair). Then make the order global: `RevokeBetween` first COLLECTS the removals of both directions (budget id, member to remove), sorts them by budget id, and only then calls `RemoveMember` for each. Task 8 makes `RemoveMember` take the budget lock, budget locks are taken in id order everywhere, and two passes (A's budgets, then B's) are not one order. Correct the doc comments. Add to the test: A owns the budget with the HIGHER id (B is a member), B owns the one with the lower id (A is a member); `RemoveMember` is called for the lower id first (recording remover).
 - [ ] **Step 4: Run both revoker tests.** Expected: PASS.
 - [ ] **Step 5: Regression plan.** In section 11 add: `- [ ] Three users: A and B are both members of C's budget. A removes the connection with B: B stays a member of C's budget with their categories and plans.`
 - [ ] **Step 6: Commit** `fix: Disconnecting two users no longer removes one of them from a third user's budget`.
@@ -374,7 +374,7 @@ WHERE u.deletion_marked_at IS NULL AND u.is_active = 1
 ORDER BY u.id;
 ```
 
-  (`is_active = true` on pgsql.) The others are single-table statements whose shape the interface fixes: `GetUserDeletionState`, `MarkUserForDeletion` (`... WHERE id = ? AND deletion_marked_at IS NULL`), `UnmarkUserDeletion` (`SET deletion_marked_at = NULL, deletion_reason = '' WHERE id = ? AND deletion_marked_at IS NOT NULL`), `ListMarkedUsers`, `UserHasActiveConnection`, `ListConnectedUserIDs` (`ORDER BY connected_user_id`), `DeleteUserByID`, `InsertUserAudit`, `ListUserAuditByEmailHash`, `ListUserAuditByEvent` (cursor as in `ListAffiliateUsers`), `LockUserRowForWipe` (pgsql `SELECT id FROM users WHERE id = $1 FOR UPDATE`, no-rows mapped to nil; sqlite the same no-op `UPDATE` as `LockUserRow`), and the four `users_deletion_requests` queries modelled on `email_change_request.sql` but naming exactly the six columns of Task 3 (`id, user_id, email, code, created_at, expired_at`: no `new_email`, no `updated_at`), plus `LockDeletionWipes` (pgsql `SELECT pg_advisory_xact_lock(7203251127)`, sqlite a Go no-op) and `InsertUserAudit` with `ON CONFLICT DO NOTHING` returning the affected rows. `TouchLastActive` passes `now` and `now.Add(-24*time.Hour)`.
+  (`is_active = true` on pgsql.) The others are single-table statements whose shape the interface fixes: `GetUserDeletionState`, `MarkUserForDeletion` (`... WHERE id = ? AND deletion_marked_at IS NULL`), `UnmarkUserDeletion` (`SET deletion_marked_at = NULL, deletion_reason = '' WHERE id = ? AND deletion_marked_at IS NOT NULL`), `ListMarkedUsers`, `UserHasActiveConnection`, `ListWipeConnectedUserIDs` (`ORDER BY connected_user_id`; `connection.sql` already has a `ListConnectedUserIDs`, and sqlc generates one package per engine, so the name must differ), `DeleteUserByID`, `InsertUserAudit`, `ListUserAuditByEmailHash`, `ListUserAuditByEvent` (cursor as in `ListAffiliateUsers`), `LockUserRowForWipe` (pgsql `SELECT id FROM users WHERE id = $1 FOR UPDATE`, no-rows mapped to nil; sqlite the same no-op `UPDATE` as `LockUserRow`), and the four `users_deletion_requests` queries modelled on `email_change_request.sql` but naming exactly the six columns of Task 3 (`id, user_id, email, code, created_at, expired_at`: no `new_email`, no `updated_at`), plus `LockDeletionWipes` (pgsql `SELECT pg_advisory_xact_lock(7203251127)`, sqlite a Go no-op) and `InsertUserAudit` with `ON CONFLICT DO NOTHING` returning the affected rows. `TouchLastActive` passes `now` and `now.Add(-24*time.Hour)`.
 - [ ] **Step 4: Repos and adapters** following `internal/user/repo/emailchangerequest*.go`. `ListMarked` and `ListInactiveCandidates` return `users.email` as stored; callers decode it.
 - [ ] **Step 5: Run the tests of step 2, then with the PostgreSQL command of Global Constraints.** Expected: PASS on both.
 - [ ] **Step 6: Commit.**
@@ -512,7 +512,7 @@ Every method in this phase runs on the caller's transaction context (a nested `W
 
 **Interfaces:**
 - Consumes: existing `RemoveMember(ctx, budgetID, memberID vo.Id) error`, `s.users.ClearActiveBudget` (fixed in Task 2), `BudgetStore.Delete`, `s.debts.LockBudget` (the budget service's existing debt port).
-- Changes: `RevokeAccess` and `RemoveMember` take `s.debts.LockBudget(txCtx, budgetID)` as the FIRST statement of their transaction (when `s.debts` is set). Today a revoke deletes the access row and only then touches the member's user row; a wipe holds that user's row and wants the access row, so the two would wait on each other. With the budget lock first, on both, the revoke waits for the wipe.
+- Changes: `RevokeAccess`, `RemoveMember` and `DeclineAccess` (it deletes the access row and clears the active budget too) take `s.debts.LockBudget(txCtx, budgetID)` as the FIRST statement of their transaction (when `s.debts` is set). Today a revoke deletes the access row and only then touches the member's user row; a wipe holds that user's row and wants the access row, so the two would wait on each other. With the budget lock first, on both, the revoke waits for the wipe.
 - Produces:
 
 ```go
@@ -536,8 +536,8 @@ func (s *Service) DeleteOwned(ctx context.Context, userID vo.Id) error
 //   T's access row and elements are untouched; P's "budget" option is NULL
 // after DeleteOwned(U): BU is gone; BP still exists
 // pending (not accepted) access row of U on another budget is removed by UnwindUser too
-// lock order (recording debts port): RevokeAccess and RemoveMember call LockBudget before
-//   DeleteAccess
+// lock order (recording debts port): RevokeAccess, RemoveMember and DeclineAccess call
+//   LockBudget before DeleteAccess
 ```
 
 - [ ] **Step 2: Run, see FAIL.** `go test ./internal/budget/ -run TestWipe -count=1`
@@ -849,7 +849,9 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 // TestRegrant_PasswordReset: gate on, Register, then ResetPassword with the emailed code
 //   (it marks the address verified) -> full, nil
 // TestRegrant_NotOnEmailChange: a trial user on another address changes their email to
-//   anna@example.test (ConfirmEmailChange) -> still the trial, the deletion stays unconsumed
+//   anna@example.test (ConfirmEmailChange) -> still the trial, the deletion stays unconsumed;
+//   that same (already verified) user then completes ResetPassword at the new address ->
+//   STILL the trial: a reset re-grants only an account that was unverified until this reset
 // TestRegrant_LostRace: a lifetime_regranted row with that RefID already exists (inserted
 //   directly) -> the caller keeps the trial and no error is returned
 // TestRegrant_NotLifetime: a deleted row with lifetimeAccess false -> no grant
@@ -857,7 +859,7 @@ func (s *Service) Wipe(ctx context.Context, userID vo.Id, selectedMark *time.Tim
 ```
 
 - [ ] **Step 2: Run, see FAIL.** `go test ./internal/user/ -run TestRegrant -count=1`
-- [ ] **Step 3: Implement.** Match in Go over `audit.ListByEmailHash(hash)`: the set of `RefID` values of `lifetime_regranted` rows, then the first `deleted` row with `lifetimeAccess` true whose id is not in the set; the unique index on `ref_id` is what makes it once even for two accounts racing. Call sites: the places where a NEWLY REGISTERED account's address is proven, each of which already holds the row lock and saves the whole aggregate afterwards, so the re-grant only sets the access on `u` before that `Save`: `persistNewUser` (it gets a `proven bool` parameter: true from `ProvisionExternalUser` and `AdminCreateUser`, false from `Register`), `ConfirmEmail`, `ResetPassword` (after the code is consumed, next to `MarkEmailVerified`) and `AdminVerifyEmail`. NOT `ConfirmEmailChange`, `ReplaceVerifiedEmail` or `AdminChangeEmail`: they replace the address with an SQL-only statement and have no aggregate save, so setting access on the aggregate there would either be lost or write the old email back (see Open items).
+- [ ] **Step 3: Implement.** Match in Go over `audit.ListByEmailHash(hash)`: the set of `RefID` values of `lifetime_regranted` rows, then the first `deleted` row with `lifetimeAccess` true whose id is not in the set; the unique index on `ref_id` is what makes it once even for two accounts racing. Call sites: the places where a NEWLY REGISTERED account's address is proven, each of which already holds the row lock and saves the whole aggregate afterwards, so the re-grant only sets the access on `u` before that `Save`: `persistNewUser` (it gets a `proven bool` parameter: true from `ProvisionExternalUser` and `AdminCreateUser`, false from `Register`), `ConfirmEmail` and `ResetPassword` (after the code is consumed, next to `MarkEmailVerified`), each ONLY when `u.EmailVerified` was false before the call (the unverified-to-verified transition is what marks a newly registered account; an already verified account resetting its password proves nothing new), and `AdminVerifyEmail` (the operator vouches, whatever the flag says). NOT `ConfirmEmailChange`, `ReplaceVerifiedEmail` or `AdminChangeEmail`: they replace the address with an SQL-only statement and have no aggregate save, so setting access on the aggregate there would either be lost or write the old email back (see Open items).
 - [ ] **Step 3b: Regression plan** (section 2): `- [ ] A deleted account that had full access with no end date: registering again with the same email and confirming the address gives full access with no end date again; a second new account on that address later does not.`
 - [ ] **Step 4: Run, PASS; `go test ./internal/user/... -count=1`. Commit.**
 
@@ -1117,19 +1119,19 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 // LoginPage with ?reason=deletion-scheduled shows the done text
 // with one change in the pendingWrites queue: Confirm is disabled and the pending-writes text
 //   is shown; with the queue empty it is enabled
-// interrupted confirm: the flag localStorage['econumo.deletionCleanup'] is set before the
-//   confirm request; a 400 clears it; a later 401 on any request with the flag set runs
-//   signOutLocally() and lands on /login?reason=deletion-scheduled (client.ts interceptor test);
-//   a later SUCCESSFUL authenticated response with the flag set removes the flag (the confirm
-//   never reached the server: months later an ordinary expired session must not be treated
-//   as a deletion)
+// interrupted confirm: localStorage['econumo.deletionCleanup'] holds the time the confirm was
+//   sent; a 400 on the confirm removes it; completed clean-up removes it; a 401 on any request
+//   within 10 minutes of that time runs signOutLocally() and lands on
+//   /login?reason=deletion-scheduled (client.ts interceptor test); a 401 later than 10 minutes
+//   removes the flag and is handled as an ordinary expired session; a successful response to
+//   some OTHER request does not touch the flag
 // a 400 on confirm shows the server message and stays on the code phase
 // offline (onlineManager.setOnline(false)): both submit buttons are disabled
 // the billing link is rendered only when window.econumoConfig.BILLING_URL is set
 ```
 
 - [ ] **Step 2: Run, FAIL.** `cd web && pnpm test src/features/settings/DeleteDataPage.test.tsx`
-- [ ] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase is shown AND the account list has loaded; no resend button (requesting again from the first phase replaces the code). On a successful confirm the page does not wait for a click: it awaits `signOutLocally()` and then `window.location.assign('/login?reason=deletion-scheduled')`; the server has already revoked the session, and a closed tab must not leave the cached data behind. `LoginPage.tsx` renders the done text for that reason next to its existing `reason=expired` notice. There is no `done` phase on the page. Two guards around the confirm: (1) it is disabled while the offline write queue is not empty (the hook the sync indicator in `ApplicationLayout.tsx` reads): sign-out clears that queue and the CSV holds server rows only, so unsent changes would be lost even if the user later cancels by signing in; (2) the page sets `localStorage['econumo.deletionCleanup'] = '1'` before sending the confirm and removes it on a refused confirm; the 401 interceptor in `web/src/api/client.ts` checks it and, when set, runs `signOutLocally()` and goes to `/login?reason=deletion-scheduled` instead of its usual token-only handling, so a tab that died between the server's commit and the response still gets its local data cleared. The response interceptor's success path removes the flag whenever an authenticated request succeeds: the session is alive, so the confirm did not happen.
+- [ ] **Step 3: Implement** the page on the skeleton of `ChangeEmailPage.tsx` (`SettingsShell`, phases `request | confirm`, plain `Input type="password"`, the 6-digit code `Input`), and a destructive `Link` row at the end of the Security group of `ProfilePage.tsx` styled like the debts danger zone (`border-destructive/30 bg-destructive/5`). The route joins the settings routes in `routes.tsx`. The download runs once when the confirm phase is shown AND the account list has loaded; no resend button (requesting again from the first phase replaces the code). On a successful confirm the page does not wait for a click: it awaits `signOutLocally()` and then `window.location.assign('/login?reason=deletion-scheduled')`; the server has already revoked the session, and a closed tab must not leave the cached data behind. `LoginPage.tsx` renders the done text for that reason next to its existing `reason=expired` notice. There is no `done` phase on the page. Two guards around the confirm: (1) it is disabled while the offline write queue is not empty (the hook the sync indicator in `ApplicationLayout.tsx` reads): sign-out clears that queue and the CSV holds server rows only, so unsent changes would be lost even if the user later cancels by signing in; (2) the page stores the current time under `localStorage['econumo.deletionCleanup']` before sending the confirm and removes it on a refused confirm and after a completed clean-up; the 401 interceptor in `web/src/api/client.ts` checks it and, when it is younger than 10 minutes (the code's lifetime; a mark cannot commit later than that), runs `signOutLocally()` and goes to `/login?reason=deletion-scheduled` instead of its usual token-only handling, so a tab that died between the server's commit and the response still gets its local data cleared. An older flag is removed and ignored, which is what keeps an ordinary expired session, months later, from being mistaken for a deletion. Other requests' successes do not clear it: a request that authenticated before the mark can still succeed after it.
 - [ ] **Step 4: Run** the test file, `pnpm test src/lib/metrics-coverage.test.ts src/lib/offline-coverage.test.ts src/lib/offline-notice-coverage.test.ts`, `pnpm lint`, `pnpm exec tsc -b`. PASS.
 - [ ] **Step 5: i18n** in all 11 catalogues; `go test ./internal/test/i18ntest/ -count=1`.
 - [ ] **Step 6: Regression plan** (section 12):
@@ -1161,4 +1163,9 @@ Decided against or left for later while the plan was reviewed; none blocks the t
 - **A connection made after an inactive mark** is not handled at that moment; the daily release and the check inside the wipe see it.
 - **The billing cursor assumes the server clock does not go back.** Wipes are serialized and timestamps are whole seconds; a clock set back is covered only by the caller re-reading an overlap.
 - **The Inbox row about a partner's pending deletion does not add to the Inbox badge.**
+- **Elements left by a revoke of an older version.** On an upgraded database a former member can still have category or tag elements in a budget they no longer have an access row on (an earlier `RevokeAccess` did not remove them). The wipe finds budgets by ownership and access rows, so those elements stay, pointing at a category that is gone. They are orphans today already.
+- **A partner's import link to a replaced transfer.** If a partner's import had adopted a transfer that the wipe replaces by a correction, the link ends up pointing at nothing, so their import history shows that bank movement as deleted and offers to import it again.
+- **Inactivity marking does not lock the connected users' rows** (the wipe does). A partner who signs in during the seconds a candidate is being marked leaves the candidate marked until the next daily release. Locking there was left out: two connected candidates marked at once would lock each other's rows in opposite order.
+- **Verification and reset codes are not bound to an address** (the deletion code is). Combined with the re-grant this matters only if an unverified account's address is changed by the operator while a code is outstanding.
+- **`DeleteConnection` unwinds account grants before budgets**, the wipe the other way round.
 - **The lock order is proven by Task 14's two-connection tests, not on paper.** If one of them deadlocks or hangs, the stop rule applies.
