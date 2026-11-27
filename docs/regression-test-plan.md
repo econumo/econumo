@@ -3447,6 +3447,10 @@ User C sees none of it.
       and press Delete my data: the sign-in page says the session expired (not that the data
       will be deleted), signing in again shows the account unmarked, and changes refused
       earlier are still listed under "Not saved" in the Inbox.
+- [ ] Delete my data with the confirm answered 502 (a proxy in front, server stopped right
+      after the request): the page shows the error and stays; any later refused request within
+      10 minutes signs this browser out to "Your data will be deleted…" (the mark may have
+      committed). A wrong code (400) drops that state: a later expired session reads as expired.
 - [ ] 📱 Delete my data, code step: "Delete my data" stays disabled until the CSV download
       has finished (or failed, with the failure message and "Try the download again"), and
       while changes made offline are waiting to be sent no download starts and the button

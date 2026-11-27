@@ -150,7 +150,10 @@ an error for the CLI and impossible from the API (no session survives the mark).
   failed download). Refused changes do not block. If the tab dies between the server's commit
   and the response, a flag set before the request makes the next refused request finish the
   local clean-up. The flag is a timestamp and counts for ten minutes, so an ordinary expired
-  session later on is never mistaken for a deletion; a sign-in removes it. The confirm's own
+  session later on is never mistaken for a deletion; a sign-in removes it. While the confirm is
+  in flight, a 401 on any other request does nothing (the confirm's outcome decides); only a
+  definite refusal (a 4xx other than 401) removes the flag, while a 5xx is treated like no
+  response, since a proxy's 502/504 can arrive after the mark committed. The confirm's own
   401 is read by the page: when a flag from an earlier attempt that got no response was
   already pending, it finishes the clean-up; otherwise the session was revoked before this
   attempt and it is an ordinary expired session (nothing is wiped, the offline queue stays).
