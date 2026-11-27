@@ -97,7 +97,7 @@ if got := len(els); got != 1 { t.Errorf("P1's elements on P2's budget = %d, want
 - Produces: `Repository.ClearOptionIfValue(ctx context.Context, userID vo.Id, name, value string, now time.Time) (int64, error)` on `internal/user`. Used again by Task 8.
 - `ClearActiveBudget` runs in the caller's transaction and takes the member's user row lock (`LockRow`) BEFORE the clear: `Repo.Save` upserts every option of the aggregate it read, so without the lock a profile update that read the old pointer could write it back after the clear commits.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
 
 ```go
 // repo: only a matching value is cleared
@@ -121,12 +121,12 @@ if err := lookup.ClearActiveBudget(ctx, vo.NewId(), budgetID); err != nil { t.Er
 //   same error as today
 ```
 
-- [ ] **Step 2: Run.** Expected: FAIL (method missing).
-- [ ] **Step 3: Add the query `ClearUserOptionIfValue :execrows`** in both engines: `UPDATE users_options SET value = NULL, updated_at = ? WHERE user_id = ? AND name = ? AND value = ?`. Regenerate, add to the `querier`, both adapters and `Repo`.
-- [ ] **Step 4: Rewrite `BudgetUserLookup.ClearActiveBudget`** to call `LockRow(ctx, userID)` and then `ClearOptionIfValue(ctx, userID, model.OptionBudget, budgetID.String(), l.clock.Now())`, nothing else; `budgetUserRepo` gains those two methods and loses `Save` if nothing else in that file uses it.
-- [ ] **Step 4b: `internal/user/profile.go` `UpdateBudget`:** today `s.budgets.HasAccess` runs before `s.mutate` takes the row lock, so a selection that passed the check can save a budget id after a revoke (or a wipe) cleared it. Rewrite `UpdateBudget` as one explicit `s.tx.WithTx(ctx, func(ctx context.Context) error { ... })`: `LockRow(ctx)`, `s.budgets.HasAccess(ctx, ...)`, `GetByID(ctx)`, the option change, `Save(ctx)`. Do NOT put the check into the `mutate` callback: that callback has no context parameter, the check would run on the outer context, ask the pool for a second connection, and on SQLite (one connection, already held by the transaction) wait on itself forever. The test runs through `dbtest` (the production SQLite opener) with a 5-second test timeout to catch exactly that.
-- [ ] **Step 5: Run** `go test ./internal/server/ ./internal/user/... ./internal/budget/... -count=1`. Expected: PASS.
-- [ ] **Step 6: Commit** `fix: Clearing a member's active budget no longer rewrites their user row`.
+- [x] **Step 2: Run.** Expected: FAIL (method missing).
+- [x] **Step 3: Add the query `ClearUserOptionIfValue :execrows`** in both engines: `UPDATE users_options SET value = NULL, updated_at = ? WHERE user_id = ? AND name = ? AND value = ?`. Regenerate, add to the `querier`, both adapters and `Repo`.
+- [x] **Step 4: Rewrite `BudgetUserLookup.ClearActiveBudget`** to call `LockRow(ctx, userID)` and then `ClearOptionIfValue(ctx, userID, model.OptionBudget, budgetID.String(), l.clock.Now())`, nothing else; `budgetUserRepo` gains those two methods and loses `Save` if nothing else in that file uses it.
+- [x] **Step 4b: `internal/user/profile.go` `UpdateBudget`:** today `s.budgets.HasAccess` runs before `s.mutate` takes the row lock, so a selection that passed the check can save a budget id after a revoke (or a wipe) cleared it. Rewrite `UpdateBudget` as one explicit `s.tx.WithTx(ctx, func(ctx context.Context) error { ... })`: `LockRow(ctx)`, `s.budgets.HasAccess(ctx, ...)`, `GetByID(ctx)`, the option change, `Save(ctx)`. Do NOT put the check into the `mutate` callback: that callback has no context parameter, the check would run on the outer context, ask the pool for a second connection, and on SQLite (one connection, already held by the transaction) wait on itself forever. The test runs through `dbtest` (the production SQLite opener) with a 5-second test timeout to catch exactly that.
+- [x] **Step 5: Run** `go test ./internal/server/ ./internal/user/... ./internal/budget/... -count=1`. Expected: PASS.
+- [x] **Step 6: Commit** `fix: Clearing a member's active budget no longer rewrites their user row`.
 
 ### Task 2b: the CLI revokes MCP grants
 
