@@ -351,6 +351,7 @@ type Querier interface {
 	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
+	InsertWipeCorrection(ctx context.Context, arg InsertWipeCorrectionParams) error
 	// The one write that touches recurring_id on an existing row: an explicit
 	// "make recurring from this transaction" link. UpsertTransaction deliberately
 	// never updates the column, so the link needs its own statement.
@@ -393,6 +394,7 @@ type Querier interface {
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
+	ListCrossOwnerTransfers(ctx context.Context, userID string) ([]ListCrossOwnerTransfersRow, error)
 	// Write-side queries for the currency module: the CLI admin commands
 	// (app:add-currency) and the rate loader
 	// (app:update-currency-rates). Kept separate from currencies.sql (the user-module
@@ -531,6 +533,9 @@ type Querier interface {
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
 	PurgeIdempotencyKeys(ctx context.Context, createdAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
+	// What a deleted user leaves in other people's accounts (PostgreSQL: $N
+	// placeholders). See the sqlite variant.
+	ReassignAuthorInForeignAccounts(ctx context.Context, userID string) error
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
 	// across modules that take a client-supplied operation id).
 	ReassignCategoryRecurring(ctx context.Context, arg ReassignCategoryRecurringParams) error

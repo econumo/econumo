@@ -138,6 +138,18 @@ func (r *stubImportRepo) DayKeys(ctx context.Context, accountID vo.Id, spentAt t
 func (r *stubImportRepo) SetSideKey(ctx context.Context, accountID, id vo.Id, key string) error {
 	return nil
 }
+func (r *stubImportRepo) BumpAccountsLosingReferences(ctx context.Context, userID vo.Id) error {
+	return nil
+}
+func (r *stubImportRepo) ReassignAuthorInForeignAccounts(ctx context.Context, userID vo.Id) error {
+	return nil
+}
+func (r *stubImportRepo) ListCrossOwnerTransfers(ctx context.Context, userID vo.Id) ([]CrossOwnerTransfer, error) {
+	return nil, nil
+}
+func (r *stubImportRepo) ReplaceTransferWithCorrection(ctx context.Context, t CrossOwnerTransfer, c *WipeCorrection) error {
+	return nil
+}
 
 type passthroughTx struct{}
 

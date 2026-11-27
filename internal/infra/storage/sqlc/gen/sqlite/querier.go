@@ -473,6 +473,9 @@ type Querier interface {
 	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
+	// The replacement keeps the transfer's key on the surviving side, so sort_key
+	// is explicit and never placed by txorder.
+	InsertWipeCorrection(ctx context.Context, arg InsertWipeCorrectionParams) error
 	// The one write that touches recurring_id on an existing row: an explicit
 	// "make recurring from this transaction" link. UpsertTransaction deliberately
 	// never updates the column, so the link needs its own statement.
@@ -541,6 +544,8 @@ type Querier interface {
 	// place the moved row, save it) and as the basis for the returned list.
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
+	// Transfers with exactly one side on the user's accounts. Args: user_id (x4).
+	ListCrossOwnerTransfers(ctx context.Context, arg ListCrossOwnerTransfersParams) ([]ListCrossOwnerTransfersRow, error)
 	// Write-side queries for the currency module: the CLI admin commands
 	// (app:add-currency) and the rate loader
 	// (app:update-currency-rates). Kept separate from currencies.sql (the user-module
@@ -675,6 +680,10 @@ type Querier interface {
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
 	PurgeIdempotencyKeys(ctx context.Context, createdAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
+	// What a deleted user leaves in other people's accounts (SQLite). See
+	// internal/transaction/wipe.go.
+	// Args: user_id (x2).
+	ReassignAuthorInForeignAccounts(ctx context.Context, arg ReassignAuthorInForeignAccountsParams) error
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
 	// across modules that take a client-supplied operation id).
 	// The recurring half of ReassignCategoryTransactions. Its absence is what made
