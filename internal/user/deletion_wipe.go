@@ -127,13 +127,34 @@ func (s *Service) releaseInactiveMark(ctx context.Context, userID vo.Id) (bool, 
 	if err != nil || allowed {
 		return false, err
 	}
-	if _, err := s.deletion.Unmark(ctx, userID); err != nil {
-		return false, err
-	}
-	return true, s.writeDeletionAudit(ctx, userID, model.AuditDeletionCancelled,
-		deletionAuditDetails{Reason: model.DeletionReasonInactive, Cause: model.CancelCauseActiveConnection}, s.clock.Now())
+	return true, s.unmarkInactive(ctx, userID)
 }
 
+// unmarkInactive cancels an inactive mark the household rule no longer allows.
+func (s *Service) unmarkInactive(ctx context.Context, userID vo.Id) error {
+	if _, err := s.deletion.Unmark(ctx, userID); err != nil {
+		return err
+	}
+	cause := model.CancelCauseActiveConnection
+	if s.deletionCfg.InactiveDays == 0 {
+		cause = model.CancelCauseInactivityOff
+	}
+	return s.writeDeletionAudit(ctx, userID, model.AuditDeletionCancelled,
+		deletionAuditDetails{Reason: model.DeletionReasonInactive, Cause: cause}, s.clock.Now())
+}
+
+// inactiveMarkStillAllowed: with the policy off there is no window left to
+// measure, so no inactive mark is allowed.
 func (s *Service) inactiveMarkStillAllowed(ctx context.Context, userID vo.Id) (bool, error) {
-	return true, nil
+	if s.deletionCfg.InactiveDays == 0 {
+		return false, nil
+	}
+	active, err := s.deletion.HasActiveConnection(ctx, userID, s.inactiveCutoff())
+	return !active, err
+}
+
+// inactiveCutoff: the stamp has day precision, so the extra day keeps both
+// errors on the side of keeping data.
+func (s *Service) inactiveCutoff() time.Time {
+	return s.clock.Now().Add(-time.Duration(s.deletionCfg.InactiveDays+1) * 24 * time.Hour)
 }

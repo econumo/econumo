@@ -26,7 +26,8 @@ func (fixedClock) Now() time.Time { return Today }
 // Build wires the production graph on db with the fixed clock.
 func Build(t testing.TB, db *dbtest.DB) *server.Built {
 	t.Helper()
-	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", RateLimitWindow: 15 * time.Minute}
+	// Inactivity on: with it off the wipe releases every inactive mark instead.
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", RateLimitWindow: 15 * time.Minute, InactiveUserDays: 365}
 	b, err := server.BuildWithServices(cfg, db.Raw, server.Seams{Clock: fixedClock{}, Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)})
 	if err != nil {
 		t.Fatalf("BuildWithServices: %v", err)

@@ -3416,6 +3416,16 @@ User C sees none of it.
 - [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot
       ("Dot 1" ... "Dot 9"); Enter or Space picks it (a single tap does the
       same), Clear and Done appear, and Done submits once 4 dots are picked.
+- [ ] Inactivity (ECONUMO_INACTIVE_USER_DAYS=1 on a test server, a user idle for
+      2+ days): after the daily pass the user gets ONE email, is signed out
+      everywhere, and `user:list-pending-deletion` lists them with reason
+      `inactive`.
+- [ ] The same with a connected user who signed in today: the idle user is NOT
+      marked.
+- [ ] Two connected users both marked inactive; one signs in: after the next
+      daily pass the other is no longer in `user:list-pending-deletion`.
+- [ ] ECONUMO_USER_DELETION_DAYS=1: a user marked 2 days ago is gone after the
+      daily pass; with the setting at 0 they stay until `user:delete`.
 
 ## 12a. Connected apps (MCP OAuth)
 

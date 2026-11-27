@@ -27,12 +27,14 @@ import (
 
 	"github.com/econumo/econumo/internal/cli"
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/oauth"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/system"
+	"github.com/econumo/econumo/internal/user"
 	"github.com/econumo/econumo/internal/version"
 
 	"github.com/joho/godotenv"
@@ -234,12 +236,14 @@ func run(serveArgs []string) error {
 	slog.Info("migrations applied", "backend", be.Name())
 
 	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
-	handler, adminHandler, rateUpdater, err := server.Build(cfg, db, server.Seams{Updates: updates, OAuthProviders: oauthProviders})
+	built, err := server.BuildWithServices(cfg, db, server.Seams{Updates: updates, OAuthProviders: oauthProviders})
 	if err != nil {
 		return err
 	}
+	handler, adminHandler := built.API, built.Admin
 	updates.StartPolling(ctx)
-	rateUpdater.StartPolling(ctx)
+	built.Rates.StartPolling(ctx)
+	user.NewDeletionJob(built.Users, clock.New()).StartPolling(ctx)
 
 	// newServer applies the shared timeouts: a slow or stalled request body must
 	// not hold a connection/goroutine indefinitely, and WriteTimeout also bounds
