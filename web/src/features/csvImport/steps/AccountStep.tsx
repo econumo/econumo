@@ -107,6 +107,7 @@ function CurrencyAnswer({ state, account, onChange }: { state: StepBodyProps['st
         candidates={candidates('currency', state.profiles, state.answers).filter((c) => c !== account.column)}
         tags={columnTags(state.answers, t, i18n.language, ['currency'])}
         noneLabel={t('transactions.import_wizard.account.currency_none')}
+        noneWhenNothingFits
       />
     )
   }

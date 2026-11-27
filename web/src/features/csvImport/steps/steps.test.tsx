@@ -179,6 +179,12 @@ it('a file without a currency: new accounts take the one picked for them, and on
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
   await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
   expect(screen.getByText("Your file doesn't say which currency")).toBeInTheDocument()
+  // nothing in the file holds codes: Change offers only "no currency", the rest behind Show all
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[1])
+  const choices = screen.getByRole('radiogroup', { name: 'Which of these is the currency?' })
+  expect(within(choices).getAllByRole('radio').map((r) => r.textContent)).toEqual(['My file has no currency'])
+  expect(screen.getByRole('button', { name: 'Show all' })).toBeInTheDocument()
+  await user.click(within(choices).getByRole('radio', { name: 'My file has no currency' }))
   const all = screen.getByRole('combobox', { name: 'Currency for new accounts' })
   expect(all).toHaveValue('USD')
   // one account first gets its own currency

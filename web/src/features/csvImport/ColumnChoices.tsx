@@ -16,6 +16,8 @@ interface ColumnChoicesProps {
   tags?: Record<number, string>
   /** offers "none of these" as an answer */
   noneLabel?: string
+  /** with nothing that fits, "none of these" is the likely answer: the rest still waits behind "Show all" */
+  noneWhenNothingFits?: boolean
 }
 
 const rowClass = (selected: boolean) =>
@@ -37,14 +39,14 @@ function Dot({ on }: { on: boolean }) {
  * file's own name for it is a grey caption. An answer is a button, not a native radio: picking
  * the one already chosen is an answer too ("yes, that one"), and arrow keys must not pick.
  */
-export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel }: ColumnChoicesProps) {
+export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, noneWhenNothingFits = false }: ColumnChoicesProps) {
   const { t, i18n } = useTranslation()
   const name = useId()
   const [showAll, setShowAll] = useState(false)
   const filled = profiles.filter((p) => p.type !== 'empty' || p.index === selected).map((p) => p.index)
   const likely = [...(selected === null ? [] : [selected]), ...candidates.filter((c) => c !== selected)]
   // with nothing that fits, the whole file is the list straight away
-  const all = showAll || candidates.length === 0
+  const all = showAll || (candidates.length === 0 && !noneWhenNothingFits)
   const shown = all ? [...likely, ...filled.filter((c) => !likely.includes(c))] : likely
   const hidden = filled.filter((c) => !shown.includes(c)).length
   // in the full list, parts another step already reads go last under their own heading
