@@ -1,7 +1,7 @@
 import axios, { type AxiosRequestConfig } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
-import { getToken, removeToken } from '@/lib/storage'
+import { DELETION_CLEANUP_KEY, getToken, removeToken } from '@/lib/storage'
 import { backendHost, locale } from '@/lib/config'
 import i18n from '@/app/i18n'
 import { queryClient } from '@/app/queryClient'
@@ -11,7 +11,7 @@ import { resetAnalyticsIdentity } from '@/lib/analytics'
 
 export const api = axios.create()
 
-export const DELETION_CLEANUP_KEY = 'econumo.deletionCleanup'
+export { DELETION_CLEANUP_KEY }
 // A deletion code lives 10 minutes, so a mark cannot commit later than that
 // after its confirm was sent.
 const DELETION_CLEANUP_WINDOW_MS = 10 * 60_000
@@ -21,7 +21,7 @@ let deletionCleanup: Promise<void> | null = null
 // True when a deletion confirm was sent recently enough that this 401 can be
 // its committed mark; an older flag is dropped so an ordinary expiry months
 // later is not mistaken for a deletion.
-function deletionConfirmPending(): boolean {
+export function deletionConfirmPending(): boolean {
   try {
     const raw = localStorage.getItem(DELETION_CLEANUP_KEY)
     if (raw === null) {
@@ -38,7 +38,7 @@ function deletionConfirmPending(): boolean {
   return false
 }
 
-function finishDeletionCleanup(): void {
+export function finishDeletionCleanup(): void {
   deletionCleanup ??= (async () => {
     try {
       // loaded on demand: the sign-out reaches modules that import this client
@@ -52,6 +52,17 @@ function finishDeletionCleanup(): void {
   })().finally(() => {
     deletionCleanup = null
   })
+}
+
+// What any request answered 401 does for an ordinary expired session; the
+// offline queue stays for the same user's next sign-in.
+export function expireSession(): void {
+  removeToken()
+  // No page reload happens here (client-side navigation only), so the
+  // analytics module state would otherwise survive and misattribute the
+  // next person's login/register events on a shared browser.
+  resetAnalyticsIdentity()
+  navigateTo('/login?reason=expired')
 }
 
 export interface WriteOptions {
@@ -91,17 +102,15 @@ api.interceptors.response.use(
     // owns the cleanup (removeToken/clearPersistedQueryCache) and the exit itself either way.
     // get-identity-list is a best-effort analytics probe fired without awaiting: it must
     // never be the request that logs someone out, whatever races it.
+    // confirm-user-deletion's 401 is read by DeleteDataPage, which alone knows
+    // whether an earlier attempt of its own may have committed the mark.
     const ownsIts401 = url.includes('/api/v1/user/login-user') || url.includes('/api/v1/oauth/exchange-handoff')
       || url.includes('/api/v1/user/logout-user') || url.includes('/api/v1/oauth/get-identity-list')
+      || url.includes('/api/v1/user/confirm-user-deletion')
     if (status === 401 && !ownsIts401 && deletionConfirmPending()) {
       finishDeletionCleanup()
     } else if (status === 401 && !ownsIts401) {
-      removeToken()
-      // No page reload happens here (client-side navigation only), so the
-      // analytics module state would otherwise survive and misattribute the
-      // next person's login/register events on a shared browser.
-      resetAnalyticsIdentity()
-      navigateTo('/login?reason=expired')
+      expireSession()
     }
     if (status === 402) {
       // The 402 envelope message is deliberately product-neutral and carries

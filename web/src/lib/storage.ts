@@ -5,6 +5,8 @@ const TOKEN_KEY = 'token'
 // checked against it: the clear at sign-in may not have reached a stalled
 // IndexedDB, so the store cannot vouch for the session by itself.
 const SESSION_USER_KEY = 'sessionUserId'
+// Set by a deletion confirm before it is sent (see api/client).
+export const DELETION_CLEANUP_KEY = 'econumo.deletionCleanup'
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -49,6 +51,9 @@ function startAppLockSession(userId: string | undefined): void {
 
 export function setToken(token: string, userId?: string): void {
   startAppLockSession(userId)
+  // A fresh session is not the one a lost deletion confirm revoked: a later
+  // 401 must read as an ordinary expiry, not as that deletion.
+  localStorage.removeItem(DELETION_CLEANUP_KEY)
   localStorage.setItem(TOKEN_KEY, token)
   if (userId) {
     localStorage.setItem(SESSION_USER_KEY, userId)

@@ -7,10 +7,22 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { setToken } from '@/lib/storage'
-import { addChange } from '@/features/pendingWrites/queue'
-import { loadPendingWrites, mutate } from '@/features/pendingWrites/store'
+import { addChange, settleRefused } from '@/features/pendingWrites/queue'
+import { getOps, loadPendingWrites, mutate } from '@/features/pendingWrites/store'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { DeleteDataPage } from './DeleteDataPage'
+
+const queueOverride = vi.hoisted(() => ({ settled: undefined as boolean | undefined }))
+vi.mock('@/features/pendingWrites/hooks', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/features/pendingWrites/hooks')>()
+  return {
+    ...real,
+    useStoredQueueSettled: () => {
+      const settled = real.useStoredQueueSettled()
+      return queueOverride.settled ?? settled
+    },
+  }
+})
 
 const CLEANUP_KEY = 'econumo.deletionCleanup'
 const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
@@ -75,6 +87,7 @@ beforeEach(() => {
     downloads.push(this.download)
   })
   assign.mockClear()
+  queueOverride.settled = undefined
   Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
 })
 
@@ -209,8 +222,96 @@ describe('the download', () => {
     await goToCode(user)
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(log.calls).toEqual([])
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeDisabled()
     releaseAccounts()
     await waitFor(() => expect(log.calls).toEqual(['a1,a2,a3,a-hidden']))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled())
+  })
+
+  it('keeps Confirm disabled while the download runs', async () => {
+    let releaseExport: () => void = () => {}
+    const exportReady = new Promise<void>((resolve) => {
+      releaseExport = resolve
+    })
+    server.use(
+      ...coreHandlers(),
+      http.get('*/api/v1/transaction/export-transaction-list', async () => {
+        await exportReady
+        return new HttpResponse('transaction_id\n', { headers: { 'Content-Type': 'text/csv; charset=UTF-8' } })
+      }),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeDisabled()
+    releaseExport()
+    expect(await screen.findByText(/Your transactions were downloaded/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled()
+  })
+
+  it('waits for the stored queue before downloading, with Confirm disabled', async () => {
+    queueOverride.settled = false
+    const log: ExportLog = { calls: [] }
+    server.use(...coreHandlers(), exportHandler(log), http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()))
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(log.calls).toEqual([])
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeDisabled()
+
+    queueOverride.settled = undefined
+    // any re-render reads the hook again
+    act(() => onlineManager.setOnline(false))
+    act(() => onlineManager.setOnline(true))
+    await waitFor(() => expect(log.calls).toEqual(['a1,a2,a3,a-hidden']))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled())
+  })
+
+  it('does not download while a change waits to be sent', async () => {
+    setToken('tok', 'u1')
+    await loadPendingWrites('u1')
+    await mutate((ops) => addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }))
+    const log: ExportLog = { calls: [] }
+    server.use(...coreHandlers(), exportHandler(log), http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()))
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(log.calls).toEqual([])
+  })
+
+  it('a failed account list counts as a failed download: Confirm stays enabled and Retry reloads the accounts', async () => {
+    const log: ExportLog = { calls: [] }
+    let accountCalls = 0
+    let accountsFail = true
+    server.use(
+      http.get('*/api/v1/account/get-account-list', () => {
+        accountCalls++
+        if (accountsFail) {
+          return HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })
+        }
+        return HttpResponse.json({ success: true, message: '', data: { items: fixtureAccounts } })
+      }),
+      ...coreHandlers(),
+      exportHandler(log),
+      http.post('*/api/v1/user/request-user-deletion', () => okEnvelope()),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    expect(await screen.findByText('The download of your transactions failed.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled()
+    expect(log.calls).toEqual([])
+
+    accountsFail = false
+    const before = accountCalls
+    await user.click(screen.getByRole('button', { name: 'Try the download again' }))
+    expect(await screen.findByText(/Your transactions were downloaded/)).toBeInTheDocument()
+    expect(accountCalls).toBeGreaterThan(before)
+    expect(log.calls).toEqual(['a1,a2,a3,a-hidden'])
   })
 
   it('a failed download offers a retry and leaves Confirm enabled', async () => {
@@ -291,6 +392,7 @@ describe('the confirm', () => {
     const user = userEvent.setup()
     renderPage()
     await goToCode(user)
+    await screen.findByText(/Your transactions were downloaded/)
     await user.type(screen.getByLabelText('Confirmation code'), '999999')
     await user.click(screen.getByRole('button', { name: 'Delete my data' }))
     expect(await screen.findByText('The confirmation code is not valid.')).toBeInTheDocument()
@@ -320,7 +422,80 @@ describe('the confirm', () => {
     renderPage()
     await goToCode(user)
     expect(screen.queryByText(/Some of your changes are still waiting to be sent/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled())
+  })
+
+  it('a refused change does not block Confirm', async () => {
+    setToken('tok', 'u1')
+    await loadPendingWrites('u1')
+    await mutate((ops) => settleRefused(
+      addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }), 'k', 'refused'))
+    server.use(...codePhaseHandlers())
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled())
+  })
+
+  it('a 401 on a first attempt is an ordinary expired session: nothing is wiped', async () => {
+    setToken('tok', 'u1')
+    await loadPendingWrites('u1')
+    await mutate((ops) => settleRefused(
+      addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }), 'k', 'refused'))
+    localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
+    server.use(
+      ...codePhaseHandlers(),
+      http.post('*/api/v1/user/confirm-user-deletion', () =>
+        HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await screen.findByText(/Your transactions were downloaded/)
+    await user.type(screen.getByLabelText('Confirmation code'), '482913')
+    await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=expired'))
+    expect(assign).not.toHaveBeenCalledWith('/login?reason=deletion-scheduled')
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
+    expect(localStorage.getItem('econumo.query-cache')).toBe('{"stale":"finances"}')
+    expect(getOps()).toHaveLength(1)
+  })
+
+  it('a 401 after an attempt that got no response finishes the deletion clean-up', async () => {
+    setToken('tok', 'u1')
+    await loadPendingWrites('u1')
+    await mutate((ops) => settleRefused(
+      addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }), 'k', 'refused'))
+    let attempts = 0
+    server.use(
+      ...codePhaseHandlers(),
+      http.post('*/api/v1/user/confirm-user-deletion', () => {
+        attempts++
+        if (attempts === 1) {
+          return HttpResponse.error()
+        }
+        return HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await goToCode(user)
+    await screen.findByText(/Your transactions were downloaded/)
+    await user.type(screen.getByLabelText('Confirmation code'), '482913')
+    await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete my data' })).toBeEnabled())
+    expect(Number(localStorage.getItem(CLEANUP_KEY))).toBeGreaterThan(0)
+    expect(assign).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Delete my data' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=deletion-scheduled'))
+    expect(attempts).toBe(2)
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem(CLEANUP_KEY)).toBeNull()
+    await waitFor(() => expect(getOps()).toHaveLength(0))
   })
 })
 

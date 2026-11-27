@@ -10,7 +10,7 @@ import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { getBillingUrl } from '@/lib/config'
 import { downloadBlob, localDateStamp } from '@/lib/download'
 import { isNotEmpty, isValidRecoveryCode } from '@/lib/validation'
-import { DELETION_CLEANUP_KEY } from '@/api/client'
+import { DELETION_CLEANUP_KEY, deletionConfirmPending, expireSession, finishDeletionCleanup } from '@/api/client'
 import { exportTransactionList } from '@/api/transaction'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
@@ -18,7 +18,7 @@ import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { useAccounts } from '@/features/accounts/queries'
 import { signOutLocally } from '@/features/auth/localSignOut'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
-import { useWaitingCount } from '@/features/pendingWrites/hooks'
+import { useStoredQueueSettled, useWaitingCount } from '@/features/pendingWrites/hooks'
 import { useConfirmUserDeletion, useRequestUserDeletion, useUserData } from '@/features/user/queries'
 import { SettingsShell } from './SettingsShell'
 
@@ -40,13 +40,23 @@ function clearCleanupFlag(): void {
   }
 }
 
+// a blank accountId means every accessible account to the server, so only owned ids go out
+function ownedAccountIds(accounts: { id: Id; owner: { id: Id } }[] | undefined, userId: Id | undefined): Id[] {
+  return (accounts ?? []).filter((a) => a.owner.id === userId).map((a) => a.id)
+}
+
 export function DeleteDataPage() {
   const { t } = useTranslation()
   const online = useOnline()
   const { data: user } = useUserData()
-  const { data: accounts, isSuccess: accountsLoaded } = useAccounts()
+  const accountsQuery = useAccounts()
+  const { data: accounts, isSuccess: accountsLoaded } = accountsQuery
+  const accountsFailed = accountsQuery.isError && accounts === undefined
   const passwordLogin = usePasswordLoginAvailable()
   const askPassword = user?.hasPassword !== false && passwordLogin
+  // 0 means nothing until the stored queue is in memory; a store that gave up
+  // counts as settled so Confirm cannot stay disabled for good
+  const queueSettled = useStoredQueueSettled()
   const waiting = useWaitingCount()
   const billingEnabled = getBillingUrl() !== ''
   const portal = useOpenBillingPortal()
@@ -65,10 +75,12 @@ export function DeleteDataPage() {
   const exportStarted = useRef(false)
 
   const userId = user?.id
-  const ownedIds = useMemo(() => (accounts ?? []).filter((a) => a.owner.id === userId).map((a) => a.id), [accounts, userId])
+  const ownedIds = useMemo(() => ownedAccountIds(accounts, userId), [accounts, userId])
+  // the CSV must hold every change, so it waits for the queue to be known and empty
+  const exportReady = phase === 'confirm' && queueSettled && waiting === 0 && !!userId
+  const shownExport: ExportState = exportState === 'idle' && exportReady && accountsFailed ? 'failed' : exportState
 
   const download = useCallback(async (ids: Id[]) => {
-    // a blank accountId means every accessible account to the server
     if (ids.length === 0) {
       setExportState('none')
       return
@@ -84,12 +96,23 @@ export function DeleteDataPage() {
   }, [])
 
   useEffect(() => {
-    if (phase !== 'confirm' || !accountsLoaded || !userId || exportStarted.current) {
+    if (!exportReady || !accountsLoaded || exportStarted.current) {
       return
     }
     exportStarted.current = true
     void download(ownedIds)
-  }, [phase, accountsLoaded, userId, ownedIds, download])
+  }, [exportReady, accountsLoaded, ownedIds, download])
+
+  const retryDownload = async () => {
+    exportStarted.current = true
+    setExportState('running')
+    const res = await accountsQuery.refetch()
+    if (res.data === undefined) {
+      setExportState('failed')
+      return
+    }
+    await download(ownedAccountIds(res.data, userId))
+  }
 
   const submitRequest = () => {
     setRequestError('')
@@ -124,15 +147,28 @@ export function DeleteDataPage() {
     }
     setCodeError(null)
     setConfirming(true)
+    // Read from storage before this attempt writes it: a flag left by an earlier
+    // attempt that got no response survives a reload, and means that attempt's
+    // mark may have committed.
+    const earlierAttemptPending = deletionConfirmPending()
     // Set before sending: if this tab dies between the server's commit and the
     // response, the next 401 still clears what this browser holds.
     setCleanupFlag()
     try {
       await confirmDeletion.mutateAsync({ code: trimmed })
     } catch (err) {
-      // Without a response the server may have committed, so the flag stays;
-      // a 401 is left to the interceptor, which reads it.
-      if (isAxiosError(err) && err.response && err.response.status !== 401) {
+      if (isAxiosError(err) && err.response?.status === 401) {
+        if (earlierAttemptPending) {
+          finishDeletionCleanup()
+          return
+        }
+        // the session was revoked before this attempt reached the server: no mark was made
+        clearCleanupFlag()
+        expireSession()
+        return
+      }
+      // Without a response the server may have committed, so the flag stays.
+      if (isAxiosError(err) && err.response) {
         clearCleanupFlag()
       }
       setConfirmError(apiErrorMessage(err))
@@ -209,12 +245,12 @@ export function DeleteDataPage() {
           }}
         >
           <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.information')}</p>
-          {exportState === 'done' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.done')}</p> : null}
-          {exportState === 'none' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.none')}</p> : null}
-          {exportState === 'failed' ? (
+          {shownExport === 'done' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.done')}</p> : null}
+          {shownExport === 'none' ? <p className="text-sm text-muted-foreground">{t('user.delete_data.confirm.export.none')}</p> : null}
+          {shownExport === 'failed' ? (
             <div className="flex flex-col items-start gap-2">
               <p className="text-sm text-destructive">{t('user.delete_data.confirm.export.failed')}</p>
-              <Button type="button" variant="secondary" onClick={() => void download(ownedIds)}>
+              <Button type="button" variant="secondary" disabled={!exportReady} onClick={() => void retryDownload()}>
                 {t('user.delete_data.confirm.export.retry')}
               </Button>
             </div>
@@ -238,7 +274,8 @@ export function DeleteDataPage() {
             type="submit"
             variant="destructive"
             className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start"
-            disabled={confirming || waiting > 0 || !online}
+            // a failed download never blocks: the user was told and may go ahead
+            disabled={confirming || !online || !queueSettled || waiting > 0 || shownExport === 'idle' || shownExport === 'running'}
           >
             {t('user.delete_data.confirm.action')}
           </Button>

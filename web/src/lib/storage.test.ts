@@ -13,6 +13,14 @@ describe('token storage', () => {
   })
 })
 
+describe('a pending deletion clean-up', () => {
+  it('is dropped by a sign-in: the new session is not the one a lost confirm revoked', () => {
+    localStorage.setItem('econumo.deletionCleanup', String(Date.now()))
+    setToken('abc', 'u1')
+    expect(localStorage.getItem('econumo.deletionCleanup')).toBeNull()
+  })
+})
+
 describe('session user', () => {
   it('is stored with the token and removed with it', () => {
     setToken('abc', 'u1')
