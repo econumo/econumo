@@ -144,7 +144,16 @@ func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 // the ECONUMO_EMAIL_VERIFICATION gate) and drops any pending code.
 func (s *Service) AdminVerifyEmail(ctx context.Context, email string) error {
 	_, err := s.mutateByEmail(ctx, email, func(ctx context.Context, u *model.User) error {
-		u.MarkEmailVerified(s.clock.Now())
+		now := s.clock.Now()
+		plain, derr := s.encode.Decode(u.Email)
+		if derr != nil {
+			return derr
+		}
+		// The operator vouches for the mailbox whatever the flag says.
+		if _, rerr := s.regrantLifetime(ctx, u, plain, now); rerr != nil {
+			return rerr
+		}
+		u.MarkEmailVerified(now)
 		if err := s.repo.Save(ctx, u); err != nil {
 			return err
 		}

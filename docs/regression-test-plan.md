@@ -236,6 +236,10 @@ navigation (single-pane vs sidebar).
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that
       backend.
+- [ ] A deleted account that had full access with no end date: registering
+      again with the same email and confirming the address gives full access
+      with no end date again; a second new account on that address later does
+      not.
 
 ## 3. Onboarding (fresh user)
 

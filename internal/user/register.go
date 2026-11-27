@@ -57,19 +57,21 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 	}
 	return s.persistNewUser(ctx, name, email, func(id vo.Id, encryptedEmail, avatar string, now time.Time) *model.User {
 		return model.NewUser(id, encryptedEmail, name, avatar, passwordHash, salt, now)
-	}, selfService, selfService && s.emailVerification)
+	}, selfService, selfService && s.emailVerification, !selfService)
 }
 
 // persistNewUser is the assembly shared by password registration and external
 // provisioning: uniqueness, email encoding, default options, analytics
 // default, resolved default currency, the self-service trial, and the
 // verification gate. build constructs the bare aggregate for the caller's
-// scheme. A duplicate email -> a validation error ("User already exists").
+// scheme. proven says the caller already holds proof of the mailbox, which is
+// what lets a deleted lifetime account's access come back. A duplicate email
+// -> a validation error ("User already exists").
 // New users are never auto-connected to existing users; connections are
 // created only by accepting an invite.
 func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	build func(id vo.Id, encryptedEmail, avatar string, now time.Time) *model.User,
-	selfService, requireVerification bool,
+	selfService, requireVerification, proven bool,
 ) (*model.User, error) {
 	exists, err := s.repo.ExistsByEmail(ctx, email)
 	if err != nil {
@@ -112,6 +114,11 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 		u.RequireEmailVerification()
 	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if proven {
+			if _, err := s.regrantLifetime(ctx, u, email, now); err != nil {
+				return err
+			}
+		}
 		if err := s.repo.Save(ctx, u); err != nil {
 			return err
 		}
