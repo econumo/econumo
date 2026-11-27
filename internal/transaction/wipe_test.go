@@ -459,8 +459,9 @@ func TestRewrite_BumpsAccountsThatLoseReferences(t *testing.T) {
 		}
 		return id
 	}
-	ids = append(ids, recurring(accRecU, template(e.u, accRecU, "")))
-	ids = append(ids, recurring(accRecP, template(e.p, accRecP, uAcc)))
+	tmplU, tmplP := template(e.u, accRecU, ""), template(e.p, accRecP, uAcc)
+	recU, recP := recurring(accRecU, tmplU), recurring(accRecP, tmplP)
+	ids = append(ids, recU, recP)
 	row(accCtl, fixture.Transaction{CategoryID: e.f.Category(fixture.Category{UserID: e.p})})
 
 	before := map[string]string{}
@@ -477,6 +478,44 @@ func TestRewrite_BumpsAccountsThatLoseReferences(t *testing.T) {
 		}
 	}
 	e.f.RequireRevisionsMoved(revs, accCat, accPayee, accTag, accLabel, accImport, accRecU, accRecP)
+
+	// What the bump is for: the cascade removing a template clears recurring_id.
+	for _, tmpl := range []string{tmplU, tmplP} {
+		if _, err := e.db.Raw.Exec(e.db.Rebind(`DELETE FROM recurring_transactions WHERE id = ?`), tmpl); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, id := range []string{recU, recP} {
+		if n := e.count(`SELECT COUNT(*) FROM transactions WHERE id = ? AND recurring_id IS NULL`, id); n != 1 {
+			t.Errorf("row %s keeps recurring_id after its template was deleted", id)
+		}
+	}
+}
+
+func TestRewrite_MissingSideKeyFallsBackToTop(t *testing.T) {
+	e := newWipeEnv(t)
+	pAcc := e.f.Account(fixture.Account{UserID: e.p})
+	uAcc := e.f.Account(fixture.Account{UserID: e.u})
+	other := e.f.Transaction(fixture.Transaction{UserID: e.p, AccountID: pAcc, Type: 0, Amount: "3", SpentAt: wipeDay})
+	if _, err := e.db.Raw.Exec(e.db.Rebind(`INSERT INTO transactions (id, user_id, account_id, account_recipient_id, type, amount, amount_recipient,
+		description, spent_at, created_at, updated_at, sort_key, recipient_sort_key) VALUES (?, ?, ?, ?, 2, '10', '9.5', '', ?, ?, ?, 'q', NULL)`),
+		vo.NewId().String(), e.u, uAcc, pAcc, wipeDay, wipeDay, wipeDay); err != nil {
+		t.Fatal(err)
+	}
+	bal := e.balances(pAcc)
+
+	e.rewrite()
+
+	cs := e.correctionsOn(pAcc)
+	if len(cs) != 1 || cs[0].Type != 1 {
+		t.Fatalf("corrections = %+v, want one income", cs)
+	}
+	decimalEq(t, cs[0].Amount, "9.5")
+	if otherKey := e.column(other, "sort_key"); cs[0].SortKey == "" || cs[0].SortKey <= otherKey {
+		t.Errorf("correction key %q, want non-empty and above %q", cs[0].SortKey, otherKey)
+	}
+	e.requireSameBalances(pAcc, bal)
+	e.requireUniqueKeys(pAcc)
 }
 
 func TestRewrite_OwnTransfersUntouched(t *testing.T) {

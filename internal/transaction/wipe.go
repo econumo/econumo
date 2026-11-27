@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -46,6 +45,8 @@ func (s *Service) RewriteForDeletedUser(ctx context.Context, userID vo.Id) error
 // expense of amount at sort_key, the incoming one an income of
 // amount_recipient at recipient_sort_key. A NULL amount_recipient never
 // counted toward the recipient's balance, so that leg gets no correction.
+// A leg without a key leaves SortKey empty and the repo places it on top of
+// its day: one legacy row must never make a user undeletable.
 func wipeCorrection(t CrossOwnerTransfer, userID vo.Id, now time.Time) (*WipeCorrection, error) {
 	c := &WipeCorrection{
 		ID:          vo.NewId(),
@@ -61,13 +62,11 @@ func wipeCorrection(t CrossOwnerTransfer, userID vo.Id, now time.Time) (*WipeCor
 	if t.AmountRecipient == nil {
 		return nil, nil
 	}
-	// An unplaced incoming leg cannot keep its position; refusing beats a
-	// correction the list cannot order.
-	if t.RecipientSortKey == nil || *t.RecipientSortKey == "" {
-		return nil, fmt.Errorf("transfer %s has no recipient sort key", t.ID)
-	}
 	c.AuthorID, c.AccountID = t.RecipientOwnerID, t.RecipientAccountID
-	c.Type, c.Amount, c.SortKey = model.TransactionTypeIncome, *t.AmountRecipient, *t.RecipientSortKey
+	c.Type, c.Amount = model.TransactionTypeIncome, *t.AmountRecipient
+	if t.RecipientSortKey != nil {
+		c.SortKey = *t.RecipientSortKey
+	}
 	return c, nil
 }
 

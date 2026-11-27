@@ -105,6 +105,14 @@ func (r *Repo) ReplaceTransferWithCorrection(ctx context.Context, t domtransacti
 	}
 	db := r.db(ctx)
 	if c != nil {
+		key := c.SortKey
+		if key == "" {
+			top, err := r.order.Top(ctx, c.AccountID.String(), c.SpentAt)
+			if err != nil {
+				return err
+			}
+			key = top
+		}
 		if err := r.q.InsertWipeCorrection(ctx, db, wipeCorrectionRow{
 			ID:          c.ID.String(),
 			UserID:      c.AuthorID.String(),
@@ -115,7 +123,7 @@ func (r *Repo) ReplaceTransferWithCorrection(ctx context.Context, t domtransacti
 			SpentAt:     c.SpentAt,
 			Type:        c.Type.Int16(),
 			Amount:      c.Amount,
-			SortKey:     c.SortKey,
+			SortKey:     key,
 		}); err != nil {
 			return err
 		}
