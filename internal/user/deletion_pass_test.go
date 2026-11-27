@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -890,5 +891,18 @@ func TestWipe_ReleaseUsesTheMarkedUsersPeriod(t *testing.T) {
 	}
 	if !e.exists(t, u) {
 		t.Fatal("the user row must stay")
+	}
+}
+
+// The option is free text in the database: a huge value must not overflow the
+// cutoff into the future and mark everyone.
+func TestMarkInactive_HugeStoredPeriodMarksNobody(t *testing.T) {
+	e := newPassEnv(t, inactive12)
+	for i, v := range []string{"5000", "99999999999"} {
+		u := e.user(t, fmt.Sprintf("huge%d@pass.test", i), 800*day)
+		e.setInactivityMonths(t, u, v)
+	}
+	if n := e.markInactive(t); n != 0 || len(e.mail.msgs) != 0 {
+		t.Fatalf("marked = %d, emails = %d, want none", n, len(e.mail.msgs))
 	}
 }

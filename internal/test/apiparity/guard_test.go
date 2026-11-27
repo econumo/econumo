@@ -108,7 +108,8 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// rule routes went (unreleased) and debt/reopen-debt was added.
 	// 150 -> 152 on 2026-11-27: user/request-user-deletion and
 	// user/confirm-user-deletion.
-	const minRoutes = 152
+	// 152 -> 153 on 2026-11-27: user/update-inactivity-period.
+	const minRoutes = 153
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}

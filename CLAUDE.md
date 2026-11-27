@@ -384,9 +384,9 @@ global app and prints its secret once. CLI-created users never get a trial.
   the six public `oauth` routes.
 - **Read-only access**: a `readonly` caller gets HTTP 402 on any `POST` outside the
   middleware's allowlist (account security actions, `update-analytics`, `update-ai`,
-  `update-last-seen-version`, `request-user-deletion`/`confirm-user-deletion`, declining or
-  approving a `read` authorization). `GET` is never
-  restricted.
+  `update-last-seen-version`, `update-inactivity-period`,
+  `request-user-deletion`/`confirm-user-deletion`, declining or approving a `read`
+  authorization). `GET` is never restricted.
 - **`Idempotency-Key`** (`internal/web/middleware/idempotency.go`): the SPA sends a UUIDv7 on
   every `POST`. The server checks the table BEFORE the handler and records the key inside the
   request's own DB transaction. A replay answers HTTP 409 with `common.operation_locked` and

@@ -208,9 +208,10 @@ func (s *Service) inactiveMarkStillAllowed(ctx context.Context, userID vo.Id) (b
 }
 
 // maxInactivityMonths caps a stored period before it becomes a duration: the
-// option is free text in the database, and an overflowed cutoff would land in
-// the future and mark everyone.
-const maxInactivityMonths = 12000
+// option is free text in the database, time.Duration overflows near 106,752
+// days, and an overflowed cutoff would land in the future and mark everyone.
+// It stays above every choosable period (twice the 600-month setting cap).
+const maxInactivityMonths = 3500
 
 // inactiveCutoff: the stamp has day precision, so the extra day keeps both
 // errors on the side of keeping data.
