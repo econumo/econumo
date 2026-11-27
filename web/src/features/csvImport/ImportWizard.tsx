@@ -11,6 +11,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { finishImportStep, scheduleAiRefresh } from '@/features/onboarding/finishImport'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { useOnline } from '@/hooks/useOnline'
+import { useIsPhone } from '@/hooks/useIsPhone'
 import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { pluralPick } from '@/lib/plural'
@@ -107,6 +108,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const [step, setStep] = useState<StepId>('file')
   // a phone shows the step list first; picking a step opens it over the list
   const [phoneList, setPhoneList] = useState(false)
+  const isPhone = useIsPhone()
   const [aiRoles, setAiRoles] = useState<Partial<Record<Role, string>> | null>(null)
   const [importing, setImporting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
@@ -226,8 +228,9 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     setVisited((prev) => new Set(prev).add(step))
   }
   const openStep = (next: StepId) => {
-    // on a phone's step list the current step was not on screen, so leaving it is not seeing it
-    if (next !== step && !phoneList) leaveStep()
+    // on a phone's step list the current step was not on screen, so leaving it is not seeing it;
+    // a wide screen never shows that list, whatever phoneList says
+    if (next !== step && !(isPhone && phoneList)) leaveStep()
     setStep(next)
     setPhoneList(false)
   }

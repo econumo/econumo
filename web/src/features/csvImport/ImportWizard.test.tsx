@@ -205,6 +205,16 @@ it('a guessed step keeps its number until it is seen and left; a missing answer 
   expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
 })
 
+// the wizard opens on Account; on a wide screen it is on screen from the start, so Continue leaves it seen
+it('the Account step the wizard opens on is checked once answered and left with Continue', async () => {
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'A new account' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(marker(/^Account/)?.querySelector('svg.lucide-check')).not.toBeNull()
+})
+
 it('steps never opened stay numbered and do not hold back Import', async () => {
   renderWizard({ initialFile: csv(EXPORT, 'econumo.csv') })
   await screen.findByRole('heading', { name: 'Here is what will be added' })
