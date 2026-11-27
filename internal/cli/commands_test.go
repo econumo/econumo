@@ -19,6 +19,8 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/sqlite"
 
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // cliEnv points the container at an isolated sqlite DB + JWT dir. Unlike the
@@ -192,6 +194,57 @@ func TestUserDeactivate(t *testing.T) {
 	}
 	if got := Run([]string{"user:deactivate", "old@example.test"}); got != 0 {
 		t.Fatalf("user:deactivate = %d, want 0", got)
+	}
+}
+
+// The MCP grant's refresh token outlives the access tokens the cascade sweeps,
+// so the CLI container must install the grant revoker for both commands.
+func TestUserDeactivate_RevokesMCPGrants(t *testing.T) {
+	cases := []struct {
+		name string
+		args func(email string) []string
+	}{
+		{"deactivate", func(email string) []string { return []string{"user:deactivate", email} }},
+		{"change-password", func(email string) []string { return []string{"user:change-password", email, "operator-set-pw"} }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dbPath := cliEnvDB(t)
+			const email = "mcp-user@example.test"
+			if got := Run([]string{"user:create", "MCP User", email, "secret-pw"}); got != 0 {
+				t.Fatalf("user:create = %d, want 0", got)
+			}
+
+			ctx := context.Background()
+			raw, err := sqlite.New().Open(ctx, "sqlite://"+dbPath)
+			if err != nil {
+				t.Fatalf("open sqlite: %v", err)
+			}
+			defer raw.Close()
+			var uid string
+			if err := raw.QueryRowContext(ctx, `SELECT id FROM users WHERE email = ?`, email).Scan(&uid); err != nil {
+				t.Fatalf("user id: %v", err)
+			}
+			f := fixture.New(t, &dbtest.DB{Raw: raw, Engine: "sqlite"})
+			clientID := f.OAuthClient(fixture.OAuthClient{Name: "Claude", RedirectURIs: []string{"http://127.0.0.1:33418/callback"}, OwnerUserID: uid})
+			grantID := f.OAuthGrant(fixture.OAuthGrant{UserID: uid, ClientID: clientID, RefreshHash: "refresh-hash-" + tc.name})
+			tokenID := f.AccessToken(fixture.AccessToken{UserID: uid, Kind: "oauth", Scope: "mcp", TokenHash: "oat-hash-" + tc.name})
+			if _, err := raw.ExecContext(ctx, `UPDATE access_tokens SET grant_id = ? WHERE id = ?`, grantID, tokenID); err != nil {
+				t.Fatalf("link token to grant: %v", err)
+			}
+
+			if got := Run(tc.args(email)); got != 0 {
+				t.Fatalf("%v = %d, want 0", tc.args(email), got)
+			}
+
+			var revokedAt sql.NullString
+			if err := raw.QueryRowContext(ctx, `SELECT revoked_at FROM oauth_grants WHERE id = ?`, grantID).Scan(&revokedAt); err != nil {
+				t.Fatalf("read grant: %v", err)
+			}
+			if !revokedAt.Valid || revokedAt.String == "" {
+				t.Fatalf("oauth_grants.revoked_at is NULL after %s; the MCP client can still refresh", tc.name)
+			}
+		})
 	}
 }
 

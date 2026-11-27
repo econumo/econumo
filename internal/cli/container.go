@@ -136,6 +136,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 
 	// The CLI never serves /oauth/register, so no rate limiter.
 	apps := appauthserver.NewService(authserverrepo.NewRepo(cfg.DatabaseDriver, txm), userSvc, txm, clk, nil, cfg.AppURL)
+	userSvc.SetMCPGrantRevoker(apps)
 
 	return &container{
 		db:       db,

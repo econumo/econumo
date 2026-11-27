@@ -3551,6 +3551,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       their next tool call still works.
 - [ ] `user:deactivate` for the account makes every connected app's next call
       fail.
+- [ ] `user:deactivate <email>` on the server: an MCP client connected as that user can no longer refresh its access.
 
 ## 13. Cross-cutting & platform
 
