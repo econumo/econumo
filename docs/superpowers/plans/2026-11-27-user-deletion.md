@@ -1174,6 +1174,35 @@ const RateScopeConfirmUserDeletion = "confirm-user-deletion"
 
 ---
 
+## Added after the plan: a per-user inactivity period (Tasks 23 and 24, 2026-11-27)
+
+Asked for by the product owner once the 22 planned tasks were done; the rules are in the spec
+under "Per-user inactivity period".
+
+- **Task 23 (backend):** `ECONUMO_INACTIVE_USER_MONTHS` replaces `ECONUMO_INACTIVE_USER_DAYS`
+  (0 = off; otherwise the default period). The option `inactivity_months`, the route
+  `update-inactivity-period`, `inactivityMonths` and `inactivityChoices` on the current user,
+  every pass using the user's own period, and the one-time step that gives 36 months to
+  accounts with lifetime access at the upgrade.
+- **Task 24 (frontend):** the row "Delete my account when inactive" in Settings → Profile and
+  its dialog: half the setting, the setting, or twice the setting.
+
+Decided while building, not by the product owner:
+
+- A month is 30 days.
+- Half is integer division and is left out when it is 0 (a setting of 3 offers 1, 3 and 6).
+- The stored choice is a number of months. A value that is not among today's choices (the
+  36 of a lifetime account, or a choice made under an older setting) stays in force and is
+  shown, but cannot be chosen again once changed.
+- With the setting at 0 no choice can be saved.
+- The household rule measures a connected user's activity against the period of the account
+  being considered, not against the connected user's own.
+- A read-only account can change its period.
+- On a server without trials every existing account counts as lifetime and gets 36 months;
+  with a setting above 36 that is shorter than the default.
+
+---
+
 ## Open items
 
 Decided against or left for later while the plan was reviewed; none blocks the tasks above.
