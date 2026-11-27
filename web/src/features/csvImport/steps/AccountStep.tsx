@@ -15,6 +15,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { pluralPick } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { ColumnChoices } from '../ColumnChoices'
+import { NamesList, type NamesListItem } from '../NamesList'
 import { columnRoles, columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
 import { AnswerRow, Field, QuietButton, Segmented, SkippedNote } from '../controls'
@@ -145,8 +146,7 @@ export function PerRowAccounts({ file, rows, account, existing, onChange, headin
   onChange: (account: PerRow) => void
   heading?: ReactNode
 }) {
-  const { t, i18n } = useTranslation()
-  const headingId = useId()
+  const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
   const [changing, setChanging] = useState<ReadonlySet<string>>(() => new Set())
   const names = useMemo(() => distinctNames(file, account.column), [file, account.column])
@@ -160,60 +160,46 @@ export function PerRowAccounts({ file, rows, account, existing, onChange, headin
     }
     return found
   }, [rows])
-  if (names.length === 0) return null
   const codeOf = (currencyId: string | undefined) => currencies.find((c) => c.id === currencyId)?.code ?? ''
-  return (
-    <div className="flex flex-col gap-2">
-      <div id={headingId} className="text-xs text-muted-foreground">
-        {heading ?? t('transactions.import_wizard.account.found')}
-      </div>
-      <ul aria-labelledby={headingId} className="divide-y divide-border rounded-xl border border-border">
-        {names.map((name) => {
-          const key = nameKey(name)
-          const existingCode = existing.get(key)
-          const own = resolved.get(key)
-          const overridden = Object.hasOwn(account.overrides, key)
-          const unknownCode = existingCode === undefined && !overridden ? (own?.unknownCode ?? null) : null
-          const status =
-            existingCode !== undefined
-              ? t('transactions.import_wizard.account.status_existing', { code: existingCode })
-              : t('transactions.import_wizard.account.status_new', { code: codeOf(own?.currencyId ?? account.currencyId) })
-          return (
-            <li key={key} className="flex flex-col gap-2 px-4 py-3">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-                <p className="min-w-0 flex-1 text-sm break-words">
-                  {name}
-                  {rows ? (
-                    <span className="text-muted-foreground">
-                      {` · ${pluralPick(t('transactions.import_wizard.account.transactions'), counts.get(key) ?? 0, i18n.language)}`}
-                    </span>
-                  ) : null}
-                </p>
-                <div className="flex items-center gap-3 text-sm sm:justify-end">
-                  <span>{` ${status}`}</span>
-                  {existingCode === undefined && !changing.has(key) ? (
-                    <QuietButton onClick={() => setChanging((prev) => new Set(prev).add(key))}>
-                      {t('transactions.import_wizard.account.change_currency')}
-                    </QuietButton>
-                  ) : null}
-                </div>
+  const items: NamesListItem[] = names.map((name) => {
+    const key = nameKey(name)
+    const existingCode = existing.get(key)
+    const own = resolved.get(key)
+    const overridden = Object.hasOwn(account.overrides, key)
+    const unknownCode = existingCode === undefined && !overridden ? (own?.unknownCode ?? null) : null
+    const picking = existingCode === undefined && changing.has(key)
+    return {
+      key,
+      name,
+      count: rows ? (counts.get(key) ?? 0) : undefined,
+      status:
+        existingCode !== undefined
+          ? t('transactions.import_wizard.account.status_existing', { code: existingCode })
+          : t('transactions.import_wizard.account.status_new', { code: codeOf(own?.currencyId ?? account.currencyId) }),
+      action:
+        existingCode === undefined && !picking ? (
+          <QuietButton onClick={() => setChanging((prev) => new Set(prev).add(key))}>
+            {t('transactions.import_wizard.account.change_currency')}
+          </QuietButton>
+        ) : null,
+      below:
+        unknownCode || picking ? (
+          <>
+            {unknownCode ? <UnknownCurrencyNote code={unknownCode} /> : null}
+            {picking ? (
+              <div>
+                <CompactCurrencyPicker
+                  label={t('transactions.import_wizard.account.currency_of', { name })}
+                  value={own?.currencyId ?? account.currencyId}
+                  onChange={(currencyId) => onChange({ ...account, overrides: { ...account.overrides, [key]: currencyId } })}
+                />
               </div>
-              {unknownCode ? <UnknownCurrencyNote code={unknownCode} /> : null}
-              {existingCode === undefined && changing.has(key) ? (
-                <div>
-                  <CompactCurrencyPicker
-                    label={t('transactions.import_wizard.account.currency_of', { name })}
-                    value={own?.currencyId ?? account.currencyId}
-                    onChange={(currencyId) => onChange({ ...account, overrides: { ...account.overrides, [key]: currencyId } })}
-                  />
-                </div>
-              ) : null}
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
+            ) : null}
+          </>
+        ) : null,
+    }
+  })
+  return <NamesList heading={heading ?? t('transactions.import_wizard.account.found')} items={items} />
 }
 
 function AccountList({ accounts, selected, label, onSelect }: {

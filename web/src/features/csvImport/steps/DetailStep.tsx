@@ -1,17 +1,19 @@
 import { useMemo } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCategories } from '@/features/classifications/queries'
-import { pluralPick } from '@/lib/plural'
+import { useCategories, usePayees } from '@/features/classifications/queries'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
 import { AnswerRow } from '../controls'
-import { categoryKey, distinctNew, useOwnerLists } from '../ownerLists'
-import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
+import { NAMES_SHOWN, NamesList } from '../NamesList'
+import { categoryKey, namesInFile, useOwnerLists } from '../ownerLists'
+import type { PreparedRow } from '../prepare'
+import { firstDistinct, hasGuess, nameKey, type StepBodyProps } from '../wizard'
 
 type Detail = 'category' | 'payee'
 
-function DetailStep({ role, state, setAnswers, choosing, change, closeChoices, notes }: StepBodyProps & { role: Detail; notes: string[] }) {
+function DetailStep({ role, state, setAnswers, choosing, change, closeChoices, list }: StepBodyProps & { role: Detail; list: ReactNode }) {
   const { t, i18n } = useTranslation()
   const k = (key: string) => t(`transactions.import_wizard.${role}.${key}`)
   const column = state.answers.extras[role]
@@ -43,35 +45,45 @@ function DetailStep({ role, state, setAnswers, choosing, change, closeChoices, n
           {examples.more ? ' …' : ''}
         </AnswerRow>
       )}
-      {notes.map((note) => (
-        <p key={note} role="status" className="text-xs text-muted-foreground">
-          {note}
-        </p>
-      ))}
+      {list}
     </div>
   )
 }
 
+function DetailNames({ role, rows, existing, readOnlyLists }: { role: Detail; rows: PreparedRow[]; existing: Set<string>; readOnlyLists: boolean }) {
+  const { t } = useTranslation()
+  const names = useMemo(() => namesInFile(rows, role, null, existing), [rows, role, existing])
+  const k = (key: string) => t(`transactions.import_wizard.${role}.${key}`)
+  return (
+    <NamesList
+      heading={k('found')}
+      limit={NAMES_SHOWN}
+      items={names.map((entry) => {
+        const base = !entry.isNew ? k('status_existing') : readOnlyLists ? t('transactions.import_wizard.status_left_out') : k('status_new')
+        return {
+          key: entry.key,
+          name: entry.name,
+          count: entry.count,
+          status: entry.newKind ? `${base} · ${t(`transactions.import_wizard.category.kind_${entry.newKind}`)}` : base,
+        }
+      })}
+    />
+  )
+}
+
 export function CategoryStep(props: StepBodyProps) {
-  const { t, i18n } = useTranslation()
   const { data: categories = [] } = useCategories()
   const { ownerId, readOnlyLists } = useOwnerLists(props.state.answers.account)
-  const chosen = props.state.answers.extras.category !== null
   // Archived ones count too: the server finds them and does not create a second one.
   const existing = useMemo(() => new Set(categories.filter((c) => c.ownerUserId === ownerId).map((c) => categoryKey(c.type, c.name))), [categories, ownerId])
-  const created = useMemo(() => distinctNew(props.state.rows, 'category', null, existing), [props.state.rows, existing])
-  const notes =
-    chosen && readOnlyLists
-      ? [t('transactions.import_wizard.category.shared_owner_lists')]
-      : chosen && created > 0
-        ? [pluralPick(t('transactions.import_wizard.category.new'), created, i18n.language)]
-        : []
-  return <DetailStep role="category" notes={notes} {...props} />
+  const list = props.state.answers.extras.category !== null ? <DetailNames role="category" rows={props.state.rows} existing={existing} readOnlyLists={readOnlyLists} /> : null
+  return <DetailStep role="category" list={list} {...props} />
 }
 
 export function PayeeStep(props: StepBodyProps) {
-  const { t } = useTranslation()
-  const { readOnlyLists } = useOwnerLists(props.state.answers.account)
-  const notes = props.state.answers.extras.payee !== null && readOnlyLists ? [t('transactions.import_wizard.payee.shared_owner_lists')] : []
-  return <DetailStep role="payee" notes={notes} {...props} />
+  const { data: payees = [] } = usePayees()
+  const { ownerId, readOnlyLists } = useOwnerLists(props.state.answers.account)
+  const existing = useMemo(() => new Set(payees.filter((p) => p.ownerUserId === ownerId).map((p) => nameKey(p.name))), [payees, ownerId])
+  const list = props.state.answers.extras.payee !== null ? <DetailNames role="payee" rows={props.state.rows} existing={existing} readOnlyLists={readOnlyLists} /> : null
+  return <DetailStep role="payee" list={list} {...props} />
 }

@@ -490,8 +490,11 @@
         "none": "Plik nie ma kategorii",
         "none_found": "Twój plik nie ma kategorii. Możesz przypisać transakcje do kategorii później.",
         "left_out": "Kategorie zostaną pominięte. Możesz przypisać transakcje do kategorii później.",
-        "shared_owner_lists": "Kategorie, których właściciel tego konta jeszcze nie ma, zostaną pominięte: dodać je może tylko właściciel lub administrator.",
-        "new": "Zostanie utworzona {count} nowa kategoria | Zostaną utworzone {count} nowe kategorie | Zostanie utworzonych {count} nowych kategorii"
+        "found": "Kategorie w Twoim pliku",
+        "status_new": "Nowa kategoria",
+        "status_existing": "Twoja istniejąca kategoria",
+        "kind_expense": "wydatek",
+        "kind_income": "przychód"
       },
       "description": {
         "none": "Plik nie ma opisu",
@@ -504,7 +507,9 @@
         "none": "Plik nie ma odbiorcy",
         "none_found": "Twój plik nie mówi, komu zapłacono. Możesz dodać odbiorców później.",
         "left_out": "Odbiorcy zostaną pominięci. Możesz ich dodać później.",
-        "shared_owner_lists": "Odbiorcy, których właściciel tego konta jeszcze nie ma, zostaną pominięci: dodać ich może tylko właściciel lub administrator."
+        "found": "Odbiorcy w Twoim pliku",
+        "status_new": "Nowy odbiorca",
+        "status_existing": "Twój istniejący odbiorca"
       },
       "extras": {
         "title": "Czy Twój plik ma tagi?",
@@ -517,13 +522,17 @@
         "tab": "Tabulator",
         "newline": "Nowa linia",
         "custom_separator": "Inny znak",
-        "shared_owner_lists": "Tagi, których właściciel tego konta jeszcze nie ma, zostaną pominięte: dodać je może tylko właściciel lub administrator.",
-        "new_labels": "Zostanie utworzony {count} nowy tag | Zostaną utworzone {count} nowe tagi | Zostanie utworzonych {count} nowych tagów",
         "role_hint": {
           "tag": "Projekt lub podróż",
           "labels": "Kilka naraz to nie problem"
         },
-        "answer": "Przeniesiemy też:"
+        "answer": "Przeniesiemy też:",
+        "found": {
+          "tag": "Tagi budżetowe w Twoim pliku",
+          "labels": "Tagi raportowe w Twoim pliku"
+        },
+        "status_new": "Nowy tag",
+        "status_existing": "Twój istniejący tag"
       },
       "preview": {
         "title": "Oto, co zostanie dodane",
@@ -597,7 +606,9 @@
       },
       "from": "z „{name}”",
       "change": "Zmień",
-      "done": "Gotowe"
+      "done": "Gotowe",
+      "names_more": "i jeszcze {count}",
+      "status_left_out": "Pominięte (konto współdzielone)"
     },
     "import_result": {
       "success_title": "Import zakończony",

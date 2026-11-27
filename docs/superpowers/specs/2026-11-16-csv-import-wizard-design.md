@@ -187,8 +187,13 @@ reads it. With nothing plausible, a muted note ("Nothing in your file looks like
 so here is everything.") and the whole file with no divider; with a list of exactly one entry
 and no None, a muted note says so. There is no "Show all". Optional: with nothing that fits, or None picked, the step answers calmly ("Your
 file has no categories. You can sort transactions into categories later.") with Looks
-right; it never warns and never blocks Import. The "N new categories will be created" note
-and the shared-account "left out" note live here. One column has one role on every step: a
+right; it never warns and never blocks Import. Under a chosen column, "Categories in your
+file" lists each name (case-insensitive, trimmed) with its count of transactions that will be
+imported and "New category" / "Your existing category" (matched as the server does: the
+owner's categories within the row's kind, archived included; "· income" or "· expense" only
+when the name is new for one kind but not the other); a user-share member sees "Left out
+(shared account)" instead of "New category". The 8 most used show first, then "and N more"
+expands the rest. Payee and Tags list their names the same way; Description does not. One column has one role on every step: a
 pick takes its column from whichever step read it (the last pick wins), and a required step
 that loses it shows its warning mark again; the guess and the AI never share a column.
 
@@ -199,7 +204,7 @@ Column cards, plus "None". This is the text a bank calls details, reference, mer
 ### 7. Payee (optional): "Who was paid, or who paid you?"
 
 As Category, offering any text; "Your file doesn’t say who was paid. You can add payees
-later." when nothing fits. The shared-account "left out" note for payees lives here.
+later." when nothing fits. "Payees in your file" lists the payees as Category lists its names.
 
 ### 8. Extra details (optional): "Anything else to bring over?"
 
@@ -207,8 +212,9 @@ For people moving from another app. Lists the columns not used yet, each with sa
 values, and lets the user mark each as Budget tag, Reporting tags, or leave it out
 (default: leave out, unless the guesser recognised it). Labels get the separator choice
 that exists today, in plain words ("Several labels in one cell are separated by…"). Shown
-only when the file has unused columns; otherwise skipped. A "new tags will be created: 12"
-note as today.
+only when the file has unused columns; otherwise skipped. "Budget tags in your file" and
+"Reporting tags in your file" (split by the separator) list the tags as Category lists its
+names; budget and reporting tags share one name space.
 
 The old "fixed value for every row" options (one category/payee/tag/labels/date/description
 for the whole file) are dropped from the UI; nobody bringing a bank statement needs them.

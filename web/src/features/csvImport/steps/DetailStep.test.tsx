@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -135,7 +135,7 @@ it('a column Description reads is under Other parts of your file; picking it tak
   expect(screen.getByRole('radio', { name: 'Food from “Memo”' })).toHaveAccessibleDescription('used for description')
   await user.click(screen.getByRole('radio', { name: 'Food from “Memo”' }))
   expect(answersOf()).toMatchObject({ category: 2, description: null })
-  expect(screen.getByText('Food')).toBeInTheDocument()
+  expect(screen.getAllByText('Food')[0]).toBeInTheDocument()
 })
 
 it('a payee pick takes its column from the category: a column belongs to one detail', async () => {
@@ -156,19 +156,46 @@ it('any text is offered as the payee, the guessed one answers with its values', 
   expect(screen.getByRole('radio', { name: /from “Group”/ })).toBeInTheDocument()
 })
 
-it('counts new categories case-insensitively against the owner’s, archived ones included', async () => {
+const rowsOf = (list: string) => within(screen.getByRole('list', { name: list })).getAllByRole('listitem').map((li) => li.textContent)
+
+it('lists the categories in the file with their transactions, matching the owner’s case-insensitively, archived ones included', async () => {
   renderStep({ step: 'category', text: 'Date,Amount,Group\n2026-01-02,-5,FOOD\n2026-01-03,-5,old\n2026-01-04,-5,Travel\n2026-01-05,-5,travel\n', extras: { ...noExtras, category: 2 } })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+  await screen.findAllByText('Your existing category')
+  expect(rowsOf('Categories in your file')).toEqual([
+    'Travel · 2 transactions New category',
+    'FOOD · 1 transaction Your existing category',
+    'old · 1 transaction Your existing category',
+  ])
 })
 
-it('a name found only on a row that will be skipped is not counted as created', async () => {
+it('the list counts only rows that will be imported', async () => {
   renderStep({ step: 'category', text: 'Date,Amount,Group\n2026-01-02,-5,Travel\nsoon,-5,Garden\n', extras: { ...noExtras, category: 2 } })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+  expect(await screen.findByText('New category')).toBeInTheDocument()
+  expect(rowsOf('Categories in your file')).toEqual(['Travel · 1 transaction New category'])
 })
 
-it('counts a category within its kind: an income row naming an expense category makes a new one', async () => {
-  renderStep({ step: 'category', text: 'Date,Amount,Group\n2026-01-02,-5,Food\n2026-01-03,5,food\n', extras: { ...noExtras, category: 2 } })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
+it('a name both kinds of row use says which kind is new', async () => {
+  renderStep({ step: 'category', text: 'Date,Amount,Group\n2026-01-02,-5,Food\n2026-01-03,5,food\n2026-01-04,5,Bonus\n2026-01-05,-5,Bonus\n', extras: { ...noExtras, category: 2 } })
+  await waitFor(() =>
+    expect(rowsOf('Categories in your file')).toEqual(['Food · 2 transactions New category · income', 'Bonus · 2 transactions New category']),
+  )
+})
+
+it('a long list shows the eight most used, then and N more expands the rest', async () => {
+  const lines = Array.from({ length: 10 }, (_, i) => Array.from({ length: 10 - i }, () => `2026-01-02,-5,Group ${i}`).join('\n')).join('\n')
+  renderStep({ step: 'category', text: `Date,Amount,Group\n${lines}\n`, extras: { ...noExtras, category: 2 } })
+  const user = userEvent.setup()
+  await screen.findAllByText('New category')
+  expect(rowsOf('Categories in your file')).toHaveLength(8)
+  expect(rowsOf('Categories in your file')[0]).toBe('Group 0 · 10 transactions New category')
+  await user.click(screen.getByRole('button', { name: 'and 2 more' }))
+  expect(rowsOf('Categories in your file')).toHaveLength(10)
+  expect(screen.queryByRole('button', { name: /more/ })).not.toBeInTheDocument()
+})
+
+it('no list while categories are left out', () => {
+  renderStep({ step: 'category', text: GROUPS })
+  expect(screen.queryByRole('list', { name: 'Categories in your file' })).not.toBeInTheDocument()
 })
 
 const sharedAccount = (role: 'admin' | 'user') => ({
@@ -178,22 +205,28 @@ const sharedAccount = (role: 'admin' | 'user') => ({
   sharedAccess: [{ user: fixtureOwner, role, isAccepted: 1 }],
 })
 
-it('into a shared account with a user grant, says new categories are left out instead of counting them', async () => {
+it('into a shared account with a user grant, a category the owner lacks reads left out', async () => {
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('user')] }))
   renderStep({ step: 'category', text: 'Date,Amount,Group\n2026-01-02,-5,Gadgets\n', extras: { ...noExtras, category: 2 }, account: { kind: 'existing', accountId: 'shared' } })
-  expect(await screen.findByText('Categories this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.')).toBeInTheDocument()
-  expect(screen.queryByText(/will be created/)).not.toBeInTheDocument()
+  expect(await screen.findByText('Left out (shared account)')).toBeInTheDocument()
+  expect(screen.queryByText('New category')).not.toBeInTheDocument()
 })
 
-it('into a shared account with an admin grant, counts the new categories as usual', async () => {
+it('into a shared account with an admin grant, new categories read as new', async () => {
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('admin')] }))
   renderStep({ step: 'category', text: 'Date,Amount,Group\n2026-01-02,-5,Gadgets\n', extras: { ...noExtras, category: 2 }, account: { kind: 'existing', accountId: 'shared' } })
-  expect(await screen.findByText('1 new category will be created')).toBeInTheDocument()
-  expect(screen.queryByText(/only the owner or an admin/)).not.toBeInTheDocument()
+  expect(await screen.findByText('New category')).toBeInTheDocument()
+  expect(screen.queryByText('Left out (shared account)')).not.toBeInTheDocument()
 })
 
-it('into a shared account with a user grant, the payee step says new payees are left out', async () => {
+it('lists the payees in the file, new or the user’s own', async () => {
+  renderStep({ step: 'payee', text: 'Date,Amount,Shop\n2026-01-02,-5,grocer\n2026-01-03,-5,Cafe\n2026-01-04,-5,Cafe\n', extras: { ...noExtras, payee: 2 } })
+  await screen.findByText('Your existing payee')
+  expect(rowsOf('Payees in your file')).toEqual(['Cafe · 2 transactions New payee', 'grocer · 1 transaction Your existing payee'])
+})
+
+it('into a shared account with a user grant, a payee the owner lacks reads left out', async () => {
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('user')] }))
   renderStep({ step: 'payee', text: 'Date,Amount,Shop\n2026-01-02,-5,Cafe\n', extras: { ...noExtras, payee: 2 }, account: { kind: 'existing', accountId: 'shared' } })
-  expect(await screen.findByText('Payees this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.')).toBeInTheDocument()
+  expect(await screen.findByText('Left out (shared account)')).toBeInTheDocument()
 })

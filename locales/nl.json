@@ -490,8 +490,11 @@
         "none": "Het bestand heeft geen categorie",
         "none_found": "Uw bestand heeft geen categorieën. U kunt de transacties later in categorieën indelen.",
         "left_out": "Categorieën worden weggelaten. U kunt de transacties later in categorieën indelen.",
-        "shared_owner_lists": "Categorieën die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen.",
-        "new": "{count} nieuwe categorie wordt aangemaakt | {count} nieuwe categorieën worden aangemaakt"
+        "found": "Categorieën in uw bestand",
+        "status_new": "Nieuwe categorie",
+        "status_existing": "Uw bestaande categorie",
+        "kind_expense": "uitgave",
+        "kind_income": "inkomsten"
       },
       "description": {
         "none": "Het bestand heeft geen omschrijving",
@@ -504,7 +507,9 @@
         "none": "Het bestand heeft geen begunstigde",
         "none_found": "Uw bestand zegt niet wie er betaald is. U kunt begunstigden later toevoegen.",
         "left_out": "Begunstigden worden weggelaten. U kunt ze later toevoegen.",
-        "shared_owner_lists": "Begunstigden die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen."
+        "found": "Begunstigden in uw bestand",
+        "status_new": "Nieuwe begunstigde",
+        "status_existing": "Uw bestaande begunstigde"
       },
       "extras": {
         "title": "Bevat uw bestand tags?",
@@ -517,13 +522,17 @@
         "tab": "Tab",
         "newline": "Nieuwe regel",
         "custom_separator": "Iets anders",
-        "shared_owner_lists": "Tags die de eigenaar van deze rekening nog niet heeft, worden weggelaten: alleen de eigenaar of een beheerder kan ze toevoegen.",
-        "new_labels": "{count} nieuwe tag wordt aangemaakt | {count} nieuwe tags worden aangemaakt",
         "role_hint": {
           "tag": "Een project of een reis",
           "labels": "Meerdere tegelijk kan"
         },
-        "answer": "We nemen ook mee:"
+        "answer": "We nemen ook mee:",
+        "found": {
+          "tag": "Budgettags in uw bestand",
+          "labels": "Rapportagetags in uw bestand"
+        },
+        "status_new": "Nieuwe tag",
+        "status_existing": "Uw bestaande tag"
       },
       "preview": {
         "title": "Dit wordt toegevoegd",
@@ -597,7 +606,9 @@
       },
       "from": "uit ‘{name}’",
       "change": "Wijzigen",
-      "done": "Klaar"
+      "done": "Klaar",
+      "names_more": "en nog {count}",
+      "status_left_out": "Weggelaten (gedeelde rekening)"
     },
     "import_result": {
       "success_title": "Import voltooid",

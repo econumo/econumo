@@ -22,17 +22,40 @@ export function useOwnerLists(account: AccountChoice | null): { ownerId: string 
 export const categoryKey = (type: CategoryType, name: string) => `${type}:${nameKey(name)}`
 const rowKind = (row: PreparedRow): CategoryType => (row.amount !== null && isNegative(row.amount) ? 'expense' : 'income')
 
-// Only rows that will upload: a name found only on a skipped row is never created.
-export function distinctNew(rows: PreparedRow[], role: 'category' | 'labels', split: string | null, existing: Set<string>): number {
-  const found = new Set<string>()
+export interface NameInFile {
+  key: string
+  /** the first spelling in the file */
+  name: string
+  /** transactions that name it */
+  count: number
+  isNew: boolean
+  /** a category named by both kinds of row that exists for only one of them: the kind it is new for */
+  newKind: CategoryType | null
+}
+
+// Only rows that will upload: a name found only on a skipped row is never created. Most used
+// first, ties in file order.
+export function namesInFile(rows: PreparedRow[], role: 'category' | 'payee' | 'tag' | 'labels', split: string | null, existing: Set<string>): NameInFile[] {
+  const found = new Map<string, { name: string; count: number; kinds: Set<CategoryType> }>()
   for (const row of rows) {
     if (row.status !== 'ok') continue
     const cell = row[role]
+    const seen = new Set<string>()
     for (const part of split === null ? [cell] : cell.split(split)) {
-      if (nameKey(part) === '') continue
-      const key = role === 'category' ? categoryKey(rowKind(row), part) : nameKey(part)
-      if (!existing.has(key)) found.add(key)
+      const key = nameKey(part)
+      if (key === '') continue
+      const entry = found.get(key) ?? { name: part.trim(), count: 0, kinds: new Set<CategoryType>() }
+      entry.kinds.add(rowKind(row))
+      if (!seen.has(key)) entry.count++
+      seen.add(key)
+      found.set(key, entry)
     }
   }
-  return found.size
+  return [...found.entries()]
+    .map(([key, { name, count, kinds }]) => {
+      if (role !== 'category') return { key, name, count, isNew: !existing.has(key), newKind: null }
+      const newKinds = [...kinds].filter((kind) => !existing.has(categoryKey(kind, name)))
+      return { key, name, count, isNew: newKinds.length > 0, newKind: newKinds.length === 1 && kinds.size === 2 ? newKinds[0] : null }
+    })
+    .sort((a, b) => b.count - a.count)
 }

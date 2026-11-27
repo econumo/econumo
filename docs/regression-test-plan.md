@@ -647,7 +647,8 @@ navigation (single-pane vs sidebar).
 - [ ] CSV import whose Category, Payee or Tags step uses a column as
       Category, Payee or Budget tag, naming a new one in different letter cases ("Snacks" on one row,
       "snacks" on a later one), creates it once, as first spelled; for a
-      category the wizard's note reads "1 new category will be created".
+      category the wizard's "Categories in your file" list has one "Snacks"
+      row reading "New category".
 - [ ] Account page 📱: dropping a row into another day's group moves it to that
       day (time of day kept, edit dialog shows the new date) at the drop
       position; while the row hovers another day, that day's header is
@@ -912,12 +913,17 @@ navigation (single-pane vs sidebar).
       payees later.", with Continue, no warning mark, and Import enabled.
       On Description, a part Payee uses is listed under "Other parts of your
       file" with "used for payee"; one that ends up on Description anyway (e.g. by the
-      AI guess) is never also uploaded as a category or payee. Category
-      counts the new categories the import will create, from the rows that
-      will be imported only (a name found only on a skipped row is not
-      counted), within its kind (an income row naming the expense category
-      "Food" counts a new income "Food"). The imported rows carry exactly
-      those values.
+      AI guess) is never also uploaded as a category or payee. Under a chosen
+      column, Category lists "Categories in your file" and Payee "Payees in
+      your file": one row per name (letter case and spaces ignored), "Name ·
+      N transactions" on the left, "New category" / "Your existing category"
+      (archived ones count as existing; "New payee" / "Your existing payee")
+      on the right, counted from the rows that will be imported only (a name
+      found only on a skipped row is not listed). A name used by both income
+      and expense rows that exists for only one kind says which kind is new
+      ("New category · income"). The 8 most used come first, then a quiet
+      "and N more" shows the rest in place. Description shows no such list.
+      The imported rows carry exactly those values.
 - [ ] Tags (a file with Tags and Labels columns from another app):
       recognised headers come preselected and the step opens on "We’ll also
       bring along:" with one line per detail ("Reporting tags: Mexico2025 ·
@@ -927,9 +933,12 @@ navigation (single-pane vs sidebar).
       — from “Header”", or "Don’t bring it", and "Done" under them. Giving
       one to the other detail takes it from the first. Reporting tags asks
       how several tags are separated (";" by default, ",", "|", Tab, New
-      line, or something else). A note counts the new tags the import will
-      create, from the rows that will be imported only. The imported rows
-      carry exactly those values.
+      line, or something else). Under them, "Budget tags in your file" and
+      "Reporting tags in your file" (the latter split by the chosen
+      separator, and updating when it changes) list each tag as Category
+      does: "New tag" or "Your existing tag", from the rows that will be
+      imported only, 8 then "and N more". The imported rows carry exactly
+      those values.
 - [ ] 📱 Check and import: three tiles, Transactions, Money in (green) and
       Money out (the money tiles are left out when the rows land in accounts
       of two currencies), then "first date to last date" in the UI language's
@@ -974,9 +983,9 @@ navigation (single-pane vs sidebar).
       chosen and Account carries no warning) lists only accounts the user owns
       or holds an accepted admin/user share of (not a guest share, not a
       pending invitation), and rows imported into a shared one land there.
-      With a user (not admin) share, Category, Payee and Tags each
-      say the categories, payees or tags the owner doesn't have yet are left
-      out, and the rows import
+      With a user (not admin) share, the Category, Payee and Tags lists read
+      "Left out (shared account)" for each name the owner doesn't have yet,
+      and the rows import
       with the owner's existing ones and without the new ones (nothing is
       added to the owner's lists); with an admin share they are created in
       the owner's lists as for the owner;

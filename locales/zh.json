@@ -490,8 +490,11 @@
         "none": "文件中没有分类",
         "none_found": "你的文件中没有分类。之后可以再把交易归入分类。",
         "left_out": "不导入分类。之后可以再把交易归入分类。",
-        "shared_owner_lists": "此账户所有者尚未拥有的分类将被略过：只有所有者或管理员可以添加。",
-        "new": "将创建 {count} 个新分类"
+        "found": "您文件中的分类",
+        "status_new": "新分类",
+        "status_existing": "您现有的分类",
+        "kind_expense": "支出",
+        "kind_income": "收入"
       },
       "description": {
         "none": "文件中没有描述",
@@ -504,7 +507,9 @@
         "none": "文件中没有收款人",
         "none_found": "你的文件没有说明付给了谁。之后可以再添加收款人。",
         "left_out": "不导入收款人。之后可以再添加。",
-        "shared_owner_lists": "此账户所有者尚未拥有的收款人将被略过：只有所有者或管理员可以添加。"
+        "found": "您文件中的收款人",
+        "status_new": "新收款人",
+        "status_existing": "您现有的收款人"
       },
       "extras": {
         "title": "你的文件里有标签吗？",
@@ -517,13 +522,17 @@
         "tab": "制表符",
         "newline": "换行",
         "custom_separator": "其他",
-        "shared_owner_lists": "此账户所有者尚未拥有的标签将被略过：只有所有者或管理员可以添加。",
-        "new_labels": "将创建 {count} 个新标签",
         "role_hint": {
           "tag": "一个项目或一次旅行",
           "labels": "可以同时有多个"
         },
-        "answer": "还会一起带过来："
+        "answer": "还会一起带过来：",
+        "found": {
+          "tag": "您文件中的预算标签",
+          "labels": "您文件中的统计标签"
+        },
+        "status_new": "新标签",
+        "status_existing": "您现有的标签"
       },
       "preview": {
         "title": "以下内容将被添加",
@@ -597,7 +606,9 @@
       },
       "from": "来自“{name}”",
       "change": "更改",
-      "done": "完成"
+      "done": "完成",
+      "names_more": "还有 {count} 个",
+      "status_left_out": "略过（共享账户）"
     },
     "import_result": {
       "success_title": "导入完成",

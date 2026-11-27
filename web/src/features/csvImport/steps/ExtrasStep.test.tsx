@@ -102,9 +102,24 @@ it('a column belongs to one detail: giving it to a second takes it from the firs
   expect(screen.getByRole('combobox', { name: 'Budget tag' })).toHaveValue('')
 })
 
-it('counts new labels split by the separator, sharing one name space with tags', async () => {
-  renderStep('Date,Amount,Marks\n2026-01-02,-5,Health;VACATION;trip\n2026-01-03,-5,Trip; fun\n', { ...noExtras, labels: 2 })
-  expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
+const rowsOf = (list: string) => within(screen.getByRole('list', { name: list })).getAllByRole('listitem').map((li) => li.textContent)
+
+it('lists reporting tags split by the separator, sharing one name space with budget tags', async () => {
+  renderStep('Date,Amount,Marks\n2026-01-02,-5,Health;VACATION;trip\n2026-01-03,-5,Trip; fun;trip\n', { ...noExtras, labels: 2 })
+  await screen.findAllByText('Your existing tag')
+  expect(rowsOf('Reporting tags in your file')).toEqual([
+    'trip · 2 transactions New tag',
+    'Health · 1 transaction Your existing tag',
+    'VACATION · 1 transaction Your existing tag',
+    'fun · 1 transaction New tag',
+  ])
+})
+
+it('lists budget tags whole, beside the reporting tags', async () => {
+  renderStep('Date,Amount,Trip,Marks\n2026-01-02,-5,Vacation,a;b\n2026-01-03,-5,Rome;Milan,a\n', { ...noExtras, tag: 2, labels: 3 })
+  await screen.findByText('Your existing tag')
+  expect(rowsOf('Budget tags in your file')).toEqual(['Vacation · 1 transaction Your existing tag', 'Rome;Milan · 1 transaction New tag'])
+  expect(rowsOf('Reporting tags in your file')).toEqual(['a · 2 transactions New tag', 'b · 1 transaction New tag'])
 })
 
 it('offers the separator only for a labels column and keeps a custom one', async () => {
@@ -115,16 +130,16 @@ it('offers the separator only for a labels column and keeps a custom one', async
   expect(screen.getByRole('radio', { name: ';' })).toBeChecked()
   await user.type(screen.getByLabelText('Something else'), '/')
   expect(extrasOf().labelsSeparator).toBe('/')
-  expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
+  expect(rowsOf('Reporting tags in your file')).toEqual(['a · 1 transaction New tag', 'b · 1 transaction New tag'])
 })
 
 it('tags on separate lines of one cell split by New line', async () => {
   renderStep('Date,Amount,Marks\n2026-01-02,-5,"a\nb"\n', { ...noExtras, labels: 2 })
   const user = userEvent.setup()
-  expect(await screen.findByText('1 new tag will be created')).toBeInTheDocument()
+  expect(rowsOf('Reporting tags in your file')).toHaveLength(1)
   await user.click(screen.getByRole('radio', { name: 'New line' }))
   expect(extrasOf().labelsSeparator).toBe('\n')
-  expect(await screen.findByText('2 new tags will be created')).toBeInTheDocument()
+  expect(rowsOf('Reporting tags in your file')).toEqual(['a · 1 transaction New tag', 'b · 1 transaction New tag'])
 })
 
 const sharedAccount = (role: 'admin' | 'user') => ({
@@ -134,16 +149,16 @@ const sharedAccount = (role: 'admin' | 'user') => ({
   sharedAccess: [{ user: fixtureOwner, role, isAccepted: 1 }],
 })
 
-it('into a shared account with a user grant, says new tags are left out instead of counting them', async () => {
+it('into a shared account with a user grant, a tag the owner lacks reads left out', async () => {
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('user')] }))
   renderStep('Date,Amount,Marks\n2026-01-02,-5,Gadgets\n', { ...noExtras, labels: 2 }, { kind: 'existing', accountId: 'shared' })
-  expect(await screen.findByText('Tags this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.')).toBeInTheDocument()
-  expect(screen.queryByText(/will be created/)).not.toBeInTheDocument()
+  expect(await screen.findByText('Left out (shared account)')).toBeInTheDocument()
+  expect(screen.queryByText('New tag')).not.toBeInTheDocument()
 })
 
-it('into a shared account with an admin grant, counts the new tags as usual', async () => {
+it('into a shared account with an admin grant, new tags read as new', async () => {
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount('admin')] }))
   renderStep('Date,Amount,Marks\n2026-01-02,-5,Gadgets\n', { ...noExtras, labels: 2 }, { kind: 'existing', accountId: 'shared' })
-  expect(await screen.findByText('1 new tag will be created')).toBeInTheDocument()
-  expect(screen.queryByText(/only the owner or an admin/)).not.toBeInTheDocument()
+  expect(await screen.findByText('New tag')).toBeInTheDocument()
+  expect(screen.queryByText('Left out (shared account)')).not.toBeInTheDocument()
 })

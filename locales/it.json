@@ -490,8 +490,11 @@
         "none": "Il file non ha una categoria",
         "none_found": "Il tuo file non ha categorie. Puoi suddividere le transazioni in categorie più tardi.",
         "left_out": "Le categorie vengono tralasciate. Puoi suddividere le transazioni in categorie più tardi.",
-        "shared_owner_lists": "Le categorie che il proprietario di questo conto non ha ancora vengono tralasciate: solo il proprietario o un amministratore può aggiungerle.",
-        "new": "Verrà creata {count} nuova categoria | Verranno create {count} nuove categorie"
+        "found": "Categorie nel tuo file",
+        "status_new": "Nuova categoria",
+        "status_existing": "La tua categoria esistente",
+        "kind_expense": "spesa",
+        "kind_income": "entrata"
       },
       "description": {
         "none": "Il file non ha una descrizione",
@@ -504,7 +507,9 @@
         "none": "Il file non ha un beneficiario",
         "none_found": "Il tuo file non dice chi è stato pagato. Puoi aggiungere i beneficiari più tardi.",
         "left_out": "I beneficiari vengono tralasciati. Puoi aggiungerli più tardi.",
-        "shared_owner_lists": "I beneficiari che il proprietario di questo conto non ha ancora vengono tralasciati: solo il proprietario o un amministratore può aggiungerli."
+        "found": "Beneficiari nel tuo file",
+        "status_new": "Nuovo beneficiario",
+        "status_existing": "Il tuo beneficiario esistente"
       },
       "extras": {
         "title": "Il tuo file ha dei tag?",
@@ -517,13 +522,17 @@
         "tab": "Tabulazione",
         "newline": "A capo",
         "custom_separator": "Altro",
-        "shared_owner_lists": "I tag che il proprietario di questo conto non ha ancora vengono tralasciati: solo il proprietario o un amministratore può aggiungerli.",
-        "new_labels": "Verrà creato {count} nuovo tag | Verranno creati {count} nuovi tag",
         "role_hint": {
           "tag": "Un progetto o un viaggio",
           "labels": "Anche più di uno alla volta"
         },
-        "answer": "Porteremo anche:"
+        "answer": "Porteremo anche:",
+        "found": {
+          "tag": "Tag di budget nel tuo file",
+          "labels": "Tag per i report nel tuo file"
+        },
+        "status_new": "Nuovo tag",
+        "status_existing": "Il tuo tag esistente"
       },
       "preview": {
         "title": "Ecco cosa verrà aggiunto",
@@ -597,7 +606,9 @@
       },
       "from": "da «{name}»",
       "change": "Modifica",
-      "done": "Fatto"
+      "done": "Fatto",
+      "names_more": "e altri {count}",
+      "status_left_out": "Tralasciato (conto condiviso)"
     },
     "import_result": {
       "success_title": "Importazione completata",

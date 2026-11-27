@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useLabels, useTags } from '@/features/classifications/queries'
-import { pluralPick } from '@/lib/plural'
 import { firstDistinct, hasGuess, nameKey, unusedColumns, type StepBodyProps } from '../wizard'
 import { displaySamples, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
 import { AnswerRow, ChoicesDone, Field, Segmented } from '../controls'
-import { distinctNew, useOwnerLists } from '../ownerLists'
+import { NAMES_SHOWN, NamesList } from '../NamesList'
+import { namesInFile, useOwnerLists } from '../ownerLists'
 
 type Role = 'tag' | 'labels'
 const ROLES: Role[] = ['tag', 'labels']
@@ -29,15 +29,13 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
   const separator = extras.labelsSeparator || DEFAULT_SEPARATOR
 
   const { ownerId, readOnlyLists } = useOwnerLists(account)
-  const anyDetail = ROLES.some((role) => extras[role] !== null)
 
   // Archived ones count too: the server finds them and does not create a second one.
-  // Labels and tags share one name space.
+  // Budget and reporting tags share one name space.
   const existingLabels = useMemo(
     () => new Set([...labels, ...tags].filter((item) => item.ownerUserId === ownerId).map((item) => nameKey(item.name))),
     [labels, tags, ownerId],
   )
-  const newLabels = useMemo(() => distinctNew(state.rows, 'labels', separator, existingLabels), [state.rows, separator, existingLabels])
 
   // the earlier steps' columns are never offered; a column belongs to one role, so giving it to another takes it from the first
   const offered = unusedColumns(state.answers, state.profiles)
@@ -145,16 +143,23 @@ export function ExtrasStep({ state, setAnswers, choosing, change, closeChoices, 
         </div>
       ) : null}
 
-      {readOnlyLists && anyDetail ? (
-        <p role="status" className="text-xs text-muted-foreground">
-          {t('transactions.import_wizard.extras.shared_owner_lists')}
-        </p>
-      ) : null}
-      {!readOnlyLists && newLabels > 0 ? (
-        <p role="status" className="text-xs text-muted-foreground">
-          {pluralPick(t('transactions.import_wizard.extras.new_labels'), newLabels, i18n.language)}
-        </p>
-      ) : null}
+      {ROLES.filter((role) => extras[role] !== null).map((role) => (
+        <NamesList
+          key={role}
+          heading={t(`transactions.import_wizard.extras.found.${role}`)}
+          limit={NAMES_SHOWN}
+          items={namesInFile(state.rows, role, role === 'labels' ? separator : null, existingLabels).map((entry) => ({
+            key: entry.key,
+            name: entry.name,
+            count: entry.count,
+            status: !entry.isNew
+              ? t('transactions.import_wizard.extras.status_existing')
+              : readOnlyLists
+                ? t('transactions.import_wizard.status_left_out')
+                : t('transactions.import_wizard.extras.status_new'),
+          }))}
+        />
+      ))}
     </div>
   )
 }

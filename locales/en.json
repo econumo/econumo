@@ -490,8 +490,11 @@
         "none": "The file has no category",
         "none_found": "Your file has no categories. You can sort transactions into categories later.",
         "left_out": "Categories are left out. You can sort transactions into categories later.",
-        "shared_owner_lists": "Categories this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.",
-        "new": "{count} new category will be created | {count} new categories will be created"
+        "found": "Categories in your file",
+        "status_new": "New category",
+        "status_existing": "Your existing category",
+        "kind_expense": "expense",
+        "kind_income": "income"
       },
       "description": {
         "none": "The file has no description",
@@ -504,7 +507,9 @@
         "none": "The file has no payee",
         "none_found": "Your file doesn’t say who was paid. You can add payees later.",
         "left_out": "Payees are left out. You can add them later.",
-        "shared_owner_lists": "Payees this account’s owner doesn’t have yet are left out: only the owner or an admin can add them."
+        "found": "Payees in your file",
+        "status_new": "New payee",
+        "status_existing": "Your existing payee"
       },
       "extras": {
         "title": "Does your file have tags?",
@@ -517,13 +522,17 @@
         "tab": "Tab",
         "newline": "New line",
         "custom_separator": "Something else",
-        "shared_owner_lists": "Tags this account’s owner doesn’t have yet are left out: only the owner or an admin can add them.",
-        "new_labels": "{count} new tag will be created | {count} new tags will be created",
         "role_hint": {
           "tag": "A project or a trip",
           "labels": "Several at once are fine"
         },
-        "answer": "We’ll also bring along:"
+        "answer": "We’ll also bring along:",
+        "found": {
+          "tag": "Budget tags in your file",
+          "labels": "Reporting tags in your file"
+        },
+        "status_new": "New tag",
+        "status_existing": "Your existing tag"
       },
       "preview": {
         "title": "Here is what will be added",
@@ -597,7 +606,9 @@
       },
       "from": "from “{name}”",
       "change": "Change",
-      "done": "Done"
+      "done": "Done",
+      "names_more": "and {count} more",
+      "status_left_out": "Left out (shared account)"
     },
     "import_result": {
       "success_title": "Import complete",

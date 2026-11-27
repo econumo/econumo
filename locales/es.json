@@ -490,8 +490,11 @@
         "none": "El archivo no tiene categoría",
         "none_found": "Tu archivo no tiene categorías. Puedes clasificar las transacciones en categorías más adelante.",
         "left_out": "Las categorías se omiten. Puedes clasificar las transacciones en categorías más adelante.",
-        "shared_owner_lists": "Las categorías que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlas.",
-        "new": "Se creará {count} categoría nueva | Se crearán {count} categorías nuevas"
+        "found": "Categorías en tu archivo",
+        "status_new": "Categoría nueva",
+        "status_existing": "Tu categoría existente",
+        "kind_expense": "gasto",
+        "kind_income": "ingreso"
       },
       "description": {
         "none": "El archivo no tiene descripción",
@@ -504,7 +507,9 @@
         "none": "El archivo no tiene beneficiario",
         "none_found": "Tu archivo no dice a quién se pagó. Puedes añadir beneficiarios más adelante.",
         "left_out": "Los beneficiarios se omiten. Puedes añadirlos más adelante.",
-        "shared_owner_lists": "Los beneficiarios que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlos."
+        "found": "Beneficiarios en tu archivo",
+        "status_new": "Beneficiario nuevo",
+        "status_existing": "Tu beneficiario existente"
       },
       "extras": {
         "title": "¿Tu archivo tiene etiquetas?",
@@ -517,13 +522,17 @@
         "tab": "Tabulación",
         "newline": "Salto de línea",
         "custom_separator": "Otro",
-        "shared_owner_lists": "Las etiquetas que el propietario de esta cuenta aún no tiene se omiten: solo el propietario o un administrador puede añadirlas.",
-        "new_labels": "Se creará {count} etiqueta nueva | Se crearán {count} etiquetas nuevas",
         "role_hint": {
           "tag": "Un proyecto o un viaje",
           "labels": "Puede haber varias a la vez"
         },
-        "answer": "También traeremos:"
+        "answer": "También traeremos:",
+        "found": {
+          "tag": "Etiquetas de presupuesto en tu archivo",
+          "labels": "Etiquetas de informes en tu archivo"
+        },
+        "status_new": "Etiqueta nueva",
+        "status_existing": "Tu etiqueta existente"
       },
       "preview": {
         "title": "Esto es lo que se añadirá",
@@ -597,7 +606,9 @@
       },
       "from": "de «{name}»",
       "change": "Cambiar",
-      "done": "Listo"
+      "done": "Listo",
+      "names_more": "y {count} más",
+      "status_left_out": "Se omite (cuenta compartida)"
     },
     "import_result": {
       "success_title": "Importación completada",

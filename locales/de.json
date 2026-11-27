@@ -490,8 +490,11 @@
         "none": "Die Datei hat keine Kategorie",
         "none_found": "Ihre Datei hat keine Kategorien. Sie können die Buchungen später in Kategorien einordnen.",
         "left_out": "Kategorien werden weggelassen. Sie können die Buchungen später in Kategorien einordnen.",
-        "shared_owner_lists": "Kategorien, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen.",
-        "new": "{count} neue Kategorie wird erstellt | {count} neue Kategorien werden erstellt"
+        "found": "Kategorien in Ihrer Datei",
+        "status_new": "Neue Kategorie",
+        "status_existing": "Ihre bestehende Kategorie",
+        "kind_expense": "Ausgabe",
+        "kind_income": "Einnahme"
       },
       "description": {
         "none": "Die Datei hat keine Beschreibung",
@@ -504,7 +507,9 @@
         "none": "Die Datei hat keinen Zahlungsempfänger",
         "none_found": "Ihre Datei sagt nicht, wer bezahlt wurde. Sie können Zahlungsempfänger später hinzufügen.",
         "left_out": "Zahlungsempfänger werden weggelassen. Sie können sie später hinzufügen.",
-        "shared_owner_lists": "Empfänger, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen."
+        "found": "Empfänger in Ihrer Datei",
+        "status_new": "Neuer Empfänger",
+        "status_existing": "Ihr bestehender Empfänger"
       },
       "extras": {
         "title": "Enthält Ihre Datei Tags?",
@@ -517,13 +522,17 @@
         "tab": "Tabulator",
         "newline": "Zeilenumbruch",
         "custom_separator": "Etwas anderes",
-        "shared_owner_lists": "Tags, die der Inhaber dieses Kontos noch nicht hat, werden weggelassen: Nur der Inhaber oder ein Admin kann sie hinzufügen.",
-        "new_labels": "{count} neues Tag wird erstellt | {count} neue Tags werden erstellt",
         "role_hint": {
           "tag": "Ein Projekt oder eine Reise",
           "labels": "Mehrere auf einmal sind möglich"
         },
-        "answer": "Außerdem übernehmen wir:"
+        "answer": "Außerdem übernehmen wir:",
+        "found": {
+          "tag": "Budget-Tags in Ihrer Datei",
+          "labels": "Auswertungs-Tags in Ihrer Datei"
+        },
+        "status_new": "Neues Tag",
+        "status_existing": "Ihr bestehendes Tag"
       },
       "preview": {
         "title": "Das wird hinzugefügt",
@@ -597,7 +606,9 @@
       },
       "from": "aus „{name}“",
       "change": "Ändern",
-      "done": "Fertig"
+      "done": "Fertig",
+      "names_more": "und {count} weitere",
+      "status_left_out": "Weggelassen (geteiltes Konto)"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",

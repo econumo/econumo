@@ -490,8 +490,11 @@
         "none": "Le fichier n’a pas de catégorie",
         "none_found": "Votre fichier n’a pas de catégories. Vous pourrez classer les transactions par catégorie plus tard.",
         "left_out": "Les catégories sont ignorées. Vous pourrez classer les transactions par catégorie plus tard.",
-        "shared_owner_lists": "Les catégories que le propriétaire de ce compte n’a pas encore sont ignorées : seul le propriétaire ou un administrateur peut les ajouter.",
-        "new": "{count} nouvelle catégorie sera créée | {count} nouvelles catégories seront créées"
+        "found": "Catégories dans votre fichier",
+        "status_new": "Nouvelle catégorie",
+        "status_existing": "Votre catégorie existante",
+        "kind_expense": "dépense",
+        "kind_income": "revenu"
       },
       "description": {
         "none": "Le fichier n’a pas de description",
@@ -504,7 +507,9 @@
         "none": "Le fichier n’a pas de bénéficiaire",
         "none_found": "Votre fichier ne dit pas qui a été payé. Vous pourrez ajouter les bénéficiaires plus tard.",
         "left_out": "Les bénéficiaires sont ignorés. Vous pourrez les ajouter plus tard.",
-        "shared_owner_lists": "Les bénéficiaires que le propriétaire de ce compte n’a pas encore sont ignorés : seul le propriétaire ou un administrateur peut les ajouter."
+        "found": "Bénéficiaires dans votre fichier",
+        "status_new": "Nouveau bénéficiaire",
+        "status_existing": "Votre bénéficiaire existant"
       },
       "extras": {
         "title": "Votre fichier contient-il des tags ?",
@@ -517,13 +522,17 @@
         "tab": "Tabulation",
         "newline": "Saut de ligne",
         "custom_separator": "Autre chose",
-        "shared_owner_lists": "Les tags que le propriétaire de ce compte n’a pas encore sont ignorés : seul le propriétaire ou un administrateur peut les ajouter.",
-        "new_labels": "{count} nouveau tag sera créé | {count} nouveaux tags seront créés",
         "role_hint": {
           "tag": "Un projet ou un voyage",
           "labels": "Plusieurs à la fois, c’est possible"
         },
-        "answer": "Nous reprendrons aussi :"
+        "answer": "Nous reprendrons aussi :",
+        "found": {
+          "tag": "Tags budgétaires dans votre fichier",
+          "labels": "Tags de rapport dans votre fichier"
+        },
+        "status_new": "Nouveau tag",
+        "status_existing": "Votre tag existant"
       },
       "preview": {
         "title": "Voici ce qui sera ajouté",
@@ -597,7 +606,9 @@
       },
       "from": "de « {name} »",
       "change": "Modifier",
-      "done": "Terminé"
+      "done": "Terminé",
+      "names_more": "et {count} de plus",
+      "status_left_out": "Ignoré (compte partagé)"
     },
     "import_result": {
       "success_title": "Import terminé",

@@ -419,6 +419,13 @@ it('the spending example is written in the file’s decimal notation', async () 
   expect(screen.getByText('Spending shows as: 100,00')).toBeInTheDocument()
 })
 
+it('the description step lists no names from the file', () => {
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,REWE Markt\n'} Step={DescriptionStep} onSet={vi.fn()} open={false} />)
+  expect(screen.getByText('REWE Markt')).toBeInTheDocument()
+  expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  expect(screen.queryByText(/in your file/)).not.toBeInTheDocument()
+})
+
 it('a guessed answer shows no choices; Change puts them in its place without answering anything', async () => {
   const onSet = vi.fn()
   render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,Gehalt\n'} Step={DescriptionStep} onSet={onSet} open={false} />)
