@@ -1663,11 +1663,17 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     const target = e.target as HTMLElement
     // a portaled menu's click arrives through the React tree; an element's month cell
     // selects itself
-    if (!e.currentTarget.contains(target) || target.closest('[role="gridcell"][aria-selected]')) {
-      return
-    }
-    if (dragSelected.current) {
-      dragSelected.current = false
+    const afterDrag = dragSelected.current
+    dragSelected.current = false
+    // a line's own controls (its chevron, Σ, ⋮) leave the crosshair where it is; a
+    // folder's or section's name is its fold button and still takes it
+    const control = target.closest('button, [role="button"], input')
+    if (
+      afterDrag ||
+      !e.currentTarget.contains(target) ||
+      target.closest('[role="gridcell"][aria-selected]') ||
+      (control && !control.hasAttribute('data-fold'))
+    ) {
       return
     }
     const line = target.closest<HTMLElement>('[data-crosshair-row]')
@@ -1677,7 +1683,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     }
     setSpot({ row: line?.dataset.crosshairRow ?? null, col: column ? Number(column.dataset.col) : -1 })
     // the arrows pick up from here, as after a cell click
-    if (!target.closest(CLICK_ESCAPE_SELECTOR)) {
+    if (!control) {
       containerRef.current?.focus()
     }
   }
