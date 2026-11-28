@@ -638,8 +638,8 @@ it('section and folder sums read actual · plan up to the selected month, plan a
   // two separate figures at the cell's two ends, no dot; one line, never wrapped
   expect(cell(0).textContent).toBe(`${fmt(sums[1].actual)}${plannedText(sums[1].planned)}`)
   expect(cell(1).textContent).toBe(`${fmt(sums[2].actual)}${plannedText(sums[2].planned)}`)
-  // Aug is after the selected July: its plan alone, no actual
-  expect(cell(2).textContent).toBe(plannedText(sums[3].planned))
+  // Aug is after the selected July: its plan alone, no actual; with no plan, a dash
+  expect(cell(2).textContent).toBe(isZero(sums[3].planned) ? '—' : plannedText(sums[3].planned))
 })
 
 it('a cell keeps its actual at the left edge and its plan at the right, with no dot between', async () => {
@@ -3612,6 +3612,38 @@ it('one cell of an open line shows its own sum from its Σ, and hides it on a se
   // the line's own Σ still shows every month
   await user.click(within(line()).getByRole('button', { name: /show sums for expenses/i }))
   expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+})
+
+it("the line's Σ drops every month's own choice: hiding hides all of them", async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const line = () => screen.getByTestId('plan-section-line-expense')
+  await user.click(within(line()).getByRole('button', { name: /show the june sum for expenses/i }))
+  await user.click(within(line()).getByRole('button', { name: /show the july sum for expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(2)
+  await user.click(within(line()).getByRole('button', { name: /show sums for expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  expect(useBudgetPeriodStore.getState().planSumsShown).toEqual({ expense: true })
+  await user.click(within(line()).getByRole('button', { name: /hide sums for expenses/i }))
+  expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  expect(useBudgetPeriodStore.getState().planSumsShown).toEqual({})
+})
+
+it("a line with a Σ keeps its hidden ⋮'s room, so the Σ does not move on hover", async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  for (const line of [screen.getByTestId('plan-section-line-expense'), within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0]]) {
+    const sigma = within(line).getByRole('button', { name: /^show sums for/i })
+    const menu = within(line).getByRole('button', { name: /^menu / })
+    expect(sigma.compareDocumentPosition(menu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // no collapsing w-0 wrapper around the ⋮: its slot is always there
+    expect(menu.parentElement!.classList.contains('w-0')).toBe(false)
+  }
 })
 
 it('a section line shows no sums by default, folded or open; its Σ works either way', async () => {

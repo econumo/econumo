@@ -40,6 +40,11 @@ describe('SumCell', () => {
   it('a month with no data is empty', () => {
     expect(sumCell(null).textContent).toBe('')
   })
+
+  it('a sum the user asked for reads as a dash when there is nothing to sum', () => {
+    render(<SumCell index={0} sum={null} month={sel} ctx={{ selected: sel }} fmt={(v) => v} emptyDash />)
+    expect(screen.getByTestId('plan-sum-0').textContent).toBe('—')
+  })
 })
 
 describe('isEditableCell', () => {
