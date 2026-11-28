@@ -431,7 +431,8 @@
           "empty": "This file is empty",
           "unreadable": "This file couldn't be read as a spreadsheet (CSV)"
         },
-        "none": "No file yet"
+        "none": "No file yet",
+        "reading": "Reading your file…"
       },
       "account": {
         "skipped": "{count} row has no account name and will be skipped | {count} rows have no account name and will be skipped",
@@ -575,7 +576,7 @@
       },
       "continue": "Continue",
       "step_of": "Step {n} of {total} · {title}",
-      "list_hint": "We read your file and filled in what we could. Tap a step to change it.",
+      "list_hint": "Tap a step to answer it or change its answer.",
       "check_button": "Check {count} transaction | Check {count} transactions",
       "ready": "{count} transaction ready · {skipped} left out | {count} transactions ready · {skipped} left out",
       "rows": "{count} row | {count} rows",
@@ -612,7 +613,8 @@
         "check": "{count} to import · {skipped} left out | {count} to import · {skipped} left out",
         "from_account": "From {name}",
         "from_accounts": "From {name} and {count} more account | From {name} and {count} more accounts",
-        "nothing": "None"
+        "nothing": "None",
+        "not_chosen_yet": "Not chosen yet"
       },
       "from": "from “{name}”",
       "change": "Change",

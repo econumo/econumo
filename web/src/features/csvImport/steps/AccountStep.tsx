@@ -16,7 +16,7 @@ import { pluralPick } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { ColumnChoices } from '../ColumnChoices'
 import { NamesList, type NamesListItem } from '../NamesList'
-import { columnRoles, columnTags, fromName } from '../columnLabels'
+import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
 import { AnswerRow, Field, QuietButton, Segmented, SkippedNote } from '../controls'
 import { accountCurrencies, currencyColumn, fileCurrencyId, unknownRowsCurrency } from '../fileCurrency'
@@ -305,10 +305,8 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
   const chooseColumn = (column: number | null) => {
     if (column === null) return
     const previous = account?.kind === 'column' ? account : null
-    // a currency answer given before, "none" included, is kept; otherwise the file is read for one
-    const taken = new Set([column, ...columnRoles(state.answers).filter(([role]) => role !== 'currency').map(([, at]) => at)])
-    const fileColumn = previous ? previous.currencyColumn : currencyColumn(state.file, currencies, taken)
-    set({ kind: 'column', column, currencyColumn: fileColumn, currencyId: previous?.currencyId ?? currencyId, overrides: previous?.overrides ?? {}, currencies: {} })
+    // a currency answer given before is kept; none is assumed: the user points at one or keeps the default
+    set({ kind: 'column', column, currencyColumn: previous?.currencyColumn ?? null, currencyId: previous?.currencyId ?? currencyId, overrides: previous?.overrides ?? {}, currencies: {} })
     closeChoices()
   }
 

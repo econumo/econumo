@@ -9,17 +9,18 @@ import { queryKeys } from '@/app/queryKeys'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { finishImportStep, scheduleAiRefresh } from '@/features/onboarding/finishImport'
-import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { useUserData, userAiActive, userCurrencyId } from '@/features/user/queries'
 import { useOnline } from '@/hooks/useOnline'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { apiErrorMessage } from '@/lib/apiError'
+import { isAiEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { pluralPick } from '@/lib/plural'
 import { profileColumns, type ColumnProfile } from './columns'
 import { withAccountCurrencies } from './fileCurrency'
-import { applyAiGuess, guessAnswers, isEconumoExport, redetectFormats } from './guess'
+import { applyAiGuess, initialAnswers, isEconumoExport, redetectFormats } from './guess'
 import { readCsvFile, type ParsedFile } from './parse'
-import { buildUpload, prepareRows, pruneFixes, type Role, type RowFix, type StepId, type WizardAnswers } from './prepare'
+import { buildUpload, prepareRows, pruneFixes, type RowFix, type StepId, type WizardAnswers } from './prepare'
 import { ensureAccounts, mergeRetry, runChunks, type ImportResult } from './upload'
 import { stepSummary } from './stepSummary'
 import { useColumnGuess } from './useColumnGuess'
@@ -27,6 +28,7 @@ import { WizardShell, type ShellStep } from './WizardShell'
 import {
   claimPicked,
   distinctNames,
+  hasGuess,
   missingAnswer,
   nameKey,
   newAccountFolderId,
@@ -76,6 +78,8 @@ const STEP_BODIES: Record<Exclude<StepId, 'file'>, ComponentType<StepBodyProps>>
 
 type Upload = ReturnType<typeof buildUpload>
 
+const OPTIONAL_STEPS: ReadonlySet<StepId> = new Set(['category', 'description', 'payee', 'extras'])
+
 const reportRun = (result: ImportResult) => {
   if (result.imported > 0) trackEvent(METRICS.TRANSACTION_IMPORT, { imported: result.imported, failed: result.failed })
   else trackEvent(METRICS.TRANSACTION_IMPORT_FAIL, { failed: result.failed })
@@ -108,7 +112,6 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   // a phone shows the step list first; picking a step opens it over the list
   const [phoneList, setPhoneList] = useState(false)
   const isPhone = useIsPhone()
-  const [aiRoles, setAiRoles] = useState<Partial<Record<Role, string>> | null>(null)
   const [importing, setImporting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
@@ -130,7 +133,6 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     setFixes(new Map())
     setStep('file')
     setPhoneList(false)
-    setAiRoles(null)
     setImportError(null)
     setProgress(null)
     created.current = new Map()
@@ -157,24 +159,31 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialFile])
 
-  // the guess needs to know whether the user has accounts and which currencies
-  // exist, so it waits for those reads instead of guessing from empty lists
+  // the starting answers need to know whether the user has accounts and which currencies
+  // exist, so they wait for those reads instead of starting from empty lists
   const ready = !userQuery.isPending && !accountsQuery.isPending && !currenciesQuery.isPending
+  const isExport = loaded !== null && isEconumoExport(loaded.file)
+  const asksAi = open && loaded !== null && !isExport && ready && online && isAiEnabled() && userAiActive(user)
+  const aiRoles = useColumnGuess(asksAi ? loaded.profiles : null)
+  // The AI's roles are the only assignment a bank statement gets, so the File step waits for them
+  // (capped) and every step opens with its final answers: none flips under the user.
   useEffect(() => {
     if (!loaded || answers !== null || !ready) return
+    if (asksAi && aiRoles === null) return
     const writable = writableAccounts(accountsQuery.data ?? [], user?.id)
-    const guessed = guessAnswers(loaded.file, loaded.profiles, {
+    const start = initialAnswers(loaded.file, {
       writableAccountIds: writable.map((a) => a.id),
-      writableAccountNames: writable.map((a) => a.name),
       userCurrencyId: userCurrencyId(user) ?? '',
       locale: navigator.language,
       currencies: currenciesQuery.data ?? [],
     })
+    const guessed = aiRoles ? applyAiGuess(start, aiRoles, loaded.file, navigator.language, new Set()) : start
+    if (JSON.stringify(guessed) !== JSON.stringify(start)) trackEvent(METRICS.TRANSACTION_IMPORT_AI_GUESS)
     setAnswersState(releaseTakenExtras(guessed))
     const exported = isEconumoExport(loaded.file)
     setStep(exported ? 'preview' : 'account')
     setPhoneList(!exported)
-  }, [loaded, answers, ready, accountsQuery.data, currenciesQuery.data, user])
+  }, [loaded, answers, ready, asksAi, aiRoles, accountsQuery.data, currenciesQuery.data, user])
 
   const setAnswers = useCallback(
     (changed: StepId, patch: Partial<WizardAnswers>) => {
@@ -196,19 +205,6 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     },
     [loaded, currencyList],
   )
-
-  const isExport = loaded !== null && isEconumoExport(loaded.file)
-  useColumnGuess(open && loaded && !isExport ? loaded.profiles : null, setAiRoles)
-
-  // a reply that lands before the built-in guess waits for it; a step the user answered is kept
-  useEffect(() => {
-    if (!aiRoles || !answers || !loaded) return
-    setAiRoles(null)
-    const next = releaseTakenExtras(applyAiGuess(answers, aiRoles, loaded.file, navigator.language, touched))
-    if (JSON.stringify(next) === JSON.stringify(answers)) return
-    setAnswersState(next)
-    trackEvent(METRICS.TRANSACTION_IMPORT_AI_GUESS)
-  }, [aiRoles, answers, loaded, touched])
 
   // a typed value or a skip is dropped once a changed answer makes the row read on its own
   useEffect(() => {
@@ -245,6 +241,12 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     trackEvent(METRICS.TRANSACTION_IMPORT_CLOSE, { step })
     onClose()
   }
+
+  // a required step holds Continue until it has an answer; a new account's name is not held to
+  // that (it is saved after a pause in typing) and keeps its mark and Import waiting instead
+  const continueHeld =
+    state !== null &&
+    ((step === 'account' && state.answers.account === null) || ((step === 'date' || step === 'amount') && missingAnswer(step, state.answers)))
 
   const importCount = rows.filter((row) => row.status === 'ok').length
   // a new account needs the user's folder: the server refuses a blank one once the user has any
@@ -346,23 +348,30 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const currencies = currenciesQuery.data ?? []
   const allAccounts = accountsQuery.data ?? []
   const shellSteps: ShellStep[] = state
-    ? listed.map((id) => ({
-        id,
-        title: t(`transactions.import_wizard.steps.${id}`),
-        summary: stepSummary(id, {
-          answers: state.answers,
-          rows,
-          account: (accountId) => {
-            const found = allAccounts.find((a) => a.id === accountId)
-            return found ? { name: found.name, code: found.currency.code } : null
-          },
-          currencyCode: (currencyId) => currencies.find((c) => c.id === currencyId)?.code ?? null,
-          t,
-          language: i18n.language,
-        }),
-        answered: id !== 'preview' && visited.has(id) && !missingAnswer(id, state.answers),
-        warning: missingAnswer(id, state.answers),
-      }))
+    ? listed.map((id) => {
+        // an optional step not yet answered, seen or filled by the AI asks; leaving it is "none"
+        const pending = OPTIONAL_STEPS.has(id) && !touched.has(id) && !visited.has(id) && !hasGuess(id, state)
+        return {
+          id,
+          title: t(`transactions.import_wizard.steps.${id}`),
+          summary: pending
+            ? t('transactions.import_wizard.summary.not_chosen_yet')
+            : stepSummary(id, {
+                answers: state.answers,
+                rows,
+                account: (accountId) => {
+                  const found = allAccounts.find((a) => a.id === accountId)
+                  return found ? { name: found.name, code: found.currency.code } : null
+                },
+                currencyCode: (currencyId) => currencies.find((c) => c.id === currencyId)?.code ?? null,
+                t,
+                language: i18n.language,
+              }),
+          pending,
+          answered: id !== 'preview' && visited.has(id) && !missingAnswer(id, state.answers),
+          warning: missingAnswer(id, state.answers),
+        }
+      })
     : listed.map((id) => ({ id, title: t(`transactions.import_wizard.steps.${id}`), summary: '', answered: false, warning: false }))
   const question = t(step === 'preview' ? 'transactions.import_wizard.preview.title' : `transactions.import_wizard.${step}.title`)
   const at = listed.indexOf(step as Exclude<StepId, 'file'>)
@@ -376,7 +385,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
       steps={shellSteps}
       current={step}
       onSelect={openStep}
-      locked={importing}
+      // the steps have no answers to show until the file is read (and the AI's answer is in)
+      locked={importing || (loaded !== null && answers === null)}
       position={
         at < 0
           ? null
@@ -411,7 +421,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
           ) : null}
           <div className="ml-auto" />
           {step !== 'preview' ? (
-            <Button type="button" className="h-10 px-5" disabled={state === null} onClick={goNext}>
+            <Button type="button" className="h-10 px-5" disabled={state === null || continueHeld} onClick={goNext}>
               {t('transactions.import_wizard.continue')}
             </Button>
           ) : (
@@ -438,7 +448,7 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
           />
         </fieldset>
       ) : (
-        <FileStep fileName={loaded?.fileName ?? null} error={fileError} onFile={(f) => void handleFile(f)} />
+        <FileStep fileName={loaded?.fileName ?? null} reading={loaded !== null && answers === null} error={fileError} onFile={(f) => void handleFile(f)} />
       )}
     </WizardShell>
   )

@@ -112,10 +112,11 @@ it('picking None leaves categories out and says so calmly', async () => {
   expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument()
 })
 
-it('with nothing guessed but something that fits, the step asks', () => {
+it('with nothing assigned but something that fits, the step asks with nothing picked, None included', () => {
   renderStep({ step: 'category', text: GROUPS })
   expect(screen.getByRole('radiogroup', { name: 'Which of these is the category?' })).toBeInTheDocument()
-  expect(screen.getByRole('radio', { name: 'The file has no category' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'The file has no category' })).not.toBeChecked()
+  expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument()
 })
 
 it('a file with no categories answers so calmly; Change lists the whole file', async () => {

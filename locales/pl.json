@@ -431,7 +431,8 @@
           "empty": "Ten plik jest pusty",
           "unreadable": "Nie udało się odczytać tego pliku jako arkusza kalkulacyjnego (CSV)"
         },
-        "none": "Brak pliku"
+        "none": "Brak pliku",
+        "reading": "Czytanie pliku…"
       },
       "account": {
         "skipped": "{count} wiersz nie ma nazwy konta i zostanie pominięty | {count} wiersze nie mają nazwy konta i zostaną pominięte | {count} wierszy nie ma nazwy konta i zostanie pominiętych",
@@ -575,7 +576,7 @@
       },
       "continue": "Dalej",
       "step_of": "Krok {n} z {total} · {title}",
-      "list_hint": "Odczytaliśmy plik i uzupełniliśmy, co się dało. Dotknij kroku, aby go zmienić.",
+      "list_hint": "Dotknij kroku, aby na niego odpowiedzieć lub zmienić odpowiedź.",
       "check_button": "Sprawdź {count} transakcję | Sprawdź {count} transakcje | Sprawdź {count} transakcji",
       "ready": "{count} transakcja gotowa · pominięte: {skipped} | {count} transakcje gotowe · pominięte: {skipped} | {count} transakcji gotowych · pominięte: {skipped}",
       "rows": "{count} wiersz | {count} wiersze | {count} wierszy",
@@ -612,7 +613,8 @@
         "check": "Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped}",
         "from_account": "Konto {name}",
         "from_accounts": "{name} i jeszcze {count} konto | {name} i jeszcze {count} konta | {name} i jeszcze {count} kont",
-        "nothing": "Brak"
+        "nothing": "Brak",
+        "not_chosen_yet": "Jeszcze nie wybrano"
       },
       "from": "z „{name}”",
       "change": "Zmień",

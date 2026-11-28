@@ -27,6 +27,7 @@ export function DescriptionStep({ state, setAnswers, choosing, change, closeChoi
           onlyOneNote={t('transactions.import_wizard.only_one.description')}
           tags={columnTags(state.answers, t, i18n.language, ['description'])}
           noneLabel={t('transactions.import_wizard.description.none')}
+          unanswered={!state.touched.has('description') && description === null}
         />
       ) : (
         <AnswerRow from={description === null ? null : fromName(state.profiles[description], state.profiles, t)} onChange={change}>

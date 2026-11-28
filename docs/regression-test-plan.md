@@ -769,10 +769,11 @@ navigation (single-pane vs sidebar).
       (CSV)", and each stays on Your file (the file step keeps "CSV" because
       banks name their export that way). No step body, question or step-list
       summary uses the words "column", "header", "mapping", "field" or "CSV",
-      in any of the 11 languages. Answer first: a step with a guess (Account's
+      in any of the 11 languages. Answer first: a step with an answer (one an
+      Econumo export or the AI gave, or one the user picked: Account's
       per-row option, Date, Amount, Category, Description, Payee, Extra
       details) opens on the
-      guess as a settings-style row (a rounded box): the answer in plain words
+      answer as a settings-style row (a rounded box): the answer in plain words
       about the money — Date "Nov 3, 2026 · Nov 5, 2026 · Nov 7, 2026 …",
       Amount "−12.50 € · +2,500.00 € · −4.99 € …" (income green), Category
       "Strata · Interest · Car Insurance …", Description "REWE Markt Berlin ·
@@ -787,16 +788,15 @@ navigation (single-pane vs sidebar).
       transactions" on the left and "New account · CAD" with a quiet "Change
       currency" on the right, or "Your existing account · EUR" (the status
       drops under the name on a phone). The footer's primary button reads Continue on
-      every step (Import on Check); over a guessed answer it accepts it and
-      goes to the next step (never an empty footer, also on Account). A step
-      with a complete guess opens on its answer, not its list, also when the
-      guess arrives after the step was opened (an AI reply, a part another
-      step gave back): Amount with a good guess opens on "−5.50 · +100.00 …"
-      from “amount”. Open questions (date order, decimal separator, "Spending
+      every step (Import on Check); over an answer it accepts it and
+      goes to the next step (never an empty footer, also on Account). It is
+      disabled on Account with no option answered and on Date or Amount with
+      no part picked, until one is picked (a new account's empty name does not
+      hold it). A step with a complete answer opens on it, not its list:
+      Amount the AI read opens on "−5.50 · +100.00 …" from “amount”. Open questions (date order, decimal separator, "Spending
       shows as" with Flip the signs, Reporting tags' separator) and the grey
-      skipped-rows notes stay visible under the answer. Continue and
-      Change answer nothing: an AI reply landing later still fills the step.
-      Change puts the choices IN PLACE of the answer row (the answer is not
+      skipped-rows notes stay visible under the answer. Change answers
+      nothing. Change puts the choices IN PLACE of the answer row (the answer is not
       shown twice), with the question
       ("Which of these is the account?") and the short list; picking one
       (also the one already chosen) closes the list and shows the answer
@@ -804,10 +804,9 @@ navigation (single-pane vs sidebar).
       after the first and folds back to the answer after the second. Tags
       take more than one pick: its list stays open, with a quiet "Done" that
       goes back to the answer. An opened list stays open when the step is left and opened
-      again. A step with nothing to show (no guess, or values that read as
-      nothing) opens on its choices, and shows its answer as soon as a guess
-      arrives while it is open (unless Change opened the list); picking one that reads shows the answer
-      row. The choices are ONE rounded list with thin lines between rows (no
+      again. A step with nothing to show (no answer, or values that read as
+      nothing) opens on its choices with NO row selected ("none of these"
+      included); picking one that reads shows the answer row. The choices are ONE rounded list with thin lines between rows (no
       grid of cards), on Account's per-row option, Date, Amount ("Which of
       these is money in?" / "…money out?" one under the other), Category,
       Description and Payee: each row is a radio led by its first values, written as
@@ -840,10 +839,13 @@ navigation (single-pane vs sidebar).
       ("New: Girokonto · EUR", "From WS Cash and 2 more accounts", "Oct 2,
       2026", "−12.50 · +2,500.00", "Strata · Interest", "REWE Markt Berlin",
       "WealthSimple · ICBC", "With budget tag", "12 to import · 1 left out";
-      "None" for a Category or Payee left out; never a header name). A
+      "None" for a Category or Payee left out; never a header name). An
+      optional step (Category, Description, Payee, Extra details) nothing has
+      answered yet reads "Not chosen yet" in grey italics until it is answered
+      or left (then "None" / "No description"). A
       step turns into a green check only once the user has been on it and left
-      it (Continue there, or another step picked while it was open); a guessed
-      answer alone keeps the neutral numbered circle with its answer in grey
+      it (Continue there, or another step picked while it was open); an
+      answer the AI or an export gave alone keeps the neutral numbered circle with its answer in grey
       under the name, and the steps an Econumo export skips stay numbered
       (Import is not held back by unseen steps); the open step is highlighted with its number
       in magenta. A step whose required answer is missing (Account, Date,
@@ -854,22 +856,22 @@ navigation (single-pane vs sidebar).
       a step: the step says so in grey with an info icon. Tags appears
       only when some column is left unused by the steps above it (Category
       and Payee included). On a 390 px phone the list is the
-      first screen, with "We read your file and filled in what we could. Tap a
-      step to change it." and a "Check N transactions" button; tapping a step
+      first screen, with "Tap a step to answer it or change its answer." and a "Check N transactions" button; tapping a step
       opens it full screen with ← (back to the list), the question and Back /
       Continue at the bottom. Before a file is read the phone shows Your file
       with ✕.
-- [ ] Bank statement (`Buchungstag;Betrag;Verwendungszweck`, decimal comma,
-      `dd.mm.yyyy` dates with a day above 12): Date, Amount and Description are
-      preselected (Buchungstag, Betrag, Verwendungszweck), no date or decimal
-      question is asked, and Check shows `−12.50` for `-12,50` and `+2,500.00`
-      for `2.500,00`, dated as in the file. The guess reads the values, not
-      the header words: the same with Spanish (Fecha, Importe) or Russian
-      (Дата, Сумма, Описание) headers, or headers in any other language.
-      Separate Debit/Credit columns (each row filled in one) are guessed as
-      "Money in and money out", the busier one (or the one with minus signs)
-      as money out; a running balance column is never guessed as the
-      amount.
+- [ ] Bank statement without AI (`Buchungstag;Betrag;Verwendungszweck`,
+      decimal comma, `dd.mm.yyyy` dates with a day above 12): the wizard
+      assigns NO part of the file by itself: Account (no account selected,
+      also for a user with exactly one), Date and Amount carry the warning
+      mark and open on their lists with nothing selected; Category,
+      Description and Payee read "Not chosen yet". Dates and money are
+      listed first on their steps. Once Buchungstag, Betrag and
+      Verwendungszweck are picked, no date or decimal question is asked, and
+      Check shows `−12.50` for `-12,50` and `+2,500.00` for `2.500,00`, dated
+      as in the file. The same with any other header language. With AI on,
+      the same file opens with Date, Amount and Description already answered
+      (see AI on vs off).
 - [ ] Ambiguous dates (every date like `03/04/2026`, no day above 12): Date
       asks "Is 03/04/2026 April 3 or March 4?" (day and month in the UI
       language, no article in English) with a value from the file, and both
@@ -902,8 +904,7 @@ navigation (single-pane vs sidebar).
       description" is the last option and leaves descriptions empty.
 - [ ] Category and Payee 📱 (an Econumo export, or a file with Category and
       Payee columns from another app): an export comes preselected; in another
-      file a short column that repeats a few names is guessed as the category
-      and a short column that mostly differs per row as the payee;
+      file only the AI may answer them, otherwise the user picks;
       Category ("How are the payments sorted?") opens on "Strata · Interest ·
       Car Insurance …" from “category”, Payee ("Who was paid, or who paid
       you?") on "WealthSimple · ICBC · IFS Premium …" from “payee”, each with
@@ -917,10 +918,10 @@ navigation (single-pane vs sidebar).
       file", tagged) takes it from there, the last pick wins; picking the amount as the category leaves
       Amount with a warning mark and Import disabled until it is answered
       again, picking the date as the description marks Date, and picking
-      the description as the date leaves Description at "No description". The guess and the AI never give a category or payee a
+      the description as the date leaves Description at "Not chosen yet". The AI never gives a category or payee a
       part Account, Date, Amount or Description reads. A bank statement with
-      neither (the German `Buchungstag;Betrag;Verwendungszweck` file) answers
-      calmly: "Your file has no categories. You can sort transactions into
+      neither (the German `Buchungstag;Betrag;Verwendungszweck` file, once
+      Description reads Verwendungszweck) answers calmly: "Your file has no categories. You can sort transactions into
       categories later." and "Your file doesn’t say who was paid. You can add
       payees later.", with Continue, no warning mark, and Import enabled.
       On Description, a part Payee uses is listed under "Other parts of your
@@ -938,7 +939,7 @@ navigation (single-pane vs sidebar).
       "and N more" shows the rest in place. Description shows no such list.
       The imported rows carry exactly those values.
 - [ ] Tags (a file with Tags and Labels columns from another app):
-      recognised headers come preselected and the step opens on "We’ll also
+      columns an export or the AI named come preselected and the step opens on "We’ll also
       bring along:" with one line per detail ("Reporting tags: Mexico2025 ·
       #oregon2410 (from “labels”)"). Change shows one row per detail (Budget
       tag, Reporting tags), each with a one-line hint and a dropdown of the
@@ -999,8 +1000,8 @@ navigation (single-pane vs sidebar).
       first create still lets the second land in the "General" folder the
       first made.
 - [ ] Account step: "An account I already have" (the default when the user
-      can write to an account; with exactly one such account it is already
-      chosen and Account carries no warning) lists only accounts the user owns
+      can write to an account; no account in it is selected, not even the only
+      one, and Account carries the warning mark until one is picked) lists only accounts the user owns
       or holds an accepted admin/user share of (not a guest share, not a
       pending invitation), and rows imported into a shared one land there.
       With a user (not admin) share (also when "Each row says which account"
@@ -1019,9 +1020,10 @@ navigation (single-pane vs sidebar).
       which isn't set up here. You can add it in Settings."); "Each row says which
       account" asks "Which of these is the account?", then answers "Your file
       names the account for each transaction". When any name is new, a second
-      answer row says where new accounts' currency comes from: a part of the
-      file holding three-letter codes is guessed ("Your file says each
-      account's currency", "from “account_currency”"); its Change asks "Which
+      answer row says where new accounts' currency comes from: outside an
+      Econumo export no part of the file is taken for it until the user
+      points at one; picking a part with codes reads "Your file says each
+      account's currency", "from “account_currency”"; its Change asks "Which
       of these is the currency?" (only parts holding codes, the account's own
       not among them; the rest of the file follows under "Other parts of your file"; with no code column, nothing but the next line) plus "My file has
       no currency". With none, or after picking that, the row reads "New
@@ -1074,14 +1076,18 @@ navigation (single-pane vs sidebar).
       stays disabled.
 - [ ] AI on vs off: with AI (`ECONUMO_AI_DSN` set, the Profile's "Use AI
       features" on) a file with unusual headers (e.g. `Wertstellung;Umsatz;
-      Info`) gets its columns guessed a moment after it is read, only on
-      steps the user has not touched yet; the request
+      Info`) shows "Reading your file…" on Your file (the step list locked)
+      until the AI answers (8 seconds at most), then opens Account with every
+      role the AI was sure of already answered, and the rest unanswered; the
+      model answers each role as a header plus "sure", and an unsure role, a
+      header the file lacks or a type that cannot hold it is dropped; the request
       (`GET transaction/suggest-import-columns`) carries only the header
       names, a type per column (`date`/`number`/`text`/`empty`), whether a
       number column has negatives and the language, never a cell value, and
       the server log shows `outcome=suggested`. Without AI (`outcome=no_ai`)
-      or with the switch off (`outcome=opted_out`) the wizard keeps its
-      built-in guesses and shows no message. An Econumo export sends no such
+      or with the switch off (`outcome=opted_out`), and when the AI fails or
+      times out, no request is waited for (or the wait ends) and every step
+      starts unanswered, with no message. An Econumo export sends no such
       request, and neither does a file whose first row is a transaction (no
       header row): a header cell that is a date or a number, a bank reference
       (IBAN), one of its own column's values (`Groceries` over a column of

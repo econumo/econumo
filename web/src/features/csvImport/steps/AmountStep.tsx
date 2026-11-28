@@ -115,6 +115,7 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices, 
                 onlyOneNote={t('transactions.import_wizard.only_one.amount')}
                 tags={columnTags(state.answers, t, i18n.language, ['amountIn'])}
                 noneLabel={t('transactions.import_wizard.amount.none_in')}
+                unanswered={!state.touched.has('amount') && amount.inColumn === null}
               />
               <ColumnChoices
                 profiles={state.profiles}
@@ -126,6 +127,7 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices, 
                 onlyOneNote={t('transactions.import_wizard.only_one.amount')}
                 tags={columnTags(state.answers, t, i18n.language, ['amountOut'])}
                 noneLabel={t('transactions.import_wizard.amount.none_out')}
+                unanswered={!state.touched.has('amount') && amount.outColumn === null}
               />
               {guessed ? <ChoicesDone onDone={closeChoices} /> : null}
             </>

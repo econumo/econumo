@@ -1,16 +1,52 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { suggestImportColumns } from '@/api/transaction'
 import { profileColumns } from './columns'
 import { parseCsvText } from './parse'
-import { useColumnGuess } from './useColumnGuess'
+import { COLUMN_GUESS_WAIT_MS, useColumnGuess } from './useColumnGuess'
 
 vi.mock('@/api/transaction', () => ({ suggestImportColumns: vi.fn(async () => ({})) }))
 
-const guess = (text: string) => renderHook(() => useColumnGuess(profileColumns(parseCsvText(text)), vi.fn()))
+const guess = (text: string) => {
+  const profiles = profileColumns(parseCsvText(text))
+  return renderHook(() => useColumnGuess(profiles))
+}
 
 describe('useColumnGuess', () => {
-  beforeEach(() => vi.mocked(suggestImportColumns).mockClear())
+  beforeEach(() => {
+    vi.mocked(suggestImportColumns).mockClear()
+    vi.mocked(suggestImportColumns).mockImplementation(async () => ({}))
+  })
+
+  it('answers null while waiting, then the roles the reply gives', async () => {
+    vi.mocked(suggestImportColumns).mockResolvedValueOnce({ date: 'Date' })
+    const { result } = guess('Date,Amount\n2024-01-02,-10\n2024-01-03,-5\n')
+    expect(result.current).toBeNull()
+    await waitFor(() => expect(result.current).toEqual({ date: 'Date' }))
+  })
+
+  it('stops waiting after the cap and answers no roles', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(suggestImportColumns).mockImplementationOnce(
+        (_, signal) => new Promise((resolve) => signal?.addEventListener('abort', () => resolve({ date: 'Date' }))),
+      )
+      const { result } = guess('Date,Amount\n2024-01-02,-10\n2024-01-03,-5\n')
+      expect(result.current).toBeNull()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(COLUMN_GUESS_WAIT_MS)
+      })
+      expect(result.current).toEqual({})
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('answers no roles at once for a header row that reads like data, and asks nothing for null', () => {
+    expect(guess('2024-01-01,Coffee shop,Lunch\n2024-01-02,Tea,Snack\n').result.current).toEqual({})
+    expect(renderHook(() => useColumnGuess(null)).result.current).toBeNull()
+    expect(suggestImportColumns).not.toHaveBeenCalled()
+  })
 
   it('sends the header names and column types', () => {
     guess('Date,Amount,Memo\n2024-01-02,-10,Coffee\n2024-01-03,-5,Tea\n')

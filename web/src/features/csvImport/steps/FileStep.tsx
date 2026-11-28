@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { FileUp } from 'lucide-react'
+import { FileUp, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
@@ -9,11 +9,13 @@ export type FileError = 'too_big' | 'empty' | 'unreadable'
 interface FileStepProps {
   /** the loaded file's name, null before one is loaded */
   fileName: string | null
+  /** the file is loaded and its columns are being read (the AI's answer is awaited) */
+  reading?: boolean
   error: FileError | null
   onFile: (file: File) => void
 }
 
-export function FileStep({ fileName, error, onFile }: FileStepProps) {
+export function FileStep({ fileName, reading = false, error, onFile }: FileStepProps) {
   const { t } = useTranslation()
   const input = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -68,6 +70,12 @@ export function FileStep({ fileName, error, onFile }: FileStepProps) {
         }}
       />
       {fileName ? <p className="truncate text-sm">{fileName}</p> : null}
+      {reading ? (
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 aria-hidden className="size-4 animate-spin" />
+          {t('transactions.import_wizard.file.reading')}
+        </p>
+      ) : null}
       <p className="text-xs text-muted-foreground">{t('transactions.import_wizard.file.hint')}</p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">

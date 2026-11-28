@@ -23,13 +23,12 @@ function everyFilledCell(file: ParsedFile, column: number, ok: (code: string) =>
  * currency code the app knows, else a "currency" column of three-letter codes, so a code
  * this instance lacks (an Econumo export's "CAD") is still read and can be pointed out.
  */
-export function currencyColumn(file: ParsedFile, currencies: ReadonlyArray<Currency>, taken: ReadonlySet<number> = new Set()): number | null {
+export function currencyColumn(file: ParsedFile, currencies: ReadonlyArray<Currency>): number | null {
   const known = new Set(currencies.map((c) => c.code.toUpperCase()))
   for (let column = 0; column < file.header.length; column++) {
-    if (!taken.has(column) && everyFilledCell(file, column, (code) => known.has(code))) return column
+    if (everyFilledCell(file, column, (code) => known.has(code))) return column
   }
   for (let column = 0; column < file.header.length; column++) {
-    if (taken.has(column)) continue
     if (file.header[column].toLowerCase().includes('currency') && everyFilledCell(file, column, (code) => CODE.test(code))) return column
   }
   return null

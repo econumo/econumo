@@ -431,7 +431,8 @@
           "empty": "Ce fichier est vide",
           "unreadable": "Ce fichier n’a pas pu être lu comme un tableur (CSV)"
         },
-        "none": "Pas encore de fichier"
+        "none": "Pas encore de fichier",
+        "reading": "Lecture de votre fichier…"
       },
       "account": {
         "skipped": "{count} ligne n’a pas de nom de compte et sera ignorée | {count} lignes n’ont pas de nom de compte et seront ignorées",
@@ -575,7 +576,7 @@
       },
       "continue": "Continuer",
       "step_of": "Étape {n} sur {total} · {title}",
-      "list_hint": "Nous avons lu votre fichier et rempli ce que nous avons pu. Touchez une étape pour la modifier.",
+      "list_hint": "Touchez une étape pour y répondre ou modifier votre réponse.",
       "check_button": "Vérifier {count} transaction | Vérifier {count} transactions",
       "ready": "{count} transaction prête · {skipped} écartée(s) | {count} transactions prêtes · {skipped} écartée(s)",
       "rows": "{count} ligne | {count} lignes",
@@ -612,7 +613,8 @@
         "check": "{count} à importer · {skipped} écartée(s) | {count} à importer · {skipped} écartée(s)",
         "from_account": "De {name}",
         "from_accounts": "De {name} et {count} autre compte | De {name} et {count} autres comptes",
-        "nothing": "Aucun"
+        "nothing": "Aucun",
+        "not_chosen_yet": "Pas encore choisi"
       },
       "from": "de « {name} »",
       "change": "Modifier",

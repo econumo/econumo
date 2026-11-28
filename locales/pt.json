@@ -431,7 +431,8 @@
           "empty": "Este ficheiro está vazio",
           "unreadable": "Não foi possível ler este ficheiro como folha de cálculo (CSV)"
         },
-        "none": "Ainda sem ficheiro"
+        "none": "Ainda sem ficheiro",
+        "reading": "A ler o seu ficheiro…"
       },
       "account": {
         "skipped": "{count} linha não tem nome de conta e será ignorada | {count} linhas não têm nome de conta e serão ignoradas",
@@ -575,7 +576,7 @@
       },
       "continue": "Continuar",
       "step_of": "Passo {n} de {total} · {title}",
-      "list_hint": "Lemos o seu ficheiro e preenchemos o que conseguimos. Toque num passo para o alterar.",
+      "list_hint": "Toque num passo para lhe responder ou alterar a resposta.",
       "check_button": "Verificar {count} transação | Verificar {count} transações",
       "ready": "{count} transação pronta · {skipped} de fora | {count} transações prontas · {skipped} de fora",
       "rows": "{count} linha | {count} linhas",
@@ -612,7 +613,8 @@
         "check": "{count} a importar · {skipped} de fora | {count} a importar · {skipped} de fora",
         "from_account": "De {name}",
         "from_accounts": "De {name} e mais {count} conta | De {name} e mais {count} contas",
-        "nothing": "Nenhum"
+        "nothing": "Nenhum",
+        "not_chosen_yet": "Ainda por escolher"
       },
       "from": "de «{name}»",
       "change": "Alterar",

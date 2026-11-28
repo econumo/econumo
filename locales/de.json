@@ -431,7 +431,8 @@
           "empty": "Diese Datei ist leer",
           "unreadable": "Diese Datei konnte nicht als Tabelle (CSV) gelesen werden"
         },
-        "none": "Noch keine Datei"
+        "none": "Noch keine Datei",
+        "reading": "Datei wird gelesen…"
       },
       "account": {
         "skipped": "{count} Zeile hat keinen Kontonamen und wird übersprungen | {count} Zeilen haben keinen Kontonamen und werden übersprungen",
@@ -575,7 +576,7 @@
       },
       "continue": "Weiter",
       "step_of": "Schritt {n} von {total} · {title}",
-      "list_hint": "Wir haben Ihre Datei gelesen und ausgefüllt, was wir konnten. Tippen Sie auf einen Schritt, um ihn zu ändern.",
+      "list_hint": "Tippen Sie auf einen Schritt, um ihn zu beantworten oder zu ändern.",
       "check_button": "{count} Buchung prüfen | {count} Buchungen prüfen",
       "ready": "{count} Buchung bereit · {skipped} weggelassen | {count} Buchungen bereit · {skipped} weggelassen",
       "rows": "{count} Zeile | {count} Zeilen",
@@ -612,7 +613,8 @@
         "check": "{count} zu importieren · {skipped} weggelassen | {count} zu importieren · {skipped} weggelassen",
         "from_account": "Aus {name}",
         "from_accounts": "Aus {name} und {count} weiteren Konto | Aus {name} und {count} weiteren Konten",
-        "nothing": "Keine"
+        "nothing": "Keine",
+        "not_chosen_yet": "Noch nicht gewählt"
       },
       "from": "aus „{name}“",
       "change": "Ändern",

@@ -431,7 +431,8 @@
           "empty": "此文件是空的",
           "unreadable": "无法将此文件读取为表格（CSV）"
         },
-        "none": "还没有文件"
+        "none": "还没有文件",
+        "reading": "正在读取文件…"
       },
       "account": {
         "skipped": "{count} 行没有账户名称，将被跳过",
@@ -575,7 +576,7 @@
       },
       "continue": "继续",
       "step_of": "第 {n} 步，共 {total} 步 · {title}",
-      "list_hint": "我们读取了你的文件并尽量填好了。点一个步骤即可修改。",
+      "list_hint": "点一个步骤即可作答或修改答案。",
       "check_button": "核对 {count} 笔交易",
       "ready": "{count} 笔交易已就绪 · {skipped} 笔不导入",
       "rows": "{count} 行",
@@ -612,7 +613,8 @@
         "check": "{count} 笔待导入 · {skipped} 笔不导入",
         "from_account": "来自 {name}",
         "from_accounts": "来自 {name} 和另外 {count} 个账户",
-        "nothing": "无"
+        "nothing": "无",
+        "not_chosen_yet": "尚未选择"
       },
       "from": "来自“{name}”",
       "change": "更改",

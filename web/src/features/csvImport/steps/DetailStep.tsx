@@ -33,6 +33,8 @@ function DetailStep({ role, state, setAnswers, choosing, change, closeChoices, l
           onlyOneNote={t(`transactions.import_wizard.only_one.${role}`)}
           tags={columnTags(state.answers, t, i18n.language, [role])}
           noneLabel={k('none')}
+          // with nothing in the file that fits, "none" is the answer the step already gave
+          unanswered={!state.touched.has(role) && column === null && likely.length > 0}
         />
       ) : column === null ? (
         <AnswerRow onChange={change}>{k(likely.length === 0 ? 'none_found' : 'left_out')}</AnswerRow>

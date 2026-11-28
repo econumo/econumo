@@ -17,6 +17,13 @@ const EXPORT =
 
 const csv = (text: string, name = 'statement.csv') => new File([text], name, { type: 'text/csv' })
 
+// The wizard assigns no column of a bank statement itself: with AI on, the AI's roles are the answers.
+function withAi(roles: Record<string, string>) {
+  window.econumoConfig = { AI_ENABLED: true }
+  server.use(http.get('*/api/v1/transaction/suggest-import-columns', () => HttpResponse.json({ success: true, message: '', data: { roles } })))
+}
+const BANK_ROLES = { date: 'Booking date', amount: 'Amount', description: 'Details' }
+
 function renderWizard(props: { initialFile?: File; onClose?: () => void } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
@@ -59,6 +66,7 @@ it('picking a file in the dialog moves on to the Account step', async () => {
 })
 
 it('any step opens from the step list, and Back and Continue walk the steps in order', async () => {
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -87,6 +95,7 @@ it('lists Category between Amount and Description, and Payee after Description',
 })
 
 it('a file with no category or payee answers both calmly; they never need attention', async () => {
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -101,6 +110,7 @@ it('a file with no category or payee answers both calmly; they never need attent
 })
 
 it('picking the amount as the category moves it: Amount loses it and needs an answer, Import waits', async () => {
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -123,12 +133,14 @@ it('picking the date as the description moves it: Date loses it and needs an ans
 })
 
 it('picking the description as the date moves it: Description is left empty', async () => {
+  withAi({ description: 'Details' })
   renderWizard({ initialFile: csv('When,Amount,Details\nsoon,-5.50,Coffee\nlater,100.00,Salary\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
   await user.click(screen.getByRole('radio', { name: /from “Details”/ }))
-  expect(screen.getByRole('button', { name: /^Description/ })).toHaveAccessibleDescription('No description')
+  // the AI's description went to Date: it is the user's to pick again
+  expect(screen.getByRole('button', { name: /^Description/ })).toHaveAccessibleDescription('Not chosen yet')
 })
 
 it('Category and Payee left as None never block Import', async () => {
@@ -148,6 +160,7 @@ it('Category and Payee left as None never block Import', async () => {
 })
 
 it('a guessed step opens on its answer with Continue in the footer; Change puts the choices in its place', async () => {
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -185,6 +198,7 @@ it('a step with nothing guessed opens on its question, and picking an answer sho
 const marker = (name: RegExp) => screen.getByRole('button', { name }).querySelector('span.rounded-full')
 
 it('a guessed step keeps its number until it is seen and left; a missing answer keeps its mark; Import is not held back', async () => {
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv('Booking date,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,100.00,Salary\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -218,30 +232,58 @@ it('steps never opened stay numbered and do not hold back Import', async () => {
   expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeEnabled()
 })
 
-it('a step that opened on its question shows the answer once a guess arrives', async () => {
+it('with AI on, Your file waits for its answer, then every step opens with what it assigned', async () => {
   let reply: () => void = () => {}
   const replied = new Promise<void>((resolve) => (reply = resolve))
+  window.econumoConfig = { AI_ENABLED: true }
   server.use(
     http.get('*/api/v1/transaction/suggest-import-columns', async () => {
       await replied
-      return HttpResponse.json({ success: true, message: '', data: { roles: { payee: 'Who' } } })
+      return HttpResponse.json({ success: true, message: '', data: { roles: { date: 'Booking date', amount: 'Amount', payee: 'Who' } } })
     }),
   )
-  renderWizard({
-    initialFile: csv(
-      'Booking date,Amount,Details,Who\n' +
-        '2026-01-02,-5.50,Coffee and a croissant at the station kiosk this morning,Kiosk at the central station north entrance\n' +
-        '2026-01-03,100.00,Refund for the broken umbrella bought last week at the store,Umbrella shop on the main square by the fountain\n',
-    ),
-  })
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Who\n2026-01-02,-5.50,Coffee,Kiosk\n2026-01-03,100.00,Refund,Shop\n') })
+  expect(await screen.findByRole('status')).toHaveTextContent('Reading your file…')
+  expect(currentStep()).toHaveAccessibleName(/^Your file/)
+  expect(screen.getByRole('button', { name: /^Account/ })).toBeDisabled()
+  reply()
+  expect(await screen.findByRole('heading', { name: 'Which account are these transactions from?' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Date' })).toHaveAccessibleDescription('Jan 2, 2026')
+  expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('Kiosk · Shop')
+  // what the AI left alone is the user's to pick
+  expect(screen.getByRole('button', { name: 'Description' })).toHaveAccessibleDescription('Not chosen yet')
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_AI_GUESS)
+})
+
+it('without AI, nothing is assigned: required steps are marked and hold Continue, optional ones are not chosen yet', async () => {
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Who\n2026-01-02,-5.50,Coffee,Kiosk\n2026-01-03,100.00,Refund,Shop\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  await user.click(screen.getByRole('button', { name: /^Payee/ }))
-  expect(screen.getByRole('radiogroup', { name: 'Which of these says who was paid?' })).toBeInTheDocument()
-  reply()
-  await waitFor(() => expect(screen.queryByRole('radiogroup', { name: 'Which of these says who was paid?' })).not.toBeInTheDocument())
-  expect(screen.getByText('from “Who”')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument()
+  expect(screen.queryByText('Reading your file…')).not.toBeInTheDocument()
+  for (const step of [/^Account/, /^Date/, /^Amount/]) expect(screen.getByRole('button', { name: new RegExp(`${step.source}.*needs your attention`) })).toBeInTheDocument()
+  for (const step of ['Category', 'Description', 'Payee']) expect(screen.getByRole('button', { name: step })).toHaveAccessibleDescription('Not chosen yet')
+  // with accounts, none is picked for the user
+  expect(screen.getByRole('radio', { name: 'An account I already have' })).toBeChecked()
+  expect(screen.getAllByRole('radio').filter((r) => r.getAttribute('aria-checked') === 'true' || (r as HTMLInputElement).checked)).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+
+  await user.click(screen.getByRole('button', { name: /^Date/ }))
+  expect(screen.getByRole('radiogroup', { name: 'Which of these is the date?' })).toBeInTheDocument()
+  expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  await user.click(screen.getByRole('radio', { name: /from “Booking date”/ }))
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+
+  // an optional step asks with nothing picked, None included, and lets the user go on without a pick
+  await user.click(screen.getByRole('button', { name: /^Description/ }))
+  expect(screen.getByRole('radiogroup', { name: 'Which of these says what it was for?' })).toBeInTheDocument()
+  expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByRole('button', { name: /^Description/ })).toHaveAccessibleDescription('No description')
+
+  await user.click(screen.getByRole('button', { name: /^Check/ }))
+  expect(screen.getByRole('button', { name: /^Import/ })).toBeDisabled()
 })
 
 it('money in and money out keep the list open after the first pick and fold it after the second', async () => {
@@ -262,6 +304,7 @@ it('money in and money out keep the list open after the first pick and fold it a
 })
 
 it('Tags is left out when every column is already used', async () => {
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv(BANK) })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.queryByRole('button', { name: /^Tags/ })).not.toBeInTheDocument()
@@ -274,13 +317,15 @@ it('Tags is offered when the file has a column no step uses', async () => {
 })
 
 it('Tags is left out when Category and Payee read the only columns left', async () => {
+  withAi({ ...BANK_ROLES, payee: 'Merchant' })
   renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee at the corner,Cafe\n2026-01-03,-3.00,Tea in the afternoon,Shop\n') })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription(/^Cafe/)
   expect(screen.queryByRole('button', { name: /^Tags/ })).not.toBeInTheDocument()
 })
 
-it('marks an unanswered account and a date column that leaves rows unread', async () => {
+it('marks an unanswered account and date; an answered amount carries no mark', async () => {
+  withAi({ amount: 'Amount', description: 'Details' })
   renderWizard({ initialFile: csv('Booking date,Amount,Details\n2026-01-02,-5.50,Coffee\nnot a day,1.00,x\n') })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
@@ -289,6 +334,7 @@ it('marks an unanswered account and a date column that leaves rows unread', asyn
 })
 
 it('with no date chosen yet, Amount still answers with the amounts the file reads', async () => {
+  withAi({ amount: 'Amount', description: 'Details' })
   renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,1.00,x\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -310,6 +356,7 @@ it('choosing a different date column on its step clears the warning', async () =
 })
 
 it('rows that will be skipped never mark a step; the step says so quietly', async () => {
+  withAi({ date: 'Date', amount: 'Amount' })
   const days = Array.from({ length: 9 }, (_, i) => `2026-01-0${i + 1},-1.00,x`).join('\n')
   renderWizard({ initialFile: csv(`Date,Amount,Details\n${days}\nsoon,1.00,y\n`) })
   const user = userEvent.setup()
@@ -320,6 +367,7 @@ it('rows that will be skipped never mark a step; the step says so quietly', asyn
 })
 
 it('each step shows its answer in plain words under its name', async () => {
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv(BANK) })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('button', { name: 'Date' })).toHaveAccessibleDescription('Jan 2, 2026')
@@ -389,12 +437,13 @@ it('an empty file says so', async () => {
 })
 
 it('on a phone the step list comes first; a step opens over it and the arrow goes back', async () => {
+  withAi(BANK_ROLES)
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: q === '(max-width: 639px)', media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
-  expect(await screen.findByText('We read your file and filled in what we could. Tap a step to change it.')).toBeInTheDocument()
+  expect(await screen.findByText('Tap a step to answer it or change its answer.')).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Which account are these transactions from?' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Amount' }))
   expect(screen.getByRole('heading', { name: 'How much was each payment?' })).toBeInTheDocument()
@@ -423,6 +472,7 @@ const toCheckWithNewAccount = async (user: ReturnType<typeof userEvent.setup>) =
 
 // the server invents a folder only for a user who has none and refuses a blank one otherwise
 it('a new account goes into the user’s first folder and the rows into the account the server made', async () => {
+  withAi(BANK_ROLES)
   let created: Record<string, unknown> | null = null
   let accountId: string | undefined
   server.use(
@@ -473,6 +523,7 @@ it('an Econumo export makes each new account in the currency its rows name', asy
 })
 
 it('a new account never goes into a hidden folder', async () => {
+  withAi(BANK_ROLES)
   let created: Record<string, unknown> | null = null
   server.use(
     http.get('*/api/v1/account/get-folder-list', () =>
@@ -498,6 +549,7 @@ it('a new account never goes into a hidden folder', async () => {
 })
 
 it('Import waits until the user’s folders are known', async () => {
+  withAi(BANK_ROLES)
   server.use(http.get('*/api/v1/account/get-folder-list', async () => {
     await delay('infinite')
     return HttpResponse.json({})
@@ -510,6 +562,7 @@ it('Import waits until the user’s folders are known', async () => {
 
 // a new file or a reopened dialog forgets the accounts this one made, so the lists must know them
 it('a failed account create reads the accounts and folders again', async () => {
+  withAi(BANK_ROLES)
   const reads = { accounts: 0, folders: 0 }
   const count = ({ request }: { request: Request }) => {
     if (request.url.includes('/get-account-list')) reads.accounts++
@@ -534,6 +587,7 @@ it('a failed account create reads the accounts and folders again', async () => {
 
 it('Import stays disabled until the new account is named, and typing a name enables it', async () => {
   server.use(...coreHandlers({ accounts: [] }))
+  withAi(BANK_ROLES)
   renderWizard({ initialFile: csv(BANK) })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })

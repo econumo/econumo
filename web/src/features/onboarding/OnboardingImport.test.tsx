@@ -24,6 +24,17 @@ beforeEach(() => {
 
 afterEach(() => cancelAiRefresh())
 
+// without AI the wizard assigns no column: the user points at each one the import needs
+async function answerWizard(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: /from “Account”/ }))
+  await user.click(screen.getByRole('button', { name: /^Date/ }))
+  await user.click(screen.getByRole('radio', { name: /from “Date”/ }))
+  await user.click(screen.getByRole('button', { name: /^Amount/ }))
+  await user.click(screen.getByRole('radio', { name: /from “Amount”/ }))
+}
+
 it('a successful import writes finish-import first and never marks import through update-onboarding', { timeout: 20000 }, async () => {
   let option = 'started'
   let imported = false
@@ -60,7 +71,7 @@ it('a successful import writes finish-import first and never marks import throug
   await screen.findByRole('heading', { name: 'Bring in your history' }, { timeout: 5000 })
   await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
   await user.upload(await screen.findByLabelText('Choose a file'), new File([CSV], 'bank.csv', { type: 'text/csv' }))
-  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await answerWizard(user)
   await user.click(screen.getByRole('button', { name: /^Check/ }))
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Import 2 transactions' }))
   expect(await screen.findByRole('heading', { name: 'What do you spend on?' }, { timeout: 5000 })).toBeInTheDocument()
@@ -100,7 +111,7 @@ it('an import that left rows out shows the result, and Try the rest again sends 
   await screen.findByRole('heading', { name: 'Bring in your history' }, { timeout: 5000 })
   await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
   await user.upload(await screen.findByLabelText('Choose a file'), new File([CSV], 'bank.csv', { type: 'text/csv' }))
-  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await answerWizard(user)
   await user.click(screen.getByRole('button', { name: /^Check/ }))
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Import 2 transactions' }))
   expect(await screen.findByText('Import failed')).toBeInTheDocument()
@@ -147,7 +158,7 @@ it('a partial import as the last open step keeps its result on screen before onb
   await screen.findByRole('heading', { name: 'Bring in your history' }, { timeout: 5000 })
   await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
   await user.upload(await screen.findByLabelText('Choose a file'), new File([CSV], 'bank.csv', { type: 'text/csv' }))
-  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await answerWizard(user)
   await user.click(screen.getByRole('button', { name: /^Check/ }))
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Import 2 transactions' }))
   expect(await screen.findByText('Import completed with errors')).toBeInTheDocument()

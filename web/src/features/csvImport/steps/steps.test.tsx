@@ -7,7 +7,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureEur, fixtureUsd } from '@/test/fixtures'
 import { ImportWizard } from '../ImportWizard'
 import { profileColumns } from '../columns'
-import { guessAnswers, redetectFormats } from '../guess'
+import { applyAiGuess, initialAnswers, redetectFormats } from '../guess'
 import { parseCsvText } from '../parse'
 import { prepareRows, type StepId, type WizardAnswers } from '../prepare'
 import type { StepBodyProps } from '../wizard'
@@ -30,8 +30,10 @@ function renderWizard(text: string) {
 
 // A step on its own, with answers kept the way the wizard keeps them; the first
 // prepared row is what the Check step's first card shows.
-function StepHarness({ text, Step, onSet, open = true }: {
+function StepHarness({ text, Step, onSet, open = true, roles = {} }: {
   text: string
+  /** the columns the AI gave roles to: the wizard itself assigns none */
+  roles?: Record<string, string>
   Step: ComponentType<StepBodyProps>
   onSet: (step: StepId, patch: Partial<WizardAnswers>) => void
   /** the list of choices starts open, as after Change */
@@ -41,7 +43,7 @@ function StepHarness({ text, Step, onSet, open = true }: {
   const [choosing, setChoosing] = useState(open)
   const [profiles] = useState(() => profileColumns(file))
   const [answers, setAnswersState] = useState(() =>
-    guessAnswers(file, profiles, { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB' }),
+    applyAiGuess(initialAnswers(file, { writableAccountIds: ['acc-1', 'acc-2'], userCurrencyId: 'cur-usd', locale: 'en-GB' }), roles, file, 'en-GB', new Set()),
   )
   const rows = prepareRows(file, answers, new Map())
   const setAnswers = (step: StepId, patch: Partial<WizardAnswers>) => {
@@ -99,7 +101,6 @@ it('with no accounts, a lost account answer comes back as a new account to name'
   // another step takes the account column, leaving the account unanswered
   await user.click(screen.getByRole('button', { name: /^Category/ }))
   await screen.findByRole('heading', { name: 'How are the payments sorted?' })
-  await user.click(screen.getByRole('button', { name: 'Change' }))
   await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
   await user.click(screen.getByRole('button', { name: /^Account/ }))
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
@@ -170,6 +171,8 @@ it('lists the accounts a per-row column names as sentences; only a new one can c
   renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Cash\n2026-01-03,7.00,Travel card\n2026-01-04,1.00, cash \n')
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
+  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
   const rows = within(perRowList()).getAllByRole('listitem')
   expect(rows).toHaveLength(2)
   expect(rows[0]).toHaveTextContent('Cash · 2 transactions Your existing account · USD')
@@ -195,6 +198,10 @@ it('per-row accounts take the currency their own rows name, the user’s otherwi
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
   await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  // no part of the file is taken for the currency until the user points at one
+  expect(screen.getByText("Your file doesn't say which currency")).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[1])
+  await user.click(screen.getByRole('radio', { name: /from “Cur”/ }))
   expect(screen.getByText("Your file says each account's currency")).toBeInTheDocument()
   expect(screen.getByText('from “Cur”')).toBeInTheDocument()
   const rows = within(perRowList()).getAllByRole('listitem')
@@ -303,6 +310,8 @@ it('with nothing else that fits the category, a part the currency reads is liste
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
   await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
+  await user.click(screen.getAllByRole('button', { name: 'Change' })[1])
+  await user.click(screen.getByRole('radio', { name: /from “Cur”/ }))
   expect(within(perRowList()).getAllByRole('listitem')[0]).toHaveTextContent('New account · EUR')
   await user.click(screen.getByRole('button', { name: /^Category/ }))
   await screen.findByRole('heading', { name: 'How are the payments sorted?' })
@@ -334,7 +343,7 @@ it('a new account for a file in a currency not set up here says so under its cur
 
 it('choosing another column makes it the date and marks the Date step as answered', async () => {
   const onSet = vi.fn()
-  render(<StepHarness text={'Date,Valued,Amount\n2026-01-02,2026-01-05,-5\n'} Step={DateStep} onSet={onSet} />)
+  render(<StepHarness text={'Date,Valued,Amount\n2026-01-02,2026-01-05,-5\n'} Step={DateStep} roles={{ date: 'Date' }} onSet={onSet} />)
   const user = userEvent.setup()
   expect(screen.getByRole('radio', { name: /from “Date”/ })).toBeChecked()
   // values come first, written as dates; the file's own name follows
@@ -351,7 +360,7 @@ it('choosing another column makes it the date and marks the Date step as answere
 })
 
 it('the date candidates come first; every other part follows under a divider, with what it is used for', () => {
-  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,lunch\n'} Step={DateStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,lunch\n'} Step={DateStep} roles={{ amount: 'Amount' }} onSet={vi.fn()} />)
   expect(screen.getAllByRole('radio')[0]).toHaveAccessibleName(/from “Date”/)
   expect(screen.getAllByRole('radio')).toHaveLength(3)
   expect(screen.getByText('Other parts of your file')).toBeInTheDocument()
@@ -366,7 +375,7 @@ it('a file with only a date column says it is the only part that looks like a da
 })
 
 it('with no date in the file, every part is listed under a note, with what each is used for', () => {
-  render(<StepHarness text={'Amount,Memo\n-5,lunch\n'} Step={DateStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Amount,Memo\n-5,lunch\n'} Step={DateStep} roles={{ amount: 'Amount' }} onSet={vi.fn()} />)
   expect(screen.getByText('Nothing in your file looks like a date, so here is everything.')).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: 'lunch from “Memo”' })).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: /from “Amount”/ })).toHaveAccessibleDescription('used for amount')
@@ -374,7 +383,7 @@ it('with no date in the file, every part is listed under a note, with what each 
 })
 
 it('asks how to read an ambiguous date, and the answer changes how the first row reads', async () => {
-  render(<StepHarness text={'Date,Amount\n03/04/2026,-5\n05/06/2026,1\n'} Step={DateStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Date,Amount\n03/04/2026,-5\n05/06/2026,1\n'} Step={DateStep} roles={{ date: 'Date' }} onSet={vi.fn()} />)
   const user = userEvent.setup()
   expect(screen.getByText('Is 03/04/2026 April 3 or March 4?')).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: 'April 3, 2026' })).toBeChecked()
@@ -384,12 +393,12 @@ it('asks how to read an ambiguous date, and the answer changes how the first row
 })
 
 it('counts the rows whose date cannot be read', () => {
-  render(<StepHarness text={'Date,Amount\n2026-01-02,-5\n2026-01-03,1\n2026-01-04,1\n2026-01-05,1\n2026-01-06,1\n2026-01-07,1\n2026-01-08,1\n2026-01-09,1\nsoon,1\nlater,2\n'} Step={DateStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Date,Amount\n2026-01-02,-5\n2026-01-03,1\n2026-01-04,1\n2026-01-05,1\n2026-01-06,1\n2026-01-07,1\n2026-01-08,1\n2026-01-09,1\nsoon,1\nlater,2\n'} Step={DateStep} roles={{ date: 'Date' }} onSet={vi.fn()} />)
   expect(screen.getByText('2 rows have no readable date and will be skipped')).toBeInTheDocument()
 })
 
 it('one amount column shows how spending looks with a switch to flip it; separate columns hide the switch', async () => {
-  render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n'} Step={AmountStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n'} Step={AmountStep} roles={{ amount: 'Amount' }} onSet={vi.fn()} />)
   const user = userEvent.setup()
   expect(screen.getByText('Spending shows as: −100.00')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
@@ -418,7 +427,7 @@ it('with separate columns, each side picks its own column, and either side can b
 })
 
 it('the amount step answers with the first amounts as they will be added', () => {
-  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-4.50,Coffee\n2026-01-03,100,Salary\n'} Step={AmountStep} onSet={vi.fn()} open={false} />)
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-4.50,Coffee\n2026-01-03,100,Salary\n'} Step={AmountStep} roles={{ amount: 'Amount' }} onSet={vi.fn()} open={false} />)
   const items = within(screen.getByRole('list', { name: 'How payments will look' })).getAllByRole('listitem')
   expect(items).toHaveLength(2)
   expect(items[0]).toHaveTextContent(/^−4\.5/)
@@ -428,12 +437,12 @@ it('the amount step answers with the first amounts as they will be added', () =>
 })
 
 it('rows whose amount cannot be read are a quiet note, not a warning', () => {
-  render(<StepHarness text={'Date,Amount\n2026-01-02,-5\n2026-01-03,1\n2026-01-04,1\n2026-01-05,1\n2026-01-06,1\n2026-01-07,1\n2026-01-08,1\n2026-01-09,1\n2026-01-10,1\n2026-01-11,?\n'} Step={AmountStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Date,Amount\n2026-01-02,-5\n2026-01-03,1\n2026-01-04,1\n2026-01-05,1\n2026-01-06,1\n2026-01-07,1\n2026-01-08,1\n2026-01-09,1\n2026-01-10,1\n2026-01-11,?\n'} Step={AmountStep} roles={{ date: 'Date', amount: 'Amount' }} onSet={vi.fn()} />)
   expect(screen.getByText('1 row has no readable amount and will be skipped')).toHaveClass('text-muted-foreground')
 })
 
 it('spending is shown as a round example, not a value from the file', async () => {
-  render(<StepHarness text={'Date,Amount\n2026-01-02,12.00\n2026-01-03,-1\n'} Step={AmountStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Date,Amount\n2026-01-02,12.00\n2026-01-03,-1\n'} Step={AmountStep} roles={{ amount: 'Amount' }} onSet={vi.fn()} />)
   const user = userEvent.setup()
   expect(screen.getByText('Spending shows as: −100.00')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
@@ -441,7 +450,7 @@ it('spending is shown as a round example, not a value from the file', async () =
 })
 
 it('the spending example is written in the file’s decimal notation', async () => {
-  render(<StepHarness text={'Datum;Betrag\n03.11.2026;-12,50\n05.11.2026;2.500,00\n'} Step={AmountStep} onSet={vi.fn()} />)
+  render(<StepHarness text={'Datum;Betrag\n03.11.2026;-12,50\n05.11.2026;2.500,00\n'} Step={AmountStep} roles={{ amount: 'Betrag' }} onSet={vi.fn()} />)
   const user = userEvent.setup()
   expect(screen.getByText('Spending shows as: −100,00')).toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Flip the signs' }))
@@ -449,7 +458,7 @@ it('the spending example is written in the file’s decimal notation', async () 
 })
 
 it('the description step lists no names from the file', () => {
-  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,REWE Markt\n'} Step={DescriptionStep} onSet={vi.fn()} open={false} />)
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,REWE Markt\n'} Step={DescriptionStep} roles={{ description: 'Memo' }} onSet={vi.fn()} open={false} />)
   expect(screen.getByText('REWE Markt')).toBeInTheDocument()
   expect(screen.queryByRole('list')).not.toBeInTheDocument()
   expect(screen.queryByText(/in your file/)).not.toBeInTheDocument()
@@ -457,7 +466,7 @@ it('the description step lists no names from the file', () => {
 
 it('a guessed answer shows no choices; Change puts them in its place without answering anything', async () => {
   const onSet = vi.fn()
-  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,Gehalt\n'} Step={DescriptionStep} onSet={onSet} open={false} />)
+  render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,Gehalt\n'} Step={DescriptionStep} roles={{ description: 'Memo' }} onSet={onSet} open={false} />)
   const user = userEvent.setup()
   expect(screen.getByText('REWE Markt · Gehalt')).toBeInTheDocument()
   expect(screen.getByText('from “Memo”')).toBeInTheDocument()
@@ -477,7 +486,7 @@ it('a guessed answer shows no choices; Change puts them in its place without ans
 })
 
 it('with money in and out, the list stays open for the second pick and folds back to the answer after it', async () => {
-  render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n2026-01-03,7.00,7.00,\n'} Step={AmountStep} onSet={vi.fn()} open={false} />)
+  render(<StepHarness text={'Date,Amount,In,Out\n2026-01-02,-4.50,,4.50\n2026-01-03,7.00,7.00,\n'} Step={AmountStep} roles={{ amount: 'Amount' }} onSet={vi.fn()} open={false} />)
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Change' }))
   await user.click(screen.getByRole('radio', { name: 'Money in and money out' }))

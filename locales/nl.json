@@ -431,7 +431,8 @@
           "empty": "Dit bestand is leeg",
           "unreadable": "Dit bestand kon niet als spreadsheet (CSV) worden gelezen"
         },
-        "none": "Nog geen bestand"
+        "none": "Nog geen bestand",
+        "reading": "Uw bestand wordt gelezen…"
       },
       "account": {
         "skipped": "{count} regel heeft geen rekeningnaam en wordt overgeslagen | {count} regels hebben geen rekeningnaam en worden overgeslagen",
@@ -575,7 +576,7 @@
       },
       "continue": "Doorgaan",
       "step_of": "Stap {n} van {total} · {title}",
-      "list_hint": "We hebben uw bestand gelezen en ingevuld wat we konden. Tik op een stap om die te wijzigen.",
+      "list_hint": "Tik op een stap om die te beantwoorden of uw antwoord te wijzigen.",
       "check_button": "{count} transactie controleren | {count} transacties controleren",
       "ready": "{count} transactie klaar · {skipped} weggelaten | {count} transacties klaar · {skipped} weggelaten",
       "rows": "{count} regel | {count} regels",
@@ -612,7 +613,8 @@
         "check": "{count} te importeren · {skipped} weggelaten | {count} te importeren · {skipped} weggelaten",
         "from_account": "Van {name}",
         "from_accounts": "Van {name} en nog {count} rekening | Van {name} en nog {count} rekeningen",
-        "nothing": "Geen"
+        "nothing": "Geen",
+        "not_chosen_yet": "Nog niet gekozen"
       },
       "from": "uit ‘{name}’",
       "change": "Wijzigen",

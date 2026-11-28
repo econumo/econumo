@@ -22,7 +22,7 @@ is done, and an ambiguous date like `03/04/2026` is silently read day-first.
   of reasoning about header names.
 - A preview of the transactions, exactly as they will be written, before anything is
   written.
-- Better guesses: every step comes pre-filled; AI improves the guesses where it is on.
+- Pre-filled where it is safe: an Econumo export is fully mapped, and with AI on the AI fills the roles it is sure of; everything else is the user's pick (revised 2026-11-27).
 - People moving from another app can still bring category, payee, tag and labels.
 
 ## Non-goals
@@ -87,7 +87,7 @@ is done, and an ambiguous date like `03/04/2026` is silently read day-first.
 One dialog (`ResponsiveDialog`, a sheet on a phone) with a step bar, Back and Next.
 
 **Moving between steps.** Once a file is loaded, the step bar is clickable: the user can
-jump to any step, forward or back, in any order, because every step is already pre-filled.
+jump to any step, forward or back, in any order, because steps do not depend on each other.
 Steps are never locked behind earlier ones. A step whose answer is missing or causes
 skipped rows carries a warning mark in the bar, and Import is disabled until the required
 ones (account, date, amount) are answered. On a wide dialog the bar shows every step's
@@ -100,7 +100,7 @@ already mapped, so the user only confirms. In that case the Preview also shows t
 list (described under step 2, each new account with its currency pre-filled from
 `account_currency`), so currencies can be checked without leaving the screen. The step bar
 is still there, so any step can be opened to change something. The same shortcut is not
-used for other files: a guessed mapping of a bank statement still walks through the steps.
+used for other files: a bank statement walks through the steps.
 It replaces `ImportCsvDialog` everywhere it is used today: Getting started's Import step
 (`web/src/features/onboarding/ImportStep.tsx`) and Settings → Data
 (`web/src/features/imports/ImportsDataPage.tsx`). The `initialFile` (drag-and-drop) entry
@@ -122,8 +122,10 @@ are shown in the UI language's date format, not ISO.
 ### 1. File
 
 Drop or pick a `.csv` (10 MB limit as today). The browser parses it (`lib/csv.ts`), and
-the guesser runs (see Guessing). An unreadable or empty file says so in plain words and
-stays on this step.
+the starting answers are set (see Guessing). With AI on, the step shows "Reading your file…"
+and waits for the AI's answer (at most 8 seconds) before it opens Account, so no step flips
+from its list to an answer under the user; the step list is locked meanwhile. An unreadable
+or empty file says so in plain words and stays on this step.
 
 ### 2. Account: "Which account is this statement from?"
 
@@ -131,7 +133,8 @@ stays on this step.
   the file name is not a default; an empty name is a missing answer until typed) and currency
   (defaults to the user's currency, the same picker the Accounts step uses).
 - **An account I already have** (default when they have one or more): the account picker,
-  writable accounts only, as today.
+  writable accounts only, as today. No account is pre-selected, not even the only one: the
+  user picks. *(Revised 2026-11-27.)*
 - **Each row says which account** (a small secondary option): pick the column, shown with
   sample values, as on the other steps. Pre-selected when an Econumo export is recognised.
   The step then lists the distinct account names found: a name matching one of the user's
@@ -139,10 +142,10 @@ stays on this step.
   account · EUR"; every other reads "New account · CAD" with a quiet "Change
   currency" that opens a per-account picker. Where that currency comes from is a second
   answer row, a role like the others (one part of the file, one role; never uploaded, it
-  only decides new accounts' currency): a part of the file holding three-letter codes
-  (an Econumo export's `account_currency`) is guessed, and its Change offers the parts
-  holding codes plus "My file has no currency"; without one, "New accounts will be in
-  [USD ▾]" picks one currency for every new account (the user's currency by default).
+  only decides new accounts' currency): only an Econumo export's `account_currency` is
+  set by the wizard; otherwise it starts as "New accounts will be in [USD ▾]", one
+  currency for every new account (the user's currency by default), and its Change offers
+  the parts holding codes plus "My file has no currency".
   Per account: its own pick, else the one known code its rows name, else that currency.
   An unknown code reads "your file says AUD, which isn't set up here". *(Builder-check
   call: the server alone would create them in the instance base currency and ignore
@@ -179,13 +182,15 @@ Column cards. Under the cards, the selected column's values are checked:
 
 ### 5. Category (optional): "How are the payments sorted?"
 
-Built like Description: the guessed answer first ("Strata · Interest · Car Insurance", from
-“category”), Change opens "Which of these is the category?" with short names that repeat
+Built like Description: an answer the AI or an Econumo export gave first ("Strata · Interest
+· Car Insurance", from “category”), Change opens "Which of these is the category?" with short names that repeat
 (not ids or currency codes) first, "The file has no category", then every other non-empty
 part under a muted "Other parts of your file" divider, tagged "used for …" when another step
 reads it. With nothing plausible, a muted note ("Nothing in your file looks like a category,
 so here is everything.") and the whole file with no divider; with a list of exactly one entry
-and no None, a muted note says so. There is no "Show all". Optional: with nothing that fits, or None picked, the step answers calmly ("Your
+and no None, a muted note says so. There is no "Show all". Unanswered (nothing assigned and
+not yet picked), the step opens on this list with nothing selected, None included; Continue
+is allowed and leaving it is None. Optional: with nothing that fits, or None picked, the step answers calmly ("Your
 file has no categories. You can sort transactions into categories later.") with Looks
 right; it never warns and never blocks Import. Under a chosen column, "Categories in your
 file" lists each name (case-insensitive, trimmed) with its count of transactions that will be
@@ -195,7 +200,7 @@ when the name is new for one kind but not the other); a user-share member sees "
 (shared account)" instead of "New category". The 8 most used show first, then "and N more"
 expands the rest. Payee and Tags list their names the same way; Description does not. One column has one role on every step: a
 pick takes its column from whichever step read it (the last pick wins), and a required step
-that loses it shows its warning mark again; the guess and the AI never share a column.
+that loses it shows its warning mark again; the AI never gives one column two roles.
 
 ### 6. Description: "Which column describes each transaction?"
 
@@ -210,7 +215,7 @@ later." when nothing fits. "Payees in your file" lists the payees as Category li
 
 For people moving from another app. Lists the columns not used yet, each with sample
 values, and lets the user mark each as Budget tag, Reporting tags, or leave it out
-(default: leave out, unless the guesser recognised it). Labels get the separator choice
+(default: leave out, unless an Econumo export or the AI named it). Labels get the separator choice
 that exists today, in plain words ("Several labels in one cell are separated by…"). Shown
 only when the file has unused columns; otherwise skipped. "Budget tags in your file" and
 "Reporting tags in your file" (split by the separator) list the tags as Category lists its
@@ -272,66 +277,35 @@ unchanged.
 
 ## Guessing
 
-Every step is pre-filled by a guesser that runs once after the file is parsed:
+*(Revised 2026-11-27, owner: "We shouldn't assign fields without AI at all; it must be on the
+user to select. With AI we can do an assignment. Otherwise it creates way more problems and
+confusion when wrong.")* The wizard itself never decides which column plays which role:
 
 1. **Econumo export** recognised by its exact header (as today's `autoDetect`): everything
-   mapped, including category/payee/tag/labels and "each row says which account".
-2. **Built-in rules** (always, no AI needed), from the values only, never from header words
-   (no per-language alias lists; headers can be in any language). *(Revised 2026-11-27: the
-   owner did not want hardcoded aliases.)*
-   - Date: the date-typed column with the most readable dates; a tie goes to the leftmost.
-   - Amount: number columns, without ids and long reference numbers. A column that moves by
-     another column's amount on every row (either sort order) is a running balance and is
-     skipped. Two columns where every row with money fills exactly one are money in and
-     money out: the one with minus signs, else the one with more rows, is money out; when
-     neither tells, the two-column mode is set and both sides are left for the step to ask.
-     Otherwise the first column with negatives, else the first number column, is the amount.
-   - Description: among text columns (no ids, no currency codes) whose values mostly differ,
-     the ones with nearly the most different values; of those, the longest on average.
-   - Category: a short text column (40 characters on average at most) that repeats a few
-     names (at least 2, at most a third of its rows, at least 3 allowed). Of two or more, the
-     one with the fewest names is taken to be the account (left to the Account step, which
-     keeps its default by the number of writable accounts) and the next is the category.
-   - Payee: a remaining short text column whose values mostly differ.
-   - Tag and reporting tags are never guessed by the built-in rules (the AI may).
-   - Currency: a column of three-letter codes (only used for an Econumo export's accounts).
-3. **AI** (only when AI is configured and the user's `ai` option is on): one request after
-   parsing, which may override the built-in guess for columns it is confident about. The
-   wizard opens immediately with built-in guesses and updates still-untouched steps when
-   the AI reply arrives; a step the user already answered is never changed. Failure,
-   timeout or AI off = built-in guesses only, no message.
+   mapped, including category/payee/tag/labels, "each row says which account" and its
+   `account_currency`. This is our own format, read deterministically.
+2. **AI** (only when AI is configured, the user's `ai` option is on, the device is online and
+   the header row does not read like a transaction): one request after parsing. The File step
+   waits for the reply (capped at 8 seconds, the server's own limit) and the steps open with
+   the AI's roles already applied. The model answers each role with a header and whether it
+   is sure; the server keeps a role only when it is sure, the header exists and its column
+   type fits. The AI's `account` and `currency` roles are not applied. Failure, timeout or AI
+   off = no assignment, no message.
+3. **Everything else starts unanswered.** Required steps (Account, Date, Amount) open on
+   their list with nothing selected, carry the warning mark and hold Continue until picked
+   (a new account's name does not hold Continue; it keeps the mark and holds Import). Optional
+   steps (Category, Description, Payee, Extra details) open on their list with nothing
+   selected, None included, read "Not chosen yet" in the step list until answered or left,
+   and let the user go on; leaving one unanswered is None.
 
-### What the AI receives
-
-Only:
-
-- the column header names, in file order;
-- per column, a type computed in the browser: `date`, `number`, `text`, `empty` (and
-  for numbers, whether negatives occur);
-- the user's language.
-
-Never a cell value: no amounts, dates, descriptions or payee text. One accepted exception (decided 2026-11-27): a file with no header row whose first-row date and amount cells read as neither dates nor numbers (e.g. `someday,n/a,Coffee`) has that row taken for a header, so those words reach the AI; a named test records the gap. This adds "CSV column
-header names and computed column types" to the AI data allowlist in CLAUDE.md, with a guard
-test on the prompt's exact key set like every other prompt builder.
-
-A file without a header row has its first transaction read as the header, so nothing is
-sent when the header row looks like data, judged by content only: a header cell that is
-itself a date or a number (a currency code or sign allowed beside it; "Column 3" and
-"Amount (2)", the names a blank or repeated header gets, are not numbers), a bank reference,
-one of its own column's values, or a blank header over a date or number column. A first row
-whose date and amount cells are both unreadable words (`unknown,Amount,Coffee`) cannot be
-told from a header this way and is sent; a test pins that limit.
-
-The reply is a JSON object assigning header names to roles (`date`, `amount`,
-`amountIn`, `amountOut`, `description`, `payee`, `category`, `tag`, `labels`,
-`account`), each optional; names not in the header are ignored.
-
-Server side: a new endpoint `GET /api/v1/transaction/suggest-import-columns` (auth, a read like `onboarding/suggest-icon`; reads stay GET per the API conventions
-and `GET` is never restricted for readonly callers) in the `transaction` feature, with its prompt in
-`prompts/import_columns.md`, its own per-user AI rate-limit scope, and the established AI
-rules (re-read the `ai` option before the call, never fail the request, WARN with ids and
-`err_type` only). It answers an empty suggestion rather than an error when AI is off or
-fails. AI eval cases (tag `aieval`) cover English, German and Russian bank headers.
+What the wizard still reads from values, once a column is chosen, is the column's FORMAT: date
+order, decimal separator, a new account's currency when the file names exactly one, and each
+per-row account's currency from a chosen currency column. The choosers still order the
+plausible parts first (dates, money, short repeating names, codes), which helps the user
+pick but never pre-selects. The privacy gate is unchanged: no request when the header row
+reads like data by content (dates, amounts, repeated values, references); a first row of
+unreadable words still looks like a header and reaches the AI (an accepted gap, pinned by a
+test).
 
 ## Analytics
 

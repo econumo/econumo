@@ -16,6 +16,8 @@ interface ColumnChoicesProps {
   tags?: Record<number, string>
   /** offers "none of these" as an answer */
   noneLabel?: string
+  /** nothing was chosen yet: "none of these" is offered but not shown as the pick */
+  unanswered?: boolean
   /** said above the list when nothing in the file fits and the whole file is listed */
   nothingFitsNote?: string
   /** said above the list when exactly one part fits and there is no "none of these" */
@@ -45,7 +47,7 @@ function Dot({ on }: { on: boolean }) {
  * file's own name for it is a grey caption. An answer is a button, not a native radio: picking
  * the one already chosen is an answer too ("yes, that one"), and arrow keys must not pick.
  */
-export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, nothingFitsNote, onlyOneNote, noneWhenNothingFits = false, exclude = [] }: ColumnChoicesProps) {
+export function ColumnChoices({ profiles, label, selected, onSelect, candidates, tags = {}, noneLabel, unanswered = false, nothingFitsNote, onlyOneNote, noneWhenNothingFits = false, exclude = [] }: ColumnChoicesProps) {
   const { t, i18n } = useTranslation()
   const name = useId()
   const filled = profiles.filter((p) => (p.type !== 'empty' || p.index === selected) && !exclude.includes(p.index)).map((p) => p.index)
@@ -55,6 +57,7 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
   // an optional answer with nothing that fits is just "none of these"
   const main = nothingFits ? [...likely, ...rest] : likely
   const others = nothingFits || (candidates.length === 0 && noneWhenNothingFits) ? [] : rest
+  const noneOn = selected === null && !unanswered
   const note = nothingFits ? nothingFitsNote : main.length === 1 && others.length === 0 && !noneLabel ? onlyOneNote : null
 
   const renderRow = (index: number) => {
@@ -114,11 +117,11 @@ export function ColumnChoices({ profiles, label, selected, onSelect, candidates,
           <button
             type="button"
             role="radio"
-            aria-checked={selected === null}
-            className={cn(rowClass(selected === null), selected !== null && 'text-muted-foreground')}
+            aria-checked={noneOn}
+            className={cn(rowClass(noneOn), !noneOn && 'text-muted-foreground')}
             onClick={() => onSelect(null)}
           >
-            <Dot on={selected === null} />
+            <Dot on={noneOn} />
             <span className="text-sm">{noneLabel}</span>
           </button>
         ) : null}

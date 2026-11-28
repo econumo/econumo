@@ -70,7 +70,15 @@ function Harness({ file }: { file: File }) {
   )
 }
 
-function renderWizard(text: string) {
+// The wizard assigns no column of a bank statement itself; these tests take the AI's reading of
+// the headers they use. Pass null to keep a handler the test set up itself.
+const HEADER_ROLES: Record<string, string> = { Date: 'date', Datum: 'date', Amount: 'amount', Betrag: 'amount', Details: 'description', Text: 'description' }
+const headerRoles = (text: string) =>
+  Object.fromEntries(text.split('\n')[0].split(/[,;]/).flatMap((h) => (HEADER_ROLES[h] ? [[HEADER_ROLES[h], h]] : [])))
+
+function renderWizard(text: string, roles: Record<string, string> | null = headerRoles(text)) {
+  window.econumoConfig = { AI_ENABLED: true }
+  if (roles !== null) server.use(http.get('*/api/v1/transaction/suggest-import-columns', () => ok({ roles })))
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
@@ -126,8 +134,8 @@ it('the list shows each transaction the way it will be imported, read with a dec
 it('a row shows only the names that will land on it, and a row with too many reporting tags is left out', async () => {
   const many = Array.from({ length: 51 }, (_, i) => 'x' + i).join(';')
   // the values alone do not say which parts are tags, so they come from the AI's reading of the headers
-  server.use(http.get('*/api/v1/transaction/suggest-import-columns', () => ok({ roles: { description: 'Details', tag: 'tag', labels: 'labels' } })))
-  renderWizard('Date,Amount,Details,tag,labels\n2026-01-02,-4.50,Kaffee,health,vacation;Fun\n2026-01-03,-1.00,Tee,,' + many + '\n')
+  server.use(http.get('*/api/v1/transaction/suggest-import-columns', () => ok({ roles: { date: 'Date', amount: 'Amount', description: 'Details', tag: 'tag', labels: 'labels' } })))
+  renderWizard('Date,Amount,Details,tag,labels\n2026-01-02,-4.50,Kaffee,health,vacation;Fun\n2026-01-03,-1.00,Tee,,' + many + '\n', null)
   const user = userEvent.setup()
   await openCheck(user)
   await waitFor(() => expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).toHaveTextContent(/Kaffee\s*Fun/))
@@ -324,7 +332,7 @@ it('a chunk that failed is offered again, and only that chunk is sent', async ()
   expect(screen.queryByRole('button', { name: 'Try the rest again' })).not.toBeInTheDocument()
 })
 
-it('an AI guess fills a step the user left alone but never one they answered', async () => {
+it('the AI reads only headers and types, and its answer is in every step it names when the steps open', async () => {
   let release!: () => void
   const gate = new Promise<void>((resolve) => (release = resolve))
   let asked: unknown = null
@@ -332,22 +340,22 @@ it('an AI guess fills a step the user left alone but never one they answered', a
     http.get('*/api/v1/transaction/suggest-import-columns', async ({ request }) => {
       asked = JSON.parse(new URL(request.url).searchParams.get('columns') ?? 'null')
       await gate
-      return ok({ roles: { date: 'Booking date', description: 'Info' } })
+      return ok({ roles: { date: 'Booking date', amount: 'Amount', description: 'Info' } })
     }),
   )
   renderWizard(
     'Booking date,Value date,Amount,Info,Note\n2026-01-02,2026-01-03,-5.50,Coffee,Card payment at the corner shop\n2026-01-04,2026-01-05,100.00,Salary,Monthly transfer from the employer\n',
+    null,
   )
   const user = userEvent.setup()
-  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  await user.click(screen.getByRole('button', { name: /^Date/ }))
-  // opening the choices answers nothing; picking one does
-  await user.click(screen.getByRole('button', { name: 'Change' }))
-  await user.click(screen.getByRole('radio', { name: /from “Value date”/ }))
+  expect(await screen.findByText('Reading your file…')).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Which account are these transactions from?' })).not.toBeInTheDocument()
   release()
-  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_AI_GUESS))
-  expect(screen.getByText('from “Value date”')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Description' }))
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.TRANSACTION_IMPORT_AI_GUESS)
+  await user.click(screen.getByRole('button', { name: /^Date/ }))
+  expect(screen.getByText('from “Booking date”')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /^Description/ }))
   expect(screen.getByText('Coffee · Salary')).toBeInTheDocument()
   expect(screen.getByText('from “Info”')).toBeInTheDocument()
   expect(asked).toEqual([
@@ -368,6 +376,7 @@ it('an Econumo export asks the AI nothing and shows its accounts on the Check st
   renderWizard(
     'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
       'a1,Wallet,EUR,Food,Lunch,,,Cafe,-4.5,2026-03-04 14:05:09\n',
+    null,
   )
   await screen.findByRole('heading', { name: "Here is what will be added" })
   expect(screen.getByText('Accounts in your file')).toBeInTheDocument()

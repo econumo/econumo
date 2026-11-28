@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { candidates } from './candidates'
 import { profileColumns } from './columns'
-import { guessAnswers } from './guess'
+import { initialAnswers } from './guess'
 import { parseCsvText } from './parse'
 import type { WizardAnswers } from './prepare'
 
@@ -13,7 +13,7 @@ const RENT = 'Monthly rent for the flat on Main Street and the garage'
 function load(header: string, rows: string[]) {
   const file = parseCsvText(`${header}\n${rows.join('\n')}\n`)
   const profiles = profileColumns(file)
-  return { file, profiles, answers: guessAnswers(file, profiles, ctx) }
+  return { file, profiles, answers: initialAnswers(file, ctx) }
 }
 
 const names = (profiles: { name: string }[], indices: number[]) => indices.map((i) => profiles[i].name)

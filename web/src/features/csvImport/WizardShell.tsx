@@ -13,6 +13,8 @@ export interface ShellStep {
   id: Exclude<StepId, 'file'>
   title: string
   summary: string
+  /** an optional step still waiting for the user: its summary reads quieter */
+  pending?: boolean
   answered: boolean
   /** a required answer is missing */
   warning: boolean
@@ -92,7 +94,7 @@ function StepList({ steps, current, onSelect, locked, phone }: Pick<WizardShellP
                     , {t('transactions.import_wizard.needs_attention')}
                   </span>
                 ) : null}
-                <span id={`${id}-summary`} className="mt-0.5 block truncate text-xs text-muted-foreground">
+                <span id={`${id}-summary`} className={cn('mt-0.5 block truncate text-xs text-muted-foreground', step.pending && 'italic text-muted-foreground/70')}>
                   {step.summary}
                 </span>
               </span>
