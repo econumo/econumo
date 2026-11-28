@@ -27,7 +27,8 @@ export type AccountChoice =
       currencyId: string
       /** currencies the user picked for single accounts: lowercased name -> currencyId */
       overrides: Record<string, string>
-      /** every account's final currency, resolved from the three above: lowercased name -> currencyId */
+      /** the currencies fixed for single accounts, by an override or by the file's currency column; every other
+          new account takes `currencyId`: lowercased name -> currencyId */
       currencies: Record<string, string>
     }
 

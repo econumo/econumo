@@ -218,9 +218,10 @@ export async function ensureAccounts(
     return { accountId: await create(NEW_ACCOUNT, choice.name, choice.currencyId) }
   }
   if (choice?.kind === 'column') {
-    for (const [name, currencyId] of Object.entries(choice.currencies)) {
+    for (const name of names ? names.keys() : Object.keys(choice.currencies)) {
       const key = name.toLowerCase()
-      if (existingNames.has(key) || (names && !names.has(key))) continue
+      if (existingNames.has(key)) continue
+      const currencyId = Object.hasOwn(choice.currencies, key) ? choice.currencies[key] : choice.currencyId
       await create(`${PER_ROW}${key}`, names?.get(key) ?? name, currencyId)
     }
   }

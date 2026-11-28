@@ -11,6 +11,8 @@ export interface AccountCurrency {
   currencyId: string
   /** the one code the account's rows name in the currency column, when the app has no such currency */
   unknownCode: string | null
+  /** set by the user's pick or by the file's currency column, not by the default */
+  explicit: boolean
 }
 
 /** Each account's currency, by lowercased name: the user's pick for it, else the one known code its
@@ -31,14 +33,14 @@ export function accountCurrencies(file: ParsedFile, choice: PerRowChoice, curren
     const [code] = found.size === 1 ? found : [null]
     const known = code ? idByCode.get(code) : undefined
     const override = Object.hasOwn(choice.overrides, key) ? choice.overrides[key] : undefined
-    result.set(key, { currencyId: override ?? known ?? choice.currencyId, unknownCode: code && !known ? code : null })
+    result.set(key, { currencyId: override ?? known ?? choice.currencyId, unknownCode: code && !known ? code : null, explicit: (override ?? known) !== undefined })
   }
   return result
 }
 
-/** the choice with every account's final currency filled in */
+/** the choice with the currencies the user or the file fixed; the default is never copied into an account */
 export function withAccountCurrencies(file: ParsedFile, choice: PerRowChoice, currencies: ReadonlyArray<Currency>): PerRowChoice {
   const resolved = accountCurrencies(file, choice, currencies)
   // fromEntries, not assignment: a name like "__proto__" must stay a plain key
-  return { ...choice, currencies: Object.fromEntries([...resolved].map(([key, { currencyId }]) => [key, currencyId])) }
+  return { ...choice, currencies: Object.fromEntries([...resolved].filter(([, { explicit }]) => explicit).map(([key, { currencyId }]) => [key, currencyId])) }
 }

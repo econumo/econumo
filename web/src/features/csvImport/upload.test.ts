@@ -276,6 +276,11 @@ describe('ensureAccounts', () => {
     await ensureAccounts(a, new Map(), new Set(), new Map([['my card', 'My Card']]))
     expect(vi.mocked(createAccount).mock.calls[0][0]).toMatchObject({ name: 'My Card' })
   })
+  it('creates a per-row account in the default currency unless it has its own', async () => {
+    const a = answers({ kind: 'column', column: 0, currencyColumn: null, currencyId: 'cad', overrides: { b: 'usd' }, currencies: { b: 'usd' } })
+    await ensureAccounts(a, new Map(), new Set(), new Map([['a', 'A'], ['b', 'B']]))
+    expect(vi.mocked(createAccount).mock.calls.map((call) => [call[0].name, call[0].currencyId])).toEqual([['A', 'cad'], ['B', 'usd']])
+  })
 })
 
 describe('mergeRetry', () => {
@@ -293,4 +298,5 @@ describe('mergeRetry', () => {
     expect(merged.failedChunks).toEqual([])
     expect(merged.errors).toEqual([{ message: 'Invalid amount', rows: [2, 503, 1002] }])
   })
+
 })

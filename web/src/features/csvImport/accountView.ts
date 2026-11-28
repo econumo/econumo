@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { useUserData } from '@/features/user/queries'
 import { abs, isNegative } from '@/lib/decimal'
 import { moneyFormat, type CurrencyLike } from '@/lib/money'
 import type { PreparedRow, WizardAnswers } from './prepare'
@@ -33,7 +33,7 @@ export function useAccountView(answers: WizardAnswers): (row: PreparedRow | null
       const key = nameKey(row.account)
       const found = writable.find((a) => nameKey(a.name) === key)
       if (found) return { name: found.name, icon: found.icon || 'account_balance_wallet', currency: found.currency }
-      const currencyId = Object.hasOwn(account.currencies, key) ? account.currencies[key] : userCurrencyId(user)
+      const currencyId = Object.hasOwn(account.currencies, key) ? account.currencies[key] : account.currencyId
       return { name: row.account, icon: 'account_balance_wallet', currency: currencies.find((c) => c.id === currencyId) ?? null }
     }
     return { name: null, icon: 'account_balance_wallet', currency: null }

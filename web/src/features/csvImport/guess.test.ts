@@ -64,8 +64,8 @@ describe('initialAnswers', () => {
       currencyColumn: 2,
       currencyId: 'cur-eur',
       overrides: {},
-      // "Cash" and "cash" name two currencies, so the account takes the default
-      currencies: { cash: 'cur-eur', bank: 'cur-eur', card: 'cur-eur', constructor: 'cur-usd' },
+      // "Cash" and "cash" name two currencies, so the account takes the default with no entry of its own
+      currencies: { bank: 'cur-eur', constructor: 'cur-usd' },
     })
     expect(a.date).toEqual({ column: 9, order: 'ymd' })
     expect(a.amount).toMatchObject({ mode: 'single', column: 8, flip: false, sep: '.' })
