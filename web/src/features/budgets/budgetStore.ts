@@ -160,7 +160,17 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       planSumsShown: {},
       togglePlanSums: (key) => {
         trackEvent(METRICS.BUDGET_PLAN_TOGGLE_SUMS)
-        set((state) => ({ planSumsShown: toggleKey(state.planSumsShown, key) }))
+        // a line's Σ overrides its months' own Σ either way, so their choices go:
+        // otherwise a month toggled earlier would stay shown after the line hides
+        set((state) => {
+          const next = toggleKey(state.planSumsShown, key)
+          for (const k of Object.keys(next)) {
+            if (k.startsWith(`${key}@`)) {
+              delete next[k]
+            }
+          }
+          return { planSumsShown: next }
+        })
       },
       budgetFolds: {},
       toggleBudgetFold: (key) => set((state) => ({ budgetFolds: toggleKey(state.budgetFolds, key) })),
