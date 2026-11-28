@@ -125,9 +125,12 @@ it('the list shows each transaction the way it will be imported, read with a dec
 
 it('a row shows only the names that will land on it, and a row with too many reporting tags is left out', async () => {
   const many = Array.from({ length: 51 }, (_, i) => 'x' + i).join(';')
+  // the values alone do not say which parts are tags, so they come from the AI's reading of the headers
+  server.use(http.get('*/api/v1/transaction/suggest-import-columns', () => ok({ roles: { description: 'Details', tag: 'tag', labels: 'labels' } })))
   renderWizard('Date,Amount,Details,tag,labels\n2026-01-02,-4.50,Kaffee,health,vacation;Fun\n2026-01-03,-1.00,Tee,,' + many + '\n')
   const user = userEvent.setup()
   await openCheck(user)
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).toHaveTextContent(/Kaffee\s*Fun/))
   // "health" is a reporting tag and "vacation" a budget tag already: both are left out of the row
   expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).toHaveTextContent(/Kaffee\s*Fun/)
   expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).not.toHaveTextContent(/health|vacation/)
@@ -332,7 +335,9 @@ it('an AI guess fills a step the user left alone but never one they answered', a
       return ok({ roles: { date: 'Booking date', description: 'Info' } })
     }),
   )
-  renderWizard('Booking date,Value date,Amount,Info\n2026-01-02,2026-01-03,-5.50,Coffee\n2026-01-04,2026-01-05,100.00,Salary\n')
+  renderWizard(
+    'Booking date,Value date,Amount,Info,Note\n2026-01-02,2026-01-03,-5.50,Coffee,Card payment at the corner shop\n2026-01-04,2026-01-05,100.00,Salary,Monthly transfer from the employer\n',
+  )
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
@@ -350,6 +355,7 @@ it('an AI guess fills a step the user left alone but never one they answered', a
     { name: 'Value date', type: 'date', negatives: false },
     { name: 'Amount', type: 'number', negatives: true },
     { name: 'Info', type: 'text', negatives: false },
+    { name: 'Note', type: 'text', negatives: false },
   ])
 })
 

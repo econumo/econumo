@@ -276,10 +276,25 @@ Every step is pre-filled by a guesser that runs once after the file is parsed:
 
 1. **Econumo export** recognised by its exact header (as today's `autoDetect`): everything
    mapped, including category/payee/tag/labels and "each row says which account".
-2. **Built-in rules** (always, no AI needed): header synonyms for date, amount, money
-   in/out, description, payee, category in all 11 UI languages (e.g. Buchungstag, Betrag,
-   Verwendungszweck, Fecha, Importe, Дата, Сумма, Описание), checked against the column's
-   value type so "Date" holding text is not picked.
+2. **Built-in rules** (always, no AI needed), from the values only, never from header words
+   (no per-language alias lists; headers can be in any language). *(Revised 2026-11-27: the
+   owner did not want hardcoded aliases.)*
+   - Date: the date-typed column with the most readable dates; a tie goes to the leftmost.
+   - Amount: number columns, without ids and long reference numbers. A column that moves by
+     another column's amount on every row (either sort order) is a running balance and is
+     skipped. Two columns where every row with money fills exactly one are money in and
+     money out: the one with minus signs, else the one with more rows, is money out; when
+     neither tells, the two-column mode is set and both sides are left for the step to ask.
+     Otherwise the first column with negatives, else the first number column, is the amount.
+   - Description: among text columns (no ids, no currency codes) whose values mostly differ,
+     the ones with nearly the most different values; of those, the longest on average.
+   - Category: a short text column (40 characters on average at most) that repeats a few
+     names (at least 2, at most a third of its rows, at least 3 allowed). Of two or more, the
+     one with the fewest names is taken to be the account (left to the Account step, which
+     keeps its default by the number of writable accounts) and the next is the category.
+   - Payee: a remaining short text column whose values mostly differ.
+   - Tag and reporting tags are never guessed by the built-in rules (the AI may).
+   - Currency: a column of three-letter codes (only used for an Econumo export's accounts).
 3. **AI** (only when AI is configured and the user's `ai` option is on): one request after
    parsing, which may override the built-in guess for columns it is confident about. The
    wizard opens immediately with built-in guesses and updates still-untouched steps when
@@ -298,6 +313,14 @@ Only:
 Never a cell value: no amounts, dates, descriptions or payee text. This adds "CSV column
 header names and computed column types" to the AI data allowlist in CLAUDE.md, with a guard
 test on the prompt's exact key set like every other prompt builder.
+
+A file without a header row has its first transaction read as the header, so nothing is
+sent when the header row looks like data, judged by content only: a header cell that is
+itself a date or a number (a currency code or sign allowed beside it; "Column 3" and
+"Amount (2)", the names a blank or repeated header gets, are not numbers), a bank reference,
+one of its own column's values, or a blank header over a date or number column. A first row
+whose date and amount cells are both unreadable words (`unknown,Amount,Coffee`) cannot be
+told from a header this way and is sent; a test pins that limit.
 
 The reply is a JSON object assigning header names to roles (`date`, `amount`,
 `amountIn`, `amountOut`, `description`, `payee`, `category`, `tag`, `labels`,
@@ -329,7 +352,7 @@ wrong?" link. Keys go into `METRICS` per the rules.
 
 - Component structure, state shape, and how steps share state.
 - Exact copy (in plain words, no developer terms), layout of the cards, the step indicator.
-- The header synonym lists and the value-type detection rules.
+- The value-type detection rules and the content thresholds of the guesser.
 - The default name for a new account.
 - How much of `importCsv.ts` / `autoDetect` is reused versus rewritten.
 - Test split between unit tests for the guesser/normaliser and component tests per step.

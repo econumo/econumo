@@ -30,7 +30,8 @@ describe('useColumnGuess', () => {
     ['Chinese', '交易日期,金额,摘要\n2024-01-02,-10,x\n2024-01-03,-5,y\n'],
     ['a trailing delimiter', 'Buchungstag;Betrag;Verwendungszweck;\n01.02.2024;-12,50;x;\n02.02.2024;-3,00;y;\n'],
     ['a repeated header', 'Date,Amount,Amount,Memo 2\n2024-01-02,-10,1,x\n2024-01-03,-5,2,y\n'],
-  ])('asks when a date or money column is headed by a word for it (%s)', (_, text) => {
+    ['headers in no known language', 'Ngày,Số tiền,Ghi chú\n2024-01-02,-10,x\n2024-01-03,-5,y\n'],
+  ])('asks when the header row does not read like a transaction (%s)', (_, text) => {
     guess(text)
     expect(suggestImportColumns).toHaveBeenCalledTimes(1)
   })
@@ -40,12 +41,25 @@ describe('useColumnGuess', () => {
     ['an amount', 'Coffee shop,-12.50\nTea,-3.00\n'],
     ['a bank date and amount', '01.02.2024;-12,50;Bäckerei Müller\n02.02.2024;-3,00;Café\n'],
     ['an amount with a currency', '2 Mar 2024,-12.50 EUR,Coffee\n2024-03-03,-3.00,Tea\n2024-03-04,-4.00,Cake\n'],
-    ['a transaction with a header word in its amount cell', 'unknown,Amount,Coffee\n2026-01-03,-5.00,Tea\n2026-01-04,-6.00,Cake\n'],
-    ['a transaction with a header word in its date cell', 'Date,n/a,Coffee\n2026-01-03,-5.00,Tea\n2026-01-04,-6.00,Cake\n'],
-    ['an unreadable transaction', 'someday,n/a,medical memo\n2024-01-02,-10,Coffee\n2024-01-03,-5,Tea\n'],
-    ['words that only contain a header word', 'update fee,summary,medical memo\n2024-01-02,-10,Coffee\n2024-01-03,-5,Tea\n'],
+    ['a value its column repeats', '2 Mar 2024,Groceries,Tesco\n2024-03-03,Groceries,Tesco\n2024-03-04,Fuel,Shell\n'],
+    ['a value its column repeats, in another case', 'foo;-1,00;rewe\nbar;-2,00;REWE\nbaz;-3,00;Aldi\n'],
+    ['a bank reference', 'DE89370400440532013000,someday,Coffee\nGB29NWBK60161331926819,2024-01-02,Tea\nFR1420041010050500013M02606,2024-01-03,Cake\n'],
+    ['nothing over a date column', ',Memo\n2024-01-02,Coffee\n2024-01-03,Tea\n'],
+    ['nothing over an amount column', 'Memo,\nCoffee,-10\nTea,-5\n'],
   ])('asks nothing when the header row holds %s', (_, text) => {
     guess(text)
     expect(suggestImportColumns).not.toHaveBeenCalled()
+  })
+
+  // Without word lists, a first transaction whose date and amount cells are both unreadable
+  // words looks like any header by content. Its other cells reach the AI; this pins that limit.
+  it.each([
+    ['unknown,Amount,Coffee\n2026-01-03,-5.00,Tea\n2026-01-04,-6.00,Cake\n'],
+    ['Date,n/a,Coffee\n2026-01-03,-5.00,Tea\n2026-01-04,-6.00,Cake\n'],
+    ['someday,n/a,medical memo\n2024-01-02,-10,Coffee\n2024-01-03,-5,Tea\n'],
+    ['update fee,summary,medical memo\n2024-01-02,-10,Coffee\n2024-01-03,-5,Tea\n'],
+  ])('cannot tell a first row of unreadable words from a header: %s', (text) => {
+    guess(text)
+    expect(suggestImportColumns).toHaveBeenCalledTimes(1)
   })
 })

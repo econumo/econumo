@@ -1,6 +1,5 @@
 import { parseAmountCell } from './amounts'
 import { parseDateCell } from './dates'
-import { SYNONYMS } from './guess'
 import type { ParsedFile } from './parse'
 
 export type ColumnType = 'date' | 'number' | 'text' | 'empty'
@@ -21,6 +20,8 @@ export interface ColumnProfile {
   averageLength: number
   /** every value is a three-letter code such as CAD or EUR */
   codes: boolean
+  /** the header is also one of the column's own values (in any case) */
+  headerInValues: boolean
 }
 
 const TYPE_SAMPLE = 500
@@ -88,43 +89,36 @@ export function profileColumns(file: ParsedFile): ColumnProfile[] {
       distinct: new Set(values.map((v) => v.toLowerCase())).size,
       averageLength: values.length === 0 ? 0 : values.reduce((sum, v) => sum + v.length, 0) / values.length,
       codes: values.length > 0 && values.every((v) => CURRENCY_CODE.test(v)),
+      headerInValues: name.trim() !== '' && typed.some((v) => v.toLowerCase() === name.trim().toLowerCase()),
     }
   })
 }
 
-const HAN = /\p{Script=Han}/u
-const words = (s: string) => ' ' + s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ') + ' '
-
-// Whole words, so "Date (UTC)" names a date and "update fee" does not; Chinese has no spaces.
-const names = (header: string, synonym: string) =>
-  HAN.test(synonym) ? header.toLowerCase().includes(synonym) : words(header).includes(words(synonym))
-
-const DATE_NAMES = SYNONYMS.date
-const MONEY_NAMES = [...SYNONYMS.amount, ...SYNONYMS.amountIn, ...SYNONYMS.amountOut]
-
-// A file with no header row has its first transaction read as the header; those names are
-// cell values, which never go to the AI. A row that only fails to parse ("someday,n/a,medical
-// memo") looks like headers too, so this fails closed: the header row counts as one only when
-// both the dates and the money are headed by words that name them (one date column named when
-// the file has date columns, one number column named when it has number columns), which a
-// transaction's own cells practically never are: a stray word in one of them ("unknown,Amount,
-// Coffee") still leaves the other unnamed. A number is read only from a name without letters:
-// the amount reader strips them, so "Column 3", "Amount (2)" (names parse.ts gives a blank or a
-// repeated header) and "Memo 2" would read as numbers; a cell like "-12.50 EUR" still fails the
-// word check.
-const HAS_LETTER = /\p{L}/u
+// The amount reader strips letters at the edges, so "Column 3", "Amount (2)" (names parse.ts
+// gives a blank or a repeated header) and "Memo 2" would read as numbers. A header reads as one
+// only when nothing but a currency sign or one upper-case code ("-12.50 EUR") is left besides it.
+const LETTERS = /\p{L}/u
+const CURRENCY_MARK = /\p{Sc}|\b[A-Z]{3}\b/gu
+const isNumberHeader = (name: string) => !LETTERS.test(name.replace(CURRENCY_MARK, '')) && isNumber(name)
+const PLACEHOLDER = /^Column \d+$/
 
 /** some header is itself a date or a number: the file has no header row, its first transaction stands in */
 export function headerHasValues(profiles: ColumnProfile[]): boolean {
-  return profiles.some(({ name }) => isDate(name) || (!HAS_LETTER.test(name) && isNumber(name)))
+  return profiles.some(({ name }) => isDate(name) || isNumberHeader(name))
 }
 
+// A file with no header row has its first transaction read as the header; those cells never go
+// to the AI. With no word lists, only the cells' content can tell: a header that is a date, a
+// number, a bank reference or one of its own column's values is a transaction's cell, and a date
+// or amount column without a header at all fails closed too. A first row whose date and amount
+// cells are both unreadable words ("unknown,Amount,Coffee") cannot be told from a header by
+// content and passes.
 export function headerLooksLikeData(profiles: ColumnProfile[]): boolean {
   if (headerHasValues(profiles)) return true
-  const kinds = [
-    { type: 'date', words: DATE_NAMES },
-    { type: 'number', words: MONEY_NAMES },
-  ].filter(({ type }) => profiles.some((p) => p.type === type))
-  const named = (type: string, words: string[]) => profiles.some((p) => p.type === type && words.some((s) => names(p.name, s)))
-  return kinds.length === 0 || !kinds.every(({ type, words }) => named(type, words))
+  return profiles.some((p) => {
+    const name = p.name.trim()
+    const blank = name === '' || PLACEHOLDER.test(name)
+    if (blank) return p.type === 'date' || p.type === 'number'
+    return p.headerInValues || looksInternal('text', [name]) || LONG_INTEGER.test(name)
+  })
 }

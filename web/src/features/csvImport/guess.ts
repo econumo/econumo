@@ -1,6 +1,6 @@
-import { detectDecimalSeparator } from './amounts'
-import type { ColumnProfile, ColumnType } from './columns'
-import { detectDateOrder, localeDateOrder } from './dates'
+import { detectDecimalSeparator, parseAmountCell } from './amounts'
+import type { ColumnProfile } from './columns'
+import { detectDateOrder, localeDateOrder, parseDateCell } from './dates'
 import { fileCurrencyId, withAccountCurrencies } from './fileCurrency'
 import type { ParsedFile } from './parse'
 import type { AccountChoice, Role, StepId, WizardAnswers } from './prepare'
@@ -19,125 +19,7 @@ const EXPORT_COLUMNS = {
 } as const
 const EXPORT_HEADER = [...Object.values(EXPORT_COLUMNS), 'transaction_id']
 
-type GuessedRole = Exclude<Role, 'account' | 'currency'>
-
-// No 'account' synonyms: a bank's account column usually repeats one IBAN, and
-// "each row says which account" is preselected only for an Econumo export.
-export const SYNONYMS: Record<GuessedRole, string[]> = {
-  date: [
-    'date', 'transaction date', 'posting date', 'booking date', 'value date', 'posted', 'posted date',
-    'datum', 'buchungstag', 'buchungsdatum', 'valuta', 'valutadatum', 'wertstellung',
-    'fecha', 'fecha operación', 'fecha de operación', 'fecha valor',
-    'date opération', "date d'opération", 'date de valeur', 'date valeur',
-    'data', 'data operazione', 'data valuta', 'data contabile',
-    'boekdatum', 'transactiedatum', 'rentedatum',
-    'data operacji', 'data księgowania', 'data transakcji',
-    'data movimento', 'data valor', 'data do movimento',
-    'дата', 'дата операции', 'дата проводки', 'дата транзакции',
-    'дата операції', 'дата проведення',
-    '日期', '交易日期', '记账日期',
-  ],
-  amount: [
-    'amount', 'value', 'sum', 'transaction amount',
-    'betrag', 'umsatz', 'summe',
-    'importe', 'monto', 'cantidad',
-    'montant', 'somme',
-    'importo', 'ammontare',
-    'bedrag',
-    'kwota', 'kwota operacji',
-    'montante', 'valor', 'quantia',
-    'сумма', 'сумма операции',
-    'сума', 'сума операції',
-    '金额', '交易金额',
-  ],
-  amountIn: [
-    'credit', 'credits', 'money in', 'paid in', 'deposit', 'deposits', 'inflow', 'credit amount',
-    'haben', 'eingang', 'gutschrift', 'einnahme', 'einnahmen',
-    'abono', 'abonos', 'ingreso', 'ingresos', 'haber',
-    'crédit', 'entrée', 'entrées', 'recette', 'recettes',
-    'avere', 'entrate', 'accredito', 'accrediti',
-    'bij', 'ontvangsten',
-    'uznania', 'wpływy', 'przychód',
-    'crédito', 'entrada', 'entradas',
-    'приход', 'поступление', 'поступления', 'зачисление', 'кредит',
-    'надходження', 'прихід', 'зарахування',
-    '收入', '存入', '贷方',
-  ],
-  amountOut: [
-    'debit', 'debits', 'money out', 'paid out', 'withdrawal', 'withdrawals', 'outflow', 'debit amount',
-    'soll', 'ausgang', 'lastschrift', 'ausgabe', 'ausgaben',
-    'cargo', 'cargos', 'gasto', 'gastos', 'debe',
-    'débit', 'sortie', 'sorties', 'dépense', 'dépenses',
-    'dare', 'uscite', 'addebito', 'addebiti',
-    'af', 'debet', 'uitgaven',
-    'obciążenia', 'wydatki', 'rozchód',
-    'débito', 'saída', 'saídas',
-    'расход', 'списание', 'списания', 'дебет',
-    'витрата', 'витрати', 'списання', 'видаток',
-    '支出', '取出', '借方',
-  ],
-  description: [
-    'description', 'details', 'transaction details', 'memo', 'narrative', 'particulars', 'reference',
-    'verwendungszweck', 'beschreibung', 'buchungstext', 'text',
-    'descripción', 'concepto', 'detalle',
-    'libellé', 'détails', 'libellé opération',
-    'descrizione', 'causale', 'dettagli',
-    'omschrijving', 'mededelingen', 'beschrijving',
-    'opis', 'tytuł', 'tytuł operacji',
-    'descrição', 'descritivo', 'detalhes',
-    'описание', 'назначение платежа', 'детали', 'комментарий',
-    'опис', 'призначення платежу', 'деталі', 'коментар',
-    '描述', '摘要', '备注', '说明',
-  ],
-  payee: [
-    'payee', 'merchant', 'counterparty', 'beneficiary', 'recipient',
-    'empfänger', 'zahlungsempfänger', 'auftraggeber', 'begünstigter', 'beguenstigter/zahlungspflichtiger',
-    'beneficiario', 'comercio', 'destinatario',
-    'bénéficiaire', 'tiers', 'commerçant',
-    'esercente', 'controparte',
-    'begunstigde', 'tegenpartij', 'naam tegenpartij',
-    'odbiorca', 'kontrahent', 'nadawca/odbiorca',
-    'beneficiário', 'comerciante', 'destinatário',
-    'получатель', 'контрагент', 'продавец',
-    'отримувач', 'продавець',
-    '收款人', '商户', '对方',
-  ],
-  category: [
-    'category', 'categories', 'kategorie', 'categoría', 'catégorie', 'categoria', 'categorie',
-    'kategoria', 'категория', 'категорія', '分类', '类别',
-  ],
-  tag: [
-    'tag', 'budget tag', 'budget-tag', 'etiqueta', 'etiqueta de presupuesto', 'tag budgétaire', 'tag di budget',
-    'budgettag', 'tag budżetowy', 'etiqueta de orçamento', 'тег', 'тег для бюджета', 'тег для бюджету', '预算标签',
-  ],
-  labels: [
-    'labels', 'reporting tags', 'auswertungs-tags', 'etiquetas', 'etiquetas de informes', 'tags de rapport',
-    'tag per i report', 'rapportagetags', 'tagi raportowe', 'etiquetas de relatório', 'теги', 'теги для отчётов',
-    'теги для звітів', '统计标签',
-  ],
-}
-
-const ROLE_TYPE: Record<GuessedRole, ColumnType> = {
-  date: 'date',
-  amount: 'number',
-  amountIn: 'number',
-  amountOut: 'number',
-  description: 'text',
-  payee: 'text',
-  category: 'text',
-  tag: 'text',
-  labels: 'text',
-}
-
-// Money in/out before amount: "Сумма (приход)" contains "сумма" and must not
-// become the single amount column in the substring pass.
-const ROLE_ORDER: GuessedRole[] = ['date', 'amountIn', 'amountOut', 'amount', 'description', 'payee', 'category', 'tag', 'labels']
-
-const HAN = /\p{Script=Han}/u
-
-// Short Latin words ("af", "bij", "tag") are too common inside other headers to
-// match as substrings; Chinese words are short by nature.
-const substringOk = (synonym: string) => synonym.length >= 4 || HAN.test(synonym)
+type GuessedRole = 'date' | 'amount' | 'amountIn' | 'amountOut' | 'description' | 'payee' | 'category'
 
 export function isEconumoExport(file: ParsedFile): boolean {
   return EXPORT_HEADER.every((column) => file.header.includes(column))
@@ -178,37 +60,114 @@ function exportAnswers(file: ParsedFile, ctx: GuessContext): WizardAnswers {
   }
 }
 
-function guessRoles(profiles: ColumnProfile[]): Partial<Record<GuessedRole, number>> {
-  const found: Partial<Record<GuessedRole, number>> = {}
-  const claimed = new Set<number>()
-  const names = profiles.map((p) => p.name.trim().toLowerCase())
+// A name column (category, account) is short and repeats; a description or payee mostly differs
+// from row to row.
+const NAME_MAX_LENGTH = 40
+const NAME_ROWS_PER_NAME = 3
+const BALANCE_SHARE = 0.8
+// a description differs on (nearly) every row; a payee or account repeats more
+const DESCRIPTION_SHARE = 0.9
 
-  // Synonyms are in order of preference: "Description" beats "Reference".
-  const pass = (matches: (name: string, synonym: string) => boolean) => {
-    for (const role of ROLE_ORDER) {
-      if (found[role] !== undefined) continue
-      for (const synonym of SYNONYMS[role]) {
-        const index = profiles.findIndex(
-          (p, i) => !claimed.has(i) && p.type === ROLE_TYPE[role] && matches(names[i], synonym),
-        )
-        if (index !== -1) {
-          found[role] = index
-          claimed.add(index)
-          break
-        }
-      }
-    }
+const isWords = (p: ColumnProfile) => p.type === 'text' && !p.internal && !p.codes
+const mostlyDistinct = (p: ColumnProfile) => p.distinct >= 2 && p.distinct * 2 >= p.filled
+const repeatsFew = (p: ColumnProfile) =>
+  p.averageLength <= NAME_MAX_LENGTH && p.distinct >= 2 && p.distinct < p.filled && p.distinct <= Math.max(3, Math.floor(p.filled / NAME_ROWS_PER_NAME))
+
+const parsedDates = (file: ParsedFile, column: number) =>
+  columnValues(file, column).filter((v) => (['ymd', 'dmy', 'mdy'] as const).some((order) => parseDateCell(v, order) !== null)).length
+
+function amountsOf(file: ParsedFile, column: number): (number | null)[] {
+  const { sep } = detectDecimalSeparator(columnValues(file, column))
+  return file.rows.map((row) => {
+    const parsed = parseAmountCell((row[column] ?? '').trim(), sep)
+    return parsed === null ? null : Number(parsed)
+  })
+}
+
+// A running balance moves by each row's amount, whichever way the file is sorted.
+function isBalanceOf(balance: (number | null)[], amount: (number | null)[]): boolean {
+  let pairs = 0
+  let forward = 0
+  let backward = 0
+  for (let i = 1; i < balance.length; i++) {
+    const [before, after] = [balance[i - 1], balance[i]]
+    if (before === null || after === null) continue
+    pairs++
+    if (amount[i] !== null && Math.abs(after - before - amount[i]!) < 0.005) forward++
+    if (amount[i - 1] !== null && Math.abs(before - after - amount[i - 1]!) < 0.005) backward++
   }
-  pass((name, synonym) => name === synonym)
-  pass((name, synonym) => substringOk(synonym) && name.includes(synonym))
-  return found
+  return pairs >= 2 && Math.max(forward, backward) >= BALANCE_SHARE * pairs
+}
+
+// Each row with money has it in exactly one of the two columns.
+function splitsRows(a: (number | null)[], b: (number | null)[]): boolean {
+  let inA = 0
+  let inB = 0
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== null && b[i] !== null) return false
+    if (a[i] !== null) inA++
+    if (b[i] !== null) inB++
+  }
+  return inA > 0 && inB > 0
+}
+
+// Built from the values alone, never from header words: the file's headers can be in any
+// language. The AI, when it answers, refines what the user has not touched yet.
+function guessRoles(file: ParsedFile, profiles: ColumnProfile[]): { found: Partial<Record<GuessedRole, number>>; dual: boolean } {
+  const found: Partial<Record<GuessedRole, number>> = {}
+  let dual = false
+
+  const dates = profiles.filter((p) => p.type === 'date')
+  if (dates.length > 0) {
+    const counts = dates.map((p) => parsedDates(file, p.index))
+    found.date = dates[counts.indexOf(Math.max(...counts))].index
+  }
+
+  const numbers = profiles.filter((p) => p.type === 'number' && !p.internal)
+  const amounts = new Map(numbers.map((p) => [p.index, amountsOf(file, p.index)]))
+  const balances = new Set(
+    numbers.filter((b) => numbers.some((a) => a !== b && isBalanceOf(amounts.get(b.index)!, amounts.get(a.index)!))).map((p) => p.index),
+  )
+  const money = numbers.filter((p) => !balances.has(p.index))
+  const pair = money.flatMap((a, i) => money.slice(i + 1).map((b) => [a, b] as const)).find(([a, b]) => splitsRows(amounts.get(a.index)!, amounts.get(b.index)!))
+  if (pair && !money.some((p) => p.negatives && !pair.includes(p))) {
+    const [a, b] = pair
+    dual = true
+    // Spending shows as negatives, or else outnumbers income; when neither tells, the step asks.
+    const out = a.negatives !== b.negatives ? (a.negatives ? a : b) : a.filled !== b.filled ? (a.filled > b.filled ? a : b) : null
+    if (out !== null) {
+      found.amountOut = out.index
+      found.amountIn = (out === a ? b : a).index
+    }
+  } else if (money.length > 0) {
+    found.amount = (money.find((p) => p.negatives) ?? money[0]).index
+  }
+
+  const text = profiles.filter(isWords)
+  const free = (p: ColumnProfile) => !Object.values(found).includes(p.index)
+  const longest = (list: ColumnProfile[]) => list.reduce<ColumnProfile | undefined>((best, p) => (best === undefined || p.averageLength > best.averageLength ? p : best), undefined)
+  const varied = text.filter(mostlyDistinct)
+  const mostDistinct = Math.max(0, ...varied.map((p) => p.distinct))
+  const description = longest(varied.filter((p) => p.distinct >= DESCRIPTION_SHARE * mostDistinct))
+  if (description) found.description = description.index
+
+  // Of two repeating columns, the one with fewer names is taken for the account, which the
+  // Account step asks about on its own.
+  const named = text.filter((p) => free(p) && repeatsFew(p)).sort((a, b) => a.distinct - b.distinct || a.index - b.index)
+  const category = named.length >= 2 ? named[1] : named[0]
+  if (category) found.category = category.index
+
+  const payee = text
+    .filter((p) => free(p) && mostlyDistinct(p) && p.averageLength <= NAME_MAX_LENGTH)
+    .sort((a, b) => b.distinct - a.distinct || a.index - b.index)[0]
+  if (payee) found.payee = payee.index
+  return { found, dual }
 }
 
 export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: GuessContext): WizardAnswers {
   if (isEconumoExport(file)) return exportAnswers(file, ctx)
 
-  const roles = guessRoles(profiles)
-  const dual = roles.amountIn !== undefined && roles.amountOut !== undefined
+  const { found: roles, dual } = guessRoles(file, profiles)
   const writable = ctx.writableAccountIds
   const account: AccountChoice | null =
     writable.length === 0
@@ -232,8 +191,8 @@ export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: G
     extras: {
       payee: roles.payee ?? null,
       category: roles.category ?? null,
-      tag: roles.tag ?? null,
-      labels: roles.labels ?? null,
+      tag: null,
+      labels: null,
       labelsSeparator: ';',
     },
   }

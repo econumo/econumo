@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { profileColumns } from './columns'
+import { headerHasValues, profileColumns } from './columns'
 import { parseCsvText } from './parse'
 
 describe('profileColumns', () => {
@@ -56,5 +56,22 @@ describe('profileColumns counts', () => {
     expect(p[0]).toMatchObject({ filled: 3, distinct: 2, averageLength: 4, codes: false })
     expect(p[1]).toMatchObject({ codes: true })
     expect(p[2]).toMatchObject({ filled: 2, averageLength: 3, codes: false })
+  })
+})
+
+describe('header checks', () => {
+  it('notes a header that is also one of its own column\'s values', () => {
+    const p = profileColumns(parseCsvText('Groceries,Memo\ngroceries,a\nFuel,b\n'))
+    expect(p.map((c) => c.headerInValues)).toEqual([true, false])
+  })
+
+  it('reads a header as a value only when it is a date or a number with at most a currency', () => {
+    const has = (header: string) => headerHasValues(profileColumns(parseCsvText(`${header}\nx\n`)))
+    expect(has('2024-01-02')).toBe(true)
+    expect(has('-12.50 EUR')).toBe(true)
+    expect(has('€12,50')).toBe(true)
+    expect(has('Column 3')).toBe(false)
+    expect(has('Amount (2)')).toBe(false)
+    expect(has('Memo 2')).toBe(false)
   })
 })

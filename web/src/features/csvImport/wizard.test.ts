@@ -35,7 +35,7 @@ it('a new account goes to the first visible folder, a hidden one only when all a
 })
 
 it('Tags stays listed while it is open, even with no free column left', () => {
-  const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [], internal: false, filled: 1, distinct: 1, averageLength: 1, codes: false }))
+  const profiles = [0, 1, 2].map((index) => ({ index, name: `c${index}`, type: 'text' as const, negatives: false, samples: [], internal: false, filled: 1, distinct: 1, averageLength: 1, codes: false, headerInValues: false }))
   expect(visibleSteps(answers({}), profiles)).not.toContain('extras')
   expect(visibleSteps(answers({}), profiles, 'extras')).toEqual(['file', 'account', 'date', 'amount', 'category', 'description', 'payee', 'extras', 'preview'])
 })
@@ -78,7 +78,7 @@ it('firstDistinct takes the first few different values and says whether there ar
 })
 
 const text = (index: number, over: Partial<ColumnProfile> = {}): ColumnProfile => ({
-  index, name: `c${index}`, type: 'text', negatives: false, samples: ['x'], internal: false, filled: 9, distinct: 2, averageLength: 6, codes: false, ...over,
+  index, name: `c${index}`, type: 'text', negatives: false, samples: ['x'], internal: false, filled: 9, distinct: 2, averageLength: 6, codes: false, headerInValues: false, ...over,
 })
 
 it('Category and Payee answer "none" when nothing in the file fits or None was picked, and ask while something fits', () => {

@@ -170,7 +170,7 @@ it('a guessed step opens on its answer with Continue in the footer; Change puts 
 })
 
 it('a step with nothing guessed opens on its question, and picking an answer shows it', async () => {
-  renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,1.00,x\n') })
+  renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\nnot a day,1.00,x\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Date/ }))
@@ -227,7 +227,13 @@ it('a step that opened on its question shows the answer once a guess arrives', a
       return HttpResponse.json({ success: true, message: '', data: { roles: { payee: 'Who' } } })
     }),
   )
-  renderWizard({ initialFile: csv('Booking date,Amount,Details,Who\n2026-01-02,-5.50,Coffee,Cafe Roma\n2026-01-03,100.00,Salary,ACME Ltd\n') })
+  renderWizard({
+    initialFile: csv(
+      'Booking date,Amount,Details,Who\n' +
+        '2026-01-02,-5.50,Coffee and a croissant at the station kiosk this morning,Kiosk at the central station north entrance\n' +
+        '2026-01-03,100.00,Refund for the broken umbrella bought last week at the store,Umbrella shop on the main square by the fountain\n',
+    ),
+  })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: /^Payee/ }))
@@ -268,9 +274,9 @@ it('Tags is offered when the file has a column no step uses', async () => {
 })
 
 it('Tags is left out when Category and Payee read the only columns left', async () => {
-  renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee,Cafe\n') })
+  renderWizard({ initialFile: csv('Booking date,Amount,Details,Merchant\n2026-01-02,-5.50,Coffee at the corner,Cafe\n2026-01-03,-3.00,Tea in the afternoon,Shop\n') })
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription('Cafe')
+  expect(screen.getByRole('button', { name: 'Payee' })).toHaveAccessibleDescription(/^Cafe/)
   expect(screen.queryByRole('button', { name: /^Tags/ })).not.toBeInTheDocument()
 })
 
@@ -294,7 +300,7 @@ it('with no date chosen yet, Amount still answers with the amounts the file read
 })
 
 it('choosing a different date column on its step clears the warning', async () => {
-  renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\n2026-01-03,1.00,x\n') })
+  renderWizard({ initialFile: csv('Day,Amount,Details\n2026-01-02,-5.50,Coffee\nnot a day,1.00,x\n') })
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('button', { name: /^Date.*needs your attention/ })).toBeInTheDocument()

@@ -43,7 +43,8 @@ describe('candidates', () => {
       [day(i), `-${i + 1}.00`, ['Cash', 'Visa', 'Savings'][i % 3], 'EUR', uuid(i), RENT, `Note ${i}`, i % 2 ? 'Card' : 'Bank'].join(','),
     )
     const { profiles, answers } = load('Date,Amount,Wallet,Cur,Ref,Rent,Note,Kind', rows)
-    expect(names(profiles, candidates('account', profiles, answers))).toEqual(['Kind', 'Wallet'])
+    const noCategory: WizardAnswers = { ...answers, extras: { ...answers.extras, category: null } }
+    expect(names(profiles, candidates('account', profiles, noCategory))).toEqual(['Kind', 'Wallet'])
   })
 
   it('a column another step reads is not an account, the description or a detail', () => {
@@ -68,7 +69,7 @@ describe('candidates', () => {
 
   it('a small file repeats little, so a few different names still count as accounts', () => {
     const { profiles, answers } = load('Date,Amount,Wallet', ['2026-01-02,-5,Cash', '2026-01-03,7,Travel card', '2026-01-04,1,Home'])
-    expect(names(profiles, candidates('account', profiles, answers))).toEqual(['Wallet'])
+    expect(names(profiles, candidates('account', profiles, { ...answers, description: null }))).toEqual(['Wallet'])
   })
 
   it('dates are only dates, amounts only money, the description the longest text first', () => {

@@ -863,8 +863,13 @@ navigation (single-pane vs sidebar).
       `dd.mm.yyyy` dates with a day above 12): Date, Amount and Description are
       preselected (Buchungstag, Betrag, Verwendungszweck), no date or decimal
       question is asked, and Check shows `−12.50` for `-12,50` and `+2,500.00`
-      for `2.500,00`, dated as in the file. Same in a file with Spanish
-      (Fecha, Importe) or Russian (Дата, Сумма, Описание) headers.
+      for `2.500,00`, dated as in the file. The guess reads the values, not
+      the header words: the same with Spanish (Fecha, Importe) or Russian
+      (Дата, Сумма, Описание) headers, or headers in any other language.
+      Separate Debit/Credit columns (each row filled in one) are guessed as
+      "Money in and money out", the busier one (or the one with minus signs)
+      as money out; a running balance column is never guessed as the
+      amount.
 - [ ] Ambiguous dates (every date like `03/04/2026`, no day above 12): Date
       asks "Is 03/04/2026 April 3 or March 4?" (day and month in the UI
       language, no article in English) with a value from the file, and both
@@ -896,7 +901,9 @@ navigation (single-pane vs sidebar).
 - [ ] Description: choosing an answer picks it; "The file has no
       description" is the last option and leaves descriptions empty.
 - [ ] Category and Payee 📱 (an Econumo export, or a file with Category and
-      Payee columns from another app): recognised headers come preselected;
+      Payee columns from another app): an export comes preselected; in another
+      file a short column that repeats a few names is guessed as the category
+      and a short column that mostly differs per row as the payee;
       Category ("How are the payments sorted?") opens on "Strata · Interest ·
       Car Insurance …" from “category”, Payee ("Who was paid, or who paid
       you?") on "WealthSimple · ICBC · IFS Premium …" from “payee”, each with
@@ -1076,11 +1083,12 @@ navigation (single-pane vs sidebar).
       or with the switch off (`outcome=opted_out`) the wizard keeps its
       built-in guesses and shows no message. An Econumo export sends no such
       request, and neither does a file whose first row is a transaction (no
-      header row), even one whose first row does not parse (e.g.
-      `someday,n/a,medical memo` or `unknown,Amount,Coffee` over dated rows):
-      the request goes out only when both a date column and a money column
-      are headed by a word for them (`Date`, `Buchungstag`; `Betrag (EUR)`,
-      `Debit`). A suggested column whose type
+      header row): a header cell that is a date or a number, a bank reference
+      (IBAN), one of its own column's values (`Groceries` over a column of
+      categories), or a blank header over a date or money column means no
+      request. A first row whose date and amount cells are both unreadable
+      words (`unknown,Amount,Coffee` over dated rows) cannot be told from a
+      header and is sent. A suggested column whose type
       cannot hold the role (a text column as Amount, an empty column) is
       ignored.
 - [ ] A file whose first line is only delimiters (`;;`) still reads its real

@@ -20,40 +20,89 @@ const EXPORT_TEXT =
   'a5,Constructor,USD,,,,,,-3,2026-03-08 09:00:00\n'
 
 describe('guessAnswers', () => {
-  it('maps a German statement by its header names', () => {
-    const a = guess('Buchungstag;Betrag;Verwendungszweck\n04.03.2026;-1.234,56;Miete\n05.03.2026;12,00;Kaffee\n')
+  it('maps a German statement from its values', () => {
+    const a = guess(
+      'Buchungstag;Betrag;Verwendungszweck\n04.03.2026;-1.234,56;Miete März\n05.03.2026;12,00;Kaffee am Bahnhof\n06.03.2026;-3,10;Bäckerei Müller\n',
+    )
     expect(a.date.column).toBe(0)
     expect(a.date.order).toBe('dmy')
     expect(a.amount).toMatchObject({ mode: 'single', column: 1, flip: false, sep: ',' })
     expect(a.description).toBe(2)
   })
 
-  it('does not pick a Date column that holds text', () => {
+  it('never reads a header word: the same file headed by anything maps the same', () => {
+    const a = guess('x;y;z\n04.03.2026;-1.234,56;Miete\n05.03.2026;12,00;Kaffee\n')
+    expect(a.date.column).toBe(0)
+    expect(a.amount).toMatchObject({ mode: 'single', column: 1 })
+    expect(a.description).toBe(2)
+  })
+
+  it('does not pick a column headed Date that holds text', () => {
     const a = guess('Date,Posting date,Amount\nhello,2026-03-04,1.00\nworld,2026-03-05,2.00\n')
     expect(a.date.column).toBe(1)
     expect(a.date.order).toBe('ymd')
   })
 
-  it('switches to two amount columns for Debit and Credit', () => {
-    const a = guess('Date,Description,Debit,Credit\n03/14/2026,Shop,4.50,\n03/15/2026,Pay,,100.00\n')
+  it('takes the date column with the most readable dates, else the leftmost', () => {
+    expect(guess('a,b,c\n2026-03-04,,1\n2026-03-05,2026-03-05,2\n2026-03-06,2026-03-06,3\n').date.column).toBe(0)
+    expect(guess('a,b,c\n2026-03-04,2026-03-04,1\nsoon,2026-03-05,2\n2026-03-06,2026-03-06,3\n2026-03-07,2026-03-07,4\n2026-03-08,2026-03-08,5\n').date.column).toBe(1)
+  })
+
+  it('reads a US statement with separate debit and credit columns, the busier one as spending', () => {
+    const a = guess('Date,Description,Debit,Credit\n03/14/2026,Coffee Shop,4.50,\n03/15/2026,Payroll,,100.00\n03/16/2026,Grocery Store,20.00,\n')
     expect(a.amount).toMatchObject({ mode: 'dual', inColumn: 3, outColumn: 2 })
     expect(a.date.order).toBe('mdy')
     expect(a.description).toBe(1)
   })
 
-  it('reads money in and money out from columns named after the amount', () => {
-    const a = guess('Дата;Сумма (приход);Сумма (расход);Описание\n04.03.2026;;10,00;Кафе\n05.03.2026;100,00;;ЗП\n')
-    expect(a.amount).toMatchObject({ mode: 'dual', inColumn: 1, outColumn: 2, sep: ',' })
+  it('takes the column with negatives as money out', () => {
+    const a = guess('d,in,out\n2026-03-04,10.00,\n2026-03-05,,-4.50\n2026-03-06,12.00,\n')
+    expect(a.amount).toMatchObject({ mode: 'dual', inColumn: 1, outColumn: 2 })
+  })
+
+  it('leaves the two sides for the step to ask when nothing tells them apart', () => {
+    const a = guess('d,p,q\n2026-03-04,4.50,\n2026-03-05,,100.00\n')
+    expect(a.amount).toMatchObject({ mode: 'dual', inColumn: null, outColumn: null })
+  })
+
+  it('prefers a signed column and skips a running balance', () => {
+    const a = guess('d,balance,amount,memo\n2026-03-04,100.00,100.00,Opening deposit\n2026-03-05,95.50,-4.50,Coffee\n2026-03-06,75.50,-20.00,Groceries\n2026-03-07,175.50,100.00,Salary\n')
+    expect(a.amount).toMatchObject({ mode: 'single', column: 2 })
+  })
+
+  it('skips a balance in a file sorted newest first', () => {
+    const a = guess('d,amount,balance\n2026-03-07,100.00,175.50\n2026-03-06,20.00,75.50\n2026-03-05,4.50,55.50\n2026-03-04,51.00,51.00\n')
+    expect(a.amount).toMatchObject({ mode: 'single', column: 1 })
+  })
+
+  it('maps a Russian file: the longest varied text is the description, repeated short names the category', () => {
+    const a = guess(
+      'Дата;Сумма;Категория;Описание;Получатель\n' +
+        '04.03.2026;-350,00;Кафе;Обед с коллегами в центре;Шоколадница\n' +
+        '05.03.2026;-1 200,00;Продукты;Закупка на неделю в гипермаркете;Ашан\n' +
+        '06.03.2026;-90,00;Кафе;Кофе по дороге на работу;Кофемания\n' +
+        '07.03.2026;-560,00;Продукты;Овощи и фрукты на рынке;Рынок\n' +
+        '08.03.2026;-120,00;Кафе;Пирожное к чаю после работы;Буше\n' +
+        '09.03.2026;-800,00;Продукты;Молочные продукты и хлеб;Пятёрочка\n',
+    )
+    expect(a.date).toEqual({ column: 0, order: 'dmy' })
+    expect(a.amount).toMatchObject({ mode: 'single', column: 1, sep: ',' })
     expect(a.description).toBe(3)
+    expect(a.extras).toMatchObject({ category: 2, payee: 4, tag: null, labels: null })
   })
 
-  it('claims a column once and matches exact names before substrings', () => {
-    const a = guess('Payee name,Payee,Date,Amount\nA,B,2026-03-04,1\n')
-    expect(a.extras.payee).toBe(1)
+  it('takes the repeating column with fewer names for the account, the other for the category', () => {
+    const rows = ['Card,Food', 'Card,Fuel', 'Cash,Food', 'Card,Rent', 'Cash,Fuel', 'Card,Food', 'Card,Rent', 'Cash,Food', 'Card,Fuel']
+    const a = guess('d,v,acct,cat,memo\n' + rows.map((r, i) => `2026-03-0${i + 1},-${i + 1}.00,${r},paid at shop ${'abcdefghi'[i]}`).join('\n') + '\n')
+    expect(a.extras.category).toBe(3)
+    expect(a.description).toBe(4)
   })
 
-  it('prefers the better synonym over the earlier column', () => {
-    expect(guess('Reference,Description,Date,Amount\nX1,Lunch,2026-03-04,1\n').description).toBe(1)
+  it('never guesses a constant column or a bank reference', () => {
+    const a = guess('d,v,acct,ref\n2026-03-04,-1.00,Main,AB1234567890\n2026-03-05,-2.00,Main,AB1234567891\n2026-03-06,-3.00,Main,AB1234567892\n')
+    expect(a.extras.category).toBeNull()
+    expect(a.extras.payee).toBeNull()
+    expect(a.description).toBeNull()
   })
 
   it('defaults the account by how many writable accounts the user has', () => {
@@ -139,7 +188,7 @@ describe('applyAiGuess', () => {
   it('re-detects date order and decimal separator for the columns it picks', () => {
     const f = parseCsvText('a;b;c;d\n04.03.2026;03/14/2026;1,50;x\n05.03.2026;03/15/2026;2,00;y\n')
     const base = guessAnswers(f, profileColumns(f), ctx)
-    expect(base.date.column).toBeNull()
+    expect(base.date).toEqual({ column: 0, order: 'dmy' })
     const next = applyAiGuess(base, { date: 'b', amount: 'c' }, f, 'de', new Set())
     expect(next.date).toEqual({ column: 1, order: 'mdy' })
     expect(next.amount).toMatchObject({ mode: 'single', column: 2, sep: ',' })
@@ -156,7 +205,7 @@ describe('redetectFormats', () => {
   }
 
   it('re-runs only the parts that changed', () => {
-    const amountOnly = redetectFormats({ ...start, amount: { ...start.amount, column: 1, sep: '.' } }, f, 'de', { amount: true })
+    const amountOnly = redetectFormats({ ...start, amount: { ...start.amount, mode: 'single' as const, column: 1, sep: '.' as const } }, f, 'de', { amount: true })
     expect(amountOnly.date.order).toBe('dmy')
     expect(amountOnly.amount.sep).toBe(',')
     expect(redetectFormats(start, f, 'de', { date: true }).date.order).toBe('mdy')
