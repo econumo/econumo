@@ -27,7 +27,7 @@ export interface StepBodyProps {
   goTo: (step: StepId) => void
   /** the step's list of choices was opened with Change */
   choosing: boolean
-  /** opens the step's list of choices; it answers nothing, so the step stays open to later guesses */
+  /** opens the step's list of choices; it answers nothing */
   change: () => void
   /** a pick was made: back to the answer */
   closeChoices: () => void
@@ -189,7 +189,7 @@ export function newAccountFolderId(folders: FolderDto[] | undefined): string | n
 }
 
 // The open step stays listed: Extra details losing its last free column while it is open
-// (an AI reply landing) must not leave the wizard on a step that has no place in the list.
+// (another step taking it) must not leave the wizard on a step that has no place in the list.
 export function visibleSteps(answers: WizardAnswers | null, profiles: ColumnProfile[], open?: StepId): StepId[] {
   if (answers === null) return STEP_ORDER
   const hasExtras = unusedColumns(answers, profiles).length > 0

@@ -163,7 +163,8 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   // exist, so they wait for those reads instead of starting from empty lists
   const ready = !userQuery.isPending && !accountsQuery.isPending && !currenciesQuery.isPending
   const isExport = loaded !== null && isEconumoExport(loaded.file)
-  const asksAi = open && loaded !== null && !isExport && ready && online && isAiEnabled() && userAiActive(user)
+  // once per file: a reconnect after the steps opened asks nothing again
+  const asksAi = open && loaded !== null && answers === null && !isExport && ready && online && isAiEnabled() && userAiActive(user)
   const aiRoles = useColumnGuess(asksAi ? loaded.profiles : null)
   // The AI's roles are the only assignment a bank statement gets, so the File step waits for them
   // (capped) and every step opens with its final answers: none flips under the user.
