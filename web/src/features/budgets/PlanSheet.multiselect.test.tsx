@@ -149,6 +149,18 @@ it('dragging across cells selects the rectangle; a plain click goes back to one 
   expect(cell('tag1:0')).toHaveAttribute('aria-selected', 'true')
 })
 
+it('a drag inside one row keeps the crosshair on the selection: its closing click lands on the row', async () => {
+  usePlanHandlers()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  fireEvent.pointerDown(cell('pe1:0'), { button: 0, buttons: 1, pointerType: 'mouse' })
+  fireEvent.pointerEnter(cell('pe1:1'), { buttons: 1, pointerType: 'mouse' })
+  fireEvent.pointerUp(window)
+  // the browser's click goes to the cells' common ancestor, the row
+  fireEvent.click(document.querySelector('[data-row-id="pe1:0"] [role="row"]')!)
+  expect(cell('pe1:0')).toHaveAttribute('data-crosshair', 'col')
+})
+
 it('Esc and the arrow keys drop back to the active cell', async () => {
   usePlanHandlers()
   renderPage()

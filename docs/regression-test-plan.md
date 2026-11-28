@@ -1782,8 +1782,8 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 **Plan grid header and window** (desktop and tablet): there is
       ONE row of months — the grid's sticky month row, no strip above it. It
       starts with `Budget · Plan ‹ ›` over the names, then the month names
-      over their columns, also while the page scrolls. The month names are
-      plain labels (a click does nothing); the CURRENT calendar month's name
+      over their columns, also while the page scrolls. A click on a month
+      name highlights its column (see Plan crosshair); the CURRENT calendar month's name
       is bold, and no column is tinted. The window starts one month before the
       month selected in the Budget view. ‹ › move the window by one month,
       disabled at the budget's first and last month. Switching Budget ↔ Plan

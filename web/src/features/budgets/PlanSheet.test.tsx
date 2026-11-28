@@ -3586,8 +3586,9 @@ it('a click on a month header or a line no cursor stops on still marks its row a
   expect(header()[2]).toHaveAttribute('data-crosshair', 'col')
   expect(header()[1]).not.toHaveAttribute('data-crosshair')
 
-  // the arrows start from the clicked column
-  fireEvent.keyDown(sheet, { key: 'ArrowDown' })
+  // the click focuses the grid, and the arrows start from the clicked column
+  expect(sheet).toHaveFocus()
+  await user.keyboard('{ArrowDown}')
   const selected = sheet.querySelector('[role="gridcell"][aria-selected="true"]')
   expect(selected).toHaveAttribute('data-col', '2')
 })

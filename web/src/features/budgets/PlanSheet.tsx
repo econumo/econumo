@@ -499,11 +499,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   // A click on a spot the cursor never stops on (a name, a section, folder, child or
   // totals line, a month header) moves the crosshair there; the selection stays for
-  // the keyboard, and the crosshair returns to it once it moves (`over` is the
-  // selection the click was made over). row: a line's crosshair key, null for a
-  // month header; col: -1 for a name.
-  const [clickedSpot, setSpot] = useState<{ row: string | null; col: number; over: PlanSelection | null } | null>(null)
-  const spot = clickedSpot && clickedSpot.over === selection ? clickedSpot : null
+  // the keyboard, and the crosshair returns to it once the selection or the picked
+  // cells change. row: a line's crosshair key, null for a month header; col: -1 for a name.
+  const [spot, setSpot] = useState<{ row: string | null; col: number } | null>(null)
+  // a drag over the month cells ends in a click on their row: not a click on the row
+  const dragSelected = useRef(false)
   // Desktop: every selected cell once a drag, Shift+click or Ctrl/⌘+click takes in
   // more than the active one — empty while one cell is selected. It is only read,
   // never written through: typing, Delete, paste and fill act on the active cell.
@@ -632,6 +632,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   useEffect(() => {
     setPicked([])
   }, [visibleMonths, isCompact, setPicked])
+  useEffect(() => {
+    setSpot(null)
+  }, [selection, picked, visible])
   // the clicked spot's row and month column, else the selected cell's, marked across the grid
   const crosshairCol = spot ? spot.col : (selection?.col ?? -1)
   const crosshairRow = spot ? spot.row : (selection?.rowKey ?? null)
@@ -952,6 +955,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         return
       }
       setDragSelecting(true)
+      dragSelected.current = true
       window.getSelection()?.removeAllRanges()
       setSelection(from)
       setPicked(planCellRange(rowOrder, from, { rowKey: rk, col }))
@@ -1662,12 +1666,20 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!e.currentTarget.contains(target) || target.closest('[role="gridcell"][aria-selected]')) {
       return
     }
+    if (dragSelected.current) {
+      dragSelected.current = false
+      return
+    }
     const line = target.closest<HTMLElement>('[data-crosshair-row]')
     const column = target.closest<HTMLElement>('[data-col]')
     if (!line && !column) {
       return
     }
-    setSpot({ row: line?.dataset.crosshairRow ?? null, col: column ? Number(column.dataset.col) : -1, over: selection })
+    setSpot({ row: line?.dataset.crosshairRow ?? null, col: column ? Number(column.dataset.col) : -1 })
+    // the arrows pick up from here, as after a cell click
+    if (!target.closest(CLICK_ESCAPE_SELECTOR)) {
+      containerRef.current?.focus()
+    }
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -1726,7 +1738,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         // there, its month column
         const spotRow = spot?.row
         const row = spotRow && flatRows.some((r) => r.rowKey === spotRow) ? spotRow : flatRows[0].rowKey
-        setSelection({ rowKey: row, col: Math.max(spot?.col ?? 0, 0) })
+        setSelection({ rowKey: row, col: Math.min(Math.max(spot?.col ?? 0, 0), visible - 1) })
       }
       return
     }
@@ -1814,6 +1826,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         role="grid"
         tabIndex={0}
         onClick={handleSpotClick}
+        onPointerDown={() => {
+          dragSelected.current = false
+        }}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
         onBlur={handleBlur}

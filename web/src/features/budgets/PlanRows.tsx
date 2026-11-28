@@ -215,11 +215,14 @@ export function SumCell({
 // column, so the child's figures stay under the parent's.
 export const ChildRow = memo(function ChildRow({
   child,
+  parentKey,
   parentCurrency,
   ctx,
   menu,
 }: {
   child: PlanChildDto
+  /** the parent row's key: a category can show under several tags and as its own row */
+  parentKey: string
   parentCurrency: CurrencyDto | undefined
   ctx: GridCtx
   menu?: MenuAction[]
@@ -228,14 +231,15 @@ export const ChildRow = memo(function ChildRow({
   const level = useRowLevel()
   const displayName = elementDisplayName(child.id, child.name, t)
   const rk = `${child.id}:${child.type}`
+  const crosshairKey = `child:${parentKey}:${rk}`
   const fmt = (v: string) => moneyFormat(v, parentCurrency, { showCurrency: false, useNativePrecision: false })
   return (
     <div
       role="row"
       data-row-id={rk}
-      data-crosshair-row={rk}
-      data-crosshair={ctx.crosshairRow === rk ? 'row' : undefined}
-      className={`${PLAN_LINE} min-h-8 text-sm text-muted-foreground hover:bg-accent/50${ctx.crosshairRow === rk ? ` ${PLAN_CROSSHAIR}` : ''}`}
+      data-crosshair-row={crosshairKey}
+      data-crosshair={ctx.crosshairRow === crosshairKey ? 'row' : undefined}
+      className={`${PLAN_LINE} min-h-8 text-sm text-muted-foreground hover:bg-accent/50${ctx.crosshairRow === crosshairKey ? ` ${PLAN_CROSSHAIR}` : ''}`}
     >
       <span role="gridcell" className={`${PLAN_NAME_COL} ${CHILD_INDENT[level]}`} title={displayName}>
         <EntityIcon name={child.icon} className="text-lg" />
@@ -359,7 +363,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
         <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
       ) : null}
       {el.children.map((child) => {
-        const line = <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child, el) : undefined} />
+        const line = <ChildRow key={child.id} child={child} parentKey={rk} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child, el) : undefined} />
         return childDrag ? (
           <DragChild key={child.id} id={child.id}>
             {line}
