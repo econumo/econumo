@@ -98,14 +98,8 @@
       "back": {
         "label": "Zurück"
       },
-      "import": {
-        "label": "Importieren"
-      },
       "export": {
         "label": "Exportieren"
-      },
-      "change": {
-        "label": "Ändern"
       }
     },
     "date": {
@@ -411,44 +405,223 @@
         }
       }
     },
-    "import_csv": {
-      "header": "CSV importieren",
-      "none": "Keine",
-      "file": {
-        "label": "CSV-Datei",
-        "hint": "Maximale Dateigröße: 10 MB"
-      },
-      "mapping": {
-        "description": "Ordnen Sie die Spalten Ihrer CSV-Datei den Transaktionsfeldern zu. Pflichtfelder sind mit einem Sternchen (*) markiert."
-      },
-      "amount_mode": {
-        "switch_to_single": "Zu einer einzelnen Betragsspalte wechseln",
-        "switch_to_dual": "In Eingangs-/Ausgangsspalten aufteilen"
-      },
-      "switch_to_manual": "Wert manuell eingeben",
-      "switch_to_csv": "CSV-Spalte verwenden",
-      "fields": {
+    "import_wizard": {
+      "title": "Buchungen importieren",
+      "steps_label": "Importschritte",
+      "needs_attention": "bitte prüfen",
+      "back": "Zurück",
+      "steps": {
+        "file": "Ihre Datei",
         "account": "Konto",
         "date": "Datum",
         "amount": "Betrag",
-        "amount_inflow": "Betrag (Eingang)",
-        "amount_outflow": "Betrag (Ausgang)",
         "category": "Kategorie",
         "description": "Beschreibung",
-        "description_placeholder": "Beschreibung für alle Transaktionen eingeben",
         "payee": "Zahlungsempfänger",
-        "tag": "Budget-Tag",
-        "labels": "Auswertungs-Tags"
+        "extras": "Tags",
+        "preview": "Prüfen und importieren"
       },
-      "labels_separator": {
-        "button": "Trennzeichen für Tags ändern",
-        "title": "Trennzeichen für Tags",
+      "file": {
+        "title": "Wählen Sie eine Datei Ihrer Bank oder einer anderen App",
+        "choose": "Datei auswählen",
+        "choose_another": "Andere Datei auswählen",
+        "drop_here": "oder hier ablegen",
+        "hint": "Eine Tabellendatei (CSV), bis zu 10 MB",
+        "error": {
+          "too_big": "Diese Datei ist größer als 10 MB",
+          "empty": "Diese Datei ist leer",
+          "unreadable": "Diese Datei konnte nicht als Tabelle (CSV) gelesen werden"
+        },
+        "none": "Noch keine Datei",
+        "reading": "Datei wird gelesen…"
+      },
+      "account": {
+        "skipped": "{count} Zeile hat keinen Kontonamen und wird übersprungen | {count} Zeilen haben keinen Kontonamen und werden übersprungen",
+        "title": "Von welchem Konto stammen diese Buchungen?",
+        "new": "Ein neues Konto",
+        "existing": "Ein Konto, das ich schon habe",
+        "column": "Jede Zeile nennt ihr Konto",
+        "name": "Kontoname",
+        "currency": "Währung",
+        "column_question": "Welches davon ist das Konto?",
+        "found": "Konten in Ihrer Datei",
+        "currency_of": "Währung für {name}",
+        "name_hint": "Sie können es später umbenennen",
+        "name_placeholder": "z. B. Girokonto",
+        "currency_unknown": "Die Datei nennt {code}, diese Währung ist hier nicht eingerichtet. Sie können sie in den Einstellungen hinzufügen.",
+        "per_row": "Ihre Datei nennt zu jeder Buchung das Konto",
+        "transactions": "{count} Buchung | {count} Buchungen",
+        "currency_question": "Welches davon ist die Währung?",
+        "currency_none": "Meine Datei enthält keine Währung",
+        "currency_from_file": "Ihre Datei nennt die Währung jedes Kontos",
+        "currency_default": "Neue Konten werden in {currency} angelegt",
+        "currency_default_hint": "Ihre Datei nennt keine Währung",
+        "currency_new_accounts": "Währung für neue Konten",
+        "status_existing": "Ihr bestehendes Konto · {code}",
+        "status_new": "Neues Konto · {code}",
+        "change_currency": "Währung ändern"
+      },
+      "date": {
+        "title": "Wann fand jede Zahlung statt?",
+        "question": "Ist {example} der {dmy} oder der {mdy}?",
+        "skipped": "{count} Zeile hat kein lesbares Datum und wird übersprungen | {count} Zeilen haben kein lesbares Datum und werden übersprungen",
+        "choose": "Welches davon ist das Datum?"
+      },
+      "amount": {
+        "none_in": "Nichts davon sind Eingänge",
+        "none_out": "Nichts davon sind Ausgänge",
+        "skipped": "{count} Zeile hat keinen lesbaren Betrag und wird übersprungen | {count} Zeilen haben keinen lesbaren Betrag und werden übersprungen",
+        "title": "Wie hoch war jede Zahlung?",
+        "single": "Ein Betrag, Minus für Ausgaben",
+        "dual": "Eingänge und Ausgänge",
+        "money_in": "Eingänge",
+        "money_out": "Ausgänge",
+        "separator_question": "Wie viel ist {example}?",
+        "spending": "Ausgaben erscheinen als: {example}",
+        "flip": "Vorzeichen umkehren",
+        "mode": "Wie Beträge dargestellt sind",
+        "flip_hint": "Einschalten, wenn Ihre Bank Zahlungen ohne Minus aufführt",
+        "example_label": "So sehen Zahlungen aus",
+        "choose": "Welches davon ist der Betrag?",
+        "choose_in": "Welches davon sind Eingänge?",
+        "choose_out": "Welches davon sind Ausgänge?"
+      },
+      "category": {
+        "title": "Wie sind die Zahlungen eingeordnet?",
+        "choose": "Welches davon ist die Kategorie?",
+        "none": "Die Datei hat keine Kategorie",
+        "none_found": "Ihre Datei hat keine Kategorien. Sie können die Buchungen später in Kategorien einordnen.",
+        "left_out": "Kategorien werden weggelassen. Sie können die Buchungen später in Kategorien einordnen.",
+        "found": "Kategorien in Ihrer Datei",
+        "status_new": "Neue Kategorie",
+        "status_existing": "Ihre bestehende Kategorie",
+        "kind_expense": "Ausgabe",
+        "kind_income": "Einnahme",
+        "kind_both": "Einnahme und Ausgabe"
+      },
+      "description": {
+        "none": "Die Datei hat keine Beschreibung",
+        "title": "Wofür war jede Zahlung?",
+        "choose": "Welches davon sagt, wofür sie war?"
+      },
+      "payee": {
+        "title": "Wer wurde bezahlt, oder wer hat Sie bezahlt?",
+        "choose": "Welches davon sagt, wer bezahlt wurde?",
+        "none": "Die Datei hat keinen Zahlungsempfänger",
+        "none_found": "Ihre Datei sagt nicht, wer bezahlt wurde. Sie können Zahlungsempfänger später hinzufügen.",
+        "left_out": "Zahlungsempfänger werden weggelassen. Sie können sie später hinzufügen.",
+        "found": "Empfänger in Ihrer Datei",
+        "status_new": "Neuer Empfänger",
+        "status_existing": "Ihr bestehender Empfänger"
+      },
+      "extras": {
+        "title": "Enthält Ihre Datei Tags?",
+        "leave_out": "Nicht übernehmen",
+        "role": {
+          "tag": "Budget-Tag",
+          "labels": "Auswertungs-Tags"
+        },
+        "separator_question": "Mehrere Tags sind getrennt durch",
         "tab": "Tabulator",
         "newline": "Zeilenumbruch",
-        "custom_label": "Eigenes Trennzeichen"
+        "custom_separator": "Etwas anderes",
+        "role_hint": {
+          "tag": "Ein Projekt oder eine Reise",
+          "labels": "Mehrere auf einmal sind möglich"
+        },
+        "answer": "Außerdem übernehmen wir:",
+        "found": {
+          "tag": "Budget-Tags in Ihrer Datei",
+          "labels": "Auswertungs-Tags in Ihrer Datei"
+        },
+        "status_new": "Neues Tag",
+        "status_existing": "Ihr bestehendes Tag",
+        "status_taken": {
+          "tag": "Weggelassen: schon ein Auswertungs-Tag",
+          "labels": "Weggelassen: schon ein Budget-Tag"
+        }
       },
-      "tag_hint": "Eine Transaktion kann nur einen Budget-Tag haben. Für mehrere Tags verwenden Sie Auswertungs-Tags.",
-      "new_labels_count": "Dieser Import erstellt {count} neues Tag | Dieser Import erstellt {count} neue Tags"
+      "preview": {
+        "title": "Das wird hinzugefügt",
+        "nothing": "Noch wird nichts importiert.",
+        "skipped": "{count} wird übersprungen | {count} werden übersprungen",
+        "from_file": "Aus der Datei:",
+        "looks_wrong": "Stimmt etwas nicht?",
+        "skip_row": "Diese Zeile überspringen",
+        "unskip_row": "Nicht überspringen",
+        "fix_date": "Datum für diese Zeile",
+        "fix_amount": "Betrag für diese Zeile",
+        "no_description": "Keine Beschreibung",
+        "no_account": "Kein Konto gewählt",
+        "import": "{count} Buchung importieren | {count} Buchungen importieren",
+        "importing": "Wird importiert…",
+        "amount_unreadable": "Dieser Betrag ist nicht lesbar",
+        "transactions": "Buchungen",
+        "range": "{first} bis {last}",
+        "categories": "Kategorien",
+        "payees": "Empfänger",
+        "new_count": "{count} neu",
+        "all_existing": "bereits vorhanden",
+        "left_out": "Weggelassen",
+        "row": "Zeile {n}",
+        "list": "Hinzuzufügende Buchungen",
+        "show_more": "{count} weitere Zeile zeigen | {count} weitere Zeilen zeigen"
+      },
+      "skipped": {
+        "no_date": "Kein lesbares Datum",
+        "no_amount": "Kein lesbarer Betrag",
+        "no_account": "Kein Kontoname",
+        "user_skipped": "Von Ihnen übersprungen",
+        "unconfirmed": "Gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto",
+        "too_many_labels": "Mehr als 50 Auswertungs-Tags"
+      },
+      "continue": "Weiter",
+      "step_of": "Schritt {n} von {total} · {title}",
+      "list_hint": "Tippen Sie auf einen Schritt, um ihn zu beantworten oder zu ändern.",
+      "check_button": "{count} Buchung prüfen | {count} Buchungen prüfen",
+      "ready": "{count} Buchung bereit · {skipped} weggelassen | {count} Buchungen bereit · {skipped} weggelassen",
+      "rows": "{count} Zeile | {count} Zeilen",
+      "all_steps": "Alle Schritte",
+      "column_empty": "leer",
+      "column_reference": "Eine lange Referenznummer",
+      "other_parts": "Weitere Teile Ihrer Datei",
+      "nothing_fits": {
+        "date": "Nichts in Ihrer Datei sieht nach einem Datum aus, deshalb sehen Sie hier alles.",
+        "amount": "Nichts in Ihrer Datei sieht nach einem Betrag aus, deshalb sehen Sie hier alles.",
+        "account": "Nichts in Ihrer Datei sieht nach einem Kontonamen aus, deshalb sehen Sie hier alles.",
+        "category": "Nichts in Ihrer Datei sieht nach einer Kategorie aus, deshalb sehen Sie hier alles.",
+        "description": "Nichts in Ihrer Datei sieht nach einer Beschreibung aus, deshalb sehen Sie hier alles.",
+        "payee": "Nichts in Ihrer Datei sieht nach einem Empfänger aus, deshalb sehen Sie hier alles.",
+        "tags": "Nichts in Ihrer Datei sieht nach einem Tag oder einem Label aus, deshalb sehen Sie hier alles."
+      },
+      "only_one": {
+        "date": "Dies ist der einzige Teil Ihrer Datei, der nach einem Datum aussieht.",
+        "amount": "Dies ist der einzige Teil Ihrer Datei, der nach einem Betrag aussieht.",
+        "account": "Dies ist der einzige Teil Ihrer Datei, der nach einem Kontonamen aussieht.",
+        "category": "Dies ist der einzige Teil Ihrer Datei, der nach einer Kategorie aussieht.",
+        "description": "Dies ist der einzige Teil Ihrer Datei, der nach einer Beschreibung aussieht.",
+        "payee": "Dies ist der einzige Teil Ihrer Datei, der nach einem Empfänger aussieht.",
+        "tags": "Dies ist der einzige Teil Ihrer Datei, der nach einem Tag oder einem Label aussieht."
+      },
+      "now_used": "verwendet für {role}",
+      "summary": {
+        "not_chosen": "Nicht gewählt",
+        "new_account": "Neu: {name} · {currency}",
+        "name_new_account": "Neues Konto benennen",
+        "none": "Keine Beschreibung",
+        "with": "Mit {list}",
+        "nothing_extra": "Nichts weiter",
+        "check": "{count} zu importieren · {skipped} weggelassen | {count} zu importieren · {skipped} weggelassen",
+        "from_account": "Aus {name}",
+        "from_accounts": "Aus {name} und {count} weiteren Konto | Aus {name} und {count} weiteren Konten",
+        "nothing": "Keine",
+        "not_chosen_yet": "Noch nicht gewählt"
+      },
+      "from": "aus „{name}“",
+      "change": "Ändern",
+      "done": "Fertig",
+      "names_more": "und {count} weitere",
+      "status_left_out": "Weggelassen (geteiltes Konto)"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",
@@ -456,11 +629,13 @@
       "error_title": "Import fehlgeschlagen",
       "imported": "{count} Transaktion importiert | {count} Transaktionen importiert",
       "failed": "{count} Transaktion fehlgeschlagen | {count} Transaktionen fehlgeschlagen",
+      "unconfirmed": "{count} Transaktion wurde gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto | {count} Transaktionen wurden gesendet, aber die Antwort ging verloren: Prüfen Sie das Konto",
       "errors_detail": "Fehlerdetails",
       "row": "Zeile",
       "rows": "Zeilen",
       "more": "weitere",
-      "and_more": "und {count} weitere Fehler"
+      "and_more": "und {count} weitere Fehler",
+      "retry": "Den Rest erneut versuchen"
     },
     "export_csv": {
       "export_csv_form": {
@@ -955,9 +1130,19 @@
       "header": "Importiert aus"
     },
     "rules": {
-      "field": { "external_payee": "Zahlungsempfänger", "description": "Beschreibung" },
-      "type": { "contains": "enthält", "prefix": "beginnt mit", "exact": "ist genau" },
-      "action": { "classify": "Klassifizieren", "skip": "Überspringen" },
+      "field": {
+        "external_payee": "Zahlungsempfänger",
+        "description": "Beschreibung"
+      },
+      "type": {
+        "contains": "enthält",
+        "prefix": "beginnt mit",
+        "exact": "ist genau"
+      },
+      "action": {
+        "classify": "Klassifizieren",
+        "skip": "Überspringen"
+      },
       "prompt": {
         "title": "Importregel erstellen",
         "changed_category": "Sie haben die Kategorie auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
@@ -1026,7 +1211,12 @@
       "account": "Konto",
       "reimport": "Erneut importieren",
       "reimport_hint": "Importieren Sie sie erneut, um sie wieder hinzuzufügen oder einer selbst erfassten Transaktion zuzuordnen, etwa einer Umbuchung.",
-      "reimported": { "created": "Erneut importiert", "matched": "Einer vorhandenen Transaktion zugeordnet", "queued": "Erneut importiert; sie wartet im Posteingang", "skipped": "Nicht hinzugefügt: Eine Überspringen-Regel oder ein ignoriertes Konto trifft zu" }
+      "reimported": {
+        "created": "Erneut importiert",
+        "matched": "Einer vorhandenen Transaktion zugeordnet",
+        "queued": "Erneut importiert; sie wartet im Posteingang",
+        "skipped": "Nicht hinzugefügt: Eine Überspringen-Regel oder ein ignoriertes Konto trifft zu"
+      }
     },
     "suggestions": {
       "dismiss": "Verwerfen",

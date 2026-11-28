@@ -98,14 +98,8 @@
       "back": {
         "label": "返回"
       },
-      "import": {
-        "label": "导入"
-      },
       "export": {
         "label": "导出"
-      },
-      "change": {
-        "label": "更改"
       }
     },
     "date": {
@@ -411,44 +405,223 @@
         }
       }
     },
-    "import_csv": {
-      "header": "导入 CSV",
-      "none": "无",
-      "file": {
-        "label": "CSV 文件",
-        "hint": "文件大小上限：10 MB"
-      },
-      "mapping": {
-        "description": "将 CSV 文件中的列与交易字段对应。带星号（*）的为必填字段。"
-      },
-      "amount_mode": {
-        "switch_to_single": "使用单个金额列",
-        "switch_to_dual": "拆分为收入和支出两列"
-      },
-      "switch_to_manual": "手动输入值",
-      "switch_to_csv": "使用 CSV 列",
-      "fields": {
+    "import_wizard": {
+      "title": "导入交易",
+      "steps_label": "导入步骤",
+      "needs_attention": "需要你留意",
+      "back": "上一步",
+      "steps": {
+        "file": "你的文件",
         "account": "账户",
         "date": "日期",
         "amount": "金额",
-        "amount_inflow": "金额（收入）",
-        "amount_outflow": "金额（支出）",
         "category": "分类",
         "description": "说明",
-        "description_placeholder": "为所有交易填写统一说明",
         "payee": "收款人",
-        "tag": "预算标签",
-        "labels": "统计标签"
+        "extras": "标签",
+        "preview": "核对并导入"
       },
-      "labels_separator": {
-        "button": "修改标签分隔符",
-        "title": "标签分隔符",
+      "file": {
+        "title": "选择来自银行或其他应用的文件",
+        "choose": "选择文件",
+        "choose_another": "选择其他文件",
+        "drop_here": "或拖放到这里",
+        "hint": "表格文件（CSV），最大 10 MB",
+        "error": {
+          "too_big": "此文件超过 10 MB",
+          "empty": "此文件是空的",
+          "unreadable": "无法将此文件读取为表格（CSV）"
+        },
+        "none": "还没有文件",
+        "reading": "正在读取文件…"
+      },
+      "account": {
+        "skipped": "{count} 行没有账户名称，将被跳过",
+        "title": "这些交易来自哪个账户？",
+        "new": "新账户",
+        "existing": "我已有的账户",
+        "column": "每一行写明了所属账户",
+        "name": "账户名称",
+        "currency": "货币",
+        "column_question": "哪一项是账户？",
+        "found": "您文件中的账户",
+        "currency_of": "{name} 的货币",
+        "name_hint": "以后可以改名",
+        "name_placeholder": "例如：日常银行卡",
+        "currency_unknown": "文件中的货币是 {code}，此处尚未设置。可以在设置中添加。",
+        "per_row": "您的文件为每笔交易写明了账户",
+        "transactions": "{count} 笔交易",
+        "currency_question": "哪一项是货币？",
+        "currency_none": "我的文件没有货币",
+        "currency_from_file": "您的文件写明了每个账户的货币",
+        "currency_default": "新账户将使用 {currency}",
+        "currency_default_hint": "您的文件没有写明货币",
+        "currency_new_accounts": "新账户的货币",
+        "status_existing": "您现有的账户 · {code}",
+        "status_new": "新账户 · {code}",
+        "change_currency": "更改货币"
+      },
+      "date": {
+        "title": "每笔付款是什么时候发生的？",
+        "question": "{example} 是 {dmy} 还是 {mdy}？",
+        "skipped": "{count} 行没有可识别的日期，将被跳过",
+        "choose": "哪一项是日期？"
+      },
+      "amount": {
+        "none_in": "这里没有收入",
+        "none_out": "这里没有支出",
+        "skipped": "{count} 行没有可识别的金额，将被跳过",
+        "title": "每笔付款是多少钱？",
+        "single": "一个金额，支出用负号",
+        "dual": "收入和支出",
+        "money_in": "收入",
+        "money_out": "支出",
+        "separator_question": "{example} 是多少？",
+        "spending": "支出显示为：{example}",
+        "flip": "反转正负号",
+        "mode": "金额的表示方式",
+        "flip_hint": "如果你的银行列出付款时不带负号，请打开",
+        "example_label": "付款将显示为",
+        "choose": "哪一项是金额？",
+        "choose_in": "哪一项是收入？",
+        "choose_out": "哪一项是支出？"
+      },
+      "category": {
+        "title": "这些付款如何分类？",
+        "choose": "哪一项是分类？",
+        "none": "文件中没有分类",
+        "none_found": "你的文件中没有分类。之后可以再把交易归入分类。",
+        "left_out": "不导入分类。之后可以再把交易归入分类。",
+        "found": "您文件中的分类",
+        "status_new": "新分类",
+        "status_existing": "您现有的分类",
+        "kind_expense": "支出",
+        "kind_income": "收入",
+        "kind_both": "收入和支出"
+      },
+      "description": {
+        "none": "文件中没有描述",
+        "title": "每笔付款是用来做什么的？",
+        "choose": "哪一项说明了用途？"
+      },
+      "payee": {
+        "title": "付给了谁，或者谁付给了你？",
+        "choose": "哪一项说明了付给谁？",
+        "none": "文件中没有收款人",
+        "none_found": "你的文件没有说明付给了谁。之后可以再添加收款人。",
+        "left_out": "不导入收款人。之后可以再添加。",
+        "found": "您文件中的收款人",
+        "status_new": "新收款人",
+        "status_existing": "您现有的收款人"
+      },
+      "extras": {
+        "title": "你的文件里有标签吗？",
+        "leave_out": "不导入",
+        "role": {
+          "tag": "预算标签",
+          "labels": "统计标签"
+        },
+        "separator_question": "有多个标签时，它们之间用以下符号分隔",
         "tab": "制表符",
         "newline": "换行",
-        "custom_label": "自定义分隔符"
+        "custom_separator": "其他",
+        "role_hint": {
+          "tag": "一个项目或一次旅行",
+          "labels": "可以同时有多个"
+        },
+        "answer": "还会一起带过来：",
+        "found": {
+          "tag": "您文件中的预算标签",
+          "labels": "您文件中的统计标签"
+        },
+        "status_new": "新标签",
+        "status_existing": "您现有的标签",
+        "status_taken": {
+          "tag": "略过：已是统计标签",
+          "labels": "略过：已是预算标签"
+        }
       },
-      "tag_hint": "每笔交易只能有一个预算标签。如需多个，请使用统计标签。",
-      "new_labels_count": "本次导入将创建 {count} 个新标签"
+      "preview": {
+        "title": "以下内容将被添加",
+        "nothing": "目前不会导入任何内容。",
+        "skipped": "{count} 笔将被跳过",
+        "from_file": "文件中的原文：",
+        "looks_wrong": "看起来不对？",
+        "skip_row": "跳过此行",
+        "unskip_row": "不跳过",
+        "fix_date": "此行的日期",
+        "fix_amount": "此行的金额",
+        "no_description": "无描述",
+        "no_account": "未选择账户",
+        "import": "导入 {count} 笔交易",
+        "importing": "正在导入…",
+        "amount_unreadable": "无法识别此金额",
+        "transactions": "交易",
+        "range": "{first} 至 {last}",
+        "categories": "分类",
+        "payees": "收款人",
+        "new_count": "{count} 个新增",
+        "all_existing": "均已存在",
+        "left_out": "不导入",
+        "row": "第 {n} 行",
+        "list": "将添加的交易",
+        "show_more": "再显示 {count} 行"
+      },
+      "skipped": {
+        "no_date": "没有可识别的日期",
+        "no_amount": "没有可识别的金额",
+        "no_account": "没有账户名称",
+        "user_skipped": "已由你跳过",
+        "unconfirmed": "已发送，但回应丢失：请检查账户",
+        "too_many_labels": "统计标签超过 50 个"
+      },
+      "continue": "继续",
+      "step_of": "第 {n} 步，共 {total} 步 · {title}",
+      "list_hint": "点一个步骤即可作答或修改答案。",
+      "check_button": "核对 {count} 笔交易",
+      "ready": "{count} 笔交易已就绪 · {skipped} 笔不导入",
+      "rows": "{count} 行",
+      "all_steps": "全部步骤",
+      "column_empty": "空",
+      "column_reference": "一长串参考编号",
+      "other_parts": "文件的其他部分",
+      "nothing_fits": {
+        "date": "文件中没有看起来像日期的内容，所以这里列出全部。",
+        "amount": "文件中没有看起来像金额的内容，所以这里列出全部。",
+        "account": "文件中没有看起来像账户名称的内容，所以这里列出全部。",
+        "category": "文件中没有看起来像类别的内容，所以这里列出全部。",
+        "description": "文件中没有看起来像描述的内容，所以这里列出全部。",
+        "payee": "文件中没有看起来像收款方的内容，所以这里列出全部。",
+        "tags": "文件中没有看起来像标签的内容，所以这里列出全部。"
+      },
+      "only_one": {
+        "date": "这是文件中唯一看起来像日期的部分。",
+        "amount": "这是文件中唯一看起来像金额的部分。",
+        "account": "这是文件中唯一看起来像账户名称的部分。",
+        "category": "这是文件中唯一看起来像类别的部分。",
+        "description": "这是文件中唯一看起来像描述的部分。",
+        "payee": "这是文件中唯一看起来像收款方的部分。",
+        "tags": "这是文件中唯一看起来像标签的部分。"
+      },
+      "now_used": "已用作{role}",
+      "summary": {
+        "not_chosen": "未选择",
+        "new_account": "新建：{name} · {currency}",
+        "name_new_account": "给新账户起个名字",
+        "none": "无描述",
+        "with": "包括{list}",
+        "nothing_extra": "无其他",
+        "check": "{count} 笔待导入 · {skipped} 笔不导入",
+        "from_account": "来自 {name}",
+        "from_accounts": "来自 {name} 和另外 {count} 个账户",
+        "nothing": "无",
+        "not_chosen_yet": "尚未选择"
+      },
+      "from": "来自“{name}”",
+      "change": "更改",
+      "done": "完成",
+      "names_more": "还有 {count} 个",
+      "status_left_out": "略过（共享账户）"
     },
     "import_result": {
       "success_title": "导入完成",
@@ -456,11 +629,13 @@
       "error_title": "导入失败",
       "imported": "已导入 {count} 笔交易",
       "failed": "{count} 笔交易导入失败",
+      "unconfirmed": "已发送 {count} 笔交易，但回应丢失：请检查账户",
       "errors_detail": "错误详情",
       "row": "行",
       "rows": "行",
       "more": "更多",
-      "and_more": "另有 {count} 个错误"
+      "and_more": "另有 {count} 个错误",
+      "retry": "重试其余部分"
     },
     "export_csv": {
       "export_csv_form": {
@@ -955,9 +1130,19 @@
       "header": "导入自"
     },
     "rules": {
-      "field": { "external_payee": "收款人", "description": "说明" },
-      "type": { "contains": "包含", "prefix": "开头是", "exact": "完全等于" },
-      "action": { "classify": "分类", "skip": "跳过" },
+      "field": {
+        "external_payee": "收款人",
+        "description": "说明"
+      },
+      "type": {
+        "contains": "包含",
+        "prefix": "开头是",
+        "exact": "完全等于"
+      },
+      "action": {
+        "classify": "分类",
+        "skip": "跳过"
+      },
       "prompt": {
         "title": "创建导入规则",
         "changed_category": "分类已设置为“{name}”。是否为类似的导入创建规则？",
@@ -1026,7 +1211,12 @@
       "account": "账户",
       "reimport": "重新导入",
       "reimport_hint": "重新导入可将其添加回来，或与您手动输入的交易（例如转账）匹配。",
-      "reimported": { "created": "已重新导入", "matched": "已与现有交易匹配", "queued": "已重新导入，正在收件箱中等待", "skipped": "未添加：匹配了跳过规则或已忽略的账户" }
+      "reimported": {
+        "created": "已重新导入",
+        "matched": "已与现有交易匹配",
+        "queued": "已重新导入，正在收件箱中等待",
+        "skipped": "未添加：匹配了跳过规则或已忽略的账户"
+      }
     },
     "suggestions": {
       "dismiss": "忽略",

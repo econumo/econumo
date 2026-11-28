@@ -12872,6 +12872,70 @@
                 }
             }
         },
+        "/api/v1/transaction/suggest-import-columns": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Asks the server's AI provider which CSV header holds the date, amount (or money in and out), description, payee, category, tag, labels and account. Only the header names, their browser-computed types and the caller's language are sent; never a cell value. Answers empty roles when there is no suggestion: no AI provider configured, AI turned off for the caller, read-only access, the caller over their per-user limit, or a failed, late (8 s) or unusable reply. A header not in the request is never suggested, and each header plays at most one role.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transaction"
+                ],
+                "summary": "Suggest CSV import column roles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JSON array (1-60) of {name, type: date|number|text|empty, negatives} in file order; names 1-100 characters after trimming",
+                        "name": "columns",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SuggestImportColumnsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/transaction/update-transaction": {
             "post": {
                 "security": [
@@ -20222,6 +20286,17 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.SavingsElementResult"
+                    }
+                }
+            }
+        },
+        "model.SuggestImportColumnsResult": {
+            "type": "object",
+            "properties": {
+                "roles": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
                     }
                 }
             }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -435,5 +436,72 @@ func TestFailureInsideTheTransactionReleasesTheKey(t *testing.T) {
 	wantStatus(t, status, resp, http.StatusOK)
 	if n := h.count("SELECT COUNT(*) FROM transactions WHERE account_id = ?", accountID); n != 1 {
 		t.Fatalf("transactions = %d, want 1", n)
+	}
+}
+
+// The CSV import resends a create-account whose response was lost with the same
+// key and request id; the replay must name the account the first attempt made.
+func TestCreateAccountReplayReturnsTheAccountId(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, userID, _ := h.seedUser()
+	key := newKey(t)
+	body := fmt.Sprintf(`{"id":%q,"name":"Imported","currencyId":%q,"balance":"0","icon":"wallet","folderId":null}`, uuid.NewString(), fixture.USD)
+
+	status, first := h.do(http.MethodPost, "/api/v1/account/create-account", token, key, body)
+	wantStatus(t, status, first, http.StatusOK)
+	status, resp := h.do(http.MethodPost, "/api/v1/account/create-account", token, key, body)
+	wantReplay(t, status, resp)
+	if resp["resourceId"] != itemID(t, first) {
+		t.Fatalf("resourceId = %v, want %s", resp["resourceId"], itemID(t, first))
+	}
+	if n := h.count("SELECT COUNT(*) FROM accounts WHERE user_id = ? AND name = ?", userID, "Imported"); n != 1 {
+		t.Fatalf("accounts = %d, want 1", n)
+	}
+}
+
+// The CSV import resends a chunk whose response was lost with the same key; the
+// replay must refuse it rather than import its rows a second time.
+func TestImportTransactionListReplayImportsOnce(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, _, accountID := h.seedUser()
+	key := newKey(t)
+	send := func() (int, map[string]any) {
+		var buf strings.Builder
+		form := multipart.NewWriter(&buf)
+		part, err := form.CreateFormFile("file", "chunk_0.csv")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.WriteString(part, "date,amount\n2026-01-02,-10\n2026-01-03,-20\n")
+		_ = form.WriteField("mapping", `{"date":"date","amount":"amount"}`)
+		_ = form.WriteField("accountId", accountID)
+		if err := form.Close(); err != nil {
+			t.Fatal(err)
+		}
+		req, err := http.NewRequest(http.MethodPost, h.ts.URL+"/api/v1/transaction/import-transaction-list", strings.NewReader(buf.String()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", form.FormDataContentType())
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Idempotency-Key", key)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var parsed map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+			t.Fatal(err)
+		}
+		return resp.StatusCode, parsed
+	}
+
+	status, first := send()
+	wantStatus(t, status, first, http.StatusOK)
+	status, resp := send()
+	wantReplay(t, status, resp)
+	if n := h.count("SELECT COUNT(*) FROM transactions WHERE account_id = ?", accountID); n != 2 {
+		t.Fatalf("transactions = %d, want 2", n)
 	}
 }

@@ -221,6 +221,9 @@ components with `pnpm dlx shadcn add`. Lint is oxlint, tests are vitest.
   transaction (user row lock, then the operation-id claim), idempotent on its `id`. Progress
   is the `onboarding` user option; `completed` is terminal and written only by
   `complete-onboarding`. Onboarding never creates debts.
+- **CSV import** (`web/src/features/csvImport`, spec `2026-11-16-csv-import-wizard-design.md`):
+  the step wizard behind Getting started's Import step and Settings → Data; `prepareRows` builds
+  both the preview and the upload.
 - **Analytics** (`web/src/lib/analytics.ts`, the only file naming the vendor): identified
   only (nothing is sent without a session), hashed user id, synthetic `$host` so a
   self-hosted hostname never appears in a payload. Gated by the per-user `analytics` option
@@ -388,7 +391,8 @@ global app and prints its secret once. CLI-created users never get a trial.
   every `POST`. The server checks the table BEFORE the handler and records the key inside the
   request's own DB transaction. A replay answers HTTP 409 with `common.operation_locked` and
   an additive `resourceId`. A non-2xx releases the key unless the handler pinned it
-  (`reqctx.PinIdempotency`: create/update/delete-transaction, `set-limit`, accept-suggestion).
+  (`reqctx.PinIdempotency`: create/update/delete-transaction, `set-limit`, accept-suggestion,
+  `create-account`).
   Absent key = no guard (MCP, other clients).
 - **Errors** are rendered in the caller's language when they carry a catalogue code
   (`internal/shared/errs/codes.go`); code-less errors keep literal English.
@@ -538,17 +542,25 @@ surface.
   live import leaves rows unclassified, a background job proposes a rule, landing in the
   owner's Inbox. One open suggestion per (owner, merchant, type); one owner's jobs run one at
   a time.
+- **CSV import** (`transaction/import-transaction-list`) into another user's shared account:
+  only the owner or an admin of it may add categories, payees, tags or labels to the owner's
+  lists; a user-role member's rows use the owner's existing names and leave a new one empty.
 
 ### AI integration (`internal/infra/ai`)
 
 Consumers: onboarding (savings detection, icons for imported or newly named categories and
-accounts) and imports (rule suggestions, `suggest-match-text`). System prompts are Markdown
-files in the top-level `prompts/`; reply schemas live in `internal/{imports,onboarding}/prompts.go`.
+accounts), imports (rule suggestions, `suggest-match-text`) and transaction (the CSV import
+wizard's `suggest-import-columns`). System prompts are Markdown files in the top-level
+`prompts/`; reply schemas live in `internal/{imports,onboarding}/prompts.go` and
+`internal/transaction/suggest_columns.go`.
 
 - **Data allowlist, every prompt**: category names and types; payee, tag, label and account
   names; currency codes; language; timezone; a transaction's type and the bank's payee text;
-  opaque per-request keys (`a1`, `c1`, `p1`). NEVER amounts, balances, plans, dates,
-  descriptions/memos, entity ids, user names or emails.
+  opaque per-request keys (`a1`, `c1`, `p1`); CSV column header names and browser-computed
+  column types (accepted exception, decided 2026-11-27: with no header row, first-row cells may
+  reach the AI when they read as neither dates nor numbers; the content check in
+  `web/src/features/csvImport` catches the rest). NEVER amounts, balances, plans, dates, descriptions/memos, entity ids, user
+  names or emails.
 - A user with the `ai` option off sends nothing; the option is re-read right before each
   provider call.
 - AI never fails a request: a failure, timeout or unusable reply changes nothing and logs a

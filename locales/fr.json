@@ -98,14 +98,8 @@
       "back": {
         "label": "Retour"
       },
-      "import": {
-        "label": "Importer"
-      },
       "export": {
         "label": "Exporter"
-      },
-      "change": {
-        "label": "Modifier"
       }
     },
     "date": {
@@ -411,44 +405,223 @@
         }
       }
     },
-    "import_csv": {
-      "header": "Importer un CSV",
-      "none": "Aucun",
-      "file": {
-        "label": "Fichier CSV",
-        "hint": "Taille maximale du fichier : 10 Mo"
-      },
-      "mapping": {
-        "description": "Associez les colonnes de votre fichier CSV aux champs de transaction. Les champs obligatoires sont marqués d’un astérisque (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Utiliser une seule colonne de montant",
-        "switch_to_dual": "Séparer en colonnes entrées/sorties"
-      },
-      "switch_to_manual": "Saisir une valeur manuellement",
-      "switch_to_csv": "Utiliser une colonne du CSV",
-      "fields": {
+    "import_wizard": {
+      "title": "Importer des transactions",
+      "steps_label": "Étapes de l’import",
+      "needs_attention": "à vérifier",
+      "back": "Retour",
+      "steps": {
+        "file": "Votre fichier",
         "account": "Compte",
         "date": "Date",
         "amount": "Montant",
-        "amount_inflow": "Montant (entrée)",
-        "amount_outflow": "Montant (sortie)",
         "category": "Catégorie",
         "description": "Description",
-        "description_placeholder": "Saisissez une description pour toutes les transactions",
         "payee": "Bénéficiaire",
-        "tag": "Tag budgétaire",
-        "labels": "Tags de rapport"
+        "extras": "Tags",
+        "preview": "Vérifier et importer"
       },
-      "labels_separator": {
-        "button": "Modifier le séparateur de tags",
-        "title": "Séparateur de tags",
+      "file": {
+        "title": "Choisissez un fichier de votre banque ou d’une autre appli",
+        "choose": "Choisir un fichier",
+        "choose_another": "Choisir un autre fichier",
+        "drop_here": "ou déposez-le ici",
+        "hint": "Un fichier tableur (CSV), jusqu’à 10 Mo",
+        "error": {
+          "too_big": "Ce fichier dépasse 10 Mo",
+          "empty": "Ce fichier est vide",
+          "unreadable": "Ce fichier n’a pas pu être lu comme un tableur (CSV)"
+        },
+        "none": "Pas encore de fichier",
+        "reading": "Lecture de votre fichier…"
+      },
+      "account": {
+        "skipped": "{count} ligne n’a pas de nom de compte et sera ignorée | {count} lignes n’ont pas de nom de compte et seront ignorées",
+        "title": "De quel compte proviennent ces transactions ?",
+        "new": "Un nouveau compte",
+        "existing": "Un compte que j’ai déjà",
+        "column": "Chaque ligne indique son compte",
+        "name": "Nom du compte",
+        "currency": "Devise",
+        "column_question": "Lequel de ces éléments est le compte ?",
+        "found": "Comptes dans votre fichier",
+        "currency_of": "Devise de {name}",
+        "name_hint": "Vous pourrez le renommer plus tard",
+        "name_placeholder": "p. ex. Carte du quotidien",
+        "currency_unknown": "Le fichier indique {code}, qui n'est pas configurée ici. Vous pouvez l'ajouter dans les Paramètres.",
+        "per_row": "Votre fichier indique le compte de chaque opération",
+        "transactions": "{count} opération | {count} opérations",
+        "currency_question": "Lequel de ces éléments est la devise ?",
+        "currency_none": "Mon fichier n'indique pas de devise",
+        "currency_from_file": "Votre fichier indique la devise de chaque compte",
+        "currency_default": "Les nouveaux comptes seront en {currency}",
+        "currency_default_hint": "Votre fichier n'indique pas la devise",
+        "currency_new_accounts": "Devise des nouveaux comptes",
+        "status_existing": "Votre compte existant · {code}",
+        "status_new": "Nouveau compte · {code}",
+        "change_currency": "Changer la devise"
+      },
+      "date": {
+        "title": "Quand chaque paiement a-t-il eu lieu ?",
+        "question": "{example}, est-ce le {dmy} ou le {mdy} ?",
+        "skipped": "{count} ligne n’a pas de date lisible et sera ignorée | {count} lignes n’ont pas de date lisible et seront ignorées",
+        "choose": "Lequel de ces éléments est la date ?"
+      },
+      "amount": {
+        "none_in": "Aucun ne correspond aux entrées",
+        "none_out": "Aucun ne correspond aux sorties",
+        "skipped": "{count} ligne n’a pas de montant lisible et sera ignorée | {count} lignes n’ont pas de montant lisible et seront ignorées",
+        "title": "Quel était le montant de chaque paiement ?",
+        "single": "Un montant, moins pour les dépenses",
+        "dual": "Entrées et sorties d’argent",
+        "money_in": "Entrées d’argent",
+        "money_out": "Sorties d’argent",
+        "separator_question": "Combien vaut {example} ?",
+        "spending": "Les dépenses apparaissent ainsi : {example}",
+        "flip": "Inverser les signes",
+        "mode": "Comment les montants sont présentés",
+        "flip_hint": "Activez-le si votre banque affiche les paiements sans signe moins",
+        "example_label": "Aperçu des paiements",
+        "choose": "Lequel de ces éléments est le montant ?",
+        "choose_in": "Lequel de ces éléments correspond aux entrées ?",
+        "choose_out": "Lequel de ces éléments correspond aux sorties ?"
+      },
+      "category": {
+        "title": "Comment les paiements sont-ils classés ?",
+        "choose": "Lequel de ces éléments est la catégorie ?",
+        "none": "Le fichier n’a pas de catégorie",
+        "none_found": "Votre fichier n’a pas de catégories. Vous pourrez classer les transactions par catégorie plus tard.",
+        "left_out": "Les catégories sont ignorées. Vous pourrez classer les transactions par catégorie plus tard.",
+        "found": "Catégories dans votre fichier",
+        "status_new": "Nouvelle catégorie",
+        "status_existing": "Votre catégorie existante",
+        "kind_expense": "dépense",
+        "kind_income": "revenu",
+        "kind_both": "revenu et dépense"
+      },
+      "description": {
+        "none": "Le fichier n’a pas de description",
+        "title": "À quoi servait chaque paiement ?",
+        "choose": "Lequel de ces éléments dit à quoi il servait ?"
+      },
+      "payee": {
+        "title": "Qui a été payé, ou qui vous a payé ?",
+        "choose": "Lequel de ces éléments dit qui a été payé ?",
+        "none": "Le fichier n’a pas de bénéficiaire",
+        "none_found": "Votre fichier ne dit pas qui a été payé. Vous pourrez ajouter les bénéficiaires plus tard.",
+        "left_out": "Les bénéficiaires sont ignorés. Vous pourrez les ajouter plus tard.",
+        "found": "Bénéficiaires dans votre fichier",
+        "status_new": "Nouveau bénéficiaire",
+        "status_existing": "Votre bénéficiaire existant"
+      },
+      "extras": {
+        "title": "Votre fichier contient-il des tags ?",
+        "leave_out": "Ne pas reprendre",
+        "role": {
+          "tag": "Tag budgétaire",
+          "labels": "Tags de rapport"
+        },
+        "separator_question": "Quand il y a plusieurs tags, ils sont séparés par",
         "tab": "Tabulation",
         "newline": "Saut de ligne",
-        "custom_label": "Séparateur personnalisé"
+        "custom_separator": "Autre chose",
+        "role_hint": {
+          "tag": "Un projet ou un voyage",
+          "labels": "Plusieurs à la fois, c’est possible"
+        },
+        "answer": "Nous reprendrons aussi :",
+        "found": {
+          "tag": "Tags budgétaires dans votre fichier",
+          "labels": "Tags de rapport dans votre fichier"
+        },
+        "status_new": "Nouveau tag",
+        "status_existing": "Votre tag existant",
+        "status_taken": {
+          "tag": "Ignoré : déjà un tag de rapport",
+          "labels": "Ignoré : déjà un tag budgétaire"
+        }
       },
-      "tag_hint": "Une transaction ne peut avoir qu’un seul tag budgétaire. Pour en indiquer plusieurs, utilisez Tags de rapport.",
-      "new_labels_count": "Cet import créera {count} nouveau tag | Cet import créera {count} nouveaux tags"
+      "preview": {
+        "title": "Voici ce qui sera ajouté",
+        "nothing": "Rien ne sera importé pour l’instant.",
+        "skipped": "{count} sera ignorée | {count} seront ignorées",
+        "from_file": "Dans le fichier :",
+        "looks_wrong": "Quelque chose ne va pas ?",
+        "skip_row": "Ignorer cette ligne",
+        "unskip_row": "Ne pas ignorer",
+        "fix_date": "Date de cette ligne",
+        "fix_amount": "Montant de cette ligne",
+        "no_description": "Aucune description",
+        "no_account": "Aucun compte choisi",
+        "import": "Importer {count} transaction | Importer {count} transactions",
+        "importing": "Importation…",
+        "amount_unreadable": "Ce montant est illisible",
+        "transactions": "Transactions",
+        "range": "Du {first} au {last}",
+        "categories": "Catégories",
+        "payees": "Bénéficiaires",
+        "new_count": "{count} à créer",
+        "all_existing": "existent déjà",
+        "left_out": "Écartée",
+        "row": "Ligne {n}",
+        "list": "Transactions à ajouter",
+        "show_more": "Afficher {count} autre ligne | Afficher {count} autres lignes"
+      },
+      "skipped": {
+        "no_date": "Pas de date lisible",
+        "no_amount": "Pas de montant lisible",
+        "no_account": "Pas de nom de compte",
+        "user_skipped": "Ignorée par vous",
+        "unconfirmed": "Envoyée, mais la réponse s’est perdue : vérifiez le compte",
+        "too_many_labels": "Plus de 50 tags de rapport"
+      },
+      "continue": "Continuer",
+      "step_of": "Étape {n} sur {total} · {title}",
+      "list_hint": "Touchez une étape pour y répondre ou modifier votre réponse.",
+      "check_button": "Vérifier {count} transaction | Vérifier {count} transactions",
+      "ready": "{count} transaction prête · {skipped} écartée(s) | {count} transactions prêtes · {skipped} écartée(s)",
+      "rows": "{count} ligne | {count} lignes",
+      "all_steps": "Toutes les étapes",
+      "column_empty": "vide",
+      "column_reference": "Un long numéro de référence",
+      "other_parts": "Autres parties de votre fichier",
+      "nothing_fits": {
+        "date": "Rien dans votre fichier ne ressemble à une date, voici donc tout.",
+        "amount": "Rien dans votre fichier ne ressemble à un montant, voici donc tout.",
+        "account": "Rien dans votre fichier ne ressemble à un nom de compte, voici donc tout.",
+        "category": "Rien dans votre fichier ne ressemble à une catégorie, voici donc tout.",
+        "description": "Rien dans votre fichier ne ressemble à une description, voici donc tout.",
+        "payee": "Rien dans votre fichier ne ressemble à un bénéficiaire, voici donc tout.",
+        "tags": "Rien dans votre fichier ne ressemble à un tag ou une étiquette, voici donc tout."
+      },
+      "only_one": {
+        "date": "C'est la seule partie de votre fichier qui ressemble à une date.",
+        "amount": "C'est la seule partie de votre fichier qui ressemble à un montant.",
+        "account": "C'est la seule partie de votre fichier qui ressemble à un nom de compte.",
+        "category": "C'est la seule partie de votre fichier qui ressemble à une catégorie.",
+        "description": "C'est la seule partie de votre fichier qui ressemble à une description.",
+        "payee": "C'est la seule partie de votre fichier qui ressemble à un bénéficiaire.",
+        "tags": "C'est la seule partie de votre fichier qui ressemble à un tag ou une étiquette."
+      },
+      "now_used": "utilisé pour : {role}",
+      "summary": {
+        "not_chosen": "Non choisi",
+        "new_account": "Nouveau : {name} · {currency}",
+        "name_new_account": "Nommez le nouveau compte",
+        "none": "Pas de description",
+        "with": "Avec {list}",
+        "nothing_extra": "Rien de plus",
+        "check": "{count} à importer · {skipped} écartée(s) | {count} à importer · {skipped} écartée(s)",
+        "from_account": "De {name}",
+        "from_accounts": "De {name} et {count} autre compte | De {name} et {count} autres comptes",
+        "nothing": "Aucun",
+        "not_chosen_yet": "Pas encore choisi"
+      },
+      "from": "de « {name} »",
+      "change": "Modifier",
+      "done": "Terminé",
+      "names_more": "et {count} de plus",
+      "status_left_out": "Ignoré (compte partagé)"
     },
     "import_result": {
       "success_title": "Import terminé",
@@ -456,11 +629,13 @@
       "error_title": "Échec de l’import",
       "imported": "{count} transaction importée | {count} transactions importées",
       "failed": "{count} transaction non importée | {count} transactions non importées",
+      "unconfirmed": "{count} transaction a été envoyée, mais la réponse s’est perdue : vérifiez le compte | {count} transactions ont été envoyées, mais la réponse s’est perdue : vérifiez le compte",
       "errors_detail": "Détails des erreurs",
       "row": "Ligne",
       "rows": "Lignes",
       "more": "de plus",
-      "and_more": "et {count} autre(s) erreur(s)"
+      "and_more": "et {count} autre(s) erreur(s)",
+      "retry": "Réessayer le reste"
     },
     "export_csv": {
       "export_csv_form": {
@@ -955,9 +1130,19 @@
       "header": "Importée depuis"
     },
     "rules": {
-      "field": { "external_payee": "Bénéficiaire", "description": "Description" },
-      "type": { "contains": "contient", "prefix": "commence par", "exact": "est exactement" },
-      "action": { "classify": "Classer", "skip": "Ignorer" },
+      "field": {
+        "external_payee": "Bénéficiaire",
+        "description": "Description"
+      },
+      "type": {
+        "contains": "contient",
+        "prefix": "commence par",
+        "exact": "est exactement"
+      },
+      "action": {
+        "classify": "Classer",
+        "skip": "Ignorer"
+      },
       "prompt": {
         "title": "Créer une règle d'import",
         "changed_category": "Vous avez défini la catégorie sur {name}. Créer une règle pour les imports similaires ?",
@@ -1026,7 +1211,12 @@
       "account": "Compte",
       "reimport": "Importer à nouveau",
       "reimport_hint": "Importez-la à nouveau pour la rajouter, ou pour l’associer à une transaction que vous avez saisie vous-même, comme un virement.",
-      "reimported": { "created": "Importée à nouveau", "matched": "Associée à une transaction existante", "queued": "Importée à nouveau ; elle attend dans la boîte de réception", "skipped": "Non ajoutée : une règle d’exclusion ou un compte ignoré s’applique" }
+      "reimported": {
+        "created": "Importée à nouveau",
+        "matched": "Associée à une transaction existante",
+        "queued": "Importée à nouveau ; elle attend dans la boîte de réception",
+        "skipped": "Non ajoutée : une règle d’exclusion ou un compte ignoré s’applique"
+      }
     },
     "suggestions": {
       "dismiss": "Ignorer",

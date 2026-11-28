@@ -98,14 +98,8 @@
       "back": {
         "label": "Atrás"
       },
-      "import": {
-        "label": "Importar"
-      },
       "export": {
         "label": "Exportar"
-      },
-      "change": {
-        "label": "Cambiar"
       }
     },
     "date": {
@@ -411,44 +405,223 @@
         }
       }
     },
-    "import_csv": {
-      "header": "Importar CSV",
-      "none": "Ninguno",
-      "file": {
-        "label": "Archivo CSV",
-        "hint": "Tamaño máximo del archivo: 10 MB"
-      },
-      "mapping": {
-        "description": "Asigna las columnas de tu archivo CSV a los campos de la transacción. Los campos obligatorios están marcados con un asterisco (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Usar una sola columna de importe",
-        "switch_to_dual": "Separar en columnas de entrada y salida"
-      },
-      "switch_to_manual": "Introducir un valor manualmente",
-      "switch_to_csv": "Usar una columna del CSV",
-      "fields": {
+    "import_wizard": {
+      "title": "Importar transacciones",
+      "steps_label": "Pasos de la importación",
+      "needs_attention": "necesita tu atención",
+      "back": "Atrás",
+      "steps": {
+        "file": "Tu archivo",
         "account": "Cuenta",
         "date": "Fecha",
         "amount": "Importe",
-        "amount_inflow": "Importe (entrada)",
-        "amount_outflow": "Importe (salida)",
         "category": "Categoría",
         "description": "Descripción",
-        "description_placeholder": "Escribe una descripción para todas las transacciones",
         "payee": "Beneficiario",
-        "tag": "Etiqueta de presupuesto",
-        "labels": "Etiquetas de informes"
+        "extras": "Etiquetas",
+        "preview": "Revisar e importar"
       },
-      "labels_separator": {
-        "button": "Cambiar el separador de etiquetas",
-        "title": "Separador de etiquetas",
+      "file": {
+        "title": "Elige un archivo de tu banco o de otra app",
+        "choose": "Elegir un archivo",
+        "choose_another": "Elegir otro archivo",
+        "drop_here": "o suéltalo aquí",
+        "hint": "Un archivo de hoja de cálculo (CSV), hasta 10 MB",
+        "error": {
+          "too_big": "Este archivo supera los 10 MB",
+          "empty": "Este archivo está vacío",
+          "unreadable": "Este archivo no se pudo leer como hoja de cálculo (CSV)"
+        },
+        "none": "Aún no hay archivo",
+        "reading": "Leyendo tu archivo…"
+      },
+      "account": {
+        "skipped": "{count} fila no tiene nombre de cuenta y se omitirá | {count} filas no tienen nombre de cuenta y se omitirán",
+        "title": "¿De qué cuenta son estas transacciones?",
+        "new": "Una cuenta nueva",
+        "existing": "Una cuenta que ya tengo",
+        "column": "Cada fila indica su cuenta",
+        "name": "Nombre de la cuenta",
+        "currency": "Moneda",
+        "column_question": "¿Cuál de estos es la cuenta?",
+        "found": "Cuentas en tu archivo",
+        "currency_of": "Moneda de {name}",
+        "name_hint": "Puedes cambiarle el nombre más tarde",
+        "name_placeholder": "p. ej. Tarjeta del día a día",
+        "currency_unknown": "El archivo indica {code}, que no está configurada aquí. Puedes añadirla en Ajustes.",
+        "per_row": "Tu archivo indica la cuenta de cada movimiento",
+        "transactions": "{count} movimiento | {count} movimientos",
+        "currency_question": "¿Cuál de estos es la moneda?",
+        "currency_none": "Mi archivo no indica la moneda",
+        "currency_from_file": "Tu archivo indica la moneda de cada cuenta",
+        "currency_default": "Las cuentas nuevas estarán en {currency}",
+        "currency_default_hint": "Tu archivo no indica la moneda",
+        "currency_new_accounts": "Moneda de las cuentas nuevas",
+        "status_existing": "Tu cuenta existente · {code}",
+        "status_new": "Cuenta nueva · {code}",
+        "change_currency": "Cambiar moneda"
+      },
+      "date": {
+        "title": "¿Cuándo se hizo cada pago?",
+        "question": "¿{example} es el {dmy} o el {mdy}?",
+        "skipped": "{count} fila no tiene una fecha legible y se omitirá | {count} filas no tienen una fecha legible y se omitirán",
+        "choose": "¿Cuál de estos es la fecha?"
+      },
+      "amount": {
+        "none_in": "Ninguno es dinero que entra",
+        "none_out": "Ninguno es dinero que sale",
+        "skipped": "{count} fila no tiene un importe legible y se omitirá | {count} filas no tienen un importe legible y se omitirán",
+        "title": "¿Cuánto fue cada pago?",
+        "single": "Un importe, con menos para los gastos",
+        "dual": "Dinero que entra y dinero que sale",
+        "money_in": "Dinero que entra",
+        "money_out": "Dinero que sale",
+        "separator_question": "¿Cuánto es {example}?",
+        "spending": "Los gastos aparecen como: {example}",
+        "flip": "Invertir los signos",
+        "mode": "Cómo se muestran los importes",
+        "flip_hint": "Actívalo si tu banco muestra los pagos sin signo menos",
+        "example_label": "Así quedarán los pagos",
+        "choose": "¿Cuál de estos es el importe?",
+        "choose_in": "¿Cuál de estos es el dinero que entra?",
+        "choose_out": "¿Cuál de estos es el dinero que sale?"
+      },
+      "category": {
+        "title": "¿Cómo se clasifican los pagos?",
+        "choose": "¿Cuál de estos es la categoría?",
+        "none": "El archivo no tiene categoría",
+        "none_found": "Tu archivo no tiene categorías. Puedes clasificar las transacciones en categorías más adelante.",
+        "left_out": "Las categorías se omiten. Puedes clasificar las transacciones en categorías más adelante.",
+        "found": "Categorías en tu archivo",
+        "status_new": "Categoría nueva",
+        "status_existing": "Tu categoría existente",
+        "kind_expense": "gasto",
+        "kind_income": "ingreso",
+        "kind_both": "ingreso y gasto"
+      },
+      "description": {
+        "none": "El archivo no tiene descripción",
+        "title": "¿Para qué fue cada pago?",
+        "choose": "¿Cuál de estos dice para qué fue?"
+      },
+      "payee": {
+        "title": "¿A quién se pagó o quién te pagó?",
+        "choose": "¿Cuál de estos dice a quién se pagó?",
+        "none": "El archivo no tiene beneficiario",
+        "none_found": "Tu archivo no dice a quién se pagó. Puedes añadir beneficiarios más adelante.",
+        "left_out": "Los beneficiarios se omiten. Puedes añadirlos más adelante.",
+        "found": "Beneficiarios en tu archivo",
+        "status_new": "Beneficiario nuevo",
+        "status_existing": "Tu beneficiario existente"
+      },
+      "extras": {
+        "title": "¿Tu archivo tiene etiquetas?",
+        "leave_out": "No traer",
+        "role": {
+          "tag": "Etiqueta de presupuesto",
+          "labels": "Etiquetas de informes"
+        },
+        "separator_question": "Cuando hay varias etiquetas, se separan con",
         "tab": "Tabulación",
         "newline": "Salto de línea",
-        "custom_label": "Separador personalizado"
+        "custom_separator": "Otro",
+        "role_hint": {
+          "tag": "Un proyecto o un viaje",
+          "labels": "Puede haber varias a la vez"
+        },
+        "answer": "También traeremos:",
+        "found": {
+          "tag": "Etiquetas de presupuesto en tu archivo",
+          "labels": "Etiquetas de informes en tu archivo"
+        },
+        "status_new": "Etiqueta nueva",
+        "status_existing": "Tu etiqueta existente",
+        "status_taken": {
+          "tag": "Se omite: ya es una etiqueta de informes",
+          "labels": "Se omite: ya es una etiqueta de presupuesto"
+        }
       },
-      "tag_hint": "Una transacción solo puede tener una etiqueta de presupuesto. Para varias, usa Etiquetas de informes.",
-      "new_labels_count": "Esta importación creará {count} etiqueta nueva | Esta importación creará {count} etiquetas nuevas"
+      "preview": {
+        "title": "Esto es lo que se añadirá",
+        "nothing": "Todavía no se importará nada.",
+        "skipped": "Se omitirá {count} | Se omitirán {count}",
+        "from_file": "Del archivo:",
+        "looks_wrong": "¿Algo no cuadra?",
+        "skip_row": "Omitir esta fila",
+        "unskip_row": "No omitir",
+        "fix_date": "Fecha de esta fila",
+        "fix_amount": "Importe de esta fila",
+        "no_description": "Sin descripción",
+        "no_account": "Ninguna cuenta elegida",
+        "import": "Importar {count} transacción | Importar {count} transacciones",
+        "importing": "Importando…",
+        "amount_unreadable": "No se puede leer este importe",
+        "transactions": "Transacciones",
+        "range": "Del {first} al {last}",
+        "categories": "Categorías",
+        "payees": "Beneficiarios",
+        "new_count": "{count} por crear",
+        "all_existing": "ya existen",
+        "left_out": "Fuera",
+        "row": "Fila {n}",
+        "list": "Transacciones que se añadirán",
+        "show_more": "Mostrar {count} fila más | Mostrar {count} filas más"
+      },
+      "skipped": {
+        "no_date": "Sin fecha legible",
+        "no_amount": "Sin importe legible",
+        "no_account": "Sin nombre de cuenta",
+        "user_skipped": "Omitida por ti",
+        "unconfirmed": "Enviada, pero se perdió la respuesta: revisa la cuenta",
+        "too_many_labels": "Más de 50 etiquetas de informes"
+      },
+      "continue": "Continuar",
+      "step_of": "Paso {n} de {total} · {title}",
+      "list_hint": "Toca un paso para responderlo o cambiar tu respuesta.",
+      "check_button": "Revisar {count} transacción | Revisar {count} transacciones",
+      "ready": "{count} transacción lista · {skipped} fuera | {count} transacciones listas · {skipped} fuera",
+      "rows": "{count} fila | {count} filas",
+      "all_steps": "Todos los pasos",
+      "column_empty": "vacía",
+      "column_reference": "Un número de referencia largo",
+      "other_parts": "Otras partes del archivo",
+      "nothing_fits": {
+        "date": "Nada en el archivo parece una fecha, así que aquí está todo.",
+        "amount": "Nada en el archivo parece un importe, así que aquí está todo.",
+        "account": "Nada en el archivo parece un nombre de cuenta, así que aquí está todo.",
+        "category": "Nada en el archivo parece una categoría, así que aquí está todo.",
+        "description": "Nada en el archivo parece una descripción, así que aquí está todo.",
+        "payee": "Nada en el archivo parece un beneficiario, así que aquí está todo.",
+        "tags": "Nada en el archivo parece una etiqueta, así que aquí está todo."
+      },
+      "only_one": {
+        "date": "Esta es la única parte del archivo que parece una fecha.",
+        "amount": "Esta es la única parte del archivo que parece un importe.",
+        "account": "Esta es la única parte del archivo que parece un nombre de cuenta.",
+        "category": "Esta es la única parte del archivo que parece una categoría.",
+        "description": "Esta es la única parte del archivo que parece una descripción.",
+        "payee": "Esta es la única parte del archivo que parece un beneficiario.",
+        "tags": "Esta es la única parte del archivo que parece una etiqueta."
+      },
+      "now_used": "usado para {role}",
+      "summary": {
+        "not_chosen": "Sin elegir",
+        "new_account": "Nueva: {name} · {currency}",
+        "name_new_account": "Ponle nombre a la cuenta nueva",
+        "none": "Sin descripción",
+        "with": "Con {list}",
+        "nothing_extra": "Nada más",
+        "check": "{count} para importar · {skipped} fuera | {count} para importar · {skipped} fuera",
+        "from_account": "De {name}",
+        "from_accounts": "De {name} y {count} cuenta más | De {name} y {count} cuentas más",
+        "nothing": "Ninguno",
+        "not_chosen_yet": "Aún sin elegir"
+      },
+      "from": "de «{name}»",
+      "change": "Cambiar",
+      "done": "Listo",
+      "names_more": "y {count} más",
+      "status_left_out": "Se omite (cuenta compartida)"
     },
     "import_result": {
       "success_title": "Importación completada",
@@ -456,11 +629,13 @@
       "error_title": "La importación falló",
       "imported": "{count} transacción importada | {count} transacciones importadas",
       "failed": "{count} transacción falló | {count} transacciones fallaron",
+      "unconfirmed": "Se envió {count} transacción, pero se perdió la respuesta: revisa la cuenta | Se enviaron {count} transacciones, pero se perdió la respuesta: revisa la cuenta",
       "errors_detail": "Detalles de los errores",
       "row": "Fila",
       "rows": "Filas",
       "more": "más",
-      "and_more": "y {count} errores más"
+      "and_more": "y {count} errores más",
+      "retry": "Reintentar el resto"
     },
     "export_csv": {
       "export_csv_form": {
@@ -955,9 +1130,19 @@
       "header": "Importada desde"
     },
     "rules": {
-      "field": { "external_payee": "Beneficiario", "description": "Descripción" },
-      "type": { "contains": "contiene", "prefix": "empieza por", "exact": "es exactamente" },
-      "action": { "classify": "Clasificar", "skip": "Omitir" },
+      "field": {
+        "external_payee": "Beneficiario",
+        "description": "Descripción"
+      },
+      "type": {
+        "contains": "contiene",
+        "prefix": "empieza por",
+        "exact": "es exactamente"
+      },
+      "action": {
+        "classify": "Clasificar",
+        "skip": "Omitir"
+      },
       "prompt": {
         "title": "Crear una regla de importación",
         "changed_category": "Has puesto la categoría en {name}. ¿Crear una regla para importaciones similares?",
@@ -1026,7 +1211,12 @@
       "account": "Cuenta",
       "reimport": "Importar de nuevo",
       "reimport_hint": "Impórtala de nuevo para volver a añadirla o para asociarla a una transacción que introdujiste tú, como una transferencia.",
-      "reimported": { "created": "Importada de nuevo", "matched": "Asociada a una transacción existente", "queued": "Importada de nuevo; está esperando en la bandeja de entrada", "skipped": "No se ha añadido: coincide con una regla de omisión o con una cuenta ignorada" }
+      "reimported": {
+        "created": "Importada de nuevo",
+        "matched": "Asociada a una transacción existente",
+        "queued": "Importada de nuevo; está esperando en la bandeja de entrada",
+        "skipped": "No se ha añadido: coincide con una regla de omisión o con una cuenta ignorada"
+      }
     },
     "suggestions": {
       "dismiss": "Descartar",

@@ -10,8 +10,8 @@ import { AI_REFRESH_DELAYS_MS, cancelAiRefresh } from './finishImport'
 import { OnboardingPage } from './OnboardingPage'
 
 let importedRows = 0
-vi.mock('@/features/transactions/ImportCsvDialog', () => ({
-  ImportCsvDialog: ({ open, onComplete }: { open: boolean; onComplete: (r: { imported: number }) => void }) =>
+vi.mock('@/features/csvImport/ImportWizard', () => ({
+  ImportWizard: ({ open, onComplete }: { open: boolean; onComplete: (r: { imported: number }) => void }) =>
     open ? <button onClick={() => onComplete({ imported: importedRows })}>finish import</button> : null,
 }))
 

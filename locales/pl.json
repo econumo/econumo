@@ -98,14 +98,8 @@
       "back": {
         "label": "Wstecz"
       },
-      "import": {
-        "label": "Import"
-      },
       "export": {
         "label": "Eksport"
-      },
-      "change": {
-        "label": "Zmień"
       }
     },
     "date": {
@@ -411,44 +405,223 @@
         }
       }
     },
-    "import_csv": {
-      "header": "Import CSV",
-      "none": "Brak",
-      "file": {
-        "label": "Plik CSV",
-        "hint": "Maksymalny rozmiar pliku: 10 MB"
-      },
-      "mapping": {
-        "description": "Dopasuj kolumny z pliku CSV do pól transakcji. Pola wymagane są oznaczone gwiazdką (*)."
-      },
-      "amount_mode": {
-        "switch_to_single": "Użyj jednej kolumny z kwotą",
-        "switch_to_dual": "Podziel na kolumny wpływów i wydatków"
-      },
-      "switch_to_manual": "Wpisz wartość ręcznie",
-      "switch_to_csv": "Użyj kolumny z pliku CSV",
-      "fields": {
+    "import_wizard": {
+      "title": "Importuj transakcje",
+      "steps_label": "Kroki importu",
+      "needs_attention": "wymaga uwagi",
+      "back": "Wstecz",
+      "steps": {
+        "file": "Twój plik",
         "account": "Konto",
         "date": "Data",
         "amount": "Kwota",
-        "amount_inflow": "Kwota (wpływ)",
-        "amount_outflow": "Kwota (wydatek)",
         "category": "Kategoria",
         "description": "Opis",
-        "description_placeholder": "Wpisz opis dla wszystkich transakcji",
         "payee": "Odbiorca",
-        "tag": "Tag budżetowy",
-        "labels": "Tagi raportowe"
+        "extras": "Tagi",
+        "preview": "Sprawdź i importuj"
       },
-      "labels_separator": {
-        "button": "Zmień separator tagów",
-        "title": "Separator tagów",
+      "file": {
+        "title": "Wybierz plik z banku lub innej aplikacji",
+        "choose": "Wybierz plik",
+        "choose_another": "Wybierz inny plik",
+        "drop_here": "lub upuść go tutaj",
+        "hint": "Plik arkusza kalkulacyjnego (CSV), do 10 MB",
+        "error": {
+          "too_big": "Ten plik jest większy niż 10 MB",
+          "empty": "Ten plik jest pusty",
+          "unreadable": "Nie udało się odczytać tego pliku jako arkusza kalkulacyjnego (CSV)"
+        },
+        "none": "Brak pliku",
+        "reading": "Czytanie pliku…"
+      },
+      "account": {
+        "skipped": "{count} wiersz nie ma nazwy konta i zostanie pominięty | {count} wiersze nie mają nazwy konta i zostaną pominięte | {count} wierszy nie ma nazwy konta i zostanie pominiętych",
+        "title": "Z którego konta są te transakcje?",
+        "new": "Nowe konto",
+        "existing": "Konto, które już mam",
+        "column": "Każdy wiersz podaje swoje konto",
+        "name": "Nazwa konta",
+        "currency": "Waluta",
+        "column_question": "Które z nich to konto?",
+        "found": "Konta w Twoim pliku",
+        "currency_of": "Waluta dla {name}",
+        "name_hint": "Nazwę możesz zmienić później",
+        "name_placeholder": "np. Karta na co dzień",
+        "currency_unknown": "Plik podaje {code}, a tej waluty tu nie ma. Możesz ją dodać w Ustawieniach.",
+        "per_row": "Twój plik podaje konto każdej transakcji",
+        "transactions": "{count} transakcja | {count} transakcje | {count} transakcji",
+        "currency_question": "Które z nich to waluta?",
+        "currency_none": "Mój plik nie podaje waluty",
+        "currency_from_file": "Twój plik podaje walutę każdego konta",
+        "currency_default": "Nowe konta będą w {currency}",
+        "currency_default_hint": "Twój plik nie podaje waluty",
+        "currency_new_accounts": "Waluta nowych kont",
+        "status_existing": "Twoje istniejące konto · {code}",
+        "status_new": "Nowe konto · {code}",
+        "change_currency": "Zmień walutę"
+      },
+      "date": {
+        "title": "Kiedy była każda płatność?",
+        "question": "Czy {example} to {dmy}, czy {mdy}?",
+        "skipped": "{count} wiersz nie ma czytelnej daty i zostanie pominięty | {count} wiersze nie mają czytelnej daty i zostaną pominięte | {count} wierszy nie ma czytelnej daty i zostanie pominiętych",
+        "choose": "Które z nich to data?"
+      },
+      "amount": {
+        "none_in": "Żadne z nich to nie wpływy",
+        "none_out": "Żadne z nich to nie wydatki",
+        "skipped": "{count} wiersz nie ma czytelnej kwoty i zostanie pominięty | {count} wiersze nie mają czytelnej kwoty i zostaną pominięte | {count} wierszy nie ma czytelnej kwoty i zostanie pominiętych",
+        "title": "Ile wyniosła każda płatność?",
+        "single": "Jedna kwota, minus dla wydatków",
+        "dual": "Wpływy i wydatki",
+        "money_in": "Wpływy",
+        "money_out": "Wydatki",
+        "separator_question": "Ile to jest {example}?",
+        "spending": "Wydatki wyglądają tak: {example}",
+        "flip": "Odwróć znaki",
+        "mode": "Jak pokazane są kwoty",
+        "flip_hint": "Włącz, jeśli bank pokazuje płatności bez minusa",
+        "example_label": "Tak będą wyglądać płatności",
+        "choose": "Które z nich to kwota?",
+        "choose_in": "Które z nich to wpływy?",
+        "choose_out": "Które z nich to wydatki?"
+      },
+      "category": {
+        "title": "Jak są pogrupowane płatności?",
+        "choose": "Które z nich to kategoria?",
+        "none": "Plik nie ma kategorii",
+        "none_found": "Twój plik nie ma kategorii. Możesz przypisać transakcje do kategorii później.",
+        "left_out": "Kategorie zostaną pominięte. Możesz przypisać transakcje do kategorii później.",
+        "found": "Kategorie w Twoim pliku",
+        "status_new": "Nowa kategoria",
+        "status_existing": "Twoja istniejąca kategoria",
+        "kind_expense": "wydatek",
+        "kind_income": "przychód",
+        "kind_both": "przychód i wydatek"
+      },
+      "description": {
+        "none": "Plik nie ma opisu",
+        "title": "Za co była każda płatność?",
+        "choose": "Które z nich mówi, za co była?"
+      },
+      "payee": {
+        "title": "Komu zapłacono lub kto zapłacił Tobie?",
+        "choose": "Które z nich mówi, komu zapłacono?",
+        "none": "Plik nie ma odbiorcy",
+        "none_found": "Twój plik nie mówi, komu zapłacono. Możesz dodać odbiorców później.",
+        "left_out": "Odbiorcy zostaną pominięci. Możesz ich dodać później.",
+        "found": "Odbiorcy w Twoim pliku",
+        "status_new": "Nowy odbiorca",
+        "status_existing": "Twój istniejący odbiorca"
+      },
+      "extras": {
+        "title": "Czy Twój plik ma tagi?",
+        "leave_out": "Nie przenoś",
+        "role": {
+          "tag": "Tag budżetowy",
+          "labels": "Tagi raportowe"
+        },
+        "separator_question": "Gdy tagów jest kilka, oddziela je",
         "tab": "Tabulator",
         "newline": "Nowa linia",
-        "custom_label": "Własny separator"
+        "custom_separator": "Inny znak",
+        "role_hint": {
+          "tag": "Projekt lub podróż",
+          "labels": "Kilka naraz to nie problem"
+        },
+        "answer": "Przeniesiemy też:",
+        "found": {
+          "tag": "Tagi budżetowe w Twoim pliku",
+          "labels": "Tagi raportowe w Twoim pliku"
+        },
+        "status_new": "Nowy tag",
+        "status_existing": "Twój istniejący tag",
+        "status_taken": {
+          "tag": "Pominięte: to już tag raportowy",
+          "labels": "Pominięte: to już tag budżetowy"
+        }
       },
-      "tag_hint": "Transakcja może mieć tylko jeden tag budżetowy. Aby dodać więcej, użyj pola Tagi raportowe.",
-      "new_labels_count": "Ten import utworzy {count} nowy tag | Ten import utworzy {count} nowe tagi | Ten import utworzy {count} nowych tagów"
+      "preview": {
+        "title": "Oto, co zostanie dodane",
+        "nothing": "Na razie nic nie zostanie zaimportowane.",
+        "skipped": "{count} zostanie pominięta | {count} zostaną pominięte | {count} zostanie pominiętych",
+        "from_file": "Z pliku:",
+        "looks_wrong": "Coś się nie zgadza?",
+        "skip_row": "Pomiń ten wiersz",
+        "unskip_row": "Nie pomijaj",
+        "fix_date": "Data dla tego wiersza",
+        "fix_amount": "Kwota dla tego wiersza",
+        "no_description": "Brak opisu",
+        "no_account": "Nie wybrano konta",
+        "import": "Importuj {count} transakcję | Importuj {count} transakcje | Importuj {count} transakcji",
+        "importing": "Importowanie…",
+        "amount_unreadable": "Nie można odczytać tej kwoty",
+        "transactions": "Transakcje",
+        "range": "Od {first} do {last}",
+        "categories": "Kategorie",
+        "payees": "Odbiorcy",
+        "new_count": "Nowych: {count}",
+        "all_existing": "już istnieją",
+        "left_out": "Pominięta",
+        "row": "Wiersz {n}",
+        "list": "Transakcje do dodania",
+        "show_more": "Pokaż jeszcze {count} wiersz | Pokaż jeszcze {count} wiersze | Pokaż jeszcze {count} wierszy"
+      },
+      "skipped": {
+        "no_date": "Brak czytelnej daty",
+        "no_amount": "Brak czytelnej kwoty",
+        "no_account": "Brak nazwy konta",
+        "user_skipped": "Pominięta przez Ciebie",
+        "unconfirmed": "Wysłana, ale odpowiedź zaginęła: sprawdź konto",
+        "too_many_labels": "Ponad 50 tagów raportowych"
+      },
+      "continue": "Dalej",
+      "step_of": "Krok {n} z {total} · {title}",
+      "list_hint": "Dotknij kroku, aby na niego odpowiedzieć lub zmienić odpowiedź.",
+      "check_button": "Sprawdź {count} transakcję | Sprawdź {count} transakcje | Sprawdź {count} transakcji",
+      "ready": "{count} transakcja gotowa · pominięte: {skipped} | {count} transakcje gotowe · pominięte: {skipped} | {count} transakcji gotowych · pominięte: {skipped}",
+      "rows": "{count} wiersz | {count} wiersze | {count} wierszy",
+      "all_steps": "Wszystkie kroki",
+      "column_empty": "pusta",
+      "column_reference": "Długi numer referencyjny",
+      "other_parts": "Pozostałe części pliku",
+      "nothing_fits": {
+        "date": "Nic w pliku nie wygląda jak data, więc oto wszystko.",
+        "amount": "Nic w pliku nie wygląda jak kwota, więc oto wszystko.",
+        "account": "Nic w pliku nie wygląda jak nazwa konta, więc oto wszystko.",
+        "category": "Nic w pliku nie wygląda jak kategoria, więc oto wszystko.",
+        "description": "Nic w pliku nie wygląda jak opis, więc oto wszystko.",
+        "payee": "Nic w pliku nie wygląda jak odbiorca, więc oto wszystko.",
+        "tags": "Nic w pliku nie wygląda jak tag lub etykieta, więc oto wszystko."
+      },
+      "only_one": {
+        "date": "To jedyna część pliku, która wygląda jak data.",
+        "amount": "To jedyna część pliku, która wygląda jak kwota.",
+        "account": "To jedyna część pliku, która wygląda jak nazwa konta.",
+        "category": "To jedyna część pliku, która wygląda jak kategoria.",
+        "description": "To jedyna część pliku, która wygląda jak opis.",
+        "payee": "To jedyna część pliku, która wygląda jak odbiorca.",
+        "tags": "To jedyna część pliku, która wygląda jak tag lub etykieta."
+      },
+      "now_used": "używane jako: {role}",
+      "summary": {
+        "not_chosen": "Nie wybrano",
+        "new_account": "Nowe: {name} · {currency}",
+        "name_new_account": "Nazwij nowe konto",
+        "none": "Bez opisu",
+        "with": "Z: {list}",
+        "nothing_extra": "Nic więcej",
+        "check": "Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped} | Do importu: {count} · pominięte: {skipped}",
+        "from_account": "Konto {name}",
+        "from_accounts": "{name} i jeszcze {count} konto | {name} i jeszcze {count} konta | {name} i jeszcze {count} kont",
+        "nothing": "Brak",
+        "not_chosen_yet": "Jeszcze nie wybrano"
+      },
+      "from": "z „{name}”",
+      "change": "Zmień",
+      "done": "Gotowe",
+      "names_more": "i jeszcze {count}",
+      "status_left_out": "Pominięte (konto współdzielone)"
     },
     "import_result": {
       "success_title": "Import zakończony",
@@ -456,11 +629,13 @@
       "error_title": "Import nie powiódł się",
       "imported": "{count} transakcja została zaimportowana | {count} transakcje zostały zaimportowane | {count} transakcji zostało zaimportowanych",
       "failed": "{count} transakcja nie została zaimportowana | {count} transakcje nie zostały zaimportowane | {count} transakcji nie zostało zaimportowanych",
+      "unconfirmed": "{count} transakcja została wysłana, ale odpowiedź zaginęła: sprawdź konto | {count} transakcje zostały wysłane, ale odpowiedź zaginęła: sprawdź konto | {count} transakcji zostało wysłanych, ale odpowiedź zaginęła: sprawdź konto",
       "errors_detail": "Szczegóły błędów",
       "row": "Wiersz",
       "rows": "Wiersze",
       "more": "więcej",
-      "and_more": "i jeszcze {count} błędów"
+      "and_more": "i jeszcze {count} błędów",
+      "retry": "Spróbuj ponownie z resztą"
     },
     "export_csv": {
       "export_csv_form": {
@@ -955,9 +1130,19 @@
       "header": "Zaimportowano z"
     },
     "rules": {
-      "field": { "external_payee": "Odbiorca", "description": "Opis" },
-      "type": { "contains": "zawiera", "prefix": "zaczyna się od", "exact": "jest dokładnie równa" },
-      "action": { "classify": "Klasyfikuj", "skip": "Pomiń" },
+      "field": {
+        "external_payee": "Odbiorca",
+        "description": "Opis"
+      },
+      "type": {
+        "contains": "zawiera",
+        "prefix": "zaczyna się od",
+        "exact": "jest dokładnie równa"
+      },
+      "action": {
+        "classify": "Klasyfikuj",
+        "skip": "Pomiń"
+      },
       "prompt": {
         "title": "Utwórz regułę importu",
         "changed_category": "Kategoria została zmieniona na {name}. Utworzyć regułę dla podobnych importów?",
@@ -1026,7 +1211,12 @@
       "account": "Konto",
       "reimport": "Importuj ponownie",
       "reimport_hint": "Zaimportuj ją ponownie, aby ją przywrócić lub dopasować do transakcji wprowadzonej przez Ciebie, np. przelewu.",
-      "reimported": { "created": "Zaimportowano ponownie", "matched": "Dopasowano do istniejącej transakcji", "queued": "Zaimportowano ponownie; czeka w skrzynce odbiorczej", "skipped": "Nie dodano: pasuje reguła pomijania lub ignorowane konto" }
+      "reimported": {
+        "created": "Zaimportowano ponownie",
+        "matched": "Dopasowano do istniejącej transakcji",
+        "queued": "Zaimportowano ponownie; czeka w skrzynce odbiorczej",
+        "skipped": "Nie dodano: pasuje reguła pomijania lub ignorowane konto"
+      }
     },
     "suggestions": {
       "dismiss": "Odrzuć",

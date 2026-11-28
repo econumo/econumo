@@ -128,7 +128,7 @@ export function useAccountItemEffects() {
 export function useCreateAccount() {
   const applyItem = useAccountItemEffects()
   return useMutation({
-    mutationFn: accountApi.createAccount,
+    mutationFn: (form: accountApi.CreateAccountForm) => accountApi.createAccount(form),
     onSuccess: (result) => {
       applyItem(result, { checkFirstFolder: true })
       trackEvent(METRICS.ACCOUNT_CREATE)

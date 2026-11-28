@@ -1,0 +1,279 @@
+import { signedAmount, type DecimalSeparator } from './amounts'
+import { parseDateCell, type DateOrder, type ParsedDate } from './dates'
+import type { ParsedFile } from './parse'
+
+export type Role =
+  | 'date'
+  | 'amount'
+  | 'amountIn'
+  | 'amountOut'
+  | 'description'
+  | 'payee'
+  | 'category'
+  | 'tag'
+  | 'labels'
+  | 'account'
+  | 'currency'
+
+export type AccountChoice =
+  | { kind: 'new'; name: string; currencyId: string }
+  | { kind: 'existing'; accountId: string }
+  | {
+      kind: 'column'
+      column: number
+      /** the part of the file naming each account's currency; null when the file has none */
+      currencyColumn: number | null
+      /** new accounts' currency where the file names none this instance has */
+      currencyId: string
+      /** currencies the user picked for single accounts: lowercased name -> currencyId */
+      overrides: Record<string, string>
+      /** the currencies fixed for single accounts, by an override or by the file's currency column; every other
+          new account takes `currencyId`: lowercased name -> currencyId */
+      currencies: Record<string, string>
+    }
+
+export interface WizardAnswers {
+  account: AccountChoice | null
+  date: { column: number | null; order: DateOrder }
+  amount: {
+    mode: 'single' | 'dual'
+    column: number | null
+    inColumn: number | null
+    outColumn: number | null
+    flip: boolean
+    sep: DecimalSeparator
+  }
+  description: number | null
+  extras: { payee: number | null; category: number | null; tag: number | null; labels: number | null; labelsSeparator: string }
+}
+
+export type RowFix = { date?: string; amount?: string } | 'skip'
+
+export type StepId = 'file' | 'account' | 'date' | 'amount' | 'category' | 'description' | 'payee' | 'extras' | 'preview'
+
+export interface PreparedRow {
+  // the line of the file the row starts on, header = 1: what the user finds in their editor
+  fileRow: number
+  raw: string
+  status: 'ok' | 'skipped'
+  reason: 'no_date' | 'no_amount' | 'no_account' | 'too_many_labels' | 'user_skipped' | null
+  date: string | null
+  time: string | null
+  amount: string | null
+  account: string | null
+  description: string
+  payee: string
+  category: string
+  tag: string
+  labels: string
+}
+
+const PLAIN_DECIMAL = /^-?\d+(\.\d+)?$/
+
+/** the most reporting tags one transaction holds; the server refuses a row with more */
+export const MAX_LABELS = 50
+
+/** a labels cell as the server reads it: split, trimmed, blanks dropped, one per name whatever the letter case */
+export function splitLabels(cell: string, separator: string): string[] {
+  const seen = new Set<string>()
+  const names: string[] = []
+  for (const part of cell.split(separator || ';')) {
+    const name = part.trim()
+    const key = name.toLowerCase()
+    if (name === '' || seen.has(key)) continue
+    seen.add(key)
+    names.push(name)
+  }
+  return names
+}
+
+function cell(row: string[], column: number | null): string {
+  return column === null ? '' : (row[column] ?? '').trim()
+}
+
+// A typed amount is what the user wants stored: plain decimal, its own sign,
+// never flipped or read with the file's separator.
+function fixedAmount(value: string | undefined): string | null {
+  const s = value?.trim() ?? ''
+  return PLAIN_DECIMAL.test(s) ? s : null
+}
+
+function fixedDate(value: string | undefined): ParsedDate | null {
+  return value ? parseDateCell(value, 'ymd') : null
+}
+
+// What the row's own cells give under the current answers, before any typed fix.
+function readRow(row: string[], answers: WizardAnswers): { date: ParsedDate | null; amount: string | null; account: string | null } {
+  const { amount: am, account } = answers
+  const date = answers.date.column === null ? null : parseDateCell(cell(row, answers.date.column), answers.date.order)
+  let amount: string | null = null
+  if (am.mode === 'single' ? am.column !== null : am.inColumn !== null || am.outColumn !== null) {
+    amount = signedAmount(
+      { single: cell(row, am.column), inflow: cell(row, am.inColumn), outflow: cell(row, am.outColumn) },
+      am.mode,
+      am.flip,
+      am.sep,
+    )
+  }
+  const accountName = account?.kind === 'column' ? cell(row, account.column) || null : null
+  return { date, amount, account: accountName }
+}
+
+const fileRowOf = (file: ParsedFile, index: number) => file.rowLines[index] ?? index + 2
+
+export function prepareRows(file: ParsedFile, answers: WizardAnswers, fixes: ReadonlyMap<number, RowFix>): PreparedRow[] {
+  const { account } = answers
+  const result: PreparedRow[] = []
+
+  file.rows.forEach((row, i) => {
+    if (row.every((c) => c.trim() === '')) return
+    const fileRow = fileRowOf(file, i)
+    const fix = fixes.get(fileRow)
+    const typed = fix === 'skip' ? undefined : fix
+
+    const own = readRow(row, answers)
+    const date = own.date ?? fixedDate(typed?.date)
+    const amount = own.amount ?? fixedAmount(typed?.amount)
+    const accountName = own.account
+    const labels = cell(row, answers.extras.labels)
+
+    let reason: PreparedRow['reason'] = null
+    if (date === null) reason = 'no_date'
+    else if (amount === null) reason = 'no_amount'
+    else if (account?.kind === 'column' && accountName === null) reason = 'no_account'
+    else if (labels !== '' && splitLabels(labels, answers.extras.labelsSeparator).length > MAX_LABELS) reason = 'too_many_labels'
+    if (reason !== null && fix === 'skip') reason = 'user_skipped'
+
+    result.push({
+      fileRow,
+      raw: file.rawLines[i] ?? '',
+      status: reason === null ? 'ok' : 'skipped',
+      reason,
+      date: date?.date ?? null,
+      time: date?.time ?? null,
+      amount,
+      account: accountName,
+      description: cell(row, answers.description),
+      payee: cell(row, answers.extras.payee),
+      category: cell(row, answers.extras.category),
+      tag: cell(row, answers.extras.tag),
+      labels,
+    })
+  })
+  return result
+}
+
+/** The fixes without what the rows now read on their own: a typed value the file's cell
+    replaced, or a skip of a row that is readable again. Dropped rather than ignored, so a
+    later answer change that breaks the row again does not bring the stale value back.
+    Returns `fixes` itself when nothing is stale. */
+export function pruneFixes(file: ParsedFile, answers: WizardAnswers, fixes: ReadonlyMap<number, RowFix>): ReadonlyMap<number, RowFix> {
+  let pruned: Map<number, RowFix> | null = null
+  let indexOf: Map<number, number> | null = null
+  for (const [fileRow, fix] of fixes) {
+    indexOf ??= new Map(file.rows.map((_, i) => [fileRowOf(file, i), i]))
+    const row = file.rows[indexOf.get(fileRow) ?? -1]
+    if (!row) continue
+    const own = readRow(row, answers)
+    let kept: RowFix | null = fix
+    if (fix === 'skip') {
+      if (own.date !== null && own.amount !== null && (answers.account?.kind !== 'column' || own.account !== null)) kept = null
+    } else {
+      const next = { ...fix }
+      if (own.date !== null) delete next.date
+      if (own.amount !== null) delete next.amount
+      if (next.date === undefined && next.amount === undefined) kept = null
+      else if (next.date !== fix.date || next.amount !== fix.amount) kept = next
+    }
+    if (kept === fix) continue
+    pruned ??= new Map(fixes)
+    if (kept === null) pruned.delete(fileRow)
+    else pruned.set(fileRow, kept)
+  }
+  return pruned ?? fixes
+}
+
+export function summarize(rows: PreparedRow[]): {
+  total: number
+  skipped: number
+  byReason: Record<string, number>
+  firstDate: string | null
+  lastDate: string | null
+} {
+  const byReason: Record<string, number> = {}
+  let skipped = 0
+  let firstDate: string | null = null
+  let lastDate: string | null = null
+
+  for (const row of rows) {
+    if (row.status === 'skipped') {
+      skipped++
+      if (row.reason) byReason[row.reason] = (byReason[row.reason] ?? 0) + 1
+      continue
+    }
+    if (row.date !== null) {
+      if (firstDate === null || row.date < firstDate) firstDate = row.date
+      if (lastDate === null || row.date > lastDate) lastDate = row.date
+    }
+  }
+
+  return {
+    total: rows.length,
+    skipped,
+    byReason,
+    firstDate,
+    lastDate,
+  }
+}
+
+type UploadColumn = 'date' | 'amount' | 'account' | 'description' | 'payee' | 'category' | 'tag' | 'labels'
+
+export function buildUpload(
+  rows: PreparedRow[],
+  answers: WizardAnswers,
+): { header: string[]; rows: string[][]; fileRows: number[]; mapping: Record<string, string | null>; fields: Record<string, string> } {
+  const { extras } = answers
+  const mapped: Record<UploadColumn, boolean> = {
+    date: true,
+    amount: true,
+    account: answers.account?.kind === 'column',
+    description: answers.description !== null,
+    payee: extras.payee !== null,
+    category: extras.category !== null,
+    tag: extras.tag !== null,
+    labels: extras.labels !== null,
+  }
+  const header = (Object.keys(mapped) as UploadColumn[]).filter((column) => mapped[column])
+  const ok = rows.filter((row) => row.status === 'ok')
+
+  const value = (row: PreparedRow, column: UploadColumn): string => {
+    if (column === 'date') return row.time ? `${row.date} ${row.time}` : (row.date ?? '')
+    return row[column] ?? ''
+  }
+
+  const mappedOrNull = (column: UploadColumn) => (mapped[column] ? column : null)
+  const mapping: Record<string, string | null> = {
+    account: mappedOrNull('account'),
+    date: 'date',
+    amount: 'amount',
+    amountInflow: null,
+    amountOutflow: null,
+    category: mappedOrNull('category'),
+    description: mappedOrNull('description'),
+    payee: mappedOrNull('payee'),
+    tag: mappedOrNull('tag'),
+    labels: mappedOrNull('labels'),
+  }
+
+  const fields: Record<string, string> = {}
+  if (answers.account?.kind === 'existing') fields.accountId = answers.account.accountId
+  fields.labelsSeparator = extras.labelsSeparator || ';'
+
+  return {
+    header,
+    rows: ok.map((row) => header.map((column) => value(row, column))),
+    fileRows: ok.map((row) => row.fileRow),
+    mapping,
+    fields,
+  }
+}

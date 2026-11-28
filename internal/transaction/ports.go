@@ -9,9 +9,37 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+// Completer is one chat completion. nil = AI disabled. userID names the
+// requesting user so a metering endpoint can attribute the call.
+type Completer interface {
+	Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error)
+}
+
+// AIFacts is what the CSV column guesser needs about the caller, re-read
+// right before each AI call so an opt-out takes effect at once.
+type AIFacts interface {
+	AIFacts(ctx context.Context, userID vo.Id) (AIFactsInfo, error)
+}
+
+// AIFactsInfo: the stored language ("" when unknown); Readonly when the
+// effective access level is readonly and AIOff when the user opted out of AI.
+// Either one means no AI call.
+type AIFactsInfo struct {
+	Language        string
+	Readonly, AIOff bool
+}
+
+// AttemptLimiter caps the AI calls per user. A nil limiter disables
+// protection (tests).
+type AttemptLimiter interface {
+	Allow(ctx context.Context, scope, key string) error
+	Reserve(scope, key string) error
+}
 
 // ImportIconReviewer picks icons, in the background, for the categories and
 // accounts a CSV import created. It is told about every successful import
@@ -122,6 +150,10 @@ type Importer interface {
 	// CanAddTransaction reports whether the user may add a transaction to the
 	// account: they own it, or hold an admin/user grant on it.
 	CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error)
+	// CanCreateForAccountOwner reports whether the user may add categories,
+	// payees, tags and labels to the account owner's lists: they own the
+	// account or hold an accepted admin grant on it, as the category API asks.
+	CanCreateForAccountOwner(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error)
 	// CreateAccount creates a new account (base currency, first/new folder, icon
 	// 'wallet', balance 0) and returns its view.
 	CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error)
