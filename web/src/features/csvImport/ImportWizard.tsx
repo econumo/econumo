@@ -243,11 +243,9 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
     onClose()
   }
 
-  // a required step holds Continue until it has an answer; a new account's name is not held to
-  // that (it is saved after a pause in typing) and keeps its mark and Import waiting instead
-  const continueHeld =
-    state !== null &&
-    ((step === 'account' && state.answers.account === null) || ((step === 'date' || step === 'amount') && missingAnswer(step, state.answers)))
+  // a required step holds Continue until it has an answer, a new account until it is named (a
+  // typed name is saved when the field is left, so pressing Continue right after typing counts it)
+  const continueHeld = state !== null && (step === 'account' || step === 'date' || step === 'amount') && missingAnswer(step, state.answers)
 
   const importCount = rows.filter((row) => row.status === 'ok').length
   // a new account needs the user's folder: the server refuses a blank one once the user has any

@@ -599,3 +599,15 @@ it('Import stays disabled until the new account is named, and typing a name enab
   await user.click(screen.getByRole('button', { name: /^Check/ }))
   expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeEnabled()
 })
+
+it('an unnamed new account holds Continue; Continue right after typing a name goes on', async () => {
+  server.use(...coreHandlers({ accounts: [] }))
+  renderWizard({ initialFile: csv(BANK) })
+  const user = userEvent.setup()
+  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
+  expect(screen.getByRole('button', { name: /^Account.*needs your attention/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  await user.type(screen.getByLabelText('Account name'), 'Everyday')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(await screen.findByRole('heading', { name: 'When did each payment happen?' })).toBeInTheDocument()
+})

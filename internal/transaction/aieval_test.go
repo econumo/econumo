@@ -86,31 +86,20 @@ var evalColumnSeparators = map[string]string{"en": ",", "de": ";", "ru": ";"}
 // types contradict its expected roles grades the fixture, not the model.
 var columnRoleTypes = map[string]string{"date": "d", "amount": "nN", "amountIn": "nN", "amountOut": "nN", "description": "t", "payee": "t", "category": "t", "tag": "t", "labels": "t", "account": "t"}
 
-// Roles a case must get back whenever it expects them, and must never get when it does not.
+// Roles a case must get back whenever it expects them.
 var requiredColumnRoles = map[string]bool{"date": true, "amount": true, "amountIn": true, "amountOut": true}
 
-// gradeColumns: an assigned role is wrong when the case expects that role on
-// another header, when its header is expected for other roles only, or when it
-// is a required role the case does not expect. An optional role on a header the
-// case says nothing about is tolerated: the fixtures do not list every sound
-// reading of a header (a "Details" column read as the payee).
+// gradeColumns: every role the model assigns must be one the case expects, on
+// the expected header; an optional role left empty is fine.
 func gradeColumns(want, got map[string]string) bool {
 	expected := map[string][]string{}
-	rolesOf := map[string][]string{}
 	for roles, header := range want {
 		for _, role := range strings.Split(roles, "|") {
 			expected[role] = append(expected[role], header)
-			rolesOf[header] = append(rolesOf[header], role)
 		}
 	}
 	for role, header := range got {
-		if headers, ok := expected[role]; ok {
-			if !slices.Contains(headers, header) {
-				return false
-			}
-			continue
-		}
-		if requiredColumnRoles[role] || len(rolesOf[header]) > 0 {
+		if !slices.Contains(expected[role], header) {
 			return false
 		}
 	}
@@ -166,7 +155,7 @@ func TestAIEval_ColumnGrading(t *testing.T) {
 	}{
 		{"everything", map[string]string{"date": "Date", "amount": "Amount", "description": "Memo", "labels": "Tags"}, true},
 		{"optional roles left empty", map[string]string{"date": "Date", "amount": "Amount"}, true},
-		{"an optional role on an unlisted header", map[string]string{"date": "Date", "amount": "Amount", "payee": "Name"}, true},
+		{"an optional role the case does not expect", map[string]string{"date": "Date", "amount": "Amount", "payee": "Name"}, false},
 		{"a required role missing", map[string]string{"date": "Date", "description": "Memo"}, false},
 		{"an optional role on the wrong header", map[string]string{"date": "Date", "amount": "Amount", "description": "Name"}, false},
 		{"an expected header on another role", map[string]string{"date": "Date", "amount": "Amount", "payee": "Memo"}, false},

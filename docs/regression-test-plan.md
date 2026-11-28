@@ -791,8 +791,8 @@ navigation (single-pane vs sidebar).
       every step (Import on Check); over an answer it accepts it and
       goes to the next step (never an empty footer, also on Account). It is
       disabled on Account with no option answered and on Date or Amount with
-      no part picked, until one is picked (a new account's empty name does not
-      hold it). A step with a complete answer opens on it, not its list:
+      no part picked, and on Account with a new account still unnamed, until
+      answered (pressing it right after typing a name goes on). A step with a complete answer opens on it, not its list:
       Amount the AI read opens on "−5.50 · +100.00 …" from “amount”. Open questions (date order, decimal separator, "Spending
       shows as" with Flip the signs, Reporting tags' separator) and the grey
       skipped-rows notes stay visible under the answer. Change answers
@@ -1012,12 +1012,9 @@ navigation (single-pane vs sidebar).
       added to the owner's lists, nor to the importer's); with an admin share
       they are created in the owner's lists as for the owner, and the owner
       can edit and save the imported rows;
-      "A new account" asks a name and a currency (pre-filled from a currency
-      column when every row names the same code the app knows, e.g. `EUR`;
-      the user's currency otherwise, always changeable; when that code is one
-      the app has no currency for, e.g. `CAD`, the user's currency is
-      pre-filled and a grey note under the picker reads "The file says CAD,
-      which isn't set up here. You can add it in Settings."); "Each row says which
+      "A new account" asks a name and a currency (the user's currency, always
+      changeable; never read from a part of the file, also when every row
+      names `EUR`); "Each row says which
       account" asks "Which of these is the account?", then answers "Your file
       names the account for each transaction". When any name is new, a second
       answer row says where new accounts' currency comes from: outside an

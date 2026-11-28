@@ -19,7 +19,7 @@ import { NamesList, type NamesListItem } from '../NamesList'
 import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
 import { AnswerRow, Field, QuietButton, Segmented, SkippedNote } from '../controls'
-import { accountCurrencies, currencyColumn, fileCurrencyId, unknownRowsCurrency } from '../fileCurrency'
+import { accountCurrencies } from '../fileCurrency'
 import type { ParsedFile } from '../parse'
 import type { AccountChoice, PreparedRow } from '../prepare'
 import { distinctNames, existingCodes, hasGuess, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
@@ -40,9 +40,10 @@ function UnknownCurrencyNote({ code }: { code: string }) {
   )
 }
 
-function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
+function NewAccountFields({ account, onChange, onNameChange, onNameBlur }: {
   account: NewAccount
-  unknownCode: string | null
+  /** the field was left: a name typed is saved now, not after the pause */
+  onNameBlur: () => void
   onChange: (account: NewAccount) => void
   onNameChange: (account: NewAccount) => void
 }) {
@@ -57,6 +58,7 @@ function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
           placeholder={t('transactions.import_wizard.account.name_placeholder')}
           className="h-10"
           value={name}
+          onBlur={onNameBlur}
           onChange={(e) => {
             setName(e.target.value)
             onNameChange({ ...account, name: e.target.value })
@@ -69,7 +71,6 @@ function NewAccountFields({ account, unknownCode, onChange, onNameChange }: {
           value={account.currencyId || null}
           onChange={(currencyId) => onChange({ ...account, name, currencyId })}
         />
-        {unknownCode ? <UnknownCurrencyNote code={unknownCode} /> : null}
       </div>
     </div>
   )
@@ -242,9 +243,7 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
   const { data: accounts = [] } = useAccounts()
   const writable = useMemo(() => writableAccounts(accounts, user?.id), [accounts, user?.id])
   const existing = useMemo(() => existingCodes(writable), [writable])
-  const { data: currencies = [] } = useCurrencies()
   const currencyId = userCurrencyId(user) ?? ''
-  const fileUnknownCode = useMemo(() => unknownRowsCurrency(state.file.rows, currencyColumn(state.file, currencies), currencies), [state.file, currencies])
   const title = t('transactions.import_wizard.account.title')
   const columnQuestion = t('transactions.import_wizard.account.column_question')
   const guessed = hasGuess('account', state)
@@ -290,7 +289,8 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
     setAnswers('account', { account: next })
   }
 
-  const newFallback = (): NewAccount => ({ kind: 'new', name: '', currencyId: fileCurrencyId(state.file, currencies) ?? currencyId })
+  // the user's currency: no part of the file is read for it unless the user points at one
+  const newFallback = (): NewAccount => ({ kind: 'new', name: '', currencyId })
 
   const choose = (next: Option) => {
     setPicked(next)
@@ -331,9 +331,9 @@ export function AccountStep({ state, setAnswers, choosing, change, closeChoices 
           // "A new account" shown with no answer under it (another step took the account
           // column) still offers its fields; the answer comes with the first one filled
           account={account ?? (remembered.current.new as NewAccount | undefined) ?? newFallback()}
-          unknownCode={fileUnknownCode}
           onChange={set}
           onNameChange={typeName}
+          onNameBlur={saveTypedName}
         />
       ) : null}
       {option === 'existing' ? (

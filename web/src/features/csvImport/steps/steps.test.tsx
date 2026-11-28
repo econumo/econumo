@@ -144,16 +144,9 @@ it('a typed account name is kept when the step is left before the pause, with th
   expect(screen.getByLabelText('Account name')).toHaveValue('Travel card')
 })
 
-it('a new account takes the currency the file names', async () => {
+it('a new account is in the user’s currency: no part of the file is read for it', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,eur\n2026-01-03,1.00,EUR\n')
-  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('EUR, €, Euro')
-})
-
-it('a file naming two currencies leaves a new account in the user’s currency', async () => {
-  server.use(...coreHandlers({ accounts: [] }))
-  renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,EUR\n2026-01-03,1.00,USD\n')
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
 })
@@ -330,15 +323,6 @@ it('a per-row account whose file currency is not set up here is new in the user�
   await openExportAccountStep(userEvent.setup())
   const row = within(perRowList()).getByRole('listitem')
   expect(row).toHaveTextContent("WS Cash · 2 transactions New account · USDChange currencyThe file says CAD, which isn't set up here. You can add it in Settings.")
-})
-
-it('a new account for a file in a currency not set up here says so under its currency', async () => {
-  renderWizard('Date,Amount,Currency\n2026-01-02,-5.50,CAD\n2026-01-03,7.00,CAD\n')
-  const user = userEvent.setup()
-  await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  await user.click(screen.getByRole('radio', { name: 'A new account' }))
-  expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar')
-  expect(screen.getByText("The file says CAD, which isn't set up here. You can add it in Settings.")).toBeInTheDocument()
 })
 
 it('choosing another column makes it the date and marks the Date step as answered', async () => {

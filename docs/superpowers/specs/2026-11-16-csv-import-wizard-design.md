@@ -131,7 +131,8 @@ or empty file says so in plain words and stays on this step.
 
 - **A new account** (default when the user has no writable accounts): name (starts empty:
   the file name is not a default; an empty name is a missing answer until typed) and currency
-  (defaults to the user's currency, the same picker the Accounts step uses).
+  (defaults to the user's currency, never read from the file, the same picker the Accounts
+  step uses).
 - **An account I already have** (default when they have one or more): the account picker,
   writable accounts only, as today. No account is pre-selected, not even the only one: the
   user picks. *(Revised 2026-11-27.)*
@@ -293,14 +294,15 @@ confusion when wrong.")* The wizard itself never decides which column plays whic
    off = no assignment, no message.
 3. **Everything else starts unanswered.** Required steps (Account, Date, Amount) open on
    their list with nothing selected, carry the warning mark and hold Continue until picked
-   (a new account's name does not hold Continue; it keeps the mark and holds Import). Optional
+   (an unnamed new account holds it too; a typed name is saved when the field is left). Optional
    steps (Category, Description, Payee, Extra details) open on their list with nothing
    selected, None included, read "Not chosen yet" in the step list until answered or left,
    and let the user go on; leaving one unanswered is None.
 
 What the wizard still reads from values, once a column is chosen, is the column's FORMAT: date
-order, decimal separator, a new account's currency when the file names exactly one, and each
-per-row account's currency from a chosen currency column. The choosers still order the
+order, decimal separator, and each per-row account's currency from a chosen currency column.
+A single new account is in the user's currency (changeable); no part of the file is read for
+it. The choosers still order the
 plausible parts first (dates, money, short repeating names, codes), which helps the user
 pick but never pre-selects. The privacy gate is unchanged: no request when the header row
 reads like data by content (dates, amounts, repeated values, references); a first row of

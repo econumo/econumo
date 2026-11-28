@@ -42,9 +42,9 @@ describe('initialAnswers', () => {
     expect(guess(text, { writableAccountIds: [] }).account).toEqual({ kind: 'new', name: '', currencyId: 'cur-eur' })
   })
 
-  it('a new account takes the one currency the file names', () => {
+  it('a new account is in the user’s currency, whatever currency a part of the file names', () => {
     const a = guess('Date,Amount,Currency\n2026-03-04,1,USD\n', { writableAccountIds: [], currencies: [{ id: 'cur-usd', code: 'USD' }] })
-    expect(a.account).toEqual({ kind: 'new', name: '', currencyId: 'cur-usd' })
+    expect(a.account).toEqual({ kind: 'new', name: '', currencyId: 'cur-eur' })
   })
 
   it('starts on the locale date order', () => {

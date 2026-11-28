@@ -1,6 +1,6 @@
 import { detectDecimalSeparator } from './amounts'
 import { detectDateOrder, localeDateOrder } from './dates'
-import { fileCurrencyId, withAccountCurrencies } from './fileCurrency'
+import { withAccountCurrencies } from './fileCurrency'
 import type { ParsedFile } from './parse'
 import type { AccountChoice, Role, StepId, WizardAnswers } from './prepare'
 
@@ -27,8 +27,7 @@ interface GuessContext {
   writableAccountIds: readonly string[]
   userCurrencyId: string
   locale: string
-  // resolves an Econumo export's account_currency codes (unknown codes get userCurrencyId) and a
-  // new account's currency from a file that names one
+  // resolves an Econumo export's account_currency codes; unknown codes get userCurrencyId
   currencies?: ReadonlyArray<{ id: string; code: string }>
 }
 
@@ -65,7 +64,7 @@ function exportAnswers(file: ParsedFile, ctx: GuessContext): WizardAnswers {
 export function initialAnswers(file: ParsedFile, ctx: GuessContext): WizardAnswers {
   if (isEconumoExport(file)) return exportAnswers(file, ctx)
   const account: AccountChoice | null =
-    ctx.writableAccountIds.length === 0 ? { kind: 'new', name: '', currencyId: fileCurrencyId(file, ctx.currencies ?? []) ?? ctx.userCurrencyId } : null
+    ctx.writableAccountIds.length === 0 ? { kind: 'new', name: '', currencyId: ctx.userCurrencyId } : null
   return {
     account,
     date: { column: null, order: localeDateOrder(ctx.locale) },
