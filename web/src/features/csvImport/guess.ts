@@ -163,9 +163,10 @@ function guessRoles(file: ParsedFile, profiles: ColumnProfile[], ctx: GuessConte
   // Of two repeating columns, the one with fewer names is taken for the account, which the
   // Account step asks about on its own.
   const named = text.filter((p) => free(p) && repeatsFew(p)).sort((a, b) => a.distinct - b.distinct || a.index - b.index)
-  // With no account of the user's own to tell by, the repeating column with the fewest names
-  // is the account (unless the user has exactly one, which the file is then taken to be for).
-  if (found.account === undefined && ctx.writableAccountIds.length !== 1 && named.length > 0) found.account = named.shift()!.index
+  // With no account of the user's own to tell by, of two or more repeating columns the one with
+  // the fewest names is the account (unless the user has exactly one, which the file is then
+  // taken to be for); a lone one stays a category.
+  if (found.account === undefined && ctx.writableAccountIds.length !== 1 && named.length >= 2) found.account = named.shift()!.index
   const category = found.account !== undefined || named.length < 2 ? named[0] : named[1]
   if (category) found.category = category.index
 
