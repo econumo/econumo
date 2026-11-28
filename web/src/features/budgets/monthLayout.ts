@@ -17,11 +17,22 @@ export const THIRD_COL = 'flex w-20 shrink-0 justify-end pr-2 text-right tabular
  *  Budget view's three fixed ones. */
 export type LineLayout =
   | { kind: 'budget' }
-  /** crosshairCol: the selected cell's column, highlighted on every line (-1 = none) */
+  /** crosshairCol: the clicked or selected column, highlighted on every line (-1 = none) */
+  /** crosshairRow: the clicked or selected line's crosshair key (null = none) */
   /** months / monthLabels: the visible months and their names, for per-month controls */
-  | { kind: 'plan'; cols: number; selectedCol: number; crosshairCol?: number; months?: string[]; monthLabels?: string[] }
+  | { kind: 'plan'; cols: number; selectedCol: number; crosshairCol?: number; crosshairRow?: string | null; months?: string[]; monthLabels?: string[] }
 export const LineLayoutContext = createContext<LineLayout>({ kind: 'budget' })
 export const useLineLayout = () => useContext(LineLayoutContext)
+
+/** A Plan line's crosshair hooks: the key a click on the line reports, and the row
+ *  mark while it is the crosshair's row. Nothing in the Budget view. */
+export function rowCrosshair(layout: LineLayout, key: string): { attrs: Record<string, string | undefined>; className: string } {
+  if (layout.kind !== 'plan') {
+    return { attrs: {}, className: '' }
+  }
+  const on = layout.crosshairRow === key
+  return { attrs: { 'data-crosshair-row': key, 'data-crosshair': on ? 'row' : undefined }, className: on ? ` ${PLAN_CROSSHAIR}` : '' }
+}
 // The Plan grid's line: no gap and no vertical padding, so each month's cells stack
 // edge to edge and the selected month's tint reads as one unbroken column. Its
 // horizontal padding is LINE's, which planVisibleCount measures as PLAN_LINE_PADDING_PX.

@@ -30,6 +30,7 @@ import {
   SECOND_COL,
   THIRD_COL,
   foldOnLineClick,
+  rowCrosshair,
   lineControlClass,
   useLineControls,
   useLineLayout,
@@ -213,6 +214,7 @@ function CellSum({ sumKey, index, name, value }: { sumKey: string; index: number
       aria-pressed={shown}
       aria-label={label}
       title={label}
+      data-cell-sum=""
       className="group/sum -mx-2 flex h-full min-w-0 flex-1 items-center justify-end gap-1 self-stretch px-2"
       onClick={() => toggle(key)}
     >
@@ -275,9 +277,11 @@ export function MonthSectionHeader({
       <span className="truncate">{label}</span>
     </button>
   )
+  const crosshair = rowCrosshair(layout, testId)
   return (
     <div
-      className={`${plan ? PLAN_LINE : LINE} ${FOLD_LINE} min-h-10 ${showSums ? 'text-sm text-muted-foreground' : 'text-[10.5px] uppercase tracking-wider text-muted-foreground'}`}
+      {...crosshair.attrs}
+      className={`${plan ? PLAN_LINE : LINE} ${FOLD_LINE} min-h-10 ${showSums ? 'text-sm text-muted-foreground' : 'text-[10.5px] uppercase tracking-wider text-muted-foreground'}${crosshair.className}`}
       data-testid={testId}
       onClick={foldOnLineClick(() => toggle(foldKey))}
     >
@@ -366,8 +370,13 @@ export function FolderLine({
     </>
   )
   const dashes = Array.from({ length: plan ? layout.cols : 3 }, (_, i) => <Dash key={i} />)
+  const crosshair = rowCrosshair(layout, `folder:${sumKey ?? name}`)
   return (
-    <header className={`${plan ? PLAN_LINE : LINE} ${FOLD_LINE} ${plan ? '' : FOLDER_INDENT} relative min-h-9 text-sm text-muted-foreground`} onClick={foldOnLineClick(onToggle)}>
+    <header
+      {...crosshair.attrs}
+      className={`${plan ? PLAN_LINE : LINE} ${FOLD_LINE} ${plan ? '' : FOLDER_INDENT} relative min-h-9 text-sm text-muted-foreground${crosshair.className}`}
+      onClick={foldOnLineClick(onToggle)}
+    >
       {plan ? (
         <span {...nameCell} className={`${PLAN_NAME_COL} ${FOLDER_INDENT} ${nameCell?.className ?? ''}`.trim()}>
           {nameParts}
@@ -412,10 +421,16 @@ export function TotalLine({
   negative?: boolean | boolean[]
   actionsColumn: boolean
 }) {
-  const plan = useLineLayout().kind === 'plan'
+  const layout = useLineLayout()
+  const plan = layout.kind === 'plan'
   const isNegative = (i: number) => (Array.isArray(negative) ? !!negative[i] : negative)
+  const crosshair = rowCrosshair(layout, testId)
   return (
-    <div className={plan ? `${PLAN_LINE} min-h-8 hover:bg-accent/50` : `${LINE} min-h-8 rounded-md py-0.5 hover:bg-accent/50`} data-testid={testId}>
+    <div
+      {...crosshair.attrs}
+      className={`${plan ? `${PLAN_LINE} min-h-8 hover:bg-accent/50` : `${LINE} min-h-8 rounded-md py-0.5 hover:bg-accent/50`}${crosshair.className}`}
+      data-testid={testId}
+    >
       <span className={`${plan ? PLAN_NAME_COL : NAME_COL} text-sm ${strong ? '' : 'text-muted-foreground'}`}>
         <span className="truncate">{label}</span>
       </span>
