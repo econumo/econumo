@@ -498,9 +498,12 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const planUnfolded = useBudgetPeriodStore((s) => s.planUnfoldedElements)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   // A click on a spot the cursor never stops on (a name, a section, folder, child or
-  // totals line, a month header) moves the crosshair there and drops the selection.
-  // row: a line's crosshair key, null for a month header; col: -1 for a name.
-  const [spot, setSpot] = useState<{ row: string | null; col: number } | null>(null)
+  // totals line, a month header) moves the crosshair there; the selection stays for
+  // the keyboard, and the crosshair returns to it once it moves (`over` is the
+  // selection the click was made over). row: a line's crosshair key, null for a
+  // month header; col: -1 for a name.
+  const [clickedSpot, setSpot] = useState<{ row: string | null; col: number; over: PlanSelection | null } | null>(null)
+  const spot = clickedSpot && clickedSpot.over === selection ? clickedSpot : null
   // Desktop: every selected cell once a drag, Shift+click or Ctrl/⌘+click takes in
   // more than the active one — empty while one cell is selected. It is only read,
   // never written through: typing, Delete, paste and fill act on the active cell.
@@ -629,9 +632,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   useEffect(() => {
     setPicked([])
   }, [visibleMonths, isCompact, setPicked])
-  // the selected cell's row and month column, else the clicked spot's, marked across the grid
-  const crosshairCol = selection ? selection.col : (spot?.col ?? -1)
-  const crosshairRow = selection ? selection.rowKey : (spot?.row ?? null)
+  // the clicked spot's row and month column, else the selected cell's, marked across the grid
+  const crosshairCol = spot ? spot.col : (selection?.col ?? -1)
+  const crosshairRow = spot ? spot.row : (selection?.rowKey ?? null)
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   // The uncategorized row's synthetic id names no real element the server would
   // accept, so it gets no comment entry point at all — guarded here too since the
@@ -1664,9 +1667,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!line && !column) {
       return
     }
-    setSpot({ row: line?.dataset.crosshairRow ?? null, col: column ? Number(column.dataset.col) : -1 })
-    setSelection(null)
-    setPicked([])
+    setSpot({ row: line?.dataset.crosshairRow ?? null, col: column ? Number(column.dataset.col) : -1, over: selection })
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {

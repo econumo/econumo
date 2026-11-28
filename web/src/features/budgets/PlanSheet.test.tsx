@@ -3550,13 +3550,18 @@ it('selecting a cell highlights its whole row and its whole month column', async
   }
   expect(document.querySelector('[data-row-id="cat-food:1"]')!.querySelector('[data-crosshair="row"]')).toBeNull()
 
-  // a name is no stop, but it still takes the crosshair: Food's row, no column, and
-  // the selection is dropped
+  // a name is no stop, but it still takes the crosshair: Food's row, no column; the
+  // selection stays on Living's July for the keyboard
   await user.click(within(document.querySelector('[data-row-id="cat-food:1"]') as HTMLElement).getByTitle('Food'))
   expect(document.querySelector('[data-row-id="cat-food:1"]')!.querySelector('[data-crosshair="row"]')).not.toBeNull()
   expect(row.closest('[data-crosshair="row"]')).toBeNull()
   expect(sheet.querySelector('[data-crosshair="col"]')).toBeNull()
-  expect(sheet.querySelector('[role="gridcell"][aria-selected="true"]')).toBeNull()
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
+
+  // moving the selection brings the crosshair back to it
+  fireEvent.keyDown(sheet, { key: 'ArrowRight' })
+  expect(screen.getByTestId('plan-cell-pe1:2')).toHaveAttribute('data-crosshair', 'col')
+  expect(row.closest('[data-crosshair="row"]')).not.toBeNull()
 })
 
 it('a click on a month header or a line no cursor stops on still marks its row and column', async () => {

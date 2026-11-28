@@ -1792,11 +1792,13 @@ and on tablet/phone only with a hardware keyboard.
       highlights its whole row and its whole month column — the month
       header, section/folder lines, every row and the totals; moving the
       selection moves both. A click anywhere else in the grid moves the
-      highlight too and drops the selection: a month header highlights its
+      highlight too (the selected cell keeps its ring for the keyboard, and
+      the highlight returns to it once the selection moves): a month header highlights its
       column alone, a name its row alone, and a month of a section, folder,
       envelope-category, tag-group or totals line both that line and that
-      month. ↑ / ↓ / ← / → after such a click select a cell in the clicked
-      month (in the clicked row when it is an element row).
+      month. With nothing selected yet, ↑ / ↓ / ← / → after such a click
+      select a cell in the clicked month (in the clicked row when it is an
+      element row).
 - [ ] Plan keyboard stops, desktop: the keyboard cursor lives only in month
       cells. A name is never selected (by click or keys) and a click on it
       only highlights its row — only its chevron folds the row's breakdown, and editing
