@@ -3586,6 +3586,12 @@ it('a click on a month header or a line no cursor stops on still marks its row a
   expect(header()[2]).toHaveAttribute('data-crosshair', 'col')
   expect(header()[1]).not.toHaveAttribute('data-crosshair')
 
+  // a folder line's month: its month Σ fills the cell and still marks the line and month
+  await user.click(within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0].querySelector('[data-col="0"] button')!)
+  expect(screen.getByTestId('plan-folder-bf1').querySelector('[data-crosshair="row"]')).not.toBeNull()
+  expect(header()[0]).toHaveAttribute('data-crosshair', 'col')
+  await user.click(screen.getByTestId('plan-total-expenses').querySelector('[data-col="2"]')!)
+
   // the click focuses the grid, and the arrows start from the clicked column
   expect(sheet).toHaveFocus()
   await user.keyboard('{ArrowDown}')

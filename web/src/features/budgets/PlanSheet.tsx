@@ -1666,13 +1666,14 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     const afterDrag = dragSelected.current
     dragSelected.current = false
     // a line's own controls (its chevron, Σ, ⋮) leave the crosshair where it is; a
-    // folder's or section's name is its fold button and still takes it
+    // folder's or section's name is its fold button, and a month's Σ fills its cell,
+    // so both still take it
     const control = target.closest('button, [role="button"], input')
     if (
       afterDrag ||
       !e.currentTarget.contains(target) ||
       target.closest('[role="gridcell"][aria-selected]') ||
-      (control && !control.hasAttribute('data-fold'))
+      (control && !control.hasAttribute('data-fold') && !control.hasAttribute('data-cell-sum'))
     ) {
       return
     }

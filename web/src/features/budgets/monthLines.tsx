@@ -214,6 +214,7 @@ function CellSum({ sumKey, index, name, value }: { sumKey: string; index: number
       aria-pressed={shown}
       aria-label={label}
       title={label}
+      data-cell-sum=""
       className="group/sum -mx-2 flex h-full min-w-0 flex-1 items-center justify-end gap-1 self-stretch px-2"
       onClick={() => toggle(key)}
     >
