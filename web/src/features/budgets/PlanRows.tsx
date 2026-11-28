@@ -178,6 +178,7 @@ export function SumCell({
   ctx,
   fmt,
   balance = false,
+  emptyDash = false,
 }: {
   index: number
   sum: { actual: string; planned: string } | null
@@ -186,6 +187,8 @@ export function SumCell({
   fmt: (v: string) => string
   /** the Savings line: its figure is the total month-end balance, in every month */
   balance?: boolean
+  /** a sum the user asked for: with nothing to sum it reads as a dash, so the ask shows */
+  emptyDash?: boolean
 }) {
   const plan = sum && !isZero(sum.planned) ? sum.planned : null
   const { actual, dash } = balance
@@ -197,8 +200,7 @@ export function SumCell({
         <span className="min-w-0 truncate text-xs" title={fmt(actual)}>
           {fmt(actual)}
         </span>
-      ) : dash || plan === null ? (
-        // a month with nothing to sum still reads as a dash: a shown sum must show
+      ) : dash || (emptyDash && plan === null) ? (
         <span className="text-xs">
           <Dash />
         </span>

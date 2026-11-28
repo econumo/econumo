@@ -1114,7 +1114,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const fmtBudget = (v: string) => moneyFormat(v, planCurrency, { showCurrency: false, useNativePrecision: false })
   const sumCells = (sums: GroupSums | undefined, balance = false): ReactNode[] =>
     visibleMonths.map((m, i) => (
-      <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} balance={balance} />
+      <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} balance={balance} emptyDash={!balance} />
     ))
 
   const folderMenu = (f: PlanFolderSection, side: BudgetFolderSide) =>
