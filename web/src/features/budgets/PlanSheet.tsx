@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ClipboardEvent, CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { ClipboardEvent, CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
@@ -497,6 +497,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
   const planUnfolded = useBudgetPeriodStore((s) => s.planUnfoldedElements)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
+  // A click on a spot the cursor never stops on (a name, a section, folder, child or
+  // totals line, a month header) moves the crosshair there and drops the selection.
+  // row: a line's crosshair key, null for a month header; col: -1 for a name.
+  const [spot, setSpot] = useState<{ row: string | null; col: number } | null>(null)
   // Desktop: every selected cell once a drag, Shift+click or Ctrl/⌘+click takes in
   // more than the active one — empty while one cell is selected. It is only read,
   // never written through: typing, Delete, paste and fill act on the active cell.
@@ -625,8 +629,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   useEffect(() => {
     setPicked([])
   }, [visibleMonths, isCompact, setPicked])
-  // the selected cell's month column, marked down the whole grid
-  const crosshairCol = selection ? selection.col : -1
+  // the selected cell's row and month column, else the clicked spot's, marked across the grid
+  const crosshairCol = selection ? selection.col : (spot?.col ?? -1)
+  const crosshairRow = selection ? selection.rowKey : (spot?.row ?? null)
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   // The uncategorized row's synthetic id names no real element the server would
   // accept, so it gets no comment entry point at all — guarded here too since the
@@ -666,8 +671,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     [startDay, i18n.language],
   )
   const layout = useMemo(
-    () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
-    [visible, crosshairCol, visibleMonths, monthLabel],
+    () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, crosshairRow, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
+    [visible, crosshairCol, crosshairRow, visibleMonths, monthLabel],
   )
   const sheetPlanTarget: SheetTarget | null = sheetCellTarget
     ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) }
@@ -981,6 +986,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       selected: cur,
       selectedCol: -1,
       crosshairCol,
+      crosshairRow,
       currencies,
       cellExchange: (i: number) => planMonthExchange(plan, currencies, i),
       baseCurrencyId: budget.meta.currencyId,
@@ -1022,6 +1028,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     selectedDate,
     cur,
     crosshairCol,
+    crosshairRow,
     currencies,
     budget.meta,
     userId,
@@ -1645,6 +1652,23 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       .catch(() => {})
   }
 
+  function handleSpotClick(e: ReactMouseEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement
+    // a portaled menu's click arrives through the React tree; an element's month cell
+    // selects itself
+    if (!e.currentTarget.contains(target) || target.closest('[role="gridcell"][aria-selected]')) {
+      return
+    }
+    const line = target.closest<HTMLElement>('[data-crosshair-row]')
+    const column = target.closest<HTMLElement>('[data-col]')
+    if (!line && !column) {
+      return
+    }
+    setSpot({ row: line?.dataset.crosshairRow ?? null, col: column ? Number(column.dataset.col) : -1 })
+    setSelection(null)
+    setPicked([])
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     // a control already handled it (a ⋮ trigger opens its menu on Enter or ArrowDown)
     if (e.defaultPrevented) {
@@ -1697,7 +1721,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!selection || !flatRows.some((r) => r.rowKey === selection.rowKey)) {
       if (arrowKeys.includes(e.key)) {
         e.preventDefault()
-        setSelection({ rowKey: flatRows[0].rowKey, col: 0 })
+        // the cursor starts from the clicked spot: its row when the cursor can stop
+        // there, its month column
+        const spotRow = spot?.row
+        const row = spotRow && flatRows.some((r) => r.rowKey === spotRow) ? spotRow : flatRows[0].rowKey
+        setSelection({ rowKey: row, col: Math.max(spot?.col ?? 0, 0) })
       }
       return
     }
@@ -1784,6 +1812,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         ref={attachContainer}
         role="grid"
         tabIndex={0}
+        onClick={handleSpotClick}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
         onBlur={handleBlur}

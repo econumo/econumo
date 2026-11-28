@@ -1791,11 +1791,15 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Plan crosshair: selecting a month cell (click or arrows) lightly
       highlights its whole row and its whole month column — the month
       header, section/folder lines, every row and the totals; moving the
-      selection moves both. Clicking a name
-      or a folder line highlights nothing new (the previous selection stays).
+      selection moves both. A click anywhere else in the grid moves the
+      highlight too and drops the selection: a month header highlights its
+      column alone, a name its row alone, and a month of a section, folder,
+      envelope-category, tag-group or totals line both that line and that
+      month. ↑ / ↓ / ← / → after such a click select a cell in the clicked
+      month (in the clicked row when it is an element row).
 - [ ] Plan keyboard stops, desktop: the keyboard cursor lives only in month
       cells. A name is never selected (by click or keys) and a click on it
-      does nothing — only its chevron folds the row's breakdown, and editing
+      only highlights its row — only its chevron folds the row's breakdown, and editing
       the element is the row ⋮ menu's Edit (Enter, Space, ← / → and Ctrl/⌘+C
       on the grid never open a dialog, fold a row or copy a name). Section
       and folder lines (including "No folder") are no stops either: ↑ / ↓ go

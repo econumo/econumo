@@ -3550,12 +3550,41 @@ it('selecting a cell highlights its whole row and its whole month column', async
   }
   expect(document.querySelector('[data-row-id="cat-food:1"]')!.querySelector('[data-crosshair="row"]')).toBeNull()
 
-  // a name is no stop: clicking Food's highlights nothing new, the crosshair stays
-  // on Living's July
+  // a name is no stop, but it still takes the crosshair: Food's row, no column, and
+  // the selection is dropped
   await user.click(within(document.querySelector('[data-row-id="cat-food:1"]') as HTMLElement).getByTitle('Food'))
-  expect(document.querySelector('[data-row-id="cat-food:1"]')!.querySelector('[data-crosshair="row"]')).toBeNull()
-  expect(row.closest('[data-crosshair="row"]')).not.toBeNull()
-  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('data-crosshair', 'col')
+  expect(document.querySelector('[data-row-id="cat-food:1"]')!.querySelector('[data-crosshair="row"]')).not.toBeNull()
+  expect(row.closest('[data-crosshair="row"]')).toBeNull()
+  expect(sheet.querySelector('[data-crosshair="col"]')).toBeNull()
+  expect(sheet.querySelector('[role="gridcell"][aria-selected="true"]')).toBeNull()
+})
+
+it('a click on a month header or a line no cursor stops on still marks its row and column', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const sheet = screen.getByTestId('plan-sheet')
+  const header = () => within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+
+  // the month header: its column alone
+  await user.click(header()[1])
+  for (const cell of Array.from(sheet.querySelectorAll('[data-col="1"]'))) {
+    expect(cell).toHaveAttribute('data-crosshair', 'col')
+  }
+  expect(sheet.querySelector('[data-crosshair="row"]')).toBeNull()
+
+  // a totals line's month: that line and that month
+  await user.click(screen.getByTestId('plan-total-expenses').querySelector('[data-col="2"]')!)
+  expect(screen.getByTestId('plan-total-expenses')).toHaveAttribute('data-crosshair', 'row')
+  expect(header()[2]).toHaveAttribute('data-crosshair', 'col')
+  expect(header()[1]).not.toHaveAttribute('data-crosshair')
+
+  // the arrows start from the clicked column
+  fireEvent.keyDown(sheet, { key: 'ArrowDown' })
+  const selected = sheet.querySelector('[role="gridcell"][aria-selected="true"]')
+  expect(selected).toHaveAttribute('data-col', '2')
 })
 
 it('one cell of an open line shows its own sum from its Σ, and hides it on a second click', async () => {

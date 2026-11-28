@@ -107,8 +107,10 @@ export interface GridCtx {
   selected: string
   /** a tinted column, -1 for none (the Plan grid tints none) */
   selectedCol: number
-  /** the selected cell's column, highlighted down the grid; -1 when nothing is selected */
+  /** the clicked or selected column, highlighted down the grid; -1 for none */
   crosshairCol: number
+  /** the clicked or selected line's crosshair key (an element's or child's row key); null for none */
+  crosshairRow: string | null
   currencies: CurrencyDto[]
   /** a window month's rates between any two currencies */
   cellExchange: (monthIndex: number) => (fromCurrencyId: Id, toCurrencyId: Id, amount: string) => string
@@ -228,7 +230,13 @@ export const ChildRow = memo(function ChildRow({
   const rk = `${child.id}:${child.type}`
   const fmt = (v: string) => moneyFormat(v, parentCurrency, { showCurrency: false, useNativePrecision: false })
   return (
-    <div role="row" data-row-id={rk} className={`${PLAN_LINE} min-h-8 text-sm text-muted-foreground hover:bg-accent/50`}>
+    <div
+      role="row"
+      data-row-id={rk}
+      data-crosshair-row={rk}
+      data-crosshair={ctx.crosshairRow === rk ? 'row' : undefined}
+      className={`${PLAN_LINE} min-h-8 text-sm text-muted-foreground hover:bg-accent/50${ctx.crosshairRow === rk ? ` ${PLAN_CROSSHAIR}` : ''}`}
+    >
       <span role="gridcell" className={`${PLAN_NAME_COL} ${CHILD_INDENT[level]}`} title={displayName}>
         <EntityIcon name={child.icon} className="text-lg" />
         <span className="min-w-0 flex-1 truncate">{displayName}</span>
@@ -283,7 +291,11 @@ export function PlanTagGroup({ groupKey, name, rows, ctx, children }: { groupKey
   return (
     <div data-testid={`plan-tag-group-${groupKey}`}>
       <div role="row" data-plan-line="" className="border-b border-border/60">
-        <div className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50`}>
+        <div
+          data-crosshair-row={groupKey}
+          data-crosshair={ctx.crosshairRow === groupKey ? 'row' : undefined}
+          className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50${ctx.crosshairRow === groupKey ? ` ${PLAN_CROSSHAIR}` : ''}`}
+        >
           <div role="rowheader" className={`${PLAN_NAME_COL} ${ROW_INDENT[level]} py-1`}>
             <button
               type="button"
@@ -363,8 +375,9 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
     <div data-row-id={rk} data-plan-line="" className="border-b border-border/60">
       <div
         role="row"
-        data-crosshair={ctx.selection?.rowKey === rk ? 'row' : undefined}
-        className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50${ctx.selection?.rowKey === rk ? ` ${PLAN_CROSSHAIR}` : ''}`}
+        data-crosshair-row={rk}
+        data-crosshair={ctx.crosshairRow === rk ? 'row' : undefined}
+        className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50${ctx.crosshairRow === rk ? ` ${PLAN_CROSSHAIR}` : ''}`}
       >
         {/* the name is not a cell the cursor visits: the keyboard walks the months */}
         <div
