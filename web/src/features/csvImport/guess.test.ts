@@ -75,7 +75,7 @@ describe('guessAnswers', () => {
     expect(a.amount).toMatchObject({ mode: 'single', column: 1 })
   })
 
-  it('maps a Russian file: the longest varied text is the description, repeated short names the category', () => {
+  it('maps a Russian file: the longest varied text is the description, a lone repeating column the account (the user has two)', () => {
     const a = guess(
       'Дата;Сумма;Категория;Описание;Получатель\n' +
         '04.03.2026;-350,00;Кафе;Обед с коллегами в центре;Шоколадница\n' +
@@ -88,7 +88,8 @@ describe('guessAnswers', () => {
     expect(a.date).toEqual({ column: 0, order: 'dmy' })
     expect(a.amount).toMatchObject({ mode: 'single', column: 1, sep: ',' })
     expect(a.description).toBe(3)
-    expect(a.extras).toMatchObject({ category: 2, payee: 4, tag: null, labels: null })
+    expect(a.account).toMatchObject({ kind: 'column', column: 2 })
+    expect(a.extras).toMatchObject({ category: null, payee: 4, tag: null, labels: null })
   })
 
   it('takes the repeating column with fewer names for the account, the other for the category', () => {
@@ -103,6 +104,32 @@ describe('guessAnswers', () => {
     expect(a.extras.category).toBeNull()
     expect(a.extras.payee).toBeNull()
     expect(a.description).toBeNull()
+  })
+
+  describe('the account column of a file with no currency', () => {
+    const text =
+      'Date,Amount,Account,Description\n2026-11-01,-12.50,Everyday Card,Coffee\n2026-11-02,-40.00,Everyday Card,Groceries\n' +
+      '2026-11-03,2500.00,Cash,Salary\n2026-11-04,-8.00,Travel Wallet,Bus\n2026-11-05,-3.20,Travel Wallet,Snack\n'
+
+    it('takes the repeating column with the fewest names for the account, not the category', () => {
+      const a = guess(text)
+      expect(a.account).toMatchObject({ kind: 'column', column: 2, currencyColumn: null })
+      expect(a.extras.category).toBeNull()
+      expect(a.description).toBe(3)
+    })
+
+    it('prefers the column whose values are the names of existing accounts', () => {
+      const rows = ['Food,Main', 'Fuel,main', 'Food,Savings', 'Fuel,Main', 'Food,Main', 'Fuel,Main', 'Food,Savings', 'Fuel,Main']
+      const f = 'd,v,kind,acct,memo\n' + rows.map((r, i) => `2026-03-0${i + 1},-${i + 1}.00,${r},paid at shop ${'abcdefgh'[i]}`).join('\n') + '\n'
+      const a = guess(f, { writableAccountIds: ['acc-1', 'acc-2'], writableAccountNames: ['Main', 'Savings'] })
+      expect(a.account).toMatchObject({ kind: 'column', column: 3 })
+      expect(a.extras.category).toBe(2)
+    })
+
+    it('keeps the only account when no column names it', () => {
+      const a = guess(text, { writableAccountIds: ['acc-1'], writableAccountNames: ['Wallet'] })
+      expect(a.account).toEqual({ kind: 'existing', accountId: 'acc-1' })
+    })
   })
 
   it('defaults the account by how many writable accounts the user has', () => {

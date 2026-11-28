@@ -551,7 +551,9 @@ wizard's `suggest-import-columns`). System prompts are Markdown files in the top
 - **Data allowlist, every prompt**: category names and types; payee, tag, label and account
   names; currency codes; language; timezone; a transaction's type and the bank's payee text;
   opaque per-request keys (`a1`, `c1`, `p1`); CSV column header names and browser-computed
-  column types. NEVER amounts, balances, plans, dates, descriptions/memos, entity ids, user
+  column types (accepted exception, decided 2026-11-27: with no header row, first-row cells may
+  reach the AI when they read as neither dates nor numbers; the content check in
+  `web/src/features/csvImport` catches the rest). NEVER amounts, balances, plans, dates, descriptions/memos, entity ids, user
   names or emails.
 - A user with the `ai` option off sends nothing; the option is re-read right before each
   provider call.

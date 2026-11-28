@@ -170,8 +170,6 @@ it('lists the accounts a per-row column names as sentences; only a new one can c
   renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Cash\n2026-01-03,7.00,Travel card\n2026-01-04,1.00, cash \n')
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
-  await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))
-  await user.click(screen.getByRole('radio', { name: /from “Wallet”/ }))
   const rows = within(perRowList()).getAllByRole('listitem')
   expect(rows).toHaveLength(2)
   expect(rows[0]).toHaveTextContent('Cash · 2 transactions Your existing account · USD')
@@ -184,7 +182,7 @@ it('lists the accounts a per-row column names as sentences; only a new one can c
 })
 
 it('Each row says which account, with no column chosen yet, marks the Account step', async () => {
-  renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Cash\n')
+  renderWizard('Date,Amount,Wallet\n2026-01-02,-5.50,Trip\n')
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('radio', { name: 'Each row says which account' }))

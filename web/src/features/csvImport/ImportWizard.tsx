@@ -162,8 +162,10 @@ export function ImportWizard({ open, onClose, onComplete, initialFile }: ImportW
   const ready = !userQuery.isPending && !accountsQuery.isPending && !currenciesQuery.isPending
   useEffect(() => {
     if (!loaded || answers !== null || !ready) return
+    const writable = writableAccounts(accountsQuery.data ?? [], user?.id)
     const guessed = guessAnswers(loaded.file, loaded.profiles, {
-      writableAccountIds: writableAccounts(accountsQuery.data ?? [], user?.id).map((a) => a.id),
+      writableAccountIds: writable.map((a) => a.id),
+      writableAccountNames: writable.map((a) => a.name),
       userCurrencyId: userCurrencyId(user) ?? '',
       locale: navigator.language,
       currencies: currenciesQuery.data ?? [],

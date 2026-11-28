@@ -1,9 +1,10 @@
 import { detectDecimalSeparator, parseAmountCell } from './amounts'
 import type { ColumnProfile } from './columns'
 import { detectDateOrder, localeDateOrder, parseDateCell } from './dates'
-import { fileCurrencyId, withAccountCurrencies } from './fileCurrency'
+import { currencyColumn, fileCurrencyId, withAccountCurrencies } from './fileCurrency'
 import type { ParsedFile } from './parse'
 import type { AccountChoice, Role, StepId, WizardAnswers } from './prepare'
+import { nameKey } from './wizard'
 
 // The headers an Econumo export writes: fixed English names in every UI language.
 const EXPORT_COLUMNS = {
@@ -19,7 +20,7 @@ const EXPORT_COLUMNS = {
 } as const
 const EXPORT_HEADER = [...Object.values(EXPORT_COLUMNS), 'transaction_id']
 
-type GuessedRole = 'date' | 'amount' | 'amountIn' | 'amountOut' | 'description' | 'payee' | 'category'
+type GuessedRole = 'account' | 'date' | 'amount' | 'amountIn' | 'amountOut' | 'description' | 'payee' | 'category'
 
 export function isEconumoExport(file: ParsedFile): boolean {
   return EXPORT_HEADER.every((column) => file.header.includes(column))
@@ -27,6 +28,8 @@ export function isEconumoExport(file: ParsedFile): boolean {
 
 interface GuessContext {
   writableAccountIds: readonly string[]
+  // the names of those accounts: a column holding them is the file's account column
+  writableAccountNames?: readonly string[]
   userCurrencyId: string
   locale: string
   // resolves an Econumo export's account_currency codes; unknown codes get userCurrencyId
@@ -113,7 +116,7 @@ function splitsRows(a: (number | null)[], b: (number | null)[]): boolean {
 
 // Built from the values alone, never from header words: the file's headers can be in any
 // language. The AI, when it answers, refines what the user has not touched yet.
-function guessRoles(file: ParsedFile, profiles: ColumnProfile[]): { found: Partial<Record<GuessedRole, number>>; dual: boolean } {
+function guessRoles(file: ParsedFile, profiles: ColumnProfile[], ctx: GuessContext): { found: Partial<Record<GuessedRole, number>>; dual: boolean } {
   const found: Partial<Record<GuessedRole, number>> = {}
   let dual = false
 
@@ -146,7 +149,13 @@ function guessRoles(file: ParsedFile, profiles: ColumnProfile[]): { found: Parti
   const text = profiles.filter(isWords)
   const free = (p: ColumnProfile) => !Object.values(found).includes(p.index)
   const longest = (list: ColumnProfile[]) => list.reduce<ColumnProfile | undefined>((best, p) => (best === undefined || p.averageLength > best.averageLength ? p : best), undefined)
-  const varied = text.filter(mostlyDistinct)
+  // A column holding the names of the user's own accounts is the account column.
+  const accountNames = new Set((ctx.writableAccountNames ?? []).map(nameKey))
+  const accountHits = (p: ColumnProfile) => columnValues(file, p.index).filter((v) => accountNames.has(nameKey(v))).length
+  const byName = text.filter(free).map((p) => ({ p, hits: accountHits(p) })).filter((c) => c.hits > 0).sort((a, b) => b.hits - a.hits || a.p.index - b.p.index)[0]
+  if (byName) found.account = byName.p.index
+
+  const varied = text.filter((p) => free(p) && mostlyDistinct(p))
   const mostDistinct = Math.max(0, ...varied.map((p) => p.distinct))
   const description = longest(varied.filter((p) => p.distinct >= DESCRIPTION_SHARE * mostDistinct))
   if (description) found.description = description.index
@@ -154,7 +163,10 @@ function guessRoles(file: ParsedFile, profiles: ColumnProfile[]): { found: Parti
   // Of two repeating columns, the one with fewer names is taken for the account, which the
   // Account step asks about on its own.
   const named = text.filter((p) => free(p) && repeatsFew(p)).sort((a, b) => a.distinct - b.distinct || a.index - b.index)
-  const category = named.length >= 2 ? named[1] : named[0]
+  // With no account of the user's own to tell by, the repeating column with the fewest names
+  // is the account (unless the user has exactly one, which the file is then taken to be for).
+  if (found.account === undefined && ctx.writableAccountIds.length !== 1 && named.length > 0) found.account = named.shift()!.index
+  const category = found.account !== undefined || named.length < 2 ? named[0] : named[1]
   if (category) found.category = category.index
 
   const payee = text
@@ -167,10 +179,24 @@ function guessRoles(file: ParsedFile, profiles: ColumnProfile[]): { found: Parti
 export function guessAnswers(file: ParsedFile, profiles: ColumnProfile[], ctx: GuessContext): WizardAnswers {
   if (isEconumoExport(file)) return exportAnswers(file, ctx)
 
-  const { found: roles, dual } = guessRoles(file, profiles)
+  const { found: roles, dual } = guessRoles(file, profiles, ctx)
   const writable = ctx.writableAccountIds
+  const taken = new Set(Object.values(roles))
   const account: AccountChoice | null =
-    writable.length === 0
+    roles.account !== undefined
+      ? withAccountCurrencies(
+          file,
+          {
+            kind: 'column',
+            column: roles.account,
+            currencyColumn: currencyColumn(file, ctx.currencies ?? [], taken),
+            currencyId: ctx.userCurrencyId,
+            overrides: {},
+            currencies: {},
+          },
+          ctx.currencies ?? [],
+        )
+      : writable.length === 0
       ? { kind: 'new', name: '', currencyId: fileCurrencyId(file, ctx.currencies ?? []) ?? ctx.userCurrencyId }
       : writable.length === 1
         ? { kind: 'existing', accountId: writable[0] }

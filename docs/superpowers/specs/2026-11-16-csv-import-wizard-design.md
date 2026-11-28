@@ -310,7 +310,7 @@ Only:
   for numbers, whether negatives occur);
 - the user's language.
 
-Never a cell value: no amounts, dates, descriptions or payee text. This adds "CSV column
+Never a cell value: no amounts, dates, descriptions or payee text. One accepted exception (decided 2026-11-27): a file with no header row whose first-row date and amount cells read as neither dates nor numbers (e.g. `someday,n/a,Coffee`) has that row taken for a header, so those words reach the AI; a named test records the gap. This adds "CSV column
 header names and computed column types" to the AI data allowlist in CLAUDE.md, with a guard
 test on the prompt's exact key set like every other prompt builder.
 
