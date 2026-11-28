@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
-import { AnswerRow } from '../controls'
+import { AnswerLines, AnswerRow } from '../controls'
 import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
 
 export function DescriptionStep({ state, setAnswers, choosing, change, closeChoices }: StepBodyProps) {
@@ -31,8 +31,7 @@ export function DescriptionStep({ state, setAnswers, choosing, change, closeChoi
         />
       ) : (
         <AnswerRow from={description === null ? null : fromName(state.profiles[description], state.profiles, t)} onChange={change}>
-          {examples.values.join(' · ')}
-          {examples.more ? ' …' : ''}
+          <AnswerLines lines={examples.values} more={examples.restRows} />
         </AnswerRow>
       )}
     </div>

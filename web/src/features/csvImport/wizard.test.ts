@@ -73,8 +73,9 @@ it('a step shows its answer first only when the answer reads real values', () =>
 })
 
 it('firstDistinct takes the first few different values and says whether there are more', () => {
-  expect(firstDistinct(['a', '', 'a', 'b', 'c'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: false })
-  expect(firstDistinct(['a', 'b', 'c', 'd'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: true })
+  expect(firstDistinct(['a', '', 'a', 'b', 'c'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: false, rest: 0, restRows: 0 })
+  expect(firstDistinct(['a', 'b', 'c', 'd'], (v) => v)).toEqual({ values: ['a', 'b', 'c'], more: true, rest: 1, restRows: 1 })
+  expect(firstDistinct(['a', 'b', 'c', 'd', 'd', 'e', 'a'], (v) => v)).toMatchObject({ rest: 2, restRows: 3 })
 })
 
 const text = (index: number, over: Partial<ColumnProfile> = {}): ColumnProfile => ({

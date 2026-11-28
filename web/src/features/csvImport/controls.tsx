@@ -74,6 +74,21 @@ export function AnswerRow({ id, from, onChange, children }: { id?: string; from?
   )
 }
 
+/** the example values of an answer, one per line, then how many more the file has */
+export function AnswerLines({ lines, more, label }: { lines: ReactNode[]; more: number; label?: string }) {
+  const { t } = useTranslation()
+  return (
+    <ul aria-label={label} className="flex flex-col">
+      {lines.map((line, i) => (
+        <li key={i} className="truncate">
+          {line}
+        </li>
+      ))}
+      {more > 0 ? <li className="text-sm text-muted-foreground">{t('transactions.import_wizard.names_more', { count: more })}</li> : null}
+    </ul>
+  )
+}
+
 /** closes a list of choices that takes more than one pick */
 export function ChoicesDone({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation()

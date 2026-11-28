@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
-import { AnswerRow } from '../controls'
+import { AnswerLines, AnswerRow } from '../controls'
 import { NAMES_SHOWN, NamesList } from '../NamesList'
 import { useNameResolution } from '../ownerLists'
 import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
@@ -40,8 +40,7 @@ function DetailStep({ role, state, setAnswers, choosing, change, closeChoices, l
         <AnswerRow onChange={change}>{k(likely.length === 0 ? 'none_found' : 'left_out')}</AnswerRow>
       ) : (
         <AnswerRow from={fromName(state.profiles[column], state.profiles, t)} onChange={change}>
-          {examples.values.join(' · ')}
-          {examples.more ? ' …' : ''}
+          <AnswerLines lines={examples.values} more={examples.rest} />
         </AnswerRow>
       )}
       {list}

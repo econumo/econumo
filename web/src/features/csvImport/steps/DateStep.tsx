@@ -5,7 +5,7 @@ import { formatDay } from '../accountView'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
-import { AnswerRow, Field, Segmented, SkippedNote } from '../controls'
+import { AnswerLines, AnswerRow, Field, Segmented, SkippedNote } from '../controls'
 import { detectDateOrder, parseDateCell, type DateOrder } from '../dates'
 import { columnValues } from '../guess'
 import { firstDistinct, hasGuess, type StepBodyProps } from '../wizard'
@@ -60,8 +60,7 @@ export function DateStep({ state, setAnswers, choosing, change, closeChoices }: 
         />
       ) : (
         <AnswerRow from={date.column === null ? null : fromName(state.profiles[date.column], state.profiles, t)} onChange={change}>
-          {days.values.map((day) => formatDay(day, i18n.language)).join(' · ')}
-          {days.more ? ' …' : ''}
+          <AnswerLines lines={days.values.map((day) => formatDay(day, i18n.language))} more={days.restRows} />
         </AnswerRow>
       )}
       {ambiguous ? (

@@ -416,8 +416,8 @@ it('the amount step answers with the first amounts as they will be added', () =>
   expect(items).toHaveLength(2)
   expect(items[0]).toHaveTextContent(/^−4\.5/)
   expect(items[1]).toHaveTextContent(/^\+100/)
-  expect(items[1]).toHaveClass('text-income')
-  expect(items[0]).not.toHaveClass('text-income')
+  expect(items[1].firstElementChild).toHaveClass('text-income')
+  expect(items[0].firstElementChild).not.toHaveClass('text-income')
 })
 
 it('rows whose amount cannot be read are a quiet note, not a warning', () => {
@@ -444,7 +444,7 @@ it('the spending example is written in the file’s decimal notation', async () 
 it('the description step lists no names from the file', () => {
   render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,REWE Markt\n'} Step={DescriptionStep} roles={{ description: 'Memo' }} onSet={vi.fn()} open={false} />)
   expect(screen.getByText('REWE Markt')).toBeInTheDocument()
-  expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  expect(screen.getAllByRole('listitem')).toHaveLength(1)
   expect(screen.queryByText(/in your file/)).not.toBeInTheDocument()
 })
 
@@ -452,7 +452,8 @@ it('a guessed answer shows no choices; Change puts them in its place without ans
   const onSet = vi.fn()
   render(<StepHarness text={'Date,Amount,Memo\n2026-01-02,-5,REWE Markt\n2026-01-03,7,Gehalt\n'} Step={DescriptionStep} roles={{ description: 'Memo' }} onSet={onSet} open={false} />)
   const user = userEvent.setup()
-  expect(screen.getByText('REWE Markt · Gehalt')).toBeInTheDocument()
+  expect(screen.getByText('REWE Markt')).toBeInTheDocument()
+  expect(screen.getByText('Gehalt')).toBeInTheDocument()
   expect(screen.getByText('from “Memo”')).toBeInTheDocument()
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Change' }))
@@ -518,4 +519,10 @@ it('a file without a header row shows its values with no names beside them', () 
   render(<ColumnChoices profiles={profileColumns(file)} label="Which?" selected={2} onSelect={vi.fn()} candidates={[2]} {...notes} />)
   expect(screen.getByRole('radio', { name: 'Coffee · Salary' })).toBeChecked()
   expect(screen.queryByText(/from “/)).not.toBeInTheDocument()
+})
+
+it('a long answer shows three values, one per line, then how many more the file has', () => {
+  const rows = ['A', 'B', 'C', 'D', 'E', 'E'].map((memo, i) => '2026-01-0' + (i + 1) + ',-5,' + memo).join('\n')
+  render(<StepHarness text={'Date,Amount,Memo\n' + rows + '\n'} Step={DescriptionStep} roles={{ description: 'Memo' }} onSet={vi.fn()} open={false} />)
+  expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['A', 'B', 'C', 'and 3 more'])
 })

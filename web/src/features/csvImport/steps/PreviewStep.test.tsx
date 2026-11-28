@@ -356,7 +356,7 @@ it('the AI reads only headers and types, and its answer is in every step it name
   await user.click(screen.getByRole('button', { name: /^Date/ }))
   expect(screen.getByText('from “Booking date”')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /^Description/ }))
-  expect(screen.getByText('Coffee · Salary')).toBeInTheDocument()
+  expect(within(screen.getByText('from “Info”').parentElement as HTMLElement).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Coffee', 'Salary'])
   expect(screen.getByText('from “Info”')).toBeInTheDocument()
   expect(asked).toEqual([
     { name: 'Booking date', type: 'date', negatives: false },

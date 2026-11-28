@@ -1,4 +1,4 @@
-import { Fragment, useId, useMemo, useRef } from 'react'
+import { useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Switch } from '@/components/ui/switch'
 import { pluralPick } from '@/lib/plural'
@@ -7,7 +7,7 @@ import { formatSigned, useAccountView } from '../accountView'
 import { ColumnChoices } from '../ColumnChoices'
 import { columnTags, fromName } from '../columnLabels'
 import { candidates } from '../candidates'
-import { AnswerRow, ChoicesDone, Field, Segmented, SkippedNote } from '../controls'
+import { AnswerLines, AnswerRow, ChoicesDone, Field, Segmented, SkippedNote } from '../controls'
 import { detectDecimalSeparator, parseAmountCell, type DecimalSeparator } from '../amounts'
 import { columnValues } from '../guess'
 import type { ParsedFile } from '../parse'
@@ -135,20 +135,14 @@ export function AmountStep({ state, setAnswers, choosing, change, closeChoices, 
         </div>
       ) : (
         <AnswerRow from={from} onChange={change}>
-          <span aria-label={t('transactions.import_wizard.amount.example_label')} role="list" className="inline">
-            {examples.map((row, i) => {
+          <AnswerLines
+            label={t('transactions.import_wizard.amount.example_label')}
+            lines={examples.map((row) => {
               const signed = formatSigned(row.amount ?? '0', accountView(row).currency)
-              return (
-                <Fragment key={row.fileRow}>
-                  {i > 0 ? <span aria-hidden> · </span> : null}
-                  <span role="listitem" className={cn('tabular-nums whitespace-nowrap', signed.income && 'text-income')}>
-                    {signed.text}
-                  </span>
-                </Fragment>
-              )
+              return <span className={cn('tabular-nums', signed.income && 'text-income')}>{signed.text}</span>
             })}
-          </span>
-          {readable.length > examples.length ? ' …' : ''}
+            more={readable.length - examples.length}
+          />
         </AnswerRow>
       )}
       {unreadable > 0 && !missing ? (

@@ -126,16 +126,28 @@ export function missingAnswer(step: StepId, answers: WizardAnswers): boolean {
 
 const ANSWER_EXAMPLES = 3
 
-/** the first few different values `pick` reads from the rows, and whether there are more */
-export function firstDistinct<T>(items: T[], pick: (item: T) => string | null, count = ANSWER_EXAMPLES): { values: string[]; more: boolean } {
+/** the first few different values `pick` reads from the rows, whether there are more, and how many:
+    `rest` different values and `restRows` rows beyond the ones shown */
+export function firstDistinct<T>(
+  items: T[],
+  pick: (item: T) => string | null,
+  count = ANSWER_EXAMPLES,
+): { values: string[]; more: boolean; rest: number; restRows: number } {
   const found = new Set<string>()
+  const others = new Set<string>()
+  let restRows = 0
   for (const item of items) {
     const value = pick(item)?.trim()
-    if (!value || found.has(value)) continue
-    if (found.size === count) return { values: [...found], more: true }
-    found.add(value)
+    if (!value) continue
+    if (found.has(value)) continue
+    if (found.size < count) {
+      found.add(value)
+      continue
+    }
+    others.add(value)
+    restRows++
   }
-  return { values: [...found], more: false }
+  return { values: [...found], more: others.size > 0, rest: others.size, restRows }
 }
 
 /** The step has an answer worth showing as a sentence: a guess, or a choice, that reads real

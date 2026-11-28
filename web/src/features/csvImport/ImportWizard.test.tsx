@@ -165,7 +165,7 @@ it('a guessed step opens on its answer with Continue in the footer; Change puts 
   const user = userEvent.setup()
   await screen.findByRole('heading', { name: 'Which account are these transactions from?' })
   await user.click(screen.getByRole('button', { name: 'Date' }))
-  expect(screen.getByText('Jan 2, 2026 · Jan 3, 2026')).toBeInTheDocument()
+  expect(within(screen.getByText('from “Booking date”').parentElement as HTMLElement).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Jan 2, 2026', 'Jan 3, 2026'])
   expect(screen.getByText('from “Booking date”')).toBeInTheDocument()
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()

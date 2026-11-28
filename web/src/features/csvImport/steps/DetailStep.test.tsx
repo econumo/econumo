@@ -72,12 +72,13 @@ beforeEach(() => {
   server.use(...coreHandlers())
 })
 
+const linesOf = (from: string) => within(screen.getByText(from).parentElement as HTMLElement).getAllByRole('listitem').map((li) => li.textContent)
 const GROUPS = 'Date,Amount,Memo,Group\n2026-01-02,-5,Lunch at the corner cafe,Strata\n2026-01-03,-5,Car insurance for November,Interest\n2026-01-04,-5,Weekly shop,Strata\n2026-01-05,-5,Petrol,Interest\n'
 
 it('a guessed category answers with its values and where they come from; Change opens the choices', async () => {
   renderStep({ step: 'category', text: GROUPS, extras: { ...noExtras, category: 3 } })
   const user = userEvent.setup()
-  expect(screen.getByText('Strata · Interest')).toBeInTheDocument()
+  expect(linesOf('from “Group”')).toEqual(['Strata', 'Interest'])
   expect(screen.getByText('from “Group”')).toBeInTheDocument()
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Change' }))
@@ -151,7 +152,7 @@ it('a payee pick takes its column from the category: a column belongs to one det
 it('any text is offered as the payee, the guessed one answers with its values', async () => {
   renderStep({ step: 'payee', text: GROUPS, extras: { ...noExtras, payee: 2 } })
   const user = userEvent.setup()
-  expect(screen.getByText('Lunch at the corner cafe · Car insurance for November · Weekly shop …')).toBeInTheDocument()
+  expect(linesOf('from “Memo”')).toEqual(['Lunch at the corner cafe', 'Car insurance for November', 'Weekly shop', 'and 1 more'])
   await user.click(screen.getByRole('button', { name: 'Change' }))
   expect(screen.getByRole('radiogroup', { name: 'Which of these says who was paid?' })).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: /from “Group”/ })).toBeInTheDocument()
