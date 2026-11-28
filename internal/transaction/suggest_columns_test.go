@@ -65,6 +65,24 @@ func germanColumns() model.SuggestImportColumnsRequest {
 	}}
 }
 
+// sure turns a role -> header reply into the reply shape with every pick sure;
+// a null or non-string value is passed through as the whole pick.
+func sure(roles map[string]any) string {
+	out := make(map[string]any, len(roles))
+	for role, v := range roles {
+		if header, ok := v.(string); ok {
+			out[role] = map[string]any{"header": header, "sure": true}
+		} else {
+			out[role] = v
+		}
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
 func sortedKeys(m map[string]json.RawMessage) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -128,7 +146,7 @@ func TestSuggestImportColumnsDefaultsLanguage(t *testing.T) {
 }
 
 func TestSuggestImportColumnsKeepsOnlyKnownHeaders(t *testing.T) {
-	c := &columnsCompleter{reply: "```json\n" + `{"date":"Buchungstag","amount":"Betrag","description":"Nope"}` + "\n```"}
+	c := &columnsCompleter{reply: "```json\n" + sure(map[string]any{"date": "Buchungstag", "amount": "Betrag", "description": "Nope"}) + "\n```"}
 	svc := columnsService(c, apptransaction.AIFactsInfo{Language: "de"}, columnsLimiter{})
 	res, err := svc.SuggestImportColumns(context.Background(), columnsUser, germanColumns())
 	if err != nil {
@@ -141,7 +159,7 @@ func TestSuggestImportColumnsKeepsOnlyKnownHeaders(t *testing.T) {
 }
 
 func TestSuggestImportColumnsDropsUnknownRolesAndDuplicates(t *testing.T) {
-	c := &columnsCompleter{reply: `{"payee":"Verwendungszweck","description":"Verwendungszweck","amountOut":"Betrag","amount":"Betrag","memo":"Buchungstag","date":null,"tag":7}`}
+	c := &columnsCompleter{reply: sure(map[string]any{"payee": "Verwendungszweck", "description": "Verwendungszweck", "amountOut": "Betrag", "amount": "Betrag", "memo": "Buchungstag", "date": nil, "tag": 7})}
 	svc := columnsService(c, apptransaction.AIFactsInfo{}, columnsLimiter{})
 	res, err := svc.SuggestImportColumns(context.Background(), columnsUser, germanColumns())
 	if err != nil {
@@ -154,7 +172,7 @@ func TestSuggestImportColumnsDropsUnknownRolesAndDuplicates(t *testing.T) {
 }
 
 func TestSuggestImportColumnsRejectsRolesTheColumnTypeCannotHold(t *testing.T) {
-	c := &columnsCompleter{reply: `{"date":"Betrag","amount":"Verwendungszweck","amountIn":"Leer","description":"Buchungstag","payee":"Verwendungszweck","category":"Saldo","tag":"Leer"}`}
+	c := &columnsCompleter{reply: sure(map[string]any{"date": "Betrag", "amount": "Verwendungszweck", "amountIn": "Leer", "description": "Buchungstag", "payee": "Verwendungszweck", "category": "Saldo", "tag": "Leer"})}
 	svc := columnsService(c, apptransaction.AIFactsInfo{Language: "de"}, columnsLimiter{})
 	req := germanColumns()
 	req.Columns = append(req.Columns,
@@ -172,7 +190,7 @@ func TestSuggestImportColumnsRejectsRolesTheColumnTypeCannotHold(t *testing.T) {
 }
 
 func TestSuggestImportColumnsNullNeverNamesABlankHeader(t *testing.T) {
-	c := &columnsCompleter{reply: `{"date":"Buchungstag","amount":"Betrag","description":null,"payee":""}`}
+	c := &columnsCompleter{reply: `{"date":{"header":"Buchungstag","sure":true},"amount":{"header":"Betrag","sure":true},"description":{"header":null,"sure":true},"payee":{"header":"","sure":true}}`}
 	svc := columnsService(c, apptransaction.AIFactsInfo{}, columnsLimiter{})
 	req := germanColumns()
 	req.Columns = append(req.Columns, model.ImportColumnFact{Name: "", Type: "text"})
@@ -186,6 +204,19 @@ func TestSuggestImportColumnsNullNeverNamesABlankHeader(t *testing.T) {
 	}
 }
 
+func TestSuggestImportColumnsDropsUnsurePicks(t *testing.T) {
+	c := &columnsCompleter{reply: `{"date":{"header":"Buchungstag","sure":true},"amount":{"header":"Betrag","sure":false},"description":{"header":"Verwendungszweck"},"payee":"Verwendungszweck"}`}
+	svc := columnsService(c, apptransaction.AIFactsInfo{}, columnsLimiter{})
+	res, err := svc.SuggestImportColumns(context.Background(), columnsUser, germanColumns())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"date": "Buchungstag"}
+	if !reflect.DeepEqual(res.Roles, want) {
+		t.Fatalf("roles = %v, want %v", res.Roles, want)
+	}
+}
+
 func TestSuggestImportColumnsEmptyWhen(t *testing.T) {
 	cases := map[string]struct {
 		completer *columnsCompleter
@@ -194,11 +225,11 @@ func TestSuggestImportColumnsEmptyWhen(t *testing.T) {
 		wantCalls int
 	}{
 		"no_completer":    {},
-		"ai_off":          {completer: &columnsCompleter{reply: `{"date":"Buchungstag"}`}, facts: apptransaction.AIFactsInfo{AIOff: true}},
-		"readonly":        {completer: &columnsCompleter{reply: `{"date":"Buchungstag"}`}, facts: apptransaction.AIFactsInfo{Readonly: true}},
+		"ai_off":          {completer: &columnsCompleter{reply: `{"date":{"header":"Buchungstag","sure":true}}`}, facts: apptransaction.AIFactsInfo{AIOff: true}},
+		"readonly":        {completer: &columnsCompleter{reply: `{"date":{"header":"Buchungstag","sure":true}}`}, facts: apptransaction.AIFactsInfo{Readonly: true}},
 		"completer_error": {completer: &columnsCompleter{err: errors.New("boom")}, wantCalls: 1},
 		"bad_json":        {completer: &columnsCompleter{reply: "the first one"}, wantCalls: 1},
-		"rate_limited":    {completer: &columnsCompleter{reply: `{"date":"Buchungstag"}`}, limiter: columnsLimiter{deny: true}},
+		"rate_limited":    {completer: &columnsCompleter{reply: `{"date":{"header":"Buchungstag","sure":true}}`}, limiter: columnsLimiter{deny: true}},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {

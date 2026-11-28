@@ -19,7 +19,7 @@ import (
 // round trip, and the wizard asks once per parsed file.
 const RateScopeImportColumns = "import-columns"
 
-// The wizard is already open on the built-in guesses; a late answer is no answer.
+// The wizard holds its File step open until this answers; a late answer is no answer.
 const suggestColumnsTimeout = 8 * time.Second
 
 // importColumnRoles is also the precedence when the reply gives one header
@@ -29,7 +29,15 @@ var importColumnRoles = []string{"date", "amount", "amountIn", "amountOut", "des
 var importColumnsSchema = func() *ai.Schema {
 	props := make(map[string]any, len(importColumnRoles))
 	for _, role := range importColumnRoles {
-		props[role] = map[string]any{"type": []string{"string", "null"}}
+		props[role] = map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"header": map[string]any{"type": []string{"string", "null"}},
+				"sure":   map[string]any{"type": "boolean"},
+			},
+			"required":             []string{"header", "sure"},
+			"additionalProperties": false,
+		}
 	}
 	body, err := json.Marshal(map[string]any{
 		"type": "object", "properties": props, "required": importColumnRoles, "additionalProperties": false,
@@ -100,9 +108,17 @@ func roleFits(role, columnType string) bool {
 	}
 }
 
-// askColumns keeps a role only when its value is a header from the request
-// whose type fits the role, so a model cannot invent a column the wizard does
-// not have or replace a sound built-in guess with a column that cannot hold it.
+// columnPick is one role of the reply: the header the model reads as that role
+// and whether it is sure. An unsure pick is dropped: the wizard leaves a step
+// empty for the user rather than fill it wrongly.
+type columnPick struct {
+	Header *string `json:"header"`
+	Sure   bool    `json:"sure"`
+}
+
+// askColumns keeps a role only when the model is sure of it and its header is
+// one from the request whose type fits the role, so a model cannot invent a
+// column the wizard does not have or give a column a role it cannot hold.
 func (s *Service) askColumns(ctx context.Context, userID vo.Id, language string, columns []model.ImportColumnFact) (map[string]string, error) {
 	if language == "" {
 		language = "en"
@@ -140,12 +156,11 @@ func (s *Service) askColumns(ctx context.Context, userID vo.Id, language string,
 	roles := map[string]string{}
 	taken := map[string]bool{}
 	for _, role := range importColumnRoles {
-		var header string
-		if json.Unmarshal(parsed[role], &header) != nil {
+		var pick columnPick
+		if json.Unmarshal(parsed[role], &pick) != nil || !pick.Sure || pick.Header == nil {
 			continue
 		}
-		header = strings.TrimSpace(header)
-		// null decodes to "", which would otherwise name a blank header
+		header := strings.TrimSpace(*pick.Header)
 		columnType, known := types[header]
 		if header == "" || !known || taken[header] || !roleFits(role, columnType) {
 			continue

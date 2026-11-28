@@ -9,6 +9,6 @@ Assign headers to these roles:
 - tag: a single tag name per row.
 - labels: a list of labels per row.
 - account: the account, card or wallet name, when one file holds several accounts.
-Every statement records money, so a file with a number column almost always has amount or amountIn and amountOut: leave them null only when no number column could hold transaction amounts.
+Assign a role only when a header clearly means it. The user picks every role you leave empty, so an empty answer is always better than a wrong one: when a header could mean two things, or you would be guessing, leave the role null. Never assign a role from a column's position, from its type alone, or by elimination (the one text column left over is not therefore the description).
 Headers may be in any language; the user's language only helps you read them. Use each header for at most one role, and only a role whose column type fits it (a date role needs a date column, amounts need number columns, and an empty column fits no role).
-Reply with JSON only: an object whose keys are roles and whose values are header names copied exactly, character for character, from the columns you were given. Use null for a role when no column fits or you are unsure; never invent a header.
+Reply with JSON only: an object with every role as a key, each value an object {"header": ..., "sure": ...}. "header" is a header name copied exactly, character for character, from the columns you were given, or null when no header clearly means the role; never invent a header. "sure" is true only when the header plainly names that role; set it false whenever you hesitate. A role with "sure": false is treated as empty.

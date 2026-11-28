@@ -5,6 +5,7 @@ package transaction_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,9 +16,11 @@ import (
 )
 
 // The AI eval suite of the CSV column suggestion: real bank export headers go
-// to the provider in ECONUMO_AI_DSN through the production use case, and a
-// case passes when every expected role comes back on the expected header and
-// no required role (date, amount, amountIn, amountOut) lands on a wrong one.
+// to the provider in ECONUMO_AI_DSN through the production use case. The model
+// should leave a role empty rather than guess, so a case passes when every
+// role it assigns is right and the money and date roles the case expects
+// (date, amount, amountIn, amountOut, all clearly named) are assigned. An
+// optional role left empty is not a failure; a wrong assignment is.
 
 // Column types as the browser computes them, one letter per column: d date,
 // n number, N number with negatives, t text, e empty. A want key "a|b" accepts
@@ -83,8 +86,47 @@ var evalColumnSeparators = map[string]string{"en": ",", "de": ";", "ru": ";"}
 // types contradict its expected roles grades the fixture, not the model.
 var columnRoleTypes = map[string]string{"date": "d", "amount": "nN", "amountIn": "nN", "amountOut": "nN", "description": "t", "payee": "t", "category": "t", "tag": "t", "labels": "t", "account": "t"}
 
-// The wizard states required roles by exact match; the rest only need to match when expected.
+// Roles a case must get back whenever it expects them, and must never get when it does not.
 var requiredColumnRoles = map[string]bool{"date": true, "amount": true, "amountIn": true, "amountOut": true}
+
+// gradeColumns: an assigned role is wrong when the case expects that role on
+// another header, when its header is expected for other roles only, or when it
+// is a required role the case does not expect. An optional role on a header the
+// case says nothing about is tolerated: the fixtures do not list every sound
+// reading of a header (a "Details" column read as the payee).
+func gradeColumns(want, got map[string]string) bool {
+	expected := map[string][]string{}
+	rolesOf := map[string][]string{}
+	for roles, header := range want {
+		for _, role := range strings.Split(roles, "|") {
+			expected[role] = append(expected[role], header)
+			rolesOf[header] = append(rolesOf[header], role)
+		}
+	}
+	for role, header := range got {
+		if headers, ok := expected[role]; ok {
+			if !slices.Contains(headers, header) {
+				return false
+			}
+			continue
+		}
+		if requiredColumnRoles[role] || len(rolesOf[header]) > 0 {
+			return false
+		}
+	}
+	for roles, header := range want {
+		required := false
+		matched := false
+		for _, role := range strings.Split(roles, "|") {
+			required = required || requiredColumnRoles[role]
+			matched = matched || got[role] == header
+		}
+		if required && !matched {
+			return false
+		}
+	}
+	return true
+}
 
 func TestAIEval_ColumnFixturesAreConsistent(t *testing.T) {
 	for lang, cases := range evalColumnCases {
@@ -115,6 +157,28 @@ func TestAIEval_ColumnFixturesAreConsistent(t *testing.T) {
 	}
 }
 
+func TestAIEval_ColumnGrading(t *testing.T) {
+	want := map[string]string{"date": "Date", "amount": "Amount", "description": "Memo", "tag|labels": "Tags"}
+	cases := []struct {
+		name string
+		got  map[string]string
+		pass bool
+	}{
+		{"everything", map[string]string{"date": "Date", "amount": "Amount", "description": "Memo", "labels": "Tags"}, true},
+		{"optional roles left empty", map[string]string{"date": "Date", "amount": "Amount"}, true},
+		{"an optional role on an unlisted header", map[string]string{"date": "Date", "amount": "Amount", "payee": "Name"}, true},
+		{"a required role missing", map[string]string{"date": "Date", "description": "Memo"}, false},
+		{"an optional role on the wrong header", map[string]string{"date": "Date", "amount": "Amount", "description": "Name"}, false},
+		{"an expected header on another role", map[string]string{"date": "Date", "amount": "Amount", "payee": "Memo"}, false},
+		{"an unexpected required role", map[string]string{"date": "Date", "amount": "Amount", "amountIn": "Balance"}, false},
+	}
+	for _, c := range cases {
+		if got := gradeColumns(want, c.got); got != c.pass {
+			t.Errorf("%s: pass = %v, want %v", c.name, got, c.pass)
+		}
+	}
+}
+
 func TestAIEval_ImportColumns(t *testing.T) {
 	provider := aieval.Provider(t)
 	defer provider.Spend(t)
@@ -132,20 +196,7 @@ func TestAIEval_ImportColumns(t *testing.T) {
 				t.Errorf("%s: %v", area.Name, err)
 				continue
 			}
-			pass := true
-			for roles, header := range c.want {
-				matched := false
-				for _, role := range strings.Split(roles, "|") {
-					matched = matched || res.Roles[role] == header
-				}
-				pass = pass && matched
-			}
-			for role := range requiredColumnRoles {
-				if res.Roles[role] != c.want[role] {
-					pass = false
-				}
-			}
-			area.Check(pass, c.headers, fmt.Sprint(res.Roles), fmt.Sprint(c.want))
+			area.Check(gradeColumns(c.want, res.Roles), c.headers, fmt.Sprint(res.Roles), fmt.Sprint(c.want))
 		}
 	}
 	aieval.Finish(t, areas...)
