@@ -283,8 +283,9 @@ export function MonthSectionHeader({
       {plan ? (
         <span className={PLAN_NAME_COL}>
           {foldButton}
-          {sumsOnDemand ? <SumToggle sumKey={foldKey} name={label} /> : null}
+          {/* the ⋮ before the Σ: shown on hover, it takes the name's room and the Σ stays put */}
           <RowMenu name={label} actions={menu} />
+          {sumsOnDemand ? <SumToggle sumKey={foldKey} name={label} /> : null}
         </span>
       ) : (
         <>
@@ -360,8 +361,8 @@ export function FolderLine({
       </button>
       {actions}
       <span className="flex-1" />
-      {onDemand ? <SumToggle sumKey={sumKey} name={name} /> : null}
       <RowMenu name={name} actions={menu} />
+      {onDemand ? <SumToggle sumKey={sumKey} name={name} /> : null}
     </>
   )
   const dashes = Array.from({ length: plan ? layout.cols : 3 }, (_, i) => <Dash key={i} />)

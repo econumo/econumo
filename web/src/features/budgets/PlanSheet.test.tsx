@@ -3579,6 +3579,37 @@ it('one cell of an open line shows its own sum from its Σ, and hides it on a se
   expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
 })
 
+it("the line's Σ drops every month's own choice: hiding hides all of them", async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const line = () => screen.getByTestId('plan-section-line-expense')
+  await user.click(within(line()).getByRole('button', { name: /show the june sum for expenses/i }))
+  await user.click(within(line()).getByRole('button', { name: /show the july sum for expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(2)
+  await user.click(within(line()).getByRole('button', { name: /show sums for expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  expect(useBudgetPeriodStore.getState().planSumsShown).toEqual({ expense: true })
+  await user.click(within(line()).getByRole('button', { name: /hide sums for expenses/i }))
+  expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  expect(useBudgetPeriodStore.getState().planSumsShown).toEqual({})
+})
+
+it("a line's Σ keeps its place when the line's ⋮ shows on hover", async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  for (const line of [screen.getByTestId('plan-section-line-expense'), within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0]]) {
+    const sigma = within(line).getByRole('button', { name: /^show sums for/i })
+    const menu = within(line).getByRole('button', { name: /^menu / })
+    // the ⋮ comes before the Σ, so it opens out of the name's room, not the Σ's
+    expect(menu.compareDocumentPosition(sigma) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }
+})
+
 it('a section line shows no sums by default, folded or open; its Σ works either way', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', planFolds: { expense: true } })
