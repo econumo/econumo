@@ -197,7 +197,8 @@ export function SumCell({
         <span className="min-w-0 truncate text-xs" title={fmt(actual)}>
           {fmt(actual)}
         </span>
-      ) : dash ? (
+      ) : dash || plan === null ? (
+        // a month with nothing to sum still reads as a dash: a shown sum must show
         <span className="text-xs">
           <Dash />
         </span>

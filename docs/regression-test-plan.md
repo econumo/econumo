@@ -1854,15 +1854,16 @@ and on tablet/phone only with a hardware keyboard.
       shows NO figures by default, folded or open (an empty folder no dashes
       either). Its sums, when shown, use the same `actual · plan` form (`— · 55`
       when nothing happened yet against a plan), on one line. Hovering a line
-      shows its ⋮ before the Σ, and the Σ does not move when the ⋮ appears
-      (on a tablet both show without hover); Σ shows that line's sums
+      shows a Σ button, with its ⋮ before it; the Σ does not move when the ⋮
+      appears (on a tablet both show without hover); Σ shows that line's sums
       and stays visible, pressed, until pressed again — only that line, and
       the choice survives a reload (per device). Hovering one month cell of
       an open line shows a Σ in that cell: clicking it shows that month's sum
       only (click the sum to hide it again; also remembered per device). The
       line's Σ overrides the months' own choices: after showing two months
       one by one, the line's Σ shows every month, and pressing it again hides
-      every month, the first column included. A section/folder line sums
+      every month, the first column included. A shown month with nothing to
+      sum reads as a dash. A section/folder line sums
       every row listed under it (the Archived line shows its rows' actuals,
       with no plan). A section with folders groups its loose rows under a "No
       folder" line. A click on a line folds it; folds are shared with the

@@ -638,8 +638,8 @@ it('section and folder sums read actual · plan up to the selected month, plan a
   // two separate figures at the cell's two ends, no dot; one line, never wrapped
   expect(cell(0).textContent).toBe(`${fmt(sums[1].actual)}${plannedText(sums[1].planned)}`)
   expect(cell(1).textContent).toBe(`${fmt(sums[2].actual)}${plannedText(sums[2].planned)}`)
-  // Aug is after the selected July: its plan alone, no actual
-  expect(cell(2).textContent).toBe(plannedText(sums[3].planned))
+  // Aug is after the selected July: its plan alone, no actual; with no plan, a dash
+  expect(cell(2).textContent).toBe(isZero(sums[3].planned) ? '—' : plannedText(sums[3].planned))
 })
 
 it('a cell keeps its actual at the left edge and its plan at the right, with no dot between', async () => {
