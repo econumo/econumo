@@ -5,16 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
-import { moneyFormat } from '@/lib/money'
 import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { cn } from '@/lib/utils'
 import { formatDay, formatShortDay, formatSigned, useAccountView, type AccountView } from '../accountView'
 import { parseAmountCell, type DecimalSeparator } from '../amounts'
 import { summarize, type PreparedRow, type RowFix, type StepId } from '../prepare'
-import { existingCodes, nameKey, writableAccounts, type StepBodyProps } from '../wizard'
+import { existingCodes, writableAccounts, type StepBodyProps } from '../wizard'
 import { PerRowAccounts } from './AccountStep'
-import { useNameResolution, type ResolvedNames } from '../ownerLists'
+import { useNameResolution, type NameInFile, type ResolvedNames } from '../ownerLists'
 
 // rows shown before "show more"; rows that will be left out are always shown, so none needs hunting for
 const PAGE = 100
@@ -168,14 +167,6 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
   const summary = useMemo(() => summarize(rows), [rows])
   const [limit, setLimit] = useState(PAGE)
   const perRow = answers.account?.kind === 'column'
-  // one ok row per account name stands for all of that account's rows
-  const perRowSamples = useMemo(() => {
-    const byName = new Map<string, PreparedRow>()
-    for (const r of rows) {
-      if (r.status === 'ok' && r.account !== null && !byName.has(nameKey(r.account))) byName.set(nameKey(r.account), r)
-    }
-    return [...byName.values()]
-  }, [rows])
   const visible = useMemo(() => rows.filter((row, i) => i < limit || row.status === 'skipped'), [rows, limit])
   const existingNames = useMemo(() => existingCodes(writableAccounts(accounts, user?.id)), [accounts, user?.id])
   const count = summary.total - summary.skipped
@@ -194,37 +185,31 @@ export function PreviewStep({ state, setAnswers, setFixes, goTo }: StepBodyProps
     goTo(state.isExport ? 'account' : 'date')
   }
 
-  // money is added up only when every row lands in one currency; amounts in two can't be summed
-  const currencies = new Map(
-    (perRow ? perRowSamples : rows.slice(0, 1)).map((r) => {
-      const currency = accountView(r).currency
-      return [currency?.id ?? null, currency] as const
-    }),
-  )
-  const totalsCurrency = currencies.size === 1 ? ([...currencies.values()][0] ?? null) : null
-  const showMoney = currencies.size <= 1
-  const money = (value: string) => moneyFormat(value, totalsCurrency, { showCurrency: totalsCurrency !== null, useNativePrecision: false })
   const reasons = Object.entries(summary.byReason)
     .map(([reason, n]) => `${t(`transactions.import_wizard.skipped.${reason}`)}: ${n}`)
     .join(', ')
-  const tiles: { label: string; value: string; className?: string }[] = [
+  // the names the Category and Payee lists show: distinct, among the rows that will be imported
+  const nameTile = (label: string, names: NameInFile[]) => {
+    const created = names.filter((n) => n.outcome === 'new').length
+    let note = '—'
+    if (names.length > 0) note = created > 0 ? pluralPick(t('transactions.import_wizard.preview.new_count'), created, i18n.language) : t('transactions.import_wizard.preview.all_existing')
+    return { label, value: String(names.length), note }
+  }
+  const tiles: { label: string; value: string; note?: string }[] = [
     { label: t('transactions.import_wizard.preview.transactions'), value: String(count) },
-    ...(showMoney
-      ? [
-          { label: t('transactions.import_wizard.amount.money_in'), value: money(summary.moneyIn), className: 'text-income' },
-          { label: t('transactions.import_wizard.amount.money_out'), value: /^0(\.0+)?$/.test(summary.moneyOut) ? money(summary.moneyOut) : `−${money(summary.moneyOut)}` },
-        ]
-      : []),
+    nameTile(t('transactions.import_wizard.preview.categories'), resolution.names.category),
+    nameTile(t('transactions.import_wizard.preview.payees'), resolution.names.payee),
   ]
   const hiddenCount = rows.length - visible.length
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={cn('grid gap-2', showMoney ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-3')}>
+      <div className="grid grid-cols-3 gap-2">
         {tiles.map((tile) => (
           <div key={tile.label} className="min-w-0 rounded-xl bg-econumo-card px-3 py-2.5">
             <div className="truncate text-xs text-muted-foreground">{tile.label}</div>
-            <div className={cn('mt-0.5 truncate text-base tabular-nums sm:text-lg', tile.className)}>{tile.value}</div>
+            <div className="mt-0.5 truncate text-base tabular-nums sm:text-lg">{tile.value}</div>
+            {tile.note ? <div className="truncate text-xs text-muted-foreground">{tile.note}</div> : null}
           </div>
         ))}
       </div>

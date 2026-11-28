@@ -206,7 +206,7 @@ describe('pruneFixes', () => {
 })
 
 describe('summarize', () => {
-  it('adds money in and out exactly and spans the dates of the transactions', () => {
+  it('counts and spans the dates of the transactions', () => {
     const s = summarize([
       row({ amount: '0.10', date: '2026-03-05' }),
       row({ amount: '0.20', date: '2026-03-01' }),
@@ -222,20 +222,16 @@ describe('summarize', () => {
       byReason: { no_date: 2, user_skipped: 1 },
       firstDate: '2026-03-01',
       lastDate: '2026-03-09',
-      moneyIn: '0.30',
-      moneyOut: '0.30',
     })
   })
 
-  it('reports no dates and zero money for nothing to import', () => {
+  it('reports no dates for nothing to import', () => {
     expect(summarize([])).toEqual({
       total: 0,
       skipped: 0,
       byReason: {},
       firstDate: null,
       lastDate: null,
-      moneyIn: '0',
-      moneyOut: '0',
     })
   })
 })

@@ -117,8 +117,8 @@ it('the list shows each transaction the way it will be imported, read with a dec
   expect(screen.getByRole('button', { name: 'Kaffee' }).closest('li')).toHaveAttribute('title', '2026-01-02;-4,50;Kaffee')
   expect(screen.getByRole('button', { name: 'Jan 2, 2026' })).toHaveTextContent('Jan 2')
   expect(screen.getByText('Transactions').nextSibling).toHaveTextContent('2')
-  expect(screen.getByText('Money in').nextSibling).toHaveTextContent('100.00 $')
-  expect(screen.getByText('Money out').nextSibling).toHaveTextContent('−4.50 $')
+  expect(screen.queryByText('Money in')).not.toBeInTheDocument()
+  expect(screen.queryByText('Money out')).not.toBeInTheDocument()
   expect(screen.getByText('Jan 2, 2026 to Jan 3, 2026')).toBeInTheDocument()
   expect(importButton()).toHaveTextContent('Import 2 transactions')
 })
@@ -374,7 +374,38 @@ it('an Econumo export asks the AI nothing and shows its accounts on the Check st
   expect(asked).not.toHaveBeenCalled()
 })
 
-it('rows going to accounts in different currencies are not added up', async () => {
+it('the tiles count the categories and payees that will be imported and how many are new', async () => {
+  renderWizard(
+    'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
+      'a1,Wallet,EUR,Food,Kaffee,,,Cafe,-4.5,2026-03-04 14:05:09\n' +
+      'a2,Wallet,EUR,food,Tee,,,Bar,-1,2026-03-05 10:00:00\n' +
+      'a3,Wallet,EUR,Travel,Bus,,,,-2,2026-03-06 10:00:00\n' +
+      'a4,Wallet,EUR,Sweets,Cake,,,Shop,-3,someday\n',
+  )
+  await screen.findByRole('heading', { name: 'Here is what will be added' })
+  expect(screen.getByText('Transactions').nextSibling).toHaveTextContent('3')
+  const categories = screen.getByText('Categories').parentElement as HTMLElement
+  expect(within(categories).getByText('2')).toBeInTheDocument()
+  expect(within(categories).getByText('2 new')).toBeInTheDocument()
+  const payees = screen.getByText('Payees').parentElement as HTMLElement
+  expect(within(payees).getByText('2')).toBeInTheDocument()
+  expect(within(payees).getByText('2 new')).toBeInTheDocument()
+})
+
+it('a file without categories or payees shows zero and a dash under them', async () => {
+  renderWizard(
+    'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
+      'a1,Wallet,EUR,,Kaffee,,,,-4.5,2026-03-04 14:05:09\n',
+  )
+  await screen.findByRole('heading', { name: 'Here is what will be added' })
+  for (const label of ['Categories', 'Payees']) {
+    const tile = screen.getByText(label).parentElement as HTMLElement
+    expect(within(tile).getByText('0')).toBeInTheDocument()
+    expect(within(tile).getByText('—')).toBeInTheDocument()
+  }
+})
+
+it('rows going to accounts in different currencies are listed like any other', async () => {
   renderWizard(
     'transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n' +
       'a1,Wallet,EUR,Food,Lunch,,,Cafe,-4.5,2026-03-04 14:05:09\n' +
@@ -384,6 +415,7 @@ it('rows going to accounts in different currencies are not added up', async () =
   expect(screen.getByText('Mar 4, 2026 to Mar 5, 2026')).toBeInTheDocument()
   expect(screen.getByText('Transactions').nextSibling).toHaveTextContent('2')
   expect(screen.queryByText(/Money in/)).not.toBeInTheDocument()
+  expect(screen.getByText('Categories')).toBeInTheDocument()
 })
 
 it('offline, Import is disabled', async () => {

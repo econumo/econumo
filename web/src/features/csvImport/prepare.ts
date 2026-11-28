@@ -1,4 +1,3 @@
-import { add, abs, isNegative, toFixedString } from '@/lib/decimal'
 import { signedAmount, type DecimalSeparator } from './amounts'
 import { parseDateCell, type DateOrder, type ParsedDate } from './dates'
 import type { ParsedFile } from './parse'
@@ -193,24 +192,17 @@ export function pruneFixes(file: ParsedFile, answers: WizardAnswers, fixes: Read
   return pruned ?? fixes
 }
 
-const fractionDigits = (amount: string) => amount.split('.')[1]?.length ?? 0
-
 export function summarize(rows: PreparedRow[]): {
   total: number
   skipped: number
   byReason: Record<string, number>
   firstDate: string | null
   lastDate: string | null
-  moneyIn: string
-  moneyOut: string
 } {
   const byReason: Record<string, number> = {}
   let skipped = 0
   let firstDate: string | null = null
   let lastDate: string | null = null
-  let moneyIn = '0'
-  let moneyOut = '0'
-  let digits = 0
 
   for (const row of rows) {
     if (row.status === 'skipped') {
@@ -222,10 +214,6 @@ export function summarize(rows: PreparedRow[]): {
       if (firstDate === null || row.date < firstDate) firstDate = row.date
       if (lastDate === null || row.date > lastDate) lastDate = row.date
     }
-    if (row.amount === null) continue
-    digits = Math.max(digits, fractionDigits(row.amount))
-    if (isNegative(row.amount)) moneyOut = add(moneyOut, abs(row.amount))
-    else moneyIn = add(moneyIn, row.amount)
   }
 
   return {
@@ -234,8 +222,6 @@ export function summarize(rows: PreparedRow[]): {
     byReason,
     firstDate,
     lastDate,
-    moneyIn: toFixedString(moneyIn, digits),
-    moneyOut: toFixedString(moneyOut, digits),
   }
 }
 

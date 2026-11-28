@@ -79,7 +79,7 @@ is done, and an ambiguous date like `03/04/2026` is silently read day-first.
 >   folding columns.
 > - **Formats** sit under the choice as segmented controls with a live example ("“02.10.2026”
 >   will be read as 2 Oct 2026").
-> - **Check and import:** three stat tiles (Transactions, Money in, Money out), then the list of
+> - **Check and import:** three stat tiles (Transactions, Categories, Payees: the distinct names that will be imported, with "N new", "already exist" or a dash under them), then the list of
 >   transactions as they will be added (date, description, payee · category, signed amount).
 >   Rows that will be left out appear in the list as problem rows with their reason and the
 >   inline fix (type a date/amount, or skip), instead of the one-at-a-time card.
@@ -241,8 +241,8 @@ The server still accepts those fields.
   amount can be traced to its source. Each value on the card links back to the step that
   shapes it (date, amount, description, extras); a "Something looks wrong?" link goes back
   to step 3 (step 2 for an Econumo export).
-- Totals above the card: "214 transactions, 2026-01-03 to 2026-03-31. Money in 6,000.00,
-  money out 4,812.40." Rows that will be skipped are counted with the reason.
+- Totals above the card: "214 transactions, 2026-01-03 to 2026-03-31", with the
+  category and payee counts in the tiles. Rows that will be skipped are counted with the reason.
 - Primary button "Import 214 transactions". The progress bar for chunked uploads stays.
 
 The result screen (`ImportResultDialog`) stays, with plain-language error wording.

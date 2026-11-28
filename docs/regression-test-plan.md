@@ -949,9 +949,10 @@ navigation (single-pane vs sidebar).
       reporting tag named like a budget tag "Left out: already a budget
       tag", and the row imports without it. The imported rows carry exactly
       those values.
-- [ ] 📱 Check and import: three tiles, Transactions, Money in (green) and
-      Money out (the money tiles are left out when the rows land in accounts
-      of two currencies), then "first date to last date" in the UI language's
+- [ ] 📱 Check and import: three tiles, Transactions, Categories and Payees
+      (the distinct names of the rows that will be imported, as in the "in your
+      file" lists; under each "N new", "already exist" or a dash when the file
+      has none), then "first date to last date" in the UI language's
       date format ("Nov 3, 2026" in English, "03.11.2026" in German, never
       ISO) and, when rows will be skipped, "N will be skipped (reason: count)".
       Below, the transactions as they will be added, in file order: day and
