@@ -3597,7 +3597,7 @@ it("the line's Σ drops every month's own choice: hiding hides all of them", asy
   expect(useBudgetPeriodStore.getState().planSumsShown).toEqual({})
 })
 
-it("a line's Σ keeps its place when the line's ⋮ shows on hover", async () => {
+it("a line with a Σ keeps its hidden ⋮'s room, so the Σ does not move on hover", async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
@@ -3605,8 +3605,9 @@ it("a line's Σ keeps its place when the line's ⋮ shows on hover", async () =>
   for (const line of [screen.getByTestId('plan-section-line-expense'), within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0]]) {
     const sigma = within(line).getByRole('button', { name: /^show sums for/i })
     const menu = within(line).getByRole('button', { name: /^menu / })
-    // the ⋮ comes before the Σ, so it opens out of the name's room, not the Σ's
-    expect(menu.compareDocumentPosition(sigma) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(sigma.compareDocumentPosition(menu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // no collapsing w-0 wrapper around the ⋮: its slot is always there
+    expect(menu.parentElement!.classList.contains('w-0')).toBe(false)
   }
 })
 

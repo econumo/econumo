@@ -123,7 +123,7 @@ function menuEntry(a: MenuAction): ReactNode {
 
 /** A line's ⋮ menu: with a mouse it shows while the pointer is over the line (and
  *  stays while open); in a touch screen's edit mode it shows on every line. */
-export function RowMenu({ name, actions }: { name: string; actions: MenuAction[] | undefined }) {
+export function RowMenu({ name, actions, keepSlot = false }: { name: string; actions: MenuAction[] | undefined; keepSlot?: boolean }) {
   const controls = useLineControls()
   const plan = useLineLayout().kind === 'plan'
   if (!actions || actions.length === 0) {
@@ -147,7 +147,8 @@ export function RowMenu({ name, actions }: { name: string; actions: MenuAction[]
       </DropdownMenuContent>
     </DropdownMenu>
   )
-  if (!plan || controls === 'always') {
+  // a line with a Σ keeps the hidden ⋮'s room, or the Σ would jump aside on hover
+  if (!plan || controls === 'always' || keepSlot) {
     return menu
   }
   // The Plan grid's name column is fixed-width: a hidden ⋮ takes none of it, so a
@@ -283,9 +284,8 @@ export function MonthSectionHeader({
       {plan ? (
         <span className={PLAN_NAME_COL}>
           {foldButton}
-          {/* the ⋮ before the Σ: shown on hover, it takes the name's room and the Σ stays put */}
-          <RowMenu name={label} actions={menu} />
           {sumsOnDemand ? <SumToggle sumKey={foldKey} name={label} /> : null}
+          <RowMenu name={label} actions={menu} keepSlot={sumsOnDemand} />
         </span>
       ) : (
         <>
@@ -361,8 +361,8 @@ export function FolderLine({
       </button>
       {actions}
       <span className="flex-1" />
-      <RowMenu name={name} actions={menu} />
       {onDemand ? <SumToggle sumKey={sumKey} name={name} /> : null}
+      <RowMenu name={name} actions={menu} keepSlot={onDemand} />
     </>
   )
   const dashes = Array.from({ length: plan ? layout.cols : 3 }, (_, i) => <Dash key={i} />)
